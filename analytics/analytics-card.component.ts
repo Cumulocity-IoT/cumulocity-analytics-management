@@ -11,14 +11,8 @@ import { AnalyticsService } from './analytics.service';
 export class AnalyticsCardComponent implements OnInit {
   @Input() app: IApplication;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
-  canOpenInBrowser: boolean;
-  disableOpenInBrowser: boolean;
+
   canDelete: boolean;
-  get openButtonTitle() {
-    return !this.disableOpenInBrowser ?
-      gettext('Open') :
-      gettext('This extension is overridden.');
-  }
 
   readonly CANNOT_DELETE_HINT = gettext(`Subscribed or current applications can't be deleted. Delete the application on the parent tenant or unsubscribe it from the current.`);
 
@@ -36,10 +30,6 @@ export class AnalyticsCardComponent implements OnInit {
   }
 
   detail() {
-  }
-
-  openApp() {
-    window.open(this.applicationService.getHref(this.app));
   }
 
   async delete() {

@@ -1,10 +1,13 @@
+import { ResourceLoader } from '@angular/compiler';
 import { EventEmitter, Injectable } from '@angular/core';
 import {
     ApplicationService,
     ApplicationType,
     IApplication,
     ICurrentTenant,
+    InventoryService,
     IResultList,
+    IManagedObject
 } from '@c8y/client';
 
 import {
@@ -32,63 +35,34 @@ export class AnalyticsService {
         private appStateService: AppStateService,
         private alertService: AlertService,
         private translateService: TranslateService,
+        private inventoryService: InventoryService
     ) { }
 
-    getExtensions(customFilter: any = {}): Promise<IResultList<IApplication>> {
+    getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
         const filter: object = {
-            pageSize: 2000,
-            withTotalPages: true
+             pageSize: 100,
+             withTotalPages: true,
+             fragmentType: 'pas_extension',
         };
         Object.assign(filter, customFilter);
-        const currentTenant = this.appStateService.currentTenant.value;
-        return this.applicationService.listByTenant(currentTenant.name, filter);
-    }
-
-
-    async getWebExtensions(customFilter: any = {}): Promise<IApplication[]> {
-        const apps = (await this.getExtensions(customFilter)).data;
-        const webApps = apps.filter(app => this.isApplication(app));
-        this.appsGroupedByContextPath = groupBy(webApps, 'contextPath');
-        return webApps.sort((a, b) => a.name.localeCompare(b.name));
-    }
-
-    isApplication(app: IApplication): boolean {
-        return (
-            app.type !== ApplicationType.MICROSERVICE && !this.isFeature(app) && !this.isPackage(app)
-        );
-    }
-    isFeature(app: IApplication): boolean {
-        return !!app.name.match(/feature-/);
-    }
-
-    isPackage(app: IApplication): boolean {
-        return app.manifest?.isPackage === true;
-    }
-
-    isOwner(app: IApplication): boolean {
-        const currentTenant: ICurrentTenant = this.appStateService.currentTenant.value;
-        const appOwner = get(app, 'owner.tenant.id');
-        return currentTenant.name === appOwner;
-    }
-
-    private isCurrentApp(app: IApplication): boolean {
-        const currentApp = this.appStateService.state.app;
-        return currentApp.contextPath === app.contextPath;
-    }
-
-    async canDeleteExtension(app: IApplication): Promise<boolean> {
-        return (
-            this.isOwner(app) && ((await this.hasSubscribedAppParent(app)) || !this.isCurrentApp(app))
-        );
-    }
-
-    async hasSubscribedAppParent(app: IApplication): Promise<boolean> {
-        if (!this.appsGroupedByContextPath) {
-            await this.getWebExtensions();
+        const query: object = {
+         //   fragmentType: 'pas_extension',
+        };
+        let result;
+        if (Object.keys(customFilter).length == 0  ) {
+            result = this.inventoryService.list(filter);
+        } else {
+            result = this.inventoryService.listQuery(query, filter);
         }
-        return app.contextPath && this.appsGroupedByContextPath[app.contextPath]?.length === 2;
+        return result;
     }
-
+    async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
+        return  (await this.getExtensions(customFilter)).data;
+    }
+    
+    async canDeleteExtension(app: IApplication): Promise<boolean> {
+        return true;
+    }
 
     async deleteApp(app: IApplication): Promise<void> {
         let name = app.name;

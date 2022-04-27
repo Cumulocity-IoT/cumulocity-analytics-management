@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IApplication } from '@c8y/client';
+import { IApplication, IManagedObject } from '@c8y/client';
 import { WizardService, WizardConfig } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
@@ -16,7 +16,7 @@ export class AnalyticsComponent implements OnInit {
   reloading: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
 
-  extensions$: Observable<IApplication> = this.reload$.pipe(
+  extensions$: Observable<IManagedObject> = this.reload$.pipe(
     tap(() => (this.reloading = true)),
     switchMap(() => this.analyticsService.getWebExtensions()),
     tap(console.log),
