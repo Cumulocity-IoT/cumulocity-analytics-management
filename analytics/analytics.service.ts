@@ -7,12 +7,12 @@ import {
     ICurrentTenant,
     InventoryService,
     IResultList,
-    IManagedObject
+    IManagedObject,
+    InventoryBinaryService
 } from '@c8y/client';
 
 import {
     AlertService,
-    AppStateService,
     ModalService,
     ZipService,
     gettext,
@@ -28,14 +28,13 @@ import { cloneDeep, get, groupBy, kebabCase, pick } from 'lodash-es';
 export class AnalyticsService {
 
     private appsGroupedByContextPath: any[];
-    appDeleted = new EventEmitter<IApplication>();
+    appDeleted = new EventEmitter<IManagedObject>();
     constructor(
         private modal: ModalService,
-        private applicationService: ApplicationService,
-        private appStateService: AppStateService,
         private alertService: AlertService,
         private translateService: TranslateService,
-        private inventoryService: InventoryService
+        private inventoryService: InventoryService,
+        private inventoryBinaryService: InventoryBinaryService
     ) { }
 
     getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
@@ -60,25 +59,21 @@ export class AnalyticsService {
         return  (await this.getExtensions(customFilter)).data;
     }
     
-    async canDeleteExtension(app: IApplication): Promise<boolean> {
-        return true;
-    }
-
-    async deleteApp(app: IApplication): Promise<void> {
+    async deleteExtension(app: IManagedObject): Promise<void> {
         let name = app.name;
         await this.modal.confirm(
-            gettext('Delete application'),
+            gettext('Delete extension'),
             this.translateService.instant(
                 gettext(
-                    `You are about to delete application "{{ app.name }}". Do you want to proceed?`
+                    `You are about to delete extension "{{name}}". Do you want to proceed?`
                 ),
                 { name }
             ),
             Status.DANGER,
             { ok: gettext('Delete'), cancel: gettext('Cancel') }
         );
-        await this.applicationService.delete(app.id);
-        this.alertService.success(gettext('Application deleted.'));
+        await this.inventoryBinaryService.delete(app.id);
+        this.alertService.success(gettext('Extension deleted.'));
         this.appDeleted.emit(app);
     }
 }

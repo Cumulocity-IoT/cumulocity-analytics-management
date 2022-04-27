@@ -28,12 +28,11 @@
     </div>
   </div>
 
-  <div *ngIf="canDelete" class="card-block p-2">
+  <div class="card-block p-2">
     <button
     (click)="delete()"
     class="btn-dot"
-    title="{{ canDelete ? 'Delete' : (CANNOT_DELETE_HINT | translate) }}"
-    [disabled]="!canDelete"
+    title="{{ 'Delete'}}"
   >
     <i c8yIcon="minus-sign" class="text-danger"></i>
   </button>

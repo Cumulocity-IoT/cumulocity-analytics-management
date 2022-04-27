@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
-import { ApplicationService, IApplication } from '@c8y/client';
+import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 
@@ -9,24 +9,16 @@ import { AnalyticsService } from './analytics.service';
   templateUrl: './analytics-card.component.html'
 })
 export class AnalyticsCardComponent implements OnInit {
-  @Input() app: IApplication;
+  @Input() app: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
-  canDelete: boolean;
-
-  readonly CANNOT_DELETE_HINT = gettext(`Subscribed or current applications can't be deleted. Delete the application on the parent tenant or unsubscribe it from the current.`);
-
   constructor(
-    private applicationService: ApplicationService,
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private router: Router
   ) {}
 
   async ngOnInit() {
-    const contextPath = this.app.contextPath;
-    this.canDelete = await this.analyticsService.canDeleteExtension(this.app);
-
   }
 
   detail() {
@@ -34,7 +26,7 @@ export class AnalyticsCardComponent implements OnInit {
 
   async delete() {
     try {
-      await this.analyticsService.deleteApp(this.app);
+      await this.analyticsService.deleteExtension(this.app);
       this.onAppDeleted.emit();
     } catch (ex) {
       if (ex) {
