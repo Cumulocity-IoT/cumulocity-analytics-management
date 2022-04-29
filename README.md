@@ -74,7 +74,7 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
   ```npm run deploy```
 # User Guide
 
-You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytisc engine. Click on the "Restart Streaming Analytisc" button for that.
+You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button for that.
 
 <br/>
 <p align="center" style="text-indent:70px;">
@@ -84,7 +84,7 @@ You can upload blocks that were generated via the [apama analytics builder block
 </p>
 <br/>
 
-After the restart the Block will be available within the Steaming Analytisc Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
+After the restart the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
 
 
 <br/>
