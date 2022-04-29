@@ -1,5 +1,5 @@
 # cumulocity-administration-anabuild
-Extends the standard cumulocity  administration with dialog to add analytics builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
+Extends the standard cumulocity administration web application with a dialog to add analytics builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
 
 <br/>
 <p style="text-indent:70px;">
