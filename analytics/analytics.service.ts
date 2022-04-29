@@ -1,14 +1,11 @@
-import { ResourceLoader } from '@angular/compiler';
+
 import { EventEmitter, Injectable } from '@angular/core';
 import {
-    ApplicationService,
-    ApplicationType,
-    IApplication,
-    ICurrentTenant,
     InventoryService,
     IResultList,
     IManagedObject,
-    InventoryBinaryService
+    InventoryBinaryService,
+    IManagedObjectBinary
 } from '@c8y/client';
 
 import {
@@ -21,14 +18,15 @@ import {
 
 import { TranslateService } from '@ngx-translate/core';
 
-import { cloneDeep, get, groupBy, kebabCase, pick } from 'lodash-es';
-
+import { BehaviorSubject } from 'rxjs';
 
 @Injectable()
 export class AnalyticsService {
 
     private appsGroupedByContextPath: any[];
     appDeleted = new EventEmitter<IManagedObject>();
+    progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
+
     constructor(
         private modal: ModalService,
         private alertService: AlertService,
@@ -39,16 +37,16 @@ export class AnalyticsService {
 
     getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
         const filter: object = {
-             pageSize: 100,
-             withTotalPages: true,
-             fragmentType: 'pas_extension',
+            pageSize: 100,
+            withTotalPages: true,
+            fragmentType: 'pas_extension',
         };
         Object.assign(filter, customFilter);
         const query: object = {
-         //   fragmentType: 'pas_extension',
+            //   fragmentType: 'pas_extension',
         };
         let result;
-        if (Object.keys(customFilter).length == 0  ) {
+        if (Object.keys(customFilter).length == 0) {
             result = this.inventoryService.list(filter);
         } else {
             result = this.inventoryService.listQuery(query, filter);
@@ -56,9 +54,9 @@ export class AnalyticsService {
         return result;
     }
     async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
-        return  (await this.getExtensions(customFilter)).data;
+        return (await this.getExtensions(customFilter)).data;
     }
-    
+
     async deleteExtension(app: IManagedObject): Promise<void> {
         let name = app.name;
         await this.modal.confirm(
@@ -75,5 +73,22 @@ export class AnalyticsService {
         await this.inventoryBinaryService.delete(app.id);
         this.alertService.success(gettext('Extension deleted.'));
         this.appDeleted.emit(app);
+    }
+
+    updateUploadProgress(event): void {
+        if (event.lengthComputable) {
+            const currentProgress = this.progress.value;
+            this.progress.next(currentProgress + (event.loaded / event.total) * (95 - currentProgress));
+        }
+    }
+
+    async uploadExtension(archive: File, app: Partial<IManagedObject>): Promise<IManagedObjectBinary> {
+        return (await this.inventoryBinaryService.create(archive, app)).data;
+    }
+
+    cancelExtensionCreation(app: Partial<IManagedObject>): void {
+        if (app) {
+            this.inventoryBinaryService.delete(app);
+        }
     }
 }

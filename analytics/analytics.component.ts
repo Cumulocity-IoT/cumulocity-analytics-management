@@ -47,7 +47,7 @@ export class AnalyticsComponent implements OnInit {
 
     const initialState: any = {
       wizardConfig,
-      id: 'uploadExtension'
+      id: 'uploadAnalyticsExtention'
     };
 
     const modalOptions: ModalOptions = { initialState };
