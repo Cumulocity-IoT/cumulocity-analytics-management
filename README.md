@@ -62,11 +62,7 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
 
   ```npm i ``` 
 
-4. run npm run buildMinor command to create a binary file under dist folder
-
-  ```npm run buildMinor ``` 
-
-5. (Optional) Local development server:
+4. (Optional) Local development server:
   
   ```npm start```
 
