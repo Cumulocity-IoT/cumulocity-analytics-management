@@ -1,7 +1,14 @@
 # cumulocity-administration-anabuild
-Extends the standard cumulocity  administration with dialog to add analytics builder extensions
+Extends the standard cumulocity  administration with dialog to add analytics builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
 
-![Overview](/images/overview.png)
+<br/>
+<p style="text-indent:70px;">
+  <a>
+    <img width="70%" src="images/overview.png">
+  </a>
+</p>
+<br/>
+
 # Content
 - [cumulocity-administration-anabuild](#cumulocity-administration-anabuild)
 - [Content](#content)
@@ -22,11 +29,9 @@ Finally, you should see the new application in your App-Switcher.
 
 
 <br/>
-<p style="text-indent:50px;">
+<p style="text-indent:70px;">
   <a>
-  <center>
-    <img width="50%" src="http://g.recordit.co/F4P3AQmC11.gif">
-  </center>
+    <img width="70%" src="http://g.recordit.co/F4P3AQmC11.gif">
   </a>
 </p>
 <br/>
@@ -76,11 +81,9 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
 You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytisc engine. Click on the "Restart Streaming Analytisc" button for that.
 
 <br/>
-<p style="text-indent:50px;">
+<p style="text-indent:70px;">
   <a>
-  <center>
-    <img width="50%" src="http://g.recordit.co/Vw2YVc3ppm.gif">
-  </center>
+    <img width="70%" src="http://g.recordit.co/Vw2YVc3ppm.gif">
   </a>
 </p>
 <br/>
@@ -89,19 +92,27 @@ After the restart the Block will be available within the Steaming Analytisc Appl
 
 
 <br/>
-<p style="text-indent:50px;">
+<p style="text-indent:70px;">
   <a>
-  <center>
-    <img width="50%" src="images/analytics-builder.png">
-  </center>
+    <img width="70%" src="images/analytics-builder.png">
   </a>
 </p>
 <br/>
 
 # Analytics Builder Block SDK
 
-Custom blocks can be generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). Find addtional information on how blocks can be developed. However in here is one example block included that can be used for test purposes.
+Custom blocks can be generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
+Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
 
+The provided block is an example of the machine learning block that also allows ONNX models.
+
+<br/>
+<p style="text-indent:70px;">
+  <a>
+    <img width="70%" src="images/model.png">
+  </a>
+</p>
+<br/>
 
 ------------------------------
 
