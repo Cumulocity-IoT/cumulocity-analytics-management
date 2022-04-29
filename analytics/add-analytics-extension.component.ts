@@ -19,10 +19,10 @@ import { AnalyticsService } from './analytics.service';
   
     constructor(private analyticsService: AnalyticsService) {}
   
-    uploadExtensionHandler = (file: File, app: IManagedObject) => this.uploadExtension(file, app);
+    uploadExtensionHandler = (file: File, app: IManagedObject, restart: boolean) => this.uploadExtension(file, app, restart );
   
-    async uploadExtension(file: File, app: IManagedObject): Promise<IManagedObjectBinary> {
-      return this.analyticsService.uploadExtension(file, app);
+    async uploadExtension(file: File, app: IManagedObject, restart: boolean): Promise<IManagedObjectBinary> {
+      return this.analyticsService.uploadExtension(file, app, restart);
     }
 
   }

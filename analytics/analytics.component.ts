@@ -39,6 +39,10 @@ export class AnalyticsComponent implements OnInit {
     this.reload$.next();
   }
 
+  restartCEP() {
+    this.analyticsService.restartCEP()
+  }
+
   addExtension() {
     const wizardConfig: WizardConfig = {
       headerText: 'Add Extension',

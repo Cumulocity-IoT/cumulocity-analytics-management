@@ -23,6 +23,7 @@ export class AddExtensionComponent {
   createdApp: Partial<IManagedObject>;
   canOpenInBrowser: boolean = false;
   errorMessage: string;
+  restart: boolean = false;
   private uploadCanceled: boolean = false;
 
   constructor(
@@ -53,7 +54,7 @@ export class AddExtensionComponent {
         pas_extension: n,
         name : n
       }
-      await this.uploadExtensionHandler(file, this.createdApp);
+      await this.uploadExtensionHandler(file, this.createdApp, this.restart);
       this.isAppCreated = true;
     } catch (ex) {
       this.analyticsService.cancelExtensionCreation(this.createdApp);

@@ -5,7 +5,11 @@ import {
     IResultList,
     IManagedObject,
     InventoryBinaryService,
-    IManagedObjectBinary
+    IManagedObjectBinary,
+    IFetchResponse,
+    IFetchOptions,
+    IFetchClient,
+    FetchClient
 } from '@c8y/client';
 
 import {
@@ -26,14 +30,17 @@ export class AnalyticsService {
     private appsGroupedByContextPath: any[];
     appDeleted = new EventEmitter<IManagedObject>();
     progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
+    protected baseUrl: string;
 
     constructor(
         private modal: ModalService,
         private alertService: AlertService,
         private translateService: TranslateService,
         private inventoryService: InventoryService,
-        private inventoryBinaryService: InventoryBinaryService
+        private inventoryBinaryService: InventoryBinaryService,
+        private fetchClient: FetchClient
     ) { }
+
 
     getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
         const filter: object = {
@@ -82,8 +89,23 @@ export class AnalyticsService {
         }
     }
 
-    async uploadExtension(archive: File, app: Partial<IManagedObject>): Promise<IManagedObjectBinary> {
-        return (await this.inventoryBinaryService.create(archive, app)).data;
+    async restartCEP () : Promise <any> {
+        const formData = new FormData();
+        const fetchOptions: IFetchOptions = {
+            method: 'PUT',
+            body: formData,
+            //headers: { 'content-type': 'multipart/form-data', accept: 'application/json' },
+            headers: { accept: 'application/json' },
+        };
+        const url = '/service/cep/restart';
+        const res = await this.fetchClient.fetch(url, fetchOptions);
+        this.alertService.success(gettext('Streaming Analytics restarted.'));
+    }
+
+    async uploadExtension(archive: File, app: Partial<IManagedObject>, restart: boolean): Promise<IManagedObjectBinary> {
+        const result = (await this.inventoryBinaryService.create(archive, app)).data;
+
+        return result
     }
 
     cancelExtensionCreation(app: Partial<IManagedObject>): void {

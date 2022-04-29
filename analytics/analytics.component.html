@@ -25,6 +25,17 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
+  <button
+    (click)="restartCEP()"
+    class="btn btn-link"
+    title="{{ 'Restart Streaming Analytics' | translate }}"
+  >
+    <i c8yIcon="c8y-solution-accelerator"></i>
+    {{ 'Restart Streaming Analytics' | translate }}
+  </button>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
   <button (click)="loadExtensions()" class="btn btn-link" title="{{ 'Reload' | translate }}">
     <i [ngClass]="{ 'icon-spin': reloading }" c8yIcon="refresh"></i>
     {{ 'Reload' | translate }}
