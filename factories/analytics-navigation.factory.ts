@@ -11,7 +11,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
       }
     
       async get() {
-          const extensionsNode = new NavigatorNode({
+/*           const extensionsNode = new NavigatorNode({
             label: gettext('Extensions'),
             icon: 'c8y-tools',
             path: '/extensions',
@@ -25,7 +25,16 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
               priority: 3200,
               children: [extensionsNode]
             })
-          );
+          ); */
+          const extensionsNode = new NavigatorNode({
+            label: gettext('Analytics Extensions'),
+            icon: 'c8y-tools',
+            path: '/extensions',
+            parent: gettext('Ecosystem'),
+            priority: 200,
+            routerLinkExact: false
+          });
+          this.navs.push(extensionsNode);
         return this.navs;
       }
     }
