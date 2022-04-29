@@ -29,7 +29,7 @@ Finally, you should see the new application in your App-Switcher.
 
 
 <br/>
-<p style="text-indent:70px;">
+<p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="http://g.recordit.co/F4P3AQmC11.gif">
   </a>
