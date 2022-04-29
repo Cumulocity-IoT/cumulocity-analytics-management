@@ -1,5 +1,5 @@
 # cumulocity-administration-anabuild
-Extends the standard cumulocity administration web application with a dialog to add analytics builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
+Extends the standard cumulocity administration web application with a dialog to add Analytics Builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
 
 <br/>
 <p align="center" style="text-indent:70px;">
@@ -74,7 +74,7 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
   ```npm run deploy```
 # User Guide
 
-You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button for that.
+You can upload blocks that were generated via the [Apama Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button for that.
 
 <br/>
 <p align="center" style="text-indent:70px;">
@@ -97,7 +97,7 @@ After the restart the Block will be available within the Steaming Analytics Appl
 
 # Analytics Builder Block SDK
 
-Custom blocks can be generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
+Custom blocks can be generated via the [Apama Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
 Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
 
 The provided block is an example of the machine learning block that also allows ONNX models.
