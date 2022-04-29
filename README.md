@@ -1,2 +1,112 @@
 # cumulocity-administration-anabuild
 Extends the standard cumulocity  administration with dialog to add analytics builder extensions
+
+![Overview](/images/overview.png)
+# Content
+- [cumulocity-administration-anabuild](#cumulocity-administration-anabuild)
+- [Content](#content)
+- [Quickstart](#quickstart)
+- [Build Instructions](#build-instructions)
+- [User Guide](#user-guide)
+- [Analytics Builder Block SDK](#analytics-builder-block-sdk)
+
+
+# Quickstart
+
+This guide will teach you how to add the modified administration application to your tenant.
+To upload the latest application release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-administration-anabuild/releases) and download the administration-ab.zip package.
+
+Afterwards, login to your Cumulocity IoT Tenant and go to Administration--Applications--Own applications. To add the modified administration webb application click on Add application. After that, select Upload web application and drop the pre-downloaded zip-folder into the field.
+
+Finally, you should see the new application in your App-Switcher.
+
+
+<br/>
+<p style="text-indent:50px;">
+  <a>
+  <center>
+    <img width="50%" src="http://g.recordit.co/F4P3AQmC11.gif">
+  </center>
+  </a>
+</p>
+<br/>
+
+# Build Instructions
+
+**Prerequisites:**
+  
+* Git
+  
+* NodeJS (release builds are currently built with `v14.18.0`)
+  
+* NPM (Included with NodeJS)
+
+**Instructions**
+
+Make sure you set the environments url, username, password before starting.
+
+1. Clone the repository:
+```
+git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
+```
+2. Change directory:
+
+  ```cd cumulocity-administration-anabuild```
+
+3. run npm i command to install all library files specified in source code
+
+  ```npm i ``` 
+
+4. run npm run buildMinor command to create a binary file under dist folder
+
+  ```npm run buildMinor ``` 
+
+5. (Optional) Local development server:
+  
+  ```npm start```
+
+6. Build the app:
+
+  ```npm run build```
+
+7. Deploy the app:
+  ```npm run deploy```
+# User Guide
+
+You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytisc engine. Click on the "Restart Streaming Analytisc" button for that.
+
+<br/>
+<p style="text-indent:50px;">
+  <a>
+  <center>
+    <img width="50%" src="http://g.recordit.co/Vw2YVc3ppm.gif">
+  </center>
+  </a>
+</p>
+<br/>
+
+After the restart the Block will be available within the Steaming Analytisc Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
+
+
+<br/>
+<p style="text-indent:50px;">
+  <a>
+  <center>
+    <img width="50%" src="images/analytics-builder.png">
+  </center>
+  </a>
+</p>
+<br/>
+
+# Analytics Builder Block SDK
+
+Custom blocks can be generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). Find addtional information on how blocks can be developed. However in here is one example block included that can be used for test purposes.
+
+
+------------------------------
+
+These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+_____________________
+For more information you can Ask a Question in the [TECHcommunity Forums](http://tech.forums.softwareag.com/techjforum/forums/list.page?product=cumulocity).
+
+You can find additional information in the [Software AG TECHcommunity](http://techcommunity.softwareag.com/home/-/product/name/cumulocity).
