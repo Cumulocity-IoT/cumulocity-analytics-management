@@ -2,7 +2,7 @@
 Extends the standard cumulocity administration web application with a dialog to add analytics builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
 
 <br/>
-<p style="text-indent:70px;">
+<p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="images/overview.png">
   </a>
@@ -77,7 +77,7 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
 You can upload blocks that were generated via the [apama analytics builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytisc engine. Click on the "Restart Streaming Analytisc" button for that.
 
 <br/>
-<p style="text-indent:70px;">
+<p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="http://g.recordit.co/Vw2YVc3ppm.gif">
   </a>
@@ -88,7 +88,7 @@ After the restart the Block will be available within the Steaming Analytisc Appl
 
 
 <br/>
-<p style="text-indent:70px;">
+<p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="images/analytics-builder.png">
   </a>
@@ -103,7 +103,7 @@ Find addtional information on how blocks can be developed. However in the releas
 The provided block is an example of the machine learning block that also allows ONNX models.
 
 <br/>
-<p style="text-indent:70px;">
+<p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="images/model.png">
   </a>
