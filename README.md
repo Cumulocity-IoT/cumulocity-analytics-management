@@ -79,7 +79,7 @@ You can upload blocks that were generated via the [Apama Analytics Builder block
 <br/>
 <p align="center" style="text-indent:70px;">
   <a>
-    <img width="70%" src="http://g.recordit.co/Vw2YVc3ppm.gif">
+    <img width="70%" src="http://g.recordit.co/rVfxvThOmc.gif">
   </a>
 </p>
 <br/>
