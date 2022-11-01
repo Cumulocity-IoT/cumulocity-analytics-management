@@ -1,33 +1,21 @@
 
 import { EventEmitter, Injectable } from '@angular/core';
 import {
-    InventoryService,
-    IResultList,
-    IManagedObject,
-    InventoryBinaryService,
-    IManagedObjectBinary,
-    IFetchResponse,
-    IFetchOptions,
-    IFetchClient,
-    FetchClient
+    FetchClient, IFetchOptions, IManagedObject, IManagedObjectBinary, InventoryBinaryService, InventoryService,
+    IResultList
 } from '@c8y/client';
 
 import {
-    AlertService,
-    ModalService,
-    ZipService,
-    gettext,
-    Status,
+    AlertService, gettext, ModalService, Status
 } from '@c8y/ngx-components';
 
 import { TranslateService } from '@ngx-translate/core';
 
 import { BehaviorSubject } from 'rxjs';
 
-@Injectable()
+@Injectable({ providedIn: 'root' })
 export class AnalyticsService {
 
-    private appsGroupedByContextPath: any[];
     appDeleted = new EventEmitter<IManagedObject>();
     progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
     protected baseUrl: string;

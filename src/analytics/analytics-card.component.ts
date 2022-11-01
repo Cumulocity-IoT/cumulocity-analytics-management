@@ -1,7 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
-import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
-import { AlertService, gettext } from '@c8y/ngx-components';
+import { IManagedObject } from '@c8y/client';
+import { AlertService } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 
 @Component({

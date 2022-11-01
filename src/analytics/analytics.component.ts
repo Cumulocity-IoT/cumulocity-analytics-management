@@ -28,8 +28,8 @@ export class AnalyticsComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
-     private wizardService: WizardService
-  ) {}
+    private wizardService: WizardService
+  ) { }
 
   ngOnInit() {
     this.loadExtensions();

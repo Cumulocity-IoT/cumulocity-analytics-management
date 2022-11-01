@@ -1,5 +1,5 @@
 {
-  "name": "administration-ab-plugin",
+  "name": "administration-ab",
   "version": "1.1.0",
   "description": "",
   "scripts": {
@@ -11,7 +11,7 @@
     "postinstall": "ngcc"
   },
   "keywords": [],
-  "author": "",
+  "author": "murat.bayram@softwareag.com, christof.strack@softwareag.com",
   "license": "ISC",
   "dependencies": {
     "@angular/animations": "12.2.14",
@@ -47,24 +47,24 @@
   },
   "c8y": {
     "application": {
-      "name": "administration-ab-plugin",
-      "contextPath": "administration-ab-plugin",
+      "name": "administration-ab",
+      "contextPath": "administration-ab",
       "key": "administration-ab-pluginn-key",
-      "globalTitle": "Analytics Builder Extention Plugin",
+      "globalTitle": "Analytics Builder Extension Plugin",
       "tabsHorizontal": true,
       "isPackage": true,
       "noAppSwitcher": true,
       "package": "plugin",
       "exports": [
         {
-          "name": "Analytics Builder Extention Plugin",
+          "name": "Analytics Builder Extension Plugin",
           "module": "AnaBuildModule",
-          "path": "./src/service-anabuild.module.ts",
-          "description": "Adds Extentions for the Analytics Builder"
+          "path": "./src/service-anabuild.module",
+          "description": "Adds Extensions for the Analytics Builder"
         }
       ],
       "remotes": {
-        "mqtt-mapping": [
+        "administration-ab": [
           "AnaBuildModule"
         ]
       }

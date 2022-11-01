@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { IApplication, IManagedObject, IManagedObjectBinary } from '@c8y/client';
+import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 

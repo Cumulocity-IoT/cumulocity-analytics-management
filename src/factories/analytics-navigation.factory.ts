@@ -1,40 +1,27 @@
 import { Injectable } from '@angular/core';
+import { ApplicationService } from '@c8y/client';
+
 import { gettext, NavigatorNode, NavigatorNodeFactory, _ } from '@c8y/ngx-components';
 
 @Injectable()
 
 
 export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
-      private navs: NavigatorNode[] = [];
-    
-      constructor() {
-      }
-    
-      async get() {
-/*           const extensionsNode = new NavigatorNode({
-            label: gettext('Extensions'),
-            icon: 'c8y-tools',
-            path: '/extensions',
-            priority: 200,
-            routerLinkExact: false
-          });
-          this.navs.push(
-            new NavigatorNode({
-              label: gettext('Analytics'),
-              icon: 'c8y-streaming-analytics',
-              priority: 3200,
-              children: [extensionsNode]
-            })
-          ); */
+  
+  constructor(private applicationService: ApplicationService) {
+  }
+  
+  get() {
+        let navs: NavigatorNode[] = [];
           const extensionsNode = new NavigatorNode({
-            label: gettext('Analytics Extensions'),
+            label: gettext('Analytics'),
             icon: 'c8y-tools',
-            path: '/extensions',
+            path: '/analytics-extensions',
             parent: gettext('Ecosystem'),
             priority: 200,
-            routerLinkExact: false
+            preventDuplicates: true,
           });
-          this.navs.push(extensionsNode);
-        return this.navs;
+          navs.push(extensionsNode);
+        return navs;
       }
     }
