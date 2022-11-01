@@ -4,7 +4,7 @@ Extends the standard cumulocity administration web application with a dialog to 
 <br/>
 <p align="center" style="text-indent:70px;">
   <a>
-    <img width="70%" src="images/overview.png">
+    <img width="70%" src="resources/images/overview.png">
   </a>
 </p>
 <br/>
@@ -90,7 +90,7 @@ After the restart the Block will be available within the Steaming Analytics Appl
 <br/>
 <p align="center" style="text-indent:70px;">
   <a>
-    <img width="70%" src="images/analytics-builder.png">
+    <img width="70%" src="resources/images/analytics-builder.png">
   </a>
 </p>
 <br/>
@@ -105,7 +105,7 @@ The provided block is an example of the machine learning block that also allows 
 <br/>
 <p align="center" style="text-indent:70px;">
   <a>
-    <img width="70%" src="images/model.png">
+    <img width="70%" src="resources/images/model.png">
   </a>
 </p>
 <br/>

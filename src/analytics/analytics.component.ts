@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IApplication, IManagedObject } from '@c8y/client';
+import { IManagedObject } from '@c8y/client';
 import { WizardService, WizardConfig } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
