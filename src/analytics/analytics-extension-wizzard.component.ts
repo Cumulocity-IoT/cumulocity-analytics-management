@@ -4,16 +4,16 @@ import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 
 @Component({
-    selector: 'c8y-add-analytics-extension',
-    template: `<c8y-add-extension
+    selector: 'analytics-add-extension-wizzard',
+    template: `<analytics-add-extension
       [headerText]="headerText"
       [headerIcon]="'upload'"
       [successText]="successText"
       [uploadExtensionHandler]="uploadExtensionHandler"
       [canGoBack]="true"
-    ></c8y-add-extension>`
+    ></analytics-add-extension>`
   })
-  export class AddAnalyticsExtensionComponent {
+  export class AnalyticsExtensionWizzardComponent {
     headerText: string = gettext('Upload analytics extension');
     successText: string = gettext('Extension created');
   

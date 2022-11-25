@@ -87,7 +87,7 @@ export class AnalyticsService {
         };
         const url = '/service/cep/restart';
         const res = await this.fetchClient.fetch(url, fetchOptions);
-        this.alertService.success(gettext('Streaming Analytics restarted.'));
+        this.alertService.success(gettext('Restart Streaming Analytics submitted ...'));
     }
 
     async uploadExtension(archive: File, app: Partial<IManagedObject>, restart: boolean): Promise<IManagedObjectBinary> {

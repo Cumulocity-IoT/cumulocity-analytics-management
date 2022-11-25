@@ -8,7 +8,7 @@ import { ModalOptions } from 'ngx-bootstrap/modal';
 
 
 @Component({
-  selector: 'app-analytics',
+  selector: 'analytics',
   templateUrl: './analytics.component.html',
   styleUrls: ['./analytics.component.css']
 })

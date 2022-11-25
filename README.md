@@ -21,7 +21,7 @@ Extends the standard cumulocity administration web application with a dialog to 
 # Quickstart
 
 This guide will teach you how to add the modified administration application to your tenant.
-To upload the latest application release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-administration-anabuild/releases) and download the administration-ab.zip package.
+To upload the latest application release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-administration-anabuild/releases) and download the analytics-extension.zip package.
 
 Afterwards, login to your Cumulocity IoT Tenant and go to Administration--Applications--Own applications. To add the modified administration webb application click on Add application. After that, select Upload web application and drop the pre-downloaded zip-folder into the field.
 

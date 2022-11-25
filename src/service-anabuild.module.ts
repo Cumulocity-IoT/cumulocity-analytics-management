@@ -11,9 +11,10 @@ import {
 } from '@c8y/ngx-components';
 import { BinaryFileDownloadModule } from '@c8y/ngx-components/binary-file-download';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
-import { AddAnalyticsExtensionComponent } from './analytics/add-analytics-extension.component';
-import { AddExtensionComponent } from './analytics/add-extension.component';
-import { AnalyticsCardComponent } from './analytics/analytics-card.component';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+import { AnalyticsExtensionWizzardComponent } from './analytics/analytics-extension-wizzard.component';
+import { AnalyticsAddExtensionComponent } from './analytics/analytics-add-extension.component';
+import { AnalyticsExtensionCardComponent } from './analytics/analytics-extension-card.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
 import { AnalyticsService } from './analytics/analytics.service';
 import { AnalyticsNavigationFactory } from './factories/analytics-navigation.factory';
@@ -30,10 +31,11 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
       component: AnalyticsComponent
     }]),
     BinaryFileDownloadModule,
+    BsDropdownModule.forRoot(),
     DefaultSubscriptionsModule,
   ],
-  declarations: [AnalyticsComponent, AnalyticsCardComponent, AddExtensionComponent, AddAnalyticsExtensionComponent],
-  entryComponents: [AnalyticsComponent, AnalyticsCardComponent, AddExtensionComponent, AddAnalyticsExtensionComponent],
+  declarations: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizzardComponent],
+  entryComponents: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizzardComponent],
   providers: [
     AnalyticsService,
     { provide: HOOK_NAVIGATOR_NODES, useClass: AnalyticsNavigationFactory, multi: true },
@@ -41,7 +43,7 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
       provide: HOOK_WIZARD,
       useValue: {
         wizardId: 'uploadAnalyticsExtention',
-        component: AddAnalyticsExtensionComponent,
+        component: AnalyticsExtensionWizzardComponent,
         name: 'Upload analytics extension',
         c8yIcon: 'upload'
       },
@@ -59,7 +61,7 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
     },
   ]
 })
-export class AnaBuildModule  {
+export class AnalyticsExtensionModule  {
   constructor() {
   }
 }

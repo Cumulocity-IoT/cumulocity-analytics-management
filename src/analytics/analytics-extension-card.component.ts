@@ -5,10 +5,10 @@ import { AlertService } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 
 @Component({
-  selector: 'c8y-analytics-card',
-  templateUrl: './analytics-card.component.html'
+  selector: 'analytics-extension-card',
+  templateUrl: './analytics-extension-card.component.html'
 })
-export class AnalyticsCardComponent implements OnInit {
+export class AnalyticsExtensionCardComponent implements OnInit {
   @Input() app: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
