@@ -6,10 +6,10 @@ import { ERROR_MESSAGES } from './analytics.constants';
 import { AnalyticsService } from './analytics.service';
 
 @Component({
-  selector: 'c8y-add-extension',
-  templateUrl: './add-extension.component.html'
+  selector: 'analytics-add-extension',
+  templateUrl: './analytics-add-extension.component.html'
 })
-export class AddExtensionComponent {
+export class AnalyticsAddExtensionComponent {
   @Input() headerText: string;
   @Input() headerIcon: string;
   @Input() successText: string;

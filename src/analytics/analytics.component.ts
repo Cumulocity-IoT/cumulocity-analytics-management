@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { IApplication, IManagedObject } from '@c8y/client';
+import { IManagedObject } from '@c8y/client';
 import { WizardService, WizardConfig } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
@@ -8,7 +8,7 @@ import { ModalOptions } from 'ngx-bootstrap/modal';
 
 
 @Component({
-  selector: 'app-analytics',
+  selector: 'analytics',
   templateUrl: './analytics.component.html',
   styleUrls: ['./analytics.component.css']
 })
@@ -28,8 +28,8 @@ export class AnalyticsComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
-     private wizardService: WizardService
-  ) {}
+    private wizardService: WizardService
+  ) { }
 
   ngOnInit() {
     this.loadExtensions();

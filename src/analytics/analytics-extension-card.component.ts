@@ -1,14 +1,14 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
-import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
-import { AlertService, gettext } from '@c8y/ngx-components';
+import { IManagedObject } from '@c8y/client';
+import { AlertService } from '@c8y/ngx-components';
 import { AnalyticsService } from './analytics.service';
 
 @Component({
-  selector: 'c8y-analytics-card',
-  templateUrl: './analytics-card.component.html'
+  selector: 'analytics-extension-card',
+  templateUrl: './analytics-extension-card.component.html'
 })
-export class AnalyticsCardComponent implements OnInit {
+export class AnalyticsExtensionCardComponent implements OnInit {
   @Input() app: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
