@@ -11,6 +11,7 @@ import { BsModalRef } from 'ngx-bootstrap/modal';
     ngRouterModule.forRoot([], { enableTracing: false, useHash: true }),
     RouterModule.forRoot(),
     CoreModule.forRoot(),
+    AnalyticsExtensionModule
   ],
   providers: [BsModalRef,
   ],
