@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService } from '../shared/analytics.service';
 
 @Component({
     selector: 'analytics-add-extension-wizzard',
@@ -13,7 +13,7 @@ import { AnalyticsService } from './analytics.service';
       [canGoBack]="true"
     ></analytics-add-extension>`
   })
-  export class AnalyticsExtensionWizzardComponent {
+  export class AnalyticsExtensionWizardComponent {
     headerText: string = gettext('Upload analytics extension');
     successText: string = gettext('Extension created');
   

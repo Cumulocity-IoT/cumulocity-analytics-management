@@ -12,11 +12,11 @@ import {
 import { BinaryFileDownloadModule } from '@c8y/ngx-components/binary-file-download';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
-import { AnalyticsExtensionWizzardComponent } from './analytics/analytics-extension-wizzard.component';
+import { AnalyticsExtensionWizardComponent } from './wizard/analytics-extension-wizard.component';
 import { AnalyticsAddExtensionComponent } from './analytics/analytics-add-extension.component';
 import { AnalyticsExtensionCardComponent } from './analytics/analytics-extension-card.component';
 import { AnalyticsComponent } from './analytics/analytics.component';
-import { AnalyticsService } from './analytics/analytics.service';
+import { AnalyticsService } from './shared/analytics.service';
 import { AnalyticsNavigationFactory } from './factories/analytics-navigation.factory';
 
 @NgModule({
@@ -26,7 +26,7 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
     FormsModule,
     ReactiveFormsModule,
     RouterModule.forChild([{
-      path: 'analytics-extensions',
+      path: 'sag-ps-pkg-analytics-extensions',
       pathMatch: 'full',
       component: AnalyticsComponent
     }]),
@@ -34,8 +34,8 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
     BsDropdownModule.forRoot(),
     DefaultSubscriptionsModule,
   ],
-  declarations: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizzardComponent],
-  entryComponents: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizzardComponent],
+  declarations: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizardComponent],
+  entryComponents: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizardComponent],
   providers: [
     AnalyticsService,
     { provide: HOOK_NAVIGATOR_NODES, useClass: AnalyticsNavigationFactory, multi: true },
@@ -43,7 +43,7 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
       provide: HOOK_WIZARD,
       useValue: {
         wizardId: 'uploadAnalyticsExtention',
-        component: AnalyticsExtensionWizzardComponent,
+        component: AnalyticsExtensionWizardComponent,
         name: 'Upload analytics extension',
         c8yIcon: 'upload'
       },
@@ -53,7 +53,7 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
       provide: HOOK_ROUTE,
       useValue: [
         {
-          path: 'analytics-extensions',
+          path: 'sag-ps-pkg-analytics-extensions',
           component: AnalyticsComponent,
         },
       ] as Route[],

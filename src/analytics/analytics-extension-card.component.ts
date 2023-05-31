@@ -2,7 +2,7 @@ import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
 import { Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService } from '../shared//analytics.service';
 
 @Component({
   selector: 'analytics-extension-card',
