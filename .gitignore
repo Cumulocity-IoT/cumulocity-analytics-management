@@ -26,4 +26,3 @@ settings.json
 .DS_Store
 setEnv.sh
 dist
-package-lock.json
