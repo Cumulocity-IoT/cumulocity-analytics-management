@@ -1,9 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { IManagedObject } from '@c8y/client';
-import { WizardService, WizardConfig } from '@c8y/ngx-components';
+import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
-import { AnalyticsService } from './analytics.service';
+import { AnalyticsService } from '../shared/analytics.service';
 import { ModalOptions } from 'ngx-bootstrap/modal';
 
 
@@ -28,7 +28,7 @@ export class AnalyticsComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
-    private wizardService: WizardService
+    private wizardModalService: WizardModalService
   ) { }
 
   ngOnInit() {
@@ -56,7 +56,7 @@ export class AnalyticsComponent implements OnInit {
 
     const modalOptions: ModalOptions = { initialState };
 
-    const modalRef = this.wizardService.show(modalOptions);
+    const modalRef = this.wizardModalService.show(modalOptions);
     modalRef.content.onClose.subscribe(() => {
       this.loadExtensions();
     });
