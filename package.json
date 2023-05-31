@@ -6,6 +6,7 @@
     "start": "c8ycli server",
     "start:admin": "npm start -- --shell administration-1016",
     "build": "c8ycli build",
+    "build:ci": "npm run build -- --ci",
     "deploy": "c8ycli deploy",
     "locale-extract": "c8ycli locale-extract",
     "postinstall": "ngcc"
