@@ -1,13 +1,14 @@
 # cumulocity-administration-anabuild
 Extends the standard cumulocity administration web application with a dialog to add Analytics Builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
 
-<br/>
+![Overview](resources/images/overview.png)
+<!-- <br/>
 <p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="resources/images/overview.png">
   </a>
 </p>
-<br/>
+<br/> -->
 
 # Content
 - [cumulocity-administration-anabuild](#cumulocity-administration-anabuild)
@@ -27,14 +28,14 @@ Afterwards, login to your Cumulocity IoT Tenant and go to Administration--Applic
 
 Finally, you should see the new application in your App-Switcher.
 
-
-<br/>
+![Upload Analytics Extension](resources/images/animated-installation-plugin.gif)
+<!-- <br/>
 <p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="http://g.recordit.co/F4P3AQmC11.gif">
   </a>
 </p>
-<br/>
+<br/> -->
 
 # Build Instructions
 
@@ -42,7 +43,7 @@ Finally, you should see the new application in your App-Switcher.
   
 * Git
   
-* NodeJS (release builds are currently built with `v14.18.0`)
+* NodeJS (release builds are currently built with `v16.20.0`)
   
 * NPM (Included with NodeJS)
 
@@ -76,24 +77,27 @@ git clone https://github.com/SoftwareAG/cumulocity-administration-anabuild.git
 
 You can upload blocks that were generated via the [Apama Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button for that.
 
-<br/>
+![Using Analytics Extension](resources/images/animated-using-pluginnode.gif)
+<!-- <br/>
 <p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="http://g.recordit.co/rVfxvThOmc.gif">
   </a>
 </p>
-<br/>
+<br/> -->
+
 
 After the restart the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
 
+![Use Extension](resources/images/analytics-builder.png)
 
-<br/>
+<!-- <br/>
 <p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="resources/images/analytics-builder.png">
   </a>
 </p>
-<br/>
+<br/> -->
 
 # Analytics Builder Block SDK
 
@@ -102,13 +106,14 @@ Find addtional information on how blocks can be developed. However in the releas
 
 The provided block is an example of the machine learning block that also allows ONNX models.
 
-<br/>
+![Use Extension](resources/images/model.png)
+<!-- <br/>
 <p align="center" style="text-indent:70px;">
   <a>
     <img width="70%" src="resources/images/model.png">
   </a>
 </p>
-<br/>
+<br/> -->
 
 ------------------------------
 

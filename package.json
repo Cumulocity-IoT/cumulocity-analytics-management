@@ -1,7 +1,11 @@
 {
   "name": "analytics-extension",
-  "version": "2.0.0",
-  "description": "",
+  "version": "2.0.1",
+  "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:SoftwareAG/cumulocity-administration-anabuild.git"
+  },
   "scripts": {
     "start": "c8ycli server",
     "start:admin": "npm start -- --shell administration-1016",
@@ -11,7 +15,7 @@
     "locale-extract": "c8ycli locale-extract",
     "postinstall": "ngcc"
   },
-  "keywords": [],
+  "keywords": ["c8y"],
   "author": "murat.bayram@softwareag.com, christof.strack@softwareag.com",
   "license": "ISC",
   "dependencies": {
@@ -50,7 +54,7 @@
   },
   "c8y": {
     "application": {
-      "name": "analytics-extension",
+      "name": "Analytics Extension",
       "contextPath": "sag-ps-pkg-analytics-extension",
       "key": "sag-ps-pkg-analytics-extension-pluginn-key",
       "globalTitle": "Analytics Builder Extension Plugin",
@@ -60,7 +64,7 @@
       "package": "plugin",
       "exports": [
         {
-          "name": "Analytics Builder Extension Plugin",
+          "name": "Analytics Builder Extension",
           "module": "AnalyticsExtensionModule",
           "path": "./src/service-anabuild.module",
           "description": "Adds Extensions for the Analytics Builder"
