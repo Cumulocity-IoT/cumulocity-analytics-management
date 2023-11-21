@@ -1,23 +1,23 @@
-import { CommonModule } from '@angular/common';
-import { NgModule } from '@angular/core';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { CommonModule } from "@angular/common";
+import { NgModule } from "@angular/core";
+import { FormsModule, ReactiveFormsModule } from "@angular/forms";
+import { RouterModule as ngRouterModule } from '@angular/router';
 import {
   CoreModule,
-  HOOK_NAVIGATOR_NODES,
-  HOOK_ROUTE,
-  HOOK_WIZARD,
-  Route
-} from '@c8y/ngx-components';
-import { BinaryFileDownloadModule } from '@c8y/ngx-components/binary-file-download';
-import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
-import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
-import { AnalyticsExtensionWizardComponent } from './wizard/analytics-extension-wizard.component';
-import { AnalyticsAddExtensionComponent } from './analytics/analytics-add-extension.component';
-import { AnalyticsExtensionCardComponent } from './analytics/analytics-extension-card.component';
-import { AnalyticsComponent } from './analytics/analytics.component';
-import { AnalyticsService } from './shared/analytics.service';
-import { AnalyticsNavigationFactory } from './factories/analytics-navigation.factory';
+  RouterModule,
+  hookNavigator,
+  hookRoute,
+  hookWizard,
+} from "@c8y/ngx-components";
+import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
+import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
+import { BsDropdownModule } from "ngx-bootstrap/dropdown";
+import { AnalyticsExtensionWizardComponent } from "./wizard/analytics-extension-wizard.component";
+import { AnalyticsAddExtensionComponent } from "./analytics/analytics-add-extension.component";
+import { AnalyticsExtensionCardComponent } from "./analytics/analytics-extension-card.component";
+import { AnalyticsComponent } from "./analytics/analytics.component";
+import { AnalyticsService } from "./shared/analytics.service";
+import { AnalyticsNavigationFactory } from "./factories/analytics-navigation.factory";
 
 @NgModule({
   imports: [
@@ -25,43 +25,39 @@ import { AnalyticsNavigationFactory } from './factories/analytics-navigation.fac
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
-    RouterModule.forChild([{
-      path: 'sag-ps-pkg-analytics-extensions',
-      pathMatch: 'full',
-      component: AnalyticsComponent
-    }]),
+    RouterModule.forRoot(),
+    ngRouterModule.forRoot([], { enableTracing: false, useHash: true }),
     BinaryFileDownloadModule,
     BsDropdownModule.forRoot(),
     DefaultSubscriptionsModule,
   ],
-  declarations: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizardComponent],
-  entryComponents: [AnalyticsComponent, AnalyticsExtensionCardComponent, AnalyticsAddExtensionComponent, AnalyticsExtensionWizardComponent],
+  declarations: [
+    AnalyticsComponent,
+    AnalyticsExtensionCardComponent,
+    AnalyticsAddExtensionComponent,
+    AnalyticsExtensionWizardComponent,
+  ],
+  entryComponents: [
+    AnalyticsComponent,
+    AnalyticsExtensionCardComponent,
+    AnalyticsAddExtensionComponent,
+    AnalyticsExtensionWizardComponent,
+  ],
   providers: [
     AnalyticsService,
-    { provide: HOOK_NAVIGATOR_NODES, useClass: AnalyticsNavigationFactory, multi: true },
-    {
-      provide: HOOK_WIZARD,
-      useValue: {
-        wizardId: 'uploadAnalyticsExtention',
-        component: AnalyticsExtensionWizardComponent,
-        name: 'Upload analytics extension',
-        c8yIcon: 'upload'
-      },
-      multi: true
-    },
-    {
-      provide: HOOK_ROUTE,
-      useValue: [
-        {
-          path: 'sag-ps-pkg-analytics-extensions',
-          component: AnalyticsComponent,
-        },
-      ] as Route[],
-      multi: true,
-    },
-  ]
+    hookNavigator(AnalyticsNavigationFactory),
+    hookWizard({
+      wizardId: "uploadAnalyticsExtention",
+      component: AnalyticsExtensionWizardComponent,
+      name: "Upload analytics extension",
+      c8yIcon: "upload",
+    }),
+    hookRoute({
+      path: "sag-ps-pkg-analytics-extensions",
+      component: AnalyticsComponent,
+    }),
+  ],
 })
-export class AnalyticsExtensionModule  {
-  constructor() {
-  }
+export class AnalyticsExtensionModule {
+  constructor() {}
 }
