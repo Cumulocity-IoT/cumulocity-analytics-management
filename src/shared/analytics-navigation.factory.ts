@@ -18,7 +18,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
       label: gettext("Analytics Extension"),
       icon: "c8y-tools",
       //path: "manage",
-      path: "sag-ps-pkg-analytics-extension/manage",
+      path: "sag-ps-pkg-analytics-extension/list",
       parent: gettext("Ecosystem"),
       priority: 200,
       preventDuplicates: true,
