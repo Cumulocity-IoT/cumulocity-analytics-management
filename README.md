@@ -10,6 +10,11 @@ Extends the standard cumulocity administration web application with a dialog to 
 </p>
 <br/> -->
 
+In addition a table lists all installed blocks, with information if it is a custom block.
+
+![Block list](resources/images/block-list.png)
+
+
 # Content
 - [cumulocity-analytics-management](#cumulocity-analytics-management)
 - [Content](#content)
