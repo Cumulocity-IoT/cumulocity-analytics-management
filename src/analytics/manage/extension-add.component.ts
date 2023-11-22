@@ -55,6 +55,7 @@ export class AnalyticsAddExtensionComponent {
         name : n
       }
       await this.uploadExtensionHandler(file, this.createdApp, this.restart);
+      this.alertService.warning("Deploy new Extension!");
       this.isAppCreated = true;
     } catch (ex) {
       this.analyticsService.cancelExtensionCreation(this.createdApp);

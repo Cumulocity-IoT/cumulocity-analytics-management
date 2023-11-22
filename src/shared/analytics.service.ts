@@ -199,7 +199,7 @@ export class AnalyticsService {
     let payload = p["data"]["data"];
 
     if (payload.text == "Recording apama-ctrl safe mode state") {
-      this.alertService.success("CEP restared sucessfully.");
+      this.alertService.warning("Deplyoment successful");
     }
     console.log("New status for cep:", payload);
   }
@@ -223,8 +223,8 @@ export class AnalyticsService {
     };
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
-    this.alertService.success(
-      gettext("Restart Streaming Analytics submitted ...")
+    this.alertService.warning(
+      gettext("Deployment (Restart) submitted ...")
     );
   }
 

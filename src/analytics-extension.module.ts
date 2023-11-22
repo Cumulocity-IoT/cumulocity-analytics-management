@@ -71,7 +71,6 @@ const routes: Route[] = [
       component: AnalyticsExtensionComponent,
     }),
     hookRoute({
-      //path: "list",
       path: "sag-ps-pkg-analytics-extension/list",
       component: BlockGridComponent,
     }),
