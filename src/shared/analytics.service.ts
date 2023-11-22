@@ -95,7 +95,8 @@ export class AnalyticsService {
       extension.analytics.forEach((block) => {
         //result.push({ name: block.name, category: block.category });
         const cepBlock = block as CEP_Block;
-        cepBlock.custom = block.id.startsWith('apama.analyticsbuilder.blocks');
+        //console.log(block.id);
+        cepBlock.custom = !block.id.startsWith('apama.analyticsbuilder.blocks') && !block.id.startsWith('apama.analyticskit.blocks.core') ;
         result.push(cepBlock);
       });
     }
