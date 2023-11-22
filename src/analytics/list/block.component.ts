@@ -32,7 +32,7 @@ import {
 } from "@c8y/ngx-components";
 import { BsModalService } from "ngx-bootstrap/modal";
 import { AnalyticsService } from "../../shared/analytics.service";
-import { Block } from "../../shared/analytics.model";
+import { CEP_Block } from "../../shared/analytics.model";
 
 @Component({
   selector: "c8y-block-grid",
@@ -43,7 +43,7 @@ export class BlockGridComponent implements OnInit {
 
   showConfigBlock: boolean = false;
 
-  blocks: Block[] = [];
+  blocks: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
 
   titleBlock: string = "AnalyticsBuilder Blocks";
@@ -55,20 +55,32 @@ export class BlockGridComponent implements OnInit {
       path: "name",
       filterable: false,
       dataType: ColumnDataType.TextShort,
+      gridTrackSize: '15%',
       visible: true,
     },
     {
       header: "Category",
       name: "category",
       path: "category",
+      gridTrackSize: '10%',
+      dataType: ColumnDataType.TextShort,
       filterable: true,
     },
     {
       header: "Custom Block",
       name: "custom",
       path: "custom",
+      gridTrackSize: '10%',
       filterable: true,
-      sortable: false,
+      dataType: ColumnDataType.TextShort,
+      sortable: true,
+    },
+    {
+      header: "Description",
+      name: "description",
+      path: "description",
+      filterable: true,
+      sortable: true,
     },
   ];
 

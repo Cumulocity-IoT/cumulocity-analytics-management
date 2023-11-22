@@ -41,8 +41,33 @@ export enum Category {
   UTILITY = 'UTILITY',
 }
 
-export interface Block {
-  name: string;
+// export interface Block {
+//   name: string;
+//   custom: boolean;
+//   category: Category;
+// }
+
+export interface CEP_Metadata {
+  metadatas: string[];
+  messages: string[];
+}
+
+export interface CEP_Extension {
+  analytics: CEP_Block[];
+  version: string;
+}
+
+export interface CEP_Block {
+  id: string;
+  producesOutput: string;
+  description: string;
   custom: boolean;
+  name: string;
   category: Category;
 }
+
+export const PATH_CEP_BASE = "service/cep/apamacorrelator";
+export const PATH_CEP_BASE_EN = "service/cep/apamacorrelator/EN";
+export const PATH_CEP_METADATA_EN = `${PATH_CEP_BASE}/EN/block-metadata.json`;
+// http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json
+// http://localhost:9000/service/cep/apamacorrelator/EN/core.json

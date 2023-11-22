@@ -2,6 +2,7 @@ import { EventEmitter, Injectable } from "@angular/core";
 import {
   FetchClient,
   IFetchOptions,
+  IFetchResponse,
   IManagedObject,
   IManagedObjectBinary,
   InventoryBinaryService,
@@ -19,7 +20,13 @@ import {
 import { TranslateService } from "@ngx-translate/core";
 
 import { BehaviorSubject } from "rxjs";
-import { Block } from "./analytics.model";
+import {
+  CEP_Block,
+  CEP_Extension,
+  CEP_Metadata,
+  PATH_CEP_BASE_EN,
+  PATH_CEP_METADATA_EN,
+} from "./analytics.model";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
@@ -76,9 +83,51 @@ export class AnalyticsService {
     this.appDeleted.emit(app);
   }
 
-  async getBlocks(): Promise<Block[]> {
-    let result : Block[] = [];
+  async getBlocks(): Promise<CEP_Block[]> {
+    const result: CEP_Block[] = [];
+    const meta: CEP_Metadata = await this.getCEP_Metadata();
+
+    for (let index = 0; index < meta.metadatas.length; index++) {
+      const extensionName = meta.metadatas[index];
+      const extension: CEP_Extension = await this.getCEP_Extension(
+        extensionName
+      );
+      extension.analytics.forEach((block) => {
+        //result.push({ name: block.name, category: block.category });
+        const cepBlock = block as CEP_Block;
+        cepBlock.custom = block.id.startsWith('apama.analyticsbuilder.blocks');
+        result.push(cepBlock);
+      });
+    }
     return result;
+  }
+
+  async getCEP_Metadata(): Promise<CEP_Metadata> {
+    const res: IFetchResponse = await this.fetchClient.fetch(
+      `${PATH_CEP_METADATA_EN}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "GET",
+      }
+    );
+    const data = await res.json();
+    return data;
+  }
+
+  async getCEP_Extension(name: string): Promise<CEP_Extension> {
+    const res: IFetchResponse = await this.fetchClient.fetch(
+      `${PATH_CEP_BASE_EN}/${name}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "GET",
+      }
+    );
+    const data = await res.json();
+    return data;
   }
 
   updateUploadProgress(event): void {
