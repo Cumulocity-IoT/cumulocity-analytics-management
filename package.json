@@ -4,7 +4,7 @@
   "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
   "repository": {
     "type": "git",
-    "url": "git@github.com:SoftwareAG/cumulocity-administration-anabuild.git"
+    "url": "git@github.com:SoftwareAG/cumulocity-analytics-management.git"
   },
   "scripts": {
     "start": "c8ycli server",
