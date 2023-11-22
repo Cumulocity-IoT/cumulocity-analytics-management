@@ -62,6 +62,7 @@ export interface CEP_Block {
   producesOutput: string;
   description: string;
   custom: boolean;
+  extension: string;
   name: string;
   category: Category;
 }

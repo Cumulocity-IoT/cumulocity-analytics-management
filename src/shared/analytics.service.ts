@@ -92,11 +92,13 @@ export class AnalyticsService {
       const extension: CEP_Extension = await this.getCEP_Extension(
         extensionName
       );
+      const extensionNameAbbreviated = extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
       extension.analytics.forEach((block) => {
         //result.push({ name: block.name, category: block.category });
         const cepBlock = block as CEP_Block;
         //console.log(block.id);
-        cepBlock.custom = !block.id.startsWith('apama.analyticsbuilder.blocks') && !block.id.startsWith('apama.analyticskit.blocks.core') ;
+        cepBlock.custom = !block.id.startsWith('apama.analyticsbuilder.blocks') && !block.id.startsWith('apama.analyticskit.blocks.core');
+        cepBlock.extension = extensionNameAbbreviated;
         result.push(cepBlock);
       });
     }

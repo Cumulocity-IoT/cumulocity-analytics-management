@@ -55,7 +55,7 @@ export class BlockGridComponent implements OnInit {
       path: "name",
       filterable: false,
       dataType: ColumnDataType.TextShort,
-      gridTrackSize: '15%',
+      gridTrackSize: '10%',
       visible: true,
     },
     {
@@ -79,6 +79,15 @@ export class BlockGridComponent implements OnInit {
       header: "Description",
       name: "description",
       path: "description",
+      filterable: true,
+      sortable: true,
+    },
+    {
+      header: "Extension Name",
+      name: "extension",
+      path: "extension",
+      gridTrackSize: '15%',
+
       filterable: true,
       sortable: true,
     },
