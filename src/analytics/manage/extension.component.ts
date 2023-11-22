@@ -15,6 +15,7 @@ import { ModalOptions } from 'ngx-bootstrap/modal';
 export class AnalyticsExtensionComponent implements OnInit {
   reloading: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
+  subscription: any;
 
   extensions$: Observable<IManagedObject> = this.reload$.pipe(
     tap(() => (this.reloading = true)),
@@ -33,6 +34,8 @@ export class AnalyticsExtensionComponent implements OnInit {
 
   ngOnInit() {
     this.loadExtensions();
+    this.initializeMonitoringService();
+
   }
 
   loadExtensions() {
@@ -61,4 +64,17 @@ export class AnalyticsExtensionComponent implements OnInit {
       this.loadExtensions();
     });
   }
+
+  private async initializeMonitoringService(): Promise<void> {
+    this.subscription =
+      await this.analyticsService.subscribeMonitoringChannel();
+  }
+
+  ngOnDestroy(): void {
+    console.log("Stop subscription");
+    this.analyticsService.unsubscribeFromMonitoringChannel(
+      this.subscription
+    );
+  }
+
 }

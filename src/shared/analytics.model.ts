@@ -67,8 +67,11 @@ export interface CEP_Block {
   category: Category;
 }
 
-export const PATH_CEP_BASE = "service/cep/apamacorrelator";
-export const PATH_CEP_BASE_EN = "service/cep/apamacorrelator/EN";
-export const PATH_CEP_METADATA_EN = `${PATH_CEP_BASE}/EN/block-metadata.json`;
+export const PATH_CEP_BASE = "service/cep";
+export const PATH_CEP_CORRELATOR = `${PATH_CEP_BASE}/apamacorrelator`;
+export const PATH_CEP_EN = `${PATH_CEP_CORRELATOR}/EN`;
+export const PATH_CEP_METADATA_EN = `${PATH_CEP_CORRELATOR}/EN/block-metadata.json`;
+export const PATH_CEP_DIAGNOSTICS = `${PATH_CEP_BASE}/diagnostics`;
+export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json
 // http://localhost:9000/service/cep/apamacorrelator/EN/core.json

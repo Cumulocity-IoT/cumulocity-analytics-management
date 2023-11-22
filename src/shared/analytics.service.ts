@@ -8,6 +8,7 @@ import {
   InventoryBinaryService,
   InventoryService,
   IResultList,
+  Realtime,
 } from "@c8y/client";
 
 import {
@@ -24,8 +25,9 @@ import {
   CEP_Block,
   CEP_Extension,
   CEP_Metadata,
-  PATH_CEP_BASE_EN,
+  PATH_CEP_EN,
   PATH_CEP_METADATA_EN,
+  PATH_CEP_STATUS,
 } from "./analytics.model";
 
 @Injectable({ providedIn: "root" })
@@ -33,6 +35,8 @@ export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
   protected baseUrl: string;
+  private _cepId: Promise<string>;
+  private realtime: Realtime;
 
   constructor(
     private modal: ModalService,
@@ -41,7 +45,10 @@ export class AnalyticsService {
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient
-  ) {}
+  ) {
+    this.realtime = new Realtime(this.fetchClient);
+
+  }
 
   getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
     const filter: object = {
@@ -92,12 +99,15 @@ export class AnalyticsService {
       const extension: CEP_Extension = await this.getCEP_Extension(
         extensionName
       );
-      const extensionNameAbbreviated = extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
+      const extensionNameAbbreviated =
+        extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
       extension.analytics.forEach((block) => {
         //result.push({ name: block.name, category: block.category });
         const cepBlock = block as CEP_Block;
         //console.log(block.id);
-        cepBlock.custom = !block.id.startsWith('apama.analyticsbuilder.blocks') && !block.id.startsWith('apama.analyticskit.blocks.core');
+        cepBlock.custom =
+          !block.id.startsWith("apama.analyticsbuilder.blocks") &&
+          !block.id.startsWith("apama.analyticskit.blocks.core");
         cepBlock.extension = extensionNameAbbreviated;
         result.push(cepBlock);
       });
@@ -121,7 +131,7 @@ export class AnalyticsService {
 
   async getCEP_Extension(name: string): Promise<CEP_Extension> {
     const res: IFetchResponse = await this.fetchClient.fetch(
-      `${PATH_CEP_BASE_EN}/${name}`,
+      `${PATH_CEP_EN}/${name}`,
       {
         headers: {
           "content-type": "application/json",
@@ -131,6 +141,67 @@ export class AnalyticsService {
     );
     const data = await res.json();
     return data;
+  }
+
+  async getCEPId(): Promise<string> {
+    if (!this._cepId) {
+      this._cepId = this.getUncachedCEPId();
+    }
+    return this._cepId;
+  }
+
+  async getUncachedCEPId(): Promise<string> {
+    // get name of microservice from cep endpoint
+    const response: IFetchResponse = await this.fetchClient.fetch(
+      `${PATH_CEP_STATUS}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "GET",
+      }
+    );
+    const data1 = await response.json();
+    const cepMicroservice = data1.microservice_name;
+
+    // get source id of microservice representation in inventory
+    const filter: object = {
+      pageSize: 100,
+      withTotalPages: true,
+    };
+    const query: object = {
+      name: cepMicroservice,
+    };
+    let {data, res}: IResultList<IManagedObject> = await this.inventoryService.listQuery(query, filter);
+    if (!data || data.length > 1) {
+      this.alertService.warning("Can't find microservice for CEP!");
+      return;
+    }
+    return data[0].id;
+  }
+
+  async subscribeMonitoringChannel(): Promise<object> {
+    const cepId = await this.getCEPId();
+    console.log("Started subscription:", cepId);
+
+    const sub = this.realtime.subscribe(
+      `/events/${cepId}`,
+      this.updateStatus.bind(this)
+    );
+    return sub;
+  }
+
+  unsubscribeFromMonitoringChannel(subscription: object) {
+    this.realtime.unsubscribe(subscription);
+  }
+
+  private updateStatus(p: object): void {
+    let payload = p["data"]["data"];
+
+    if (payload.text == "Recording apama-ctrl safe mode state") {
+      this.alertService.success("CEP restared sucessfully.");
+    }
+    console.log("New status for cep:", payload);
   }
 
   updateUploadProgress(event): void {

@@ -1,30 +1,30 @@
 # cumulocity-analytics-management
-Extends the standard cumulocity administration web application with a dialog to add Analytics Builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard administration UI adds an dialog to add and a list of all loaded custom blocks.
+
+## Content
+- [Overview](#overview)
+- [Installation](#installation)
+- [Content](#content)
+- [Build Instructions](#build-instructions)
+- [User Guide](#user-guide)
+- [Analytics Builder Block SDK](#analytics-builder-block-sdk)
+
+## Overview
+
+Extends the standard Cumulocity web application with a plugin to manage and add Analytics Builder extensions. Currently the standard UI does not allow the upload of custom blocks via .zip files. This extension of the standard Streaming-Analytics UI adds an plugin to add and a list of all loaded custom blocks.
 
 ![Extension installation](resources/images/extension-installation.png)
-<!-- <br/>
-<p align="center" style="text-indent:70px;">
-  <a>
-    <img width="70%" src="resources/images/extension-installation.png">
-  </a>
-</p>
-<br/> -->
 
 In addition a table lists all installed blocks, with information if it is a custom block.
 
 ![Block list](resources/images/block-list.png)
 
+## Installation
 
-# Content
-- [cumulocity-analytics-management](#cumulocity-analytics-management)
-- [Content](#content)
-- [Quickstart](#quickstart)
-- [Build Instructions](#build-instructions)
-- [User Guide](#user-guide)
-- [Analytics Builder Block SDK](#analytics-builder-block-sdk)
+The plugin is available as a community plugin and can be installed from the Administratio -> Extensions UI:
 
+![Plugin installation](resources/images/plugin-installation.png)
 
-# Quickstart
+## Build Instructions
 
 This guide will teach you how to add the modified administration application to your tenant.
 To upload the latest application release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-analytics-management/releases) and download the analytics-extension.zip package.
@@ -42,7 +42,6 @@ Finally, you should see the new application in your App-Switcher.
 </p>
 <br/> -->
 
-# Build Instructions
 
 **Prerequisites:**
   
@@ -78,9 +77,9 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 7. Deploy the app:
   ```npm run deploy```
-# User Guide
+## User Guide
 
-You can upload blocks that were generated via the [Apama Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button for that.
+You can upload blocks that were generated via the [Apama Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "Add extension" button. Drop the .zip file there and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Restart Streaming Analytics" button and wait for the notification that the engine was restarted.
 
 ![Using Analytics Extension](resources/images/animated-using-plugin.gif)
 <!-- <br/>
@@ -104,7 +103,7 @@ After the restart the Block will be available within the Steaming Analytics Appl
 </p>
 <br/> -->
 
-# Analytics Builder Block SDK
+## Analytics Builder Block SDK
 
 Custom blocks can be generated via the [Apama Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
 Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
