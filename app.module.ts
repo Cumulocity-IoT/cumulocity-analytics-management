@@ -3,7 +3,7 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule as ngRouterModule } from '@angular/router';
 import { BootstrapComponent, CoreModule, RouterModule } from '@c8y/ngx-components';
 import { BsModalRef } from 'ngx-bootstrap/modal';
-import { AnalyticsExtensionModule } from './src/service-anabuild.module';
+import { AnalyticsExtensionModule } from './src/analytics-extension.module';
 
 
 @NgModule({

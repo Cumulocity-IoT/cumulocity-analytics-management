@@ -5,13 +5,13 @@ import { AnalyticsService } from '../shared/analytics.service';
 
 @Component({
     selector: 'analytics-add-extension-wizzard',
-    template: `<analytics-add-extension
+    template: `<extension-add
       [headerText]="headerText"
       [headerIcon]="'upload'"
       [successText]="successText"
       [uploadExtensionHandler]="uploadExtensionHandler"
       [canGoBack]="true"
-    ></analytics-add-extension>`
+    ></extension-add>`
   })
   export class AnalyticsExtensionWizardComponent {
     headerText: string = gettext('Upload analytics extension');

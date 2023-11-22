@@ -29,3 +29,20 @@ export interface ApplicationPlugin {
   installed?: boolean;
   contextPath?: string;
 }
+
+/** Wizard types  */
+export enum Category {
+  INPUT = 'INPUT',
+  OUPUT = 'OUTPUT',
+  LOGIC = 'LOGIC',
+  CALCULATION = 'CALCULATION',
+  AGGREGATE = 'AGGREGATE',
+  FLOW_MANIPULATION = 'FLOW_MANIPULATION',
+  UTILITY = 'UTILITY',
+}
+
+export interface Block {
+  name: string;
+  custom: boolean;
+  category: Category;
+}

@@ -3,16 +3,16 @@ import { IManagedObject } from '@c8y/client';
 import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
-import { AnalyticsService } from '../shared/analytics.service';
+import { AnalyticsService } from '../../shared/analytics.service';
 import { ModalOptions } from 'ngx-bootstrap/modal';
 
 
 @Component({
-  selector: 'analytics',
-  templateUrl: './analytics.component.html',
-  styleUrls: ['./analytics.component.css']
+  selector: 'extension',
+  templateUrl: './extension.component.html',
+  styleUrls: ['./extension.component.css']
 })
-export class AnalyticsComponent implements OnInit {
+export class AnalyticsExtensionComponent implements OnInit {
   reloading: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
 

@@ -2,12 +2,12 @@ import { Component, Input, ViewChild } from '@angular/core';
 import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
 import { AlertService, DropAreaComponent, WizardComponent } from '@c8y/ngx-components';
 import { BehaviorSubject } from 'rxjs';
-import { ERROR_MESSAGES } from '../shared/analytics.constants';
-import { AnalyticsService } from '../shared/analytics.service';
+import { ERROR_MESSAGES } from '../../shared/analytics.constants';
+import { AnalyticsService } from '../../shared/analytics.service';
 
 @Component({
-  selector: 'analytics-add-extension',
-  templateUrl: './analytics-add-extension.component.html'
+  selector: 'extension-add',
+  templateUrl: './extension-add.component.html'
 })
 export class AnalyticsAddExtensionComponent {
   @Input() headerText: string;

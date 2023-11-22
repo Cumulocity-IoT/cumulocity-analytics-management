@@ -19,6 +19,7 @@ import {
 import { TranslateService } from "@ngx-translate/core";
 
 import { BehaviorSubject } from "rxjs";
+import { Block } from "./analytics.model";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
@@ -73,6 +74,11 @@ export class AnalyticsService {
     await this.inventoryBinaryService.delete(app.id);
     this.alertService.success(gettext("Extension deleted."));
     this.appDeleted.emit(app);
+  }
+
+  async getBlocks(): Promise<Block[]> {
+    let result : Block[] = [];
+    return result;
   }
 
   updateUploadProgress(event): void {
