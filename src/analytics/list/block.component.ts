@@ -31,13 +31,13 @@ import {
   ColumnDataType,
   Pagination,
 } from "@c8y/ngx-components";
-import { BsModalService } from "ngx-bootstrap/modal";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
 
 @Component({
   selector: "c8y-block-grid",
   templateUrl: "block.component.html",
+  styleUrls:['./block.component.css'],
   encapsulation: ViewEncapsulation.None,
 })
 export class BlockGridComponent implements OnInit {
