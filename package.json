@@ -1,6 +1,6 @@
 {
   "name": "analytics-extension",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
   "repository": {
     "type": "git",
@@ -57,7 +57,7 @@
     "application": {
       "name": "Analytics Extension",
       "contextPath": "sag-ps-pkg-analytics-extension",
-      "key": "sag-ps-pkg-analytics-extension-plugin-key",
+      "key": "sag-ps-pkg-analytics-extension-pluginn-key",
       "globalTitle": "Analytics Builder Extension Plugin",
       "tabsHorizontal": true,
       "isPackage": true,
