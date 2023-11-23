@@ -199,7 +199,7 @@ export class AnalyticsService {
     let payload = p["data"]["data"];
 
     if (payload.text == "Recording apama-ctrl safe mode state") {
-      this.alertService.warning("Deplyoment successful");
+      this.alertService.warning("Deployment successful");
     }
     console.log("New status for cep:", payload);
   }
