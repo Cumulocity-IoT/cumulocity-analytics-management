@@ -17,7 +17,7 @@ import { AnalyticsExtensionCardComponent } from "./analytics/manage/extension-ca
 import { AnalyticsExtensionComponent } from "./analytics/manage/extension.component";
 import { AnalyticsService } from "./shared/analytics.service";
 import { AnalyticsNavigationFactory } from "./shared/analytics-navigation.factory";
-import { AnalyticsTabFactory } from "./shared/tab.factory";
+import { AnalyticsTabFactory } from "./shared/analytics-tab.factory";
 import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
 

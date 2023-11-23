@@ -20,6 +20,7 @@
  */
 import {
   Component,
+  EventEmitter,
   OnInit,
   ViewEncapsulation,
 } from "@angular/core";
@@ -40,8 +41,8 @@ import { CEP_Block } from "../../shared/analytics.model";
   encapsulation: ViewEncapsulation.None,
 })
 export class BlockGridComponent implements OnInit {
-
   showConfigBlock: boolean = false;
+  refresh: EventEmitter<any> = new EventEmitter<any>();
 
   blocks: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
@@ -55,14 +56,14 @@ export class BlockGridComponent implements OnInit {
       path: "name",
       filterable: false,
       dataType: ColumnDataType.TextShort,
-      gridTrackSize: '10%',
+      gridTrackSize: "10%",
       visible: true,
     },
     {
       header: "Category",
       name: "category",
       path: "category",
-      gridTrackSize: '10%',
+      gridTrackSize: "10%",
       dataType: ColumnDataType.TextShort,
       filterable: true,
     },
@@ -70,7 +71,7 @@ export class BlockGridComponent implements OnInit {
       header: "Custom Block",
       name: "custom",
       path: "custom",
-      gridTrackSize: '10%',
+      gridTrackSize: "10%",
       filterable: true,
       dataType: ColumnDataType.TextShort,
       sortable: true,
@@ -86,7 +87,7 @@ export class BlockGridComponent implements OnInit {
       header: "Extension Name",
       name: "extension",
       path: "extension",
-      gridTrackSize: '15%',
+      gridTrackSize: "15%",
 
       filterable: true,
       sortable: true,
@@ -100,18 +101,19 @@ export class BlockGridComponent implements OnInit {
 
   constructor(
     public analyticsService: AnalyticsService,
-    public alertService: AlertService,
-    private bsModalService: BsModalService
+    public alertService: AlertService
   ) {}
 
   async ngOnInit() {
     await this.loadBlocks();
+    this.refresh.subscribe(() => {
+      this.loadBlocks();
+    });
   }
-  
-  async  loadBlocks() {
-    this.blocks = await this.analyticsService.getBlocks();
+
+  async loadBlocks() {
+    this.blocks = await this.analyticsService.getCEP_Blocks();
   }
-  
-  ngOnDestroy() {
-  }
+
+  ngOnDestroy() {}
 }

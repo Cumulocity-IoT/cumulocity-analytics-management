@@ -73,5 +73,7 @@ export const PATH_CEP_EN = `${PATH_CEP_CORRELATOR}/EN`;
 export const PATH_CEP_METADATA_EN = `${PATH_CEP_CORRELATOR}/EN/block-metadata.json`;
 export const PATH_CEP_DIAGNOSTICS = `${PATH_CEP_BASE}/diagnostics`;
 export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
+
+export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json
 // http://localhost:9000/service/cep/apamacorrelator/EN/core.json

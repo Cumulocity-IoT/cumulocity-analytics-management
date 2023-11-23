@@ -20,7 +20,7 @@ import {
 
 import { TranslateService } from "@ngx-translate/core";
 
-import { BehaviorSubject } from "rxjs";
+import { BehaviorSubject, Subscription } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
@@ -28,15 +28,19 @@ import {
   PATH_CEP_EN,
   PATH_CEP_METADATA_EN,
   PATH_CEP_STATUS,
+  STATUS_MESSAGE_01,
 } from "./analytics.model";
+import { filter, map, pairwise } from "rxjs/operators";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
+  private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   protected baseUrl: string;
   private _cepId: Promise<string>;
   private realtime: Realtime;
+  subscription: Subscription;
 
   constructor(
     private modal: ModalService,
@@ -90,28 +94,29 @@ export class AnalyticsService {
     this.appDeleted.emit(app);
   }
 
-  async getBlocks(): Promise<CEP_Block[]> {
+  async getCEP_Blocks(): Promise<CEP_Block[]> {
     const result: CEP_Block[] = [];
     const meta: CEP_Metadata = await this.getCEP_Metadata();
-
-    for (let index = 0; index < meta.metadatas.length; index++) {
-      const extensionName = meta.metadatas[index];
-      const extension: CEP_Extension = await this.getCEP_Extension(
-        extensionName
-      );
-      const extensionNameAbbreviated =
-        extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
-      extension.analytics.forEach((block) => {
-        //result.push({ name: block.name, category: block.category });
-        const cepBlock = block as CEP_Block;
-        //console.log(block.id);
-        cepBlock.custom =
-          !block.id.startsWith("apama.analyticsbuilder.blocks") &&
-          !block.id.startsWith("apama.analyticskit.blocks.core");
-        cepBlock.extension = extensionNameAbbreviated;
-        result.push(cepBlock);
-      });
-    }
+    if (meta && meta.metadatas) {
+      for (let index = 0; index < meta.metadatas.length; index++) {
+        const extensionName = meta.metadatas[index];
+        const extension: CEP_Extension = await this.getCEP_Extension(
+          extensionName
+        );
+        const extensionNameAbbreviated =
+          extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
+        extension.analytics.forEach((block) => {
+          //result.push({ name: block.name, category: block.category });
+          const cepBlock = block as CEP_Block;
+          //console.log(block.id);
+          cepBlock.custom =
+            !block.id.startsWith("apama.analyticsbuilder.blocks") &&
+            !block.id.startsWith("apama.analyticskit.blocks.core");
+          cepBlock.extension = extensionNameAbbreviated;
+          result.push(cepBlock);
+        });
+      }
+    }  
     return result;
   }
 
@@ -188,18 +193,28 @@ export class AnalyticsService {
       `/events/${cepId}`,
       this.updateStatus.bind(this)
     );
+    this.subscription = this.restart.pipe(
+      pairwise(),
+      filter(([prev, current]) => prev === STATUS_MESSAGE_01),
+      map(([prev, current]) => [prev, current])
+    ).subscribe((pair) => {
+      // this.alertService.warning(`Current message: ${pair}`);
+      if ( pair[0] == STATUS_MESSAGE_01)
+        this.alertService.warning(`Deployment successful`);
+    });
     return sub;
   }
 
   unsubscribeFromMonitoringChannel(subscription: object) {
     this.realtime.unsubscribe(subscription);
+    this.subscription.unsubscribe();
   }
 
   private updateStatus(p: object): void {
     let payload = p["data"]["data"];
-
-    if (payload.text == "Recording apama-ctrl safe mode state") {
-      this.alertService.warning("Deployment successful");
+    this.restart.next(payload.text);
+    if (payload.text == STATUS_MESSAGE_01) {
+      this.alertService.warning("Deployment pending ...");
     }
     console.log("New status for cep:", payload);
   }
