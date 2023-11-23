@@ -10,7 +10,7 @@
 
 Extends the standard Cumulocity web application with a plugin to manage and add Analytics Builder extensions. Currently the standard UI does not offer the upload of custom blocks via .zip files. This extension enhances the standard Streaming-Analytics UI with these capabilities.
 
-You can upload blocks that were generated via the [Apama Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "Add extension" button. Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy Extensions (Restart)" button and wait for the notification that the engine was restarted.
+You can upload blocks that were generated via the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "Add extension" button. Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy Extensions (Restart)" button and wait for the notification that the engine was restarted.
 
 ![Extension installation](resources/images/extension-installation.png)
 
@@ -68,7 +68,7 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Block SDK
 
-Custom blocks can be generated via the [Apama nalytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
+Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
 Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
 
 The provided block is an example of the adding the two inputs.
