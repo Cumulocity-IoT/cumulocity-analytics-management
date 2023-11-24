@@ -27,12 +27,16 @@ import {
 import {
   ActionControl,
   AlertService,
+  BulkActionControl,
   Column,
   ColumnDataType,
   Pagination,
+  gettext,
 } from "@c8y/ngx-components";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
+import { BsModalService } from "ngx-bootstrap/modal";
+import { NameExtensionComponent } from "../../wizard/name-extension-modal.component";
 
 @Component({
   selector: "c8y-sample-grid",
@@ -44,8 +48,9 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
-  samples: Partial<CEP_Block>[] = [];
+  samples: any[] = [];
   actionControls: ActionControl[] = [];
+  bulkActionControls: BulkActionControl[] = [];
 
   titleSample: string = "AnalyticsBuilder Community Samples";
 
@@ -54,7 +59,13 @@ export class SampleGridComponent implements OnInit {
       name: "name",
       header: "Name",
       path: "name",
-      filterable: false,
+      dataType: ColumnDataType.TextLong,
+      visible: true,
+    },
+    {
+      name: "url",
+      header: "URL",
+      path: "url",
       dataType: ColumnDataType.TextLong,
       visible: true,
     },
@@ -67,13 +78,45 @@ export class SampleGridComponent implements OnInit {
 
   constructor(
     public analyticsService: AnalyticsService,
-    public alertService: AlertService
+    public alertService: AlertService,
+    private bsModalService: BsModalService,
   ) {}
 
   async ngOnInit() {
     await this.loadSamples();
     this.refresh.subscribe(() => {
       this.loadSamples();
+    });
+
+    this.bulkActionControls.push(
+      {
+        type: "CREATE",
+        text: "Create Extension",
+        icon: "export",
+        callback: this.createExtension.bind(this),
+      },
+    );
+  }
+
+  public async createExtension(ids: string[]) {
+
+    const initialState = {};
+    const modalRef = this.bsModalService.show(NameExtensionComponent, {
+      initialState,
+    });
+    modalRef.content.closeSubject.subscribe(async (conf) => {
+      console.log("Configuration after edit:", conf);
+      if (conf) {
+        const response =
+          await this.analyticsService.createExtensionsZIP(conf.name, ids);
+        if (response) {
+          this.alertService.success(gettext(`Created extension ${conf.name}.zip successfully‚`));
+        } else {
+          this.alertService.danger(
+            gettext("Failed to create extension")
+          );
+        }
+      }
     });
   }
 

@@ -78,6 +78,13 @@ export class AnalyticsService {
     }
     return result;
   }
+
+
+  async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
+    const result = {};
+    return result;
+  }
+
   async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
     return (await this.getExtensions(customFilter)).data;
   }
@@ -138,6 +145,7 @@ export class AnalyticsService {
       .pipe(
         map((data) => {
           const name = _.values(data);
+          name.forEach( b => b.id = b.sha)
           return name ;
         }),
       ).toPromise();

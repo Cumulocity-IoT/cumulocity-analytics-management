@@ -12,7 +12,7 @@ import {
 import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
 import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
-import { AnalyticsExtensionWizardComponent } from "./wizard/analytics-extension-wizard.component";
+import { AddExtensionWizardComponent } from "./wizard/add-extension-wizard.component";
 import { AnalyticsExtensionCardComponent } from "./analytics/manage/extension-card.component";
 import { AnalyticsExtensionComponent } from "./analytics/manage/extension.component";
 import { AnalyticsService } from "./shared/analytics.service";
@@ -22,6 +22,7 @@ import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
 import { SampleGridComponent } from "./sample/list/sample.component";
 import { HttpClientModule } from "@angular/common/http";
+import { NameExtensionComponent } from "./wizard/name-extension-modal.component";
 
 const routes: Route[] = [
   {
@@ -54,7 +55,8 @@ const routes: Route[] = [
     AnalyticsExtensionComponent,
     AnalyticsExtensionCardComponent,
     AnalyticsAddExtensionComponent,
-    AnalyticsExtensionWizardComponent,
+    AddExtensionWizardComponent,
+    NameExtensionComponent,
     BlockGridComponent,
     SampleGridComponent,
   ],
@@ -62,7 +64,7 @@ const routes: Route[] = [
     AnalyticsExtensionComponent,
     AnalyticsExtensionCardComponent,
     AnalyticsAddExtensionComponent,
-    AnalyticsExtensionWizardComponent,
+    AnalyticsExtensionCardComponent,
     BlockGridComponent,
     SampleGridComponent,
   ],
@@ -71,7 +73,7 @@ const routes: Route[] = [
     hookNavigator(AnalyticsNavigationFactory),
     hookWizard({
       wizardId: "uploadAnalyticsExtention",
-      component: AnalyticsExtensionWizardComponent,
+      component: AnalyticsExtensionCardComponent,
       name: "Upload analytics extension",
       c8yIcon: "upload",
     }),
