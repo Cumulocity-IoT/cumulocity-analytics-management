@@ -20,6 +20,7 @@ import { AnalyticsNavigationFactory } from "./shared/analytics-navigation.factor
 import { AnalyticsTabFactory } from "./shared/analytics-tab.factory";
 import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
+import { SampleGridComponent } from "./sample/list/sample.component";
 
 const routes: Route[] = [
   {
@@ -29,6 +30,10 @@ const routes: Route[] = [
   {
     path: "sag-ps-pkg-analytics-extension/list",
     component: BlockGridComponent,
+  },
+  {
+    path: "sag-ps-pkg-analytics-extension/sample",
+    component: SampleGridComponent,
   },
 ];
 @NgModule({
@@ -49,6 +54,7 @@ const routes: Route[] = [
     AnalyticsAddExtensionComponent,
     AnalyticsExtensionWizardComponent,
     BlockGridComponent,
+    SampleGridComponent,
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -56,6 +62,7 @@ const routes: Route[] = [
     AnalyticsAddExtensionComponent,
     AnalyticsExtensionWizardComponent,
     BlockGridComponent,
+    SampleGridComponent,
   ],
   providers: [
     AnalyticsService,
@@ -73,6 +80,10 @@ const routes: Route[] = [
     hookRoute({
       path: "sag-ps-pkg-analytics-extension/list",
       component: BlockGridComponent,
+    }),
+    hookRoute({
+      path: "sag-ps-pkg-analytics-extension/sample",
+      component: SampleGridComponent,
     }),
     hookTab(AnalyticsTabFactory),
   ],

@@ -37,17 +37,23 @@ export class AnalyticsTabFactory implements TabFactory {
     if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
       tabs.push({
         path: "sag-ps-pkg-analytics-extension/manage",
-        priority: 920,
+        priority: 940,
         label: "Manage Extension",
         icon: "plugin",
         orientation: "horizontal",
       } as Tab);
       tabs.push({
-        // path: "list",
         path: "sag-ps-pkg-analytics-extension/list",
         priority: 920,
         label: "List Blocks",
         icon: "flow-chart",
+        orientation: "horizontal",
+      } as Tab);
+      tabs.push({
+        path: "sag-ps-pkg-analytics-extension/sample",
+        priority: 900,
+        label: "List Block Samples",
+        icon: "test",
         orientation: "horizontal",
       } as Tab);
     }

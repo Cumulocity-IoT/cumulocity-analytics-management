@@ -43,15 +43,18 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        working-directory: ./analytics-ui
         run: npm ci
 
-      #- name: Linting
-      #  run: npm run lint
+      # - name: Linting
+      #   run: npm run lint
 
       - name: Build
+        working-directory: ./analytics-ui
         run: npm run build:ci
 
       - name: Zip build
+        working-directory: ./analytics-ui
         run: |
           cd dist/apps/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
@@ -87,18 +90,22 @@ jobs:
           node-version: 'lts/*'
 
       - name: Save initial Version
+        working-directory: ./analytics-ui
         id: save-initial-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
+        working-directory: ./analytics-ui
         run: npm ci
 
       - name: Release
+        working-directory: ./analytics-ui
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
       - name: Save Version
+        working-directory: ./analytics-ui
         id: save-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
   release-assets:
@@ -121,12 +128,15 @@ jobs:
           cache: 'npm'
   
       - name: Install dependencies
+        working-directory: ./analytics-ui
         run: npm ci
   
       - name: Build
+        working-directory: ./analytics-ui
         run: npm run build:ci
   
       - name: Zip build
+        working-directory: ./analytics-ui
         run: |
           cd dist/apps/sag-ps-pkg-analytics-extension
           zip -r -q ../../../cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip *

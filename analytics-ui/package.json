@@ -16,7 +16,9 @@
     "locale-extract": "c8ycli locale-extract",
     "postinstall": "ngcc"
   },
-  "keywords": ["c8y"],
+  "keywords": [
+    "c8y"
+  ],
   "author": "murat.bayram@softwareag.com, christof.strack@softwareag.com",
   "license": "ISC",
   "dependencies": {
@@ -32,12 +34,12 @@
     "@angular/upgrade": "14.0.6",
     "@c8y/client": "1018.0.125",
     "@c8y/ngx-components": "1018.0.125",
-    "ngx-bootstrap": "6.2.0",
+    "@c8y/style": "1018.0.125",
     "@ngx-translate/core": "14.0.0",
-    "rxjs": "~6.6.3",
-    "zone.js": "~0.11.7",
     "angular": "1.6.9",
-    "@c8y/style": "1018.0.125"
+    "ngx-bootstrap": "6.2.0",
+    "rxjs": "~6.6.3",
+    "zone.js": "~0.11.7"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "14.0.6",
@@ -45,10 +47,10 @@
     "@angular/language-service": "14.0.6",
     "@angular/localize": "14.0.6",
     "@angular/service-worker": "14.0.6",
+    "@c8y/cli": "1018.0.125",
     "@semantic-release/changelog": "^6.0.2",
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
-    "@c8y/cli": "1018.0.125",
     "file-loader": "^6.2.0",
     "jest": "^27.4.5",
     "typescript": "4.7.4"
@@ -77,8 +79,14 @@
         ]
       },
       "copy": [
-        { "from": "resources/images", "to": "resources/images" },
-        { "from": "README.md", "to": "README.md" }
+        {
+          "from": "resources/images",
+          "to": "resources/images"
+        },
+        {
+          "from": "README.md",
+          "to": "README.md"
+        }
       ]
     },
     "cli": {}

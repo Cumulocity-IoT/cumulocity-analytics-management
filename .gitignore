@@ -19,11 +19,11 @@
 *.tar.gz
 *.rar
 
-node_modules
+**/node_modules
 target
 settings.json
 .vscode/launch.json
 .DS_Store
 setEnv.sh
-dist
+**/dist
 .env

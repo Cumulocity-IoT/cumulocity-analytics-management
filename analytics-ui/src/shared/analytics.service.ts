@@ -32,6 +32,7 @@ import {
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
 
+
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
@@ -40,7 +41,7 @@ export class AnalyticsService {
   protected baseUrl: string;
   private _cepId: Promise<string>;
   private realtime: Realtime;
-  subscription: Subscription;
+  private subscription: Subscription;
 
   constructor(
     private modal: ModalService,
@@ -48,10 +49,9 @@ export class AnalyticsService {
     private translateService: TranslateService,
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
-    private fetchClient: FetchClient
+    private fetchClient: FetchClient,
   ) {
     this.realtime = new Realtime(this.fetchClient);
-
   }
 
   getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
@@ -117,6 +117,20 @@ export class AnalyticsService {
         });
       }
     }  
+    return result;
+  }
+
+  async getBlock_Samples(): Promise<CEP_Block[]> {
+    const result: CEP_Block[] = [];
+    // If you don't send the path property, by default will send the contents from the root level
+    // const { data } = await this.gh.rest.repos.getContent({
+    //   owner: 'repo-owner',
+    //   repo: 'apama-analytics-builder-block-sdk',
+    //   path: 'samples'
+    // });
+
+    // console.log('Files found at root level', data);
+
     return result;
   }
 
