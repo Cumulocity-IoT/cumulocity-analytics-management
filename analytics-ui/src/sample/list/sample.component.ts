@@ -44,7 +44,7 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
-  samples: CEP_Block[] = [];
+  samples: Partial<CEP_Block>[] = [];
   actionControls: ActionControl[] = [];
 
   titleSample: string = "AnalyticsBuilder Community Samples";
@@ -55,8 +55,7 @@ export class SampleGridComponent implements OnInit {
       header: "Name",
       path: "name",
       filterable: false,
-      dataType: ColumnDataType.TextShort,
-      gridTrackSize: "10%",
+      dataType: ColumnDataType.TextLong,
       visible: true,
     },
   ];

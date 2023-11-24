@@ -75,5 +75,12 @@ export const PATH_CEP_DIAGNOSTICS = `${PATH_CEP_BASE}/diagnostics`;
 export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
 
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
+
+export const GITHUB_BASE = "https://api.github.com";
+export const REPO_SAMPLES_NAME = "apama-analytics-builder-block-sdk";
+export const REPO_SAMPLES_OWNER = "SoftwareAG";
+export const REPO_SAMPLES_PATH = "samples/blocks";
+
+// https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json
 // http://localhost:9000/service/cep/apamacorrelator/EN/core.json

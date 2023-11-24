@@ -47,18 +47,15 @@ jobs:
           cache-dependency-path: '**/package-lock.json' 
 
       - name: Install dependencies
-        working-directory: ./analytics-ui
         run: npm ci
 
       # - name: Linting
       #   run: npm run lint
 
       - name: Build
-        working-directory: ./analytics-ui
         run: npm run build:ci
 
       - name: Zip build
-        working-directory: ./analytics-ui
         run: |
           cd dist/apps/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
@@ -72,11 +69,14 @@ jobs:
           if-no-files-found: error
           retention-days: 5
           path: |
-            dist/build.zip
+           analytics-ui/dist/build.zip
 
   release:
     name: Release
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./analytics-ui
     needs: [build]
     timeout-minutes: 8
     outputs:
@@ -94,22 +94,18 @@ jobs:
           node-version: 'lts/*'
 
       - name: Save initial Version
-        working-directory: ./analytics-ui
         id: save-initial-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
-        working-directory: ./analytics-ui
         run: npm ci
 
       - name: Release
-        working-directory: ./analytics-ui
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx semantic-release
 
       - name: Save Version
-        working-directory: ./analytics-ui
         id: save-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
   release-assets:
@@ -117,6 +113,9 @@ jobs:
     #if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
     name: Release assets
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./analytics-ui
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -130,17 +129,15 @@ jobs:
         with:
           node-version: '16'
           cache: 'npm'
+          cache-dependency-path: '**/package-lock.json' 
   
       - name: Install dependencies
-        working-directory: ./analytics-ui
         run: npm ci
   
       - name: Build
-        working-directory: ./analytics-ui
         run: npm run build:ci
   
       - name: Zip build
-        working-directory: ./analytics-ui
         run: |
           cd dist/apps/sag-ps-pkg-analytics-extension
           zip -r -q ../../../cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip *
@@ -150,5 +147,5 @@ jobs:
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip
+          files: analytics-ui/cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip
           tag_name: v${{ needs.release.outputs.version }}

@@ -21,6 +21,7 @@ import { AnalyticsTabFactory } from "./shared/analytics-tab.factory";
 import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
 import { SampleGridComponent } from "./sample/list/sample.component";
+import { HttpClientModule } from "@angular/common/http";
 
 const routes: Route[] = [
   {
@@ -47,6 +48,7 @@ const routes: Route[] = [
     RouterModule.forRoot(),
     //RouterModule.forChild(routes),
     DefaultSubscriptionsModule,
+    HttpClientModule
   ],
   declarations: [
     AnalyticsExtensionComponent,

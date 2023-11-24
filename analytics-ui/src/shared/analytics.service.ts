@@ -19,19 +19,23 @@ import {
 } from "@c8y/ngx-components";
 
 import { TranslateService } from "@ngx-translate/core";
-
+import * as _ from "lodash";
 import { BehaviorSubject, Subscription } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
   CEP_Metadata,
+  GITHUB_BASE,
   PATH_CEP_EN,
   PATH_CEP_METADATA_EN,
   PATH_CEP_STATUS,
+  REPO_SAMPLES_OWNER,
+  REPO_SAMPLES_NAME,
+  REPO_SAMPLES_PATH,
   STATUS_MESSAGE_01,
 } from "./analytics.model";
-import { filter, map, pairwise } from "rxjs/operators";
-
+import { filter, map, pairwise, tap } from "rxjs/operators";
+import { HttpClient } from "@angular/common/http";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
@@ -50,8 +54,10 @@ export class AnalyticsService {
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
+    private githubFetchClient: HttpClient
   ) {
     this.realtime = new Realtime(this.fetchClient);
+    //this.githubFetchClient.baseUrl = GITHUB_BASE;
   }
 
   getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
@@ -116,27 +122,31 @@ export class AnalyticsService {
           result.push(cepBlock);
         });
       }
-    }  
+    }
     return result;
   }
 
-  async getBlock_Samples(): Promise<CEP_Block[]> {
-    const result: CEP_Block[] = [];
-    // If you don't send the path property, by default will send the contents from the root level
-    // const { data } = await this.gh.rest.repos.getContent({
-    //   owner: 'repo-owner',
-    //   repo: 'apama-analytics-builder-block-sdk',
-    //   path: 'samples'
-    // });
-
-    // console.log('Files found at root level', data);
-
+  async getBlock_Samples(): Promise<Partial<CEP_Block>[]> {
+    const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
+    //const result: Partial<CEP_Block>[] = this.githubFetchClient
+    const result: any = this.githubFetchClient
+      .get(sampleUrl, {
+        headers: {
+          "content-type": "application/json",
+        },
+      })
+      .pipe(
+        map((data) => {
+          const name = _.values(data);
+          return name ;
+        }),
+      ).toPromise();
     return result;
   }
 
   async getCEP_Metadata(): Promise<CEP_Metadata> {
-    const res: IFetchResponse = await this.fetchClient.fetch(
-      `${PATH_CEP_METADATA_EN}`,
+    const response: IFetchResponse = await this.fetchClient.fetch(
+      `/${PATH_CEP_METADATA_EN}`,
       {
         headers: {
           "content-type": "application/json",
@@ -144,12 +154,12 @@ export class AnalyticsService {
         method: "GET",
       }
     );
-    const data = await res.json();
+    const data = await response.json();
     return data;
   }
 
   async getCEP_Extension(name: string): Promise<CEP_Extension> {
-    const res: IFetchResponse = await this.fetchClient.fetch(
+    const response: IFetchResponse = await this.fetchClient.fetch(
       `${PATH_CEP_EN}/${name}`,
       {
         headers: {
@@ -158,7 +168,7 @@ export class AnalyticsService {
         method: "GET",
       }
     );
-    const data = await res.json();
+    const data = await response.json();
     return data;
   }
 
@@ -191,7 +201,8 @@ export class AnalyticsService {
     const query: object = {
       name: cepMicroservice,
     };
-    let {data, res}: IResultList<IManagedObject> = await this.inventoryService.listQuery(query, filter);
+    let { data, res }: IResultList<IManagedObject> =
+      await this.inventoryService.listQuery(query, filter);
     if (!data || data.length > 1) {
       this.alertService.warning("Can't find microservice for CEP!");
       return;
@@ -207,15 +218,17 @@ export class AnalyticsService {
       `/events/${cepId}`,
       this.updateStatus.bind(this)
     );
-    this.subscription = this.restart.pipe(
-      pairwise(),
-      filter(([prev, current]) => prev === STATUS_MESSAGE_01),
-      map(([prev, current]) => [prev, current])
-    ).subscribe((pair) => {
-      // this.alertService.warning(`Current message: ${pair}`);
-      if ( pair[0] == STATUS_MESSAGE_01)
-        this.alertService.warning(`Deployment successful`);
-    });
+    this.subscription = this.restart
+      .pipe(
+        pairwise(),
+        filter(([prev, current]) => prev === STATUS_MESSAGE_01),
+        map(([prev, current]) => [prev, current])
+      )
+      .subscribe((pair) => {
+        // this.alertService.warning(`Current message: ${pair}`);
+        if (pair[0] == STATUS_MESSAGE_01)
+          this.alertService.warning(`Deployment successful`);
+      });
     return sub;
   }
 
@@ -252,9 +265,7 @@ export class AnalyticsService {
     };
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
-    this.alertService.warning(
-      gettext("Deployment (Restart) submitted ...")
-    );
+    this.alertService.warning(gettext("Deployment (Restart) submitted ..."));
   }
 
   async uploadExtension(
