@@ -41,16 +41,17 @@ import { NameExtensionComponent } from "../../wizard/name-extension-modal.compon
 @Component({
   selector: "c8y-sample-grid",
   templateUrl: "sample.component.html",
-  styleUrls:['./sample.component.css'],
+  styleUrls: ["./sample.component.css"],
   encapsulation: ViewEncapsulation.None,
 })
 export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   refresh: EventEmitter<any> = new EventEmitter<any>();
-
+  showMonitorEditor: boolean = false;
   samples: any[] = [];
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
+  source: string = "";
 
   titleSample: string = "AnalyticsBuilder Community Samples";
 
@@ -60,6 +61,7 @@ export class SampleGridComponent implements OnInit {
       header: "Name",
       path: "name",
       dataType: ColumnDataType.TextLong,
+      gridTrackSize: "15%",
       visible: true,
     },
     {
@@ -79,7 +81,7 @@ export class SampleGridComponent implements OnInit {
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService,
-    private bsModalService: BsModalService,
+    private bsModalService: BsModalService
   ) {}
 
   async ngOnInit() {
@@ -88,18 +90,33 @@ export class SampleGridComponent implements OnInit {
       this.loadSamples();
     });
 
-    this.bulkActionControls.push(
-      {
-        type: "CREATE",
-        text: "Create Extension",
-        icon: "export",
-        callback: this.createExtension.bind(this),
-      },
-    );
+    this.bulkActionControls.push({
+      type: "CREATE",
+      text: "Create Extension",
+      icon: "export",
+      callback: this.createExtension.bind(this),
+    });
+
+    this.actionControls.push({
+      text: "View Source",
+      type: "VIEW",
+      icon: "pencil",
+      callback: this.viewMonitor.bind(this),
+    });
+  }
+
+  async viewMonitor(block: CEP_Block) {
+    try {
+      this.source = await this.analyticsService.getBlock_Sample_Content(
+        block.name
+      );
+    } catch (error) {
+      console.log ("Something happended:",error);
+    }
+    this.showMonitorEditor = true;
   }
 
   public async createExtension(ids: string[]) {
-
     const initialState = {};
     const modalRef = this.bsModalService.show(NameExtensionComponent, {
       initialState,
@@ -107,14 +124,16 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (conf) => {
       console.log("Configuration after edit:", conf);
       if (conf) {
-        const response =
-          await this.analyticsService.createExtensionsZIP(conf.name, ids);
+        const response = await this.analyticsService.createExtensionsZIP(
+          conf.name,
+          ids
+        );
         if (response) {
-          this.alertService.success(gettext(`Created extension ${conf.name}.zip successfully‚`));
-        } else {
-          this.alertService.danger(
-            gettext("Failed to create extension")
+          this.alertService.success(
+            gettext(`Created extension ${conf.name}.zip successfully‚`)
           );
+        } else {
+          this.alertService.danger(gettext("Failed to create extension"));
         }
       }
     });

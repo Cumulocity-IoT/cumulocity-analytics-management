@@ -21,7 +21,7 @@
 
 <c8y-title translate>AnalyticsBuilder Community Samples</c8y-title>
 <c8y-action-bar-item [placement]="'right'">
-   <button
+  <button
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
     (click)="loadSamples()"
@@ -29,7 +29,6 @@
     <i c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
-
 </c8y-action-bar-item>
 <div class="card">
   <div class="card-block">
@@ -48,9 +47,19 @@
   <div class="card-block col-md-offset-5 bg-white">
     <div class="c8y-empty-state" *ngIf="samples.length === 0">
       <h1 [c8yIcon]="'file-text'"></h1>
-      <p>
-        <strong>No samples loaded.</strong><br />
-      </p>
+      <p><strong>No samples loaded.</strong><br /></p>
     </div>
+  </div>
+</div>
+
+<div [ngClass]="{ drawerOpen: showMonitorEditor }">
+  <div class="bottom-drawer">
+    <c8y-editor-stepper
+      *ngIf="showMonitorEditor"
+      (onCancel)="showMonitorEditor = false"
+      (onCommit)="onCommitSource($event)"
+      [source]="source"
+    >
+    </c8y-editor-stepper>
   </div>
 </div>

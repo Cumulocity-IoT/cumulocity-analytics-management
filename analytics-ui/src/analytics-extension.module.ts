@@ -23,6 +23,7 @@ import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add
 import { SampleGridComponent } from "./sample/list/sample.component";
 import { HttpClientModule } from "@angular/common/http";
 import { NameExtensionComponent } from "./wizard/name-extension-modal.component";
+import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 
 const routes: Route[] = [
   {
@@ -49,7 +50,7 @@ const routes: Route[] = [
     RouterModule.forRoot(),
     //RouterModule.forChild(routes),
     DefaultSubscriptionsModule,
-    HttpClientModule
+    HttpClientModule,
   ],
   declarations: [
     AnalyticsExtensionComponent,
@@ -59,6 +60,7 @@ const routes: Route[] = [
     NameExtensionComponent,
     BlockGridComponent,
     SampleGridComponent,
+    EditorStepperComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -67,6 +69,7 @@ const routes: Route[] = [
     AnalyticsExtensionCardComponent,
     BlockGridComponent,
     SampleGridComponent,
+    EditorStepperComponent 
   ],
   providers: [
     AnalyticsService,

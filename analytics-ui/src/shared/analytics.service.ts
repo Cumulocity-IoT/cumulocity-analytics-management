@@ -135,7 +135,6 @@ export class AnalyticsService {
 
   async getBlock_Samples(): Promise<Partial<CEP_Block>[]> {
     const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
-    //const result: Partial<CEP_Block>[] = this.githubFetchClient
     const result: any = this.githubFetchClient
       .get(sampleUrl, {
         headers: {
@@ -149,6 +148,26 @@ export class AnalyticsService {
           return name ;
         }),
       ).toPromise();
+    return result;
+  }
+
+  async getBlock_Sample_Content(name: string): Promise<string> {
+    const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}/${name}`;
+    const result: any = this.githubFetchClient
+      .get(sampleUrl, {
+        headers: {
+      //    "content-type": "application/json",
+          "content-type": "application/text",
+          "Accept": "application/vnd.github.raw"
+        },
+        responseType: 'text'
+      })
+      // .pipe(
+      //   map((data) => {
+      //     const name = _.values(data);
+      //     return name;
+      //   }),)
+      .toPromise();
     return result;
   }
 
