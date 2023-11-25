@@ -22,6 +22,7 @@
 <c8y-stepper
   class="flex-col flex-nowrap no-align-items fit-h c8y-stepper--no-btns"
   [disableDefaultIcons]="{ edit: true, done: true }"
+  [hideStepProgress]="'false'"
   [customClasses]="[
     'col-md-6',
     'col-md-offset-3',
@@ -38,12 +39,15 @@
   </ng-template>
 
   <cdk-step label="Show source code">
-    <div class="p-16 p-t-0 flex-no-shrink separator-bottom">
+    <div class="p-16 p-t-48 flex-no-shrink separator-bottom">
       <div class="row">
         <div class="col-lg-8 col-lg-offset-2">
-          <textarea  rows="30" cols="120" class="numbered">
+          <!-- <textarea  rows="30" cols="120" class="numbered">
             {{source}}
-          </textarea>
+          </textarea> -->
+          <pre id= "sourceEditor" #sourceEditor>
+            {{source}}
+          </pre>
         </div>
       </div>
     </div>

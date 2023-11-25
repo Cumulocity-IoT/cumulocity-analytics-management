@@ -100,7 +100,7 @@ export class SampleGridComponent implements OnInit {
     this.actionControls.push({
       text: "View Source",
       type: "VIEW",
-      icon: "pencil",
+      icon: "document-with-code",
       callback: this.viewMonitor.bind(this),
     });
   }

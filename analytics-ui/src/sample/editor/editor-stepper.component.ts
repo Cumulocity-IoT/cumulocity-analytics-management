@@ -1,4 +1,3 @@
-
 /*
  * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
  * and/or its subsidiaries and/or its affiliates and/or their licensors.
@@ -21,30 +20,34 @@
  */
 import { CdkStep } from "@angular/cdk/stepper";
 import {
+  AfterViewInit,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
   OnInit,
   Output,
+  ViewChild,
   ViewEncapsulation,
 } from "@angular/core";
 import { C8yStepper } from "@c8y/ngx-components";
 import * as _ from "lodash";
-import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
+import { BsModalService } from "ngx-bootstrap/modal";
 import { BehaviorSubject, Subject } from "rxjs";
 import { AnalyticsService } from "../../shared/analytics.service";
 
 @Component({
   selector: "c8y-editor-stepper",
   templateUrl: "editor-stepper.component.html",
-  styleUrls: ['./editor-stepper.component.css'],
+  styleUrls: ["./editor-stepper.component.css"],
   encapsulation: ViewEncapsulation.None,
 })
-export class EditorStepperComponent implements OnInit {
-  
+export class EditorStepperComponent implements OnInit, AfterViewInit{
   @Input() source: string;
   @Output() onCommit = new EventEmitter<boolean>();
   @Output() onCancel = new EventEmitter<boolean>();
+  @ViewChild("sourceEditor", { static: false })
+  sourceEditor: ElementRef;
 
   selectedResult$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   step: any;
@@ -55,11 +58,12 @@ export class EditorStepperComponent implements OnInit {
     public analyticsService: AnalyticsService,
   ) {}
 
+  ngAfterViewInit(): void {
+    this.addLineClass();
+  }
+
   ngOnInit() {
-    console.log(
-      "Monitor to view.:",
-      this.source
-    );
+    console.log("Monitor to view.:", this.source);
   }
 
   async onCommitButton() {
@@ -81,4 +85,18 @@ export class EditorStepperComponent implements OnInit {
     event.stepper.next();
   }
 
+  public addLineClass() {
+    const ne = this.sourceEditor.nativeElement;
+    const lines = ne.innerText.split("\n"); // can use innerHTML also
+    while (ne.childNodes.length > 0) {
+      this.sourceEditor.nativeElement.removeChild(ne.childNodes[0]);
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var span = document.createElement("span");
+      span.className = "line";
+      span.innerText = lines[i]; // can use innerHTML also
+      ne.appendChild(span);
+      ne.appendChild(document.createTextNode("\n"));
+    }
+  }
 }
