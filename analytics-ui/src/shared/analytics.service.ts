@@ -33,6 +33,8 @@ import {
   REPO_SAMPLES_NAME,
   REPO_SAMPLES_PATH,
   STATUS_MESSAGE_01,
+  BASE_URL,
+  ENDPOINT_EXTENSION,
 } from "./analytics.model";
 import { filter, map, pairwise, tap } from "rxjs/operators";
 import { HttpClient } from "@angular/common/http";
@@ -57,7 +59,6 @@ export class AnalyticsService {
     private githubFetchClient: HttpClient
   ) {
     this.realtime = new Realtime(this.fetchClient);
-    //this.githubFetchClient.baseUrl = GITHUB_BASE;
   }
 
   getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
@@ -79,10 +80,21 @@ export class AnalyticsService {
     return result;
   }
 
-
   async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
-    const result = {};
-    return result;
+    console.log(`Create extensions for : ${name},  ${monitors},`);
+    return this.fetchClient.fetch(
+      `${BASE_URL}/${ENDPOINT_EXTENSION}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          monitors: monitors,
+        }),
+        method: "POST",
+      }
+    );
   }
 
   async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
@@ -144,10 +156,11 @@ export class AnalyticsService {
       .pipe(
         map((data) => {
           const name = _.values(data);
-          name.forEach( b => b.id = b.sha)
-          return name ;
-        }),
-      ).toPromise();
+          name.forEach((b) => (b.id = b.sha));
+          return name;
+        })
+      )
+      .toPromise();
     return result;
   }
 
@@ -156,11 +169,11 @@ export class AnalyticsService {
     const result: any = this.githubFetchClient
       .get(sampleUrl, {
         headers: {
-      //    "content-type": "application/json",
+          //    "content-type": "application/json",
           "content-type": "application/text",
-          "Accept": "application/vnd.github.raw"
+          Accept: "application/vnd.github.raw",
         },
-        responseType: 'text'
+        responseType: "text",
       })
       // .pipe(
       //   map((data) => {

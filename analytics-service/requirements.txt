@@ -1,0 +1,4 @@
+PyGithub
+c8y_api
+flask
+python-dotenv
