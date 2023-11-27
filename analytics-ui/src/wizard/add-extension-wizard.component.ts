@@ -4,7 +4,7 @@ import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from '../shared/analytics.service';
 
 @Component({
-    selector: 'analytics-add-extension-wizzard',
+    selector: 'analytics-add-extension',
     template: `<extension-add
       [headerText]="headerText"
       [headerIcon]="'upload'"

@@ -76,7 +76,7 @@ const routes: Route[] = [
     hookNavigator(AnalyticsNavigationFactory),
     hookWizard({
       wizardId: "uploadAnalyticsExtention",
-      component: AnalyticsExtensionCardComponent,
+      component: AddExtensionWizardComponent,
       name: "Upload analytics extension",
       c8yIcon: "upload",
     }),
