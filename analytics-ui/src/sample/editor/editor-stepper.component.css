@@ -16,6 +16,7 @@ pre {
   font-size: 16px;
   line-height: 16px;
   max-height: 700px;
+  font-size: var(--c8y-font-size-base);
 }
 
 pre span.line {
@@ -34,6 +35,10 @@ pre span.line::before {
   text-align: right;
   font-size: 16px;
   line-height: 16px;
+}
+
+.padding-editor{
+  padding: 96px;;
 }
 
 /* pre span.line:nth-child(odd)::before {
