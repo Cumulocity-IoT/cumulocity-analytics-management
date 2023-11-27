@@ -24,6 +24,7 @@ import { SampleGridComponent } from "./sample/list/sample.component";
 import { HttpClientModule } from "@angular/common/http";
 import { NameExtensionComponent } from "./wizard/name-extension-modal.component";
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
+import { EditorModalComponent } from "./sample/editor/editor-modal.component";
 
 const routes: Route[] = [
   {
@@ -60,7 +61,8 @@ const routes: Route[] = [
     NameExtensionComponent,
     BlockGridComponent,
     SampleGridComponent,
-    EditorStepperComponent
+    EditorStepperComponent,
+    EditorModalComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -69,7 +71,8 @@ const routes: Route[] = [
     AnalyticsExtensionCardComponent,
     BlockGridComponent,
     SampleGridComponent,
-    EditorStepperComponent 
+    EditorStepperComponent,
+    EditorModalComponent
   ],
   providers: [
     AnalyticsService,

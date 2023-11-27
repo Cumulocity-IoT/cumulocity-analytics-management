@@ -37,6 +37,7 @@ import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
 import { BsModalService } from "ngx-bootstrap/modal";
 import { NameExtensionComponent } from "../../wizard/name-extension-modal.component";
+import { EditorModalComponent } from "../editor/editor-modal.component";
 
 @Component({
   selector: "c8y-sample-grid",
@@ -111,9 +112,21 @@ export class SampleGridComponent implements OnInit {
         block.name
       );
     } catch (error) {
-      console.log ("Something happended:",error);
+      console.log("Something happended:", error);
     }
-    this.showMonitorEditor = true;
+    //this.showMonitorEditor = true;
+
+    const initialState = {
+      source: this.source,
+      monitor: block.name,
+    };
+    this.bsModalService.show(EditorModalComponent, {
+      class: "modal-lg",
+      initialState,
+      ariaDescribedby: "modal-body",
+      ariaLabelledBy: "modal-title",
+      ignoreBackdropClick: true,
+    }).content as EditorModalComponent;
   }
 
   public async createExtension(ids: string[]) {

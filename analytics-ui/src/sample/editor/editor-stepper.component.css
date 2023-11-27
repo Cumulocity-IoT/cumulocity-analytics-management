@@ -13,32 +13,39 @@ pre {
   padding: 0;
   color: #060606;
   background-color: #333;
-  font-size: 16px;
   line-height: 16px;
   max-height: 700px;
-  font-size: var(--c8y-font-size-base);
+  /* font-size: var(--c8y-font-size-base); */
+  /* font-size: 16px; */
+  font-size: smaller;
 }
 
 pre span.line {
   counter-increment: linecounter;
-  line-height: 16px;
+  line-height: 6px;
 }
 
 pre span.line::before {
   content: counter(linecounter);
   color: red;
-  width: 30px;
+  width: 40px;
   display: inline-block;
   border-right: 1px dotted #ccc;
-  padding-right: 3px;
-  margin-right: 5px;
+  padding-right: 8px;
+  margin-right: 8px;
   text-align: right;
-  font-size: 16px;
-  line-height: 16px;
+  font-size: smaller;
+  line-height: 10px;
 }
 
-.padding-editor{
-  padding: 96px;;
+.padding-editor {
+  padding-top: 48px;
+  padding-bottom: 24px;
+}
+
+.margin-editor {
+  margin-top: 48px;
+  margin-bottom: 48px;
 }
 
 /* pre span.line:nth-child(odd)::before {

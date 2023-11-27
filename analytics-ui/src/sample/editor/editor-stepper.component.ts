@@ -49,9 +49,7 @@ export class EditorStepperComponent implements OnInit, AfterViewInit{
   @ViewChild("sourceEditor", { static: false })
   sourceEditor: ElementRef;
 
-  selectedResult$: BehaviorSubject<number> = new BehaviorSubject<number>(0);
   step: any;
-  onDestroy$ = new Subject<void>();
 
   constructor(
     public bsModalService: BsModalService,
