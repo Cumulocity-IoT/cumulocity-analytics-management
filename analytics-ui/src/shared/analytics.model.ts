@@ -5,17 +5,17 @@ export interface ApplicationState {
 
 /** Wizard types  */
 export enum Wizards {
-  APPLICATION_UPLOAD = 'applicationUpload',
-  MICROSERVICE_UPLOAD = 'microserviceUpload'
+  APPLICATION_UPLOAD = "applicationUpload",
+  MICROSERVICE_UPLOAD = "microserviceUpload",
 }
 
 export enum ERROR_TYPE {
-  TYPE_VALIDATION = 'TYPE_VALIDATION',
-  ALREADY_SUBSCRIBED = 'ALREADY_SUBSCRIBED',
-  INTERNAL_ERROR = 'INTERNAL_ERROR',
-  NO_MANIFEST_FILE = 'NO_MANIFEST_FILE',
-  INVALID_PACKAGE = 'INVALID_PACKAGE',
-  INVALID_APPLICATION = 'INVALID_APPLICATION'
+  TYPE_VALIDATION = "TYPE_VALIDATION",
+  ALREADY_SUBSCRIBED = "ALREADY_SUBSCRIBED",
+  INTERNAL_ERROR = "INTERNAL_ERROR",
+  NO_MANIFEST_FILE = "NO_MANIFEST_FILE",
+  INVALID_PACKAGE = "INVALID_PACKAGE",
+  INVALID_APPLICATION = "INVALID_APPLICATION",
 }
 
 export interface ApplicationPlugin {
@@ -32,13 +32,13 @@ export interface ApplicationPlugin {
 
 /** Wizard types  */
 export enum Category {
-  INPUT = 'INPUT',
-  OUPUT = 'OUTPUT',
-  LOGIC = 'LOGIC',
-  CALCULATION = 'CALCULATION',
-  AGGREGATE = 'AGGREGATE',
-  FLOW_MANIPULATION = 'FLOW_MANIPULATION',
-  UTILITY = 'UTILITY',
+  INPUT = "INPUT",
+  OUPUT = "OUTPUT",
+  LOGIC = "LOGIC",
+  CALCULATION = "CALCULATION",
+  AGGREGATE = "AGGREGATE",
+  FLOW_MANIPULATION = "FLOW_MANIPULATION",
+  UTILITY = "UTILITY",
 }
 
 // export interface Block {
@@ -61,6 +61,7 @@ export interface CEP_Block {
   id: string;
   producesOutput: string;
   description: string;
+  url: string;
   custom: boolean;
   extension: string;
   name: string;
@@ -80,6 +81,10 @@ export const GITHUB_BASE = "https://api.github.com";
 export const REPO_SAMPLES_NAME = "apama-analytics-builder-block-sdk";
 export const REPO_SAMPLES_OWNER = "SoftwareAG";
 export const REPO_SAMPLES_PATH = "samples/blocks";
+
+export const BASE_URL = "service/analytics-extension-service";
+export const ENDPOINT_EXTENSION = "extension";
+
 
 // https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json

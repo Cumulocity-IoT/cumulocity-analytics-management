@@ -33,6 +33,8 @@ import {
   REPO_SAMPLES_NAME,
   REPO_SAMPLES_PATH,
   STATUS_MESSAGE_01,
+  BASE_URL,
+  ENDPOINT_EXTENSION,
 } from "./analytics.model";
 import { filter, map, pairwise, tap } from "rxjs/operators";
 import { HttpClient } from "@angular/common/http";
@@ -57,7 +59,6 @@ export class AnalyticsService {
     private githubFetchClient: HttpClient
   ) {
     this.realtime = new Realtime(this.fetchClient);
-    //this.githubFetchClient.baseUrl = GITHUB_BASE;
   }
 
   getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
@@ -78,6 +79,24 @@ export class AnalyticsService {
     }
     return result;
   }
+
+  async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
+    console.log(`Create extensions for : ${name},  ${monitors},`);
+    return this.fetchClient.fetch(
+      `${BASE_URL}/${ENDPOINT_EXTENSION}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          monitors: monitors,
+        }),
+        method: "POST",
+      }
+    );
+  }
+
   async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
     return (await this.getExtensions(customFilter)).data;
   }
@@ -128,7 +147,6 @@ export class AnalyticsService {
 
   async getBlock_Samples(): Promise<Partial<CEP_Block>[]> {
     const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
-    //const result: Partial<CEP_Block>[] = this.githubFetchClient
     const result: any = this.githubFetchClient
       .get(sampleUrl, {
         headers: {
@@ -138,9 +156,31 @@ export class AnalyticsService {
       .pipe(
         map((data) => {
           const name = _.values(data);
-          return name ;
-        }),
-      ).toPromise();
+          name.forEach((b) => (b.id = b.sha));
+          return name;
+        })
+      )
+      .toPromise();
+    return result;
+  }
+
+  async getBlock_Sample_Content(name: string): Promise<string> {
+    const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}/${name}`;
+    const result: any = this.githubFetchClient
+      .get(sampleUrl, {
+        headers: {
+          //    "content-type": "application/json",
+          "content-type": "application/text",
+          Accept: "application/vnd.github.raw",
+        },
+        responseType: "text",
+      })
+      // .pipe(
+      //   map((data) => {
+      //     const name = _.values(data);
+      //     return name;
+      //   }),)
+      .toPromise();
     return result;
   }
 

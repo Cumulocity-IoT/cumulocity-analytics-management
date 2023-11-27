@@ -13,7 +13,7 @@ import { AnalyticsService } from '../shared/analytics.service';
       [canGoBack]="true"
     ></extension-add>`
   })
-  export class AnalyticsExtensionWizardComponent {
+  export class AddExtensionWizardComponent {
     headerText: string = gettext('Upload analytics extension');
     successText: string = gettext('Extension created');
   

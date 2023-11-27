@@ -14,7 +14,26 @@
       "ROLE_USER_MANAGEMENT_READ"
     ],
     "roles":[
+      "ROLE_ANALYTICSBUILDER_ADMIN",
+      "ROLE_ANALYTICSBUILDER_CREATE"
+    ]
+ {
+    "apiVersion": "2",
+    "version": "{VERSION}",
+    "provider": {
+      "name": "Software AG"
+    },
+    "isolation": "PER_TENANT",
+    "requiredRoles": [
+      "ROLE_INVENTORY_READ",
+      "ROLE_INVENTORY_ADMIN",
+      "ROLE_OPTION_MANAGEMENT_READ",
+      "ROLE_OPTION_MANAGEMENT_ADMIN",
+      "ROLE_USER_MANAGEMENT_ADMIN",
+      "ROLE_USER_MANAGEMENT_READ"
+    ],
+    "roles":[
       "ROLE_TWINMAKER_ADMIN",
       "ROLE_TWINMAKER_CREATE"
     ]
-  }
+ 
