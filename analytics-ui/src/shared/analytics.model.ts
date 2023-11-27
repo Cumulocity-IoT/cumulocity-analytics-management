@@ -82,7 +82,7 @@ export const REPO_SAMPLES_NAME = "apama-analytics-builder-block-sdk";
 export const REPO_SAMPLES_OWNER = "SoftwareAG";
 export const REPO_SAMPLES_PATH = "samples/blocks";
 
-export const BASE_URL = "service/analytics-extension-service";
+export const BASE_URL = "service/analytics-ext-service";
 export const ENDPOINT_EXTENSION = "extension";
 
 
