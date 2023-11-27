@@ -1,33 +1,24 @@
 # Use the base image
-FROM softwareag/apama-cumulocity-builder
-
-RUN apt-get update && apt-get -y upgrade
+FROM softwareag/apama-cumulocity-builder:10.15
 
 # Set the working directory
-WORKDIR /usr/src/app
+WORKDIR /apama_work
 
+USER root
+
+RUN microdnf install git
+
+USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
 RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
 
-COPY requirements.txt /usr/src/app
-COPY flask_wrapper.py /usr/src/app
+COPY requirements.txt /apama_work
+COPY flask_wrapper.py /apama_work
 # Used for tes purposes
 RUN mkdir -p /tmp/builder
-COPY Math_AB_Extension.zip /tmp/builder/
+#COPY Math_AB_Extension.zip /tmp/builder/
 
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
+RUN pip3 install --upgrade pip
+RUN pip3 install -r requirements.txt
 
-ENTRYPOINT ["python"FROM python:3.8-slim
-
-RUN apt-get update && apt-get -y upgrade
-
-COPY requirements.txt /
-COPY sync_class.py /
-COPY flask_wrapper.py /
-
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-
-
-ENTRYPOINT ["python"
+CMD ["python3", "flask_wrapper.py"]

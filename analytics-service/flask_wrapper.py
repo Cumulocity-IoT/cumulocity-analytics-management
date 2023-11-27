@@ -82,7 +82,14 @@ def create_extension():
                 # step 2: run analytics_builder script
                 # analytics_builder build extension --input work_temp_dir --output zip_name
                 zip_name = f"{extension_name}.zip"
-                # subprocess.call(["analytics_builder", "build extension", f"--input {work_temp_dir}", f"--output {zip_name}"])
+                subprocess.call(
+                    [
+                        "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
+                        "build extension",
+                        f"--input {work_temp_dir}",
+                        f"--output {zip_name}",
+                    ]
+                )
 
                 # step 3 : return result
                 # extension_result = f"{work_temp_dir}/{zip_name}"
@@ -111,4 +118,4 @@ def extract_path(path):
 
 if __name__ == "__main__":
     # app.run(host="0.0.0.0", port=80, debug=False)
-    app.run(host="127.0.0.1", port=9080, debug=False)
+    app.run(host="0.0.0.0", port=1090, debug=False)
