@@ -151,10 +151,10 @@ export class SampleGridComponent implements OnInit {
       ignoreBackdropClick: true,
     });
 
-    modalRef.content.closeSubject.subscribe(async (conf) => {
-      console.log("Configuration after edit:", conf);
-      if (conf) {
-        const response = await this.repositoryService.saveRepositories();
+    modalRef.content.closeSubject.subscribe(async (repositories) => {
+      console.log("Repositories after edit:", repositories);
+      if (repositories) {
+        const response = await this.repositoryService.saveRepositories(repositories);
         this.alertService.success(
           gettext(`Updated repositories successfully‚`)
         );

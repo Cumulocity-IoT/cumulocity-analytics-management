@@ -20,7 +20,7 @@ import {
 
 import { TranslateService } from "@ngx-translate/core";
 import * as _ from "lodash";
-import { BehaviorSubject, Subscription } from "rxjs";
+import { BehaviorSubject, EMPTY, Subscription, throwError } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
@@ -37,8 +37,8 @@ import {
   ENDPOINT_EXTENSION,
   Repository,
 } from "./analytics.model";
-import { filter, map, pairwise } from "rxjs/operators";
-import { HttpClient } from "@angular/common/http";
+import { catchError, filter, map, pairwise } from "rxjs/operators";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { RepositoryService } from "../sample/editor/repository.service";
 
 @Injectable({ providedIn: "root" })
@@ -192,10 +192,26 @@ export class AnalyticsService {
             b.repositoryName = rep.name;
           });
           return name;
-        })
+        }),
+        catchError(this.handleError),
       )
       .toPromise();
     return result;
+  }
+
+  private handleError(error: HttpErrorResponse) {
+    if (error.status === 0) {
+      // A client-side or network error occurred. Handle it accordingly.
+      console.error('An error occurred. Ignoring repository:', error.error);
+    } else {
+      // The backend returned an unsuccessful response code.
+      // The response body may contain clues as to what went wrong.
+      console.error(
+        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `, error.error);
+    }
+    // Return an observable with a user-facing error message.
+    //return throwError(() => new Error('Something bad happened; please try again later.'));
+    return EMPTY
   }
 
   async getBlock_Sample_Content(name: string): Promise<string> {
