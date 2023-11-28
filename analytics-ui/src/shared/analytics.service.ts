@@ -35,13 +35,11 @@ import {
   STATUS_MESSAGE_01,
   BASE_URL,
   ENDPOINT_EXTENSION,
-  ANALYTICS_REPOSITORIES_TYPE,
   Repository,
-  uuidCustom,
-  REPO_SAMPLES_BLOCKSDK,
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
 import { HttpClient } from "@angular/common/http";
+import { RepositoryService } from "../sample/editor/repository.service";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
@@ -50,7 +48,6 @@ export class AnalyticsService {
   private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   protected baseUrl: string;
   private _cepId: Promise<string>;
-  private _repositories: Promise<Repository[]> | Repository[];
   private realtime: Realtime;
   private subscription: Subscription;
 
@@ -61,7 +58,8 @@ export class AnalyticsService {
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
-    private githubFetchClient: HttpClient
+    private githubFetchClient: HttpClient,
+    private repositoryService: RepositoryService
   ) {
     this.realtime = new Realtime(this.fetchClient);
   }
@@ -83,67 +81,6 @@ export class AnalyticsService {
       result = this.inventoryService.listQuery(query, filter);
     }
     return result;
-  }
-
-  async getRepositories(): Promise<Repository[]> {
-    if (!this._repositories) {
-      this._repositories = this.getUncachedRepositories();
-    }
-    return this._repositories;
-  }
-
-  async getUncachedRepositories(): Promise<Repository[]> {
-    let result = [] as Repository[];
-    const filter: object = {
-      pageSize: 100,
-      withTotalPages: true,
-    };
-    const query: object = {
-      type: ANALYTICS_REPOSITORIES_TYPE,
-    };
-    let { data } = await this.inventoryService.listQuery(query, filter);
-    if (!data || data.length == 0) {
-      const reposMO: Partial<IManagedObject> = {
-        name: "AnalyticsRepositories",
-        type: ANALYTICS_REPOSITORIES_TYPE,
-      };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [
-        {
-          id: uuidCustom(),
-          name: "Block SDK Samples",
-          url: REPO_SAMPLES_BLOCKSDK,
-        },
-      ] as Repository[];
-      this.inventoryService.create(reposMO);
-      result = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-    } else if (data.length > 0) {
-      result = data[0][ANALYTICS_REPOSITORIES_TYPE];
-    }
-    this._repositories = result;
-    return result;
-  }
-
-  async updateRepositories(repositories: Repository[]): Promise<void> {
-    const filter: object = {
-      pageSize: 100,
-      withTotalPages: true,
-    };
-    const query: object = {
-      type: ANALYTICS_REPOSITORIES_TYPE,
-    };
-    let { data } = await this.inventoryService.listQuery(query, filter);
-    if (!data || data.length == 0) {
-      const reposMO: Partial<IManagedObject> = {
-        name: "AnalyticsRepositories",
-        type: ANALYTICS_REPOSITORIES_TYPE,
-      };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
-      this.inventoryService.create(reposMO);
-    } else if (data.length > 0) {
-      data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
-      this.inventoryService.update(data[0]);
-    }
-    this._repositories = repositories;
   }
 
   async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
@@ -208,7 +145,7 @@ export class AnalyticsService {
 
   async getCEP_BlockSamplesFromRepositories(): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
-    const reps: Repository[] = await this.getRepositories();
+    const reps: Repository[] = await this.repositoryService.loadRepositories();
 
     for (let i = 0; i < reps.length; i++) {
       const promise: Promise<CEP_Block[]> =

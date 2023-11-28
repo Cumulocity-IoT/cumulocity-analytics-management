@@ -154,7 +154,7 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (conf) => {
       console.log("Configuration after edit:", conf);
       if (conf) {
-        const response = await this.repositoryService.updateRepositories();
+        const response = await this.repositoryService.saveRepositories();
         this.alertService.success(
           gettext(`Updated repositories successfully‚`)
         );

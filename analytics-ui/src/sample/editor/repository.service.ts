@@ -2,8 +2,13 @@
 
 import { Injectable } from "@angular/core";
 import { BehaviorSubject, Observable } from "rxjs";
-import { Repository } from "../../shared/analytics.model";
-import { AnalyticsService } from "../../shared/analytics.service";
+import {
+  ANALYTICS_REPOSITORIES_TYPE,
+  REPO_SAMPLES_BLOCKSDK,
+  Repository,
+  uuidCustom,
+} from "../../shared/analytics.model";
+import { IManagedObject, InventoryService } from "@c8y/client";
 
 @Injectable({
   providedIn: "root",
@@ -12,13 +17,14 @@ export class RepositoryService {
   private repositories: Repository[] = [];
   private repositoriesSubject: BehaviorSubject<Repository[]> =
     new BehaviorSubject<Repository[]>([]);
+  private _repositories: Promise<Repository[]> | Repository[];
 
-  constructor(public analyticsService: AnalyticsService) {
+  constructor(private inventoryService: InventoryService) {
     this.init();
   }
 
   async init() {
-    this.repositories = await this.analyticsService.getRepositories();
+    this.repositories = await this.loadRepositories();
     this.repositoriesSubject.next([...this.repositories]);
   }
 
@@ -48,7 +54,64 @@ export class RepositoryService {
     this.repositoriesSubject.next([...this.repositories]);
   }
 
-  async updateRepositories(): Promise<void> {
-    await this.analyticsService.updateRepositories(this.repositories);
+  async loadRepositories(): Promise<Repository[]> {
+    if (!this._repositories) {
+      this._repositories = this.loadUncachedRepositories();
+    }
+    return this._repositories;
+  }
+
+  async loadUncachedRepositories(): Promise<Repository[]> {
+    let result = [] as Repository[];
+    const filter: object = {
+      pageSize: 100,
+      withTotalPages: true,
+    };
+    const query: object = {
+      type: ANALYTICS_REPOSITORIES_TYPE,
+    };
+    let { data } = await this.inventoryService.listQuery(query, filter);
+    if (!data || data.length == 0) {
+      const reposMO: Partial<IManagedObject> = {
+        name: "AnalyticsRepositories",
+        type: ANALYTICS_REPOSITORIES_TYPE,
+      };
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [
+        {
+          id: uuidCustom(),
+          name: "Block SDK Samples",
+          url: REPO_SAMPLES_BLOCKSDK,
+        },
+      ] as Repository[];
+      this.inventoryService.create(reposMO);
+      result = reposMO[ANALYTICS_REPOSITORIES_TYPE];
+    } else if (data.length > 0) {
+      result = data[0][ANALYTICS_REPOSITORIES_TYPE];
+    }
+    this._repositories = result;
+    return result;
+  }
+
+  async saveRepositories(repositories: Repository[]): Promise<void> {
+    const filter: object = {
+      pageSize: 100,
+      withTotalPages: true,
+    };
+    const query: object = {
+      type: ANALYTICS_REPOSITORIES_TYPE,
+    };
+    let { data } = await this.inventoryService.listQuery(query, filter);
+    if (!data || data.length == 0) {
+      const reposMO: Partial<IManagedObject> = {
+        name: "AnalyticsRepositories",
+        type: ANALYTICS_REPOSITORIES_TYPE,
+      };
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
+      this.inventoryService.create(reposMO);
+    } else if (data.length > 0) {
+      data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
+      this.inventoryService.update(data[0]);
+    }
+    this._repositories = repositories;
   }
 }

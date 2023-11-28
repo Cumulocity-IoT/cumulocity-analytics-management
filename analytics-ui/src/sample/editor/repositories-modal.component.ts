@@ -26,13 +26,13 @@ import { RepositoryService } from "./repository.service";
         </thead>
         <tbody>
           <tr *ngFor="let repository of repositories; let i = index">
-            <td style="padding-top: 4px" width="15%">
+            <td style="padding-top: 4px" width="5%">
               {{ i }}
             </td>
             <td style="padding-top: 4px" width="15%">
               {{ repository.name }}
             </td>
-            <td style="padding-top: 4px" width="600%">
+            <td style="padding-top: 4px" width="70%">
               {{ repository.url }}
             </td>
             <td width="10%" style="padding-top: 0px; padding-bottom: 0px">
