@@ -165,20 +165,22 @@ export class SampleGridComponent implements OnInit {
   }
 
   public async createExtension(ids: string[]) {
-    const initialState = {};
+    const monitors = [];
+    for (let i = 0; i < this.samples.length; i++) {
+      if (ids.includes(this.samples[i].id)) {
+        monitors.push(this.samples[i].url);
+      }
+    }
+    const initialState = {
+      monitors
+    };
+
     const modalRef = this.bsModalService.show(NameExtensionComponent, {
       initialState,
     });
     modalRef.content.closeSubject.subscribe(async (conf) => {
       console.log("Configuration after edit:", conf);
       if (conf) {
-        const monitors = [];
-        for (let i = 0; i < this.samples.length; i++) {
-          if (ids.includes(this.samples[i].id)) {
-            monitors.push(this.samples[i].url);
-          }
-        }
-
         const response = await this.analyticsService.createExtensionsZIP(
           conf.name,
           monitors

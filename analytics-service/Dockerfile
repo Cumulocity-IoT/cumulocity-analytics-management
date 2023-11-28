@@ -7,10 +7,14 @@ WORKDIR /apama_work
 USER root
 
 RUN microdnf install git
+# RUN microdnf install unzip
 
 # USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
 RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
+# alternatively
+# RUN wget https://github.com/SoftwareAG/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
+# RUN unzip apama-analytics-builder-block-sdk-rel-10.18.0.x.zip
 
 COPY requirements.txt /apama_work
 COPY flask_wrapper.py /apama_work

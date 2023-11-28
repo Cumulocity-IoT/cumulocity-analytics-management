@@ -1,8 +1,9 @@
 import { Component, Input, OnInit, Output } from "@angular/core";
-import { ModalLabels } from "@c8y/ngx-components";
-import { Subject } from "rxjs";
+import { AlertService, ModalLabels } from "@c8y/ngx-components";
+import { BehaviorSubject, Subject } from "rxjs";
 import { FormlyFieldConfig } from "@ngx-formly/core";
 import { FormGroup } from "@angular/forms";
+import { AnalyticsService } from "../shared/analytics.service";
 
 @Component({
   selector: "name-extension-modal",
@@ -26,12 +27,17 @@ import { FormGroup } from "@angular/forms";
 })
 export class NameExtensionComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
+  @Input() monitors: string[];
   configuration: any = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
   configFormly: FormGroup = new FormGroup({});
   labels: ModalLabels = { ok: "Create extension", cancel: "Dismiss" };
 
+  constructor(
+    public analyticsService: AnalyticsService,
+    public alertService: AlertService,
+  ) {}
   ngOnInit(): void {
     this.configFormlyFields = [
       {
@@ -52,9 +58,17 @@ export class NameExtensionComponent implements OnInit {
     this.closeSubject.next(undefined);
   }
 
-  onSave(event) {
+  async onSave(event) {
     console.log("Save");
+    const response = await this.analyticsService.createExtensionsZIP(
+      this.configuration.name,
+      this.monitors
+    );
     this.closeSubject.next(this.configuration);
+  }
+
+  get progress(): BehaviorSubject<number> {
+    return this.progress;
   }
 
 }
