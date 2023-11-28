@@ -65,6 +65,7 @@ export interface CEP_Block {
   custom: boolean;
   extension: string;
   name: string;
+  repositoryName: string;
   category: Category;
 }
 
@@ -88,7 +89,7 @@ export const GITHUB_BASE = "https://api.github.com";
 export const REPO_SAMPLES_NAME = "apama-analytics-builder-block-sdk";
 export const REPO_SAMPLES_OWNER = "SoftwareAG";
 export const REPO_SAMPLES_PATH = "samples/blocks";
-export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`
+export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
 
 export const BASE_URL = "service/analytics-ext-service";
 export const ENDPOINT_EXTENSION = "extension";

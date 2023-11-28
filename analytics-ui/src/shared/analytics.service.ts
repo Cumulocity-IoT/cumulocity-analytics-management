@@ -211,26 +211,38 @@ export class AnalyticsService {
     const reps: Repository[] = await this.getRepositories();
 
     for (let i = 0; i < reps.length; i++) {
-      const url = reps[i].url;
       const promise: Promise<CEP_Block[]> =
-        this.getCEP_BlockSamplesFromRepository(url);
+        this.getCEP_BlockSamplesFromRepository(reps[i]);
       promises.push(promise);
     }
-    // return Promise.all(promises);
-    return promises[0];
-    // return promises.reduce(
+    const combinedPromise = Promise.all(promises);
+    const result = combinedPromise.then((data) => {
+      const flattened = data.reduce(
+        (accumulator, value) => accumulator.concat(value),
+        []
+      );
+      return flattened;
+    });
+    return result;
+    // const result = promises.reduce(
     //   (acc, promise) =>
     //     acc.then((data) => {
-    //       const r = data.concat(promise.);
-    //       return r;
+    //       promise.then((blocks) => {
+    //         data.push(...blocks);
+    //         return data;
+    //       });
+    //       return data;
     //     }),
-    //   Promise.resolve([])
+    //   Promise.resolve([]) // as Promise<CEP_Block[]>
     // );
+    // return result;
   }
 
-  async getCEP_BlockSamplesFromRepository(url: string): Promise<CEP_Block[]> {
+  async getCEP_BlockSamplesFromRepository(
+    rep: Repository
+  ): Promise<CEP_Block[]> {
     const result: any = this.githubFetchClient
-      .get(url, {
+      .get(rep.url, {
         headers: {
           "content-type": "application/json",
         },
@@ -238,7 +250,10 @@ export class AnalyticsService {
       .pipe(
         map((data) => {
           const name = _.values(data);
-          name.forEach((b) => (b.id = b.sha));
+          name.forEach((b) => {
+            b.id = b.sha;
+            b.repositoryName = rep.name;
+          });
           return name;
         })
       )
