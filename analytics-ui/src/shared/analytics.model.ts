@@ -68,6 +68,13 @@ export interface CEP_Block {
   category: Category;
 }
 
+export interface Repository {
+  id: string;
+  name: string;
+  url: string;
+  // Add any other properties as needed
+}
+
 export const PATH_CEP_BASE = "service/cep";
 export const PATH_CEP_CORRELATOR = `${PATH_CEP_BASE}/apamacorrelator`;
 export const PATH_CEP_EN = `${PATH_CEP_CORRELATOR}/EN`;
@@ -84,7 +91,12 @@ export const REPO_SAMPLES_PATH = "samples/blocks";
 
 export const BASE_URL = "service/analytics-ext-service";
 export const ENDPOINT_EXTENSION = "extension";
+export const ANALYTICS_REPOSITORIES_TYPE = "extension";
 
+export function uuidCustom(): string {
+  let id = Math.random().toString(36).slice(-6);
+  return id;
+}
 
 // https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json

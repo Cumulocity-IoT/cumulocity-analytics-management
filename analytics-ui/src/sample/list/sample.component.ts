@@ -38,6 +38,8 @@ import { CEP_Block } from "../../shared/analytics.model";
 import { BsModalService } from "ngx-bootstrap/modal";
 import { NameExtensionComponent } from "../../wizard/name-extension-modal.component";
 import { EditorModalComponent } from "../editor/editor-modal.component";
+import { RepositoriesModalComponent } from "../editor/repositories-modal.component";
+import { RepositoryService } from "../editor/repository.service";
 
 @Component({
   selector: "c8y-sample-grid",
@@ -81,6 +83,7 @@ export class SampleGridComponent implements OnInit {
 
   constructor(
     public analyticsService: AnalyticsService,
+    public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService
   ) {}
@@ -127,6 +130,25 @@ export class SampleGridComponent implements OnInit {
       ariaLabelledBy: "modal-title",
       ignoreBackdropClick: true,
     }).content as EditorModalComponent;
+  }
+
+  async updateRepositories() {
+    const initialState = {};
+    const modalRef = this.bsModalService.show(RepositoriesModalComponent, {
+      class: "modal-lg",
+      initialState,
+      ignoreBackdropClick: true,
+    });
+
+    modalRef.content.closeSubject.subscribe(async (conf) => {
+      console.log("Configuration after edit:", conf);
+      if (conf) {
+        const response = await this.repositoryService.updateRepositories();
+        this.alertService.success(
+          gettext(`Updated repositories successfully‚`)
+        );
+      }
+    });
   }
 
   public async createExtension(ids: string[]) {

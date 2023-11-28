@@ -14,6 +14,7 @@ import {
 import {
   AlertService,
   gettext,
+  ManagedObjectRealtimeService,
   ModalService,
   Status,
 } from "@c8y/ngx-components";
@@ -35,6 +36,8 @@ import {
   STATUS_MESSAGE_01,
   BASE_URL,
   ENDPOINT_EXTENSION,
+  ANALYTICS_REPOSITORIES_TYPE,
+  Repository,
 } from "./analytics.model";
 import { filter, map, pairwise, tap } from "rxjs/operators";
 import { HttpClient } from "@angular/common/http";
@@ -80,21 +83,63 @@ export class AnalyticsService {
     return result;
   }
 
+  async getRepositories(): Promise<Repository[]> {
+    let result = [];
+    const filter: object = {
+      pageSize: 100,
+      withTotalPages: true,
+    };
+    const query: object = {
+      type: ANALYTICS_REPOSITORIES_TYPE,
+    };
+    let { data } = await this.inventoryService.listQuery(query, filter);
+    if (!data) {
+      const reposMO: Partial<IManagedObject> = {
+        name: "AnalyticsRepositories",
+        type: ANALYTICS_REPOSITORIES_TYPE,
+      };
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [];
+      this.inventoryService.create(reposMO);
+    } else if (data.length > 0) {
+      result = data[0][ANALYTICS_REPOSITORIES_TYPE];
+    }
+    return result;
+  }
+
+  async updateRepositories(repositories: Repository[]): Promise<void> {
+    const filter: object = {
+      pageSize: 100,
+      withTotalPages: true,
+    };
+    const query: object = {
+      type: ANALYTICS_REPOSITORIES_TYPE,
+    };
+    let { data } = await this.inventoryService.listQuery(query, filter);
+    if (!data || data.length == 0) {
+      const reposMO: Partial<IManagedObject> = {
+        name: "AnalyticsRepositories",
+        type: ANALYTICS_REPOSITORIES_TYPE,
+      };
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
+      this.inventoryService.create(reposMO);
+    } else if (data.length > 0) {
+      data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
+      this.inventoryService.update(data[0]);
+    }
+  }
+
   async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
-    return this.fetchClient.fetch(
-      `${BASE_URL}/${ENDPOINT_EXTENSION}`,
-      {
-        headers: {
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          extension_name: name,
-          monitors: monitors,
-        }),
-        method: "POST",
-      }
-    );
+    return this.fetchClient.fetch(`${BASE_URL}/${ENDPOINT_EXTENSION}`, {
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        extension_name: name,
+        monitors: monitors,
+      }),
+      method: "POST",
+    });
   }
 
   async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {

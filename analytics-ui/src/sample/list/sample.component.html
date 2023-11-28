@@ -30,6 +30,16 @@
     {{ "Refresh" | translate }}
   </button>
 </c8y-action-bar-item>
+<c8y-action-bar-item [placement]="'right'">
+  <button
+    class="btn btn-link"
+    title="{{ 'Repositories' | translate }}"
+    (click)="updateRepositories()"
+  >
+    <i c8yIcon="change-theme"></i>
+    {{ "Repositories" | translate }}
+  </button>
+</c8y-action-bar-item>
 <div class="card">
   <div class="card-block">
     <c8y-data-grid

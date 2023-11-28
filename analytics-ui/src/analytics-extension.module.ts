@@ -25,6 +25,8 @@ import { HttpClientModule } from "@angular/common/http";
 import { NameExtensionComponent } from "./wizard/name-extension-modal.component";
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
+import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
+import { RepositoryService } from "./sample/editor/repository.service";
 
 const routes: Route[] = [
   {
@@ -62,7 +64,8 @@ const routes: Route[] = [
     BlockGridComponent,
     SampleGridComponent,
     EditorStepperComponent,
-    EditorModalComponent
+    EditorModalComponent,
+    RepositoriesModalComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -72,10 +75,12 @@ const routes: Route[] = [
     BlockGridComponent,
     SampleGridComponent,
     EditorStepperComponent,
-    EditorModalComponent
+    EditorModalComponent,
+    RepositoriesModalComponent
   ],
   providers: [
     AnalyticsService,
+    RepositoryService,
     hookNavigator(AnalyticsNavigationFactory),
     hookWizard({
       wizardId: "uploadAnalyticsExtention",
