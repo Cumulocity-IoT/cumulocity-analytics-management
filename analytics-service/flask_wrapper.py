@@ -4,28 +4,22 @@ import logging
 from github import Github
 import tempfile
 import os
-import sys
 import re
 import io
 import subprocess
 from c8y_agent import C8YAgent
 from github import Auth
 
-<<<<<<< HEAD
 # define logging
-=======
->>>>>>> aa63cb4b29222e272d58edcffc86f1730b72f4ba
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
     datefmt="%d/%b/%Y %H:%M:%S",
 )
-
 logger = logging.getLogger("flask_wrapper")
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-<<<<<<< HEAD
 agent = C8YAgent()
 access_token = agent.get_github_access_token()
 logger.info(
@@ -34,17 +28,10 @@ logger.info(
 auth = Auth.Token(access_token)
 # initialize github endpoint
 gh = Github(auth=auth)
-# define work directory
-WORK_DIR_BASE = "/tmp/builder"
-=======
-# initialize github endpoint
-gh = Github()
->>>>>>> aa63cb4b29222e272d58edcffc86f1730b72f4ba
 
 @app.route("/health")
 def health():
     return '{"status":"UP"}'
-
 
 @app.route("/extension", methods=["POST"])
 def create_extension():
@@ -141,8 +128,5 @@ def extract_path(path):
     file_name = parts[-3]  # Extract path excluding "contents" and "ref"
     return organization, repository_name, file_path, file_name
 
-
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=80, debug=False)
-
-
