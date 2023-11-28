@@ -3,9 +3,10 @@
 ## Content
 - [Overview](#overview)
 - [Installation](#installation-of-plugin-as-community-plugin)
+- [Build Custom Extension](#build-custom-extension)
 - [Build Instructions](#build-instructions)
-- [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
+- [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 
 ## Overview
 
@@ -30,6 +31,12 @@ After the delployment (restart of streaming analytics) the Block will be availab
 The plugin is available as a community plugin and can be installed from the Administration -> Extensions UI:
 
 ![Plugin installation](resources/images/plugin-installation.png)
+
+## Build Custom Extension
+You can build a custom extension as a zip file by following the screenflow below:
+
+![Build Custom Extensionn](resources/images/create-custom-extension-animated.gif)
+
 
 ## Build Instructions
 
@@ -69,22 +76,6 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 7. Deploy the app:
   ```npm run deploy```
 
-## Analytics Builder Block SDK
-
-Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
-Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
-
-The provided block is an example of the adding the two inputs.
-
-![Use Extension](resources/images/block-detail.png)
-<!-- <br/>
-<p align="center" style="text-indent:70px;">
-  <a>
-    <img width="70%" src="resources/images/block-detail.png">
-  </a>
-</p>
-<br/> -->
-
 ## Analytics Builder Extension Backend
 
 To build the backend as a microservice follow these steps:
@@ -109,6 +100,22 @@ FOr the first deployment you have to use:
 #  c8y tenantoptions create --category "github" --key "credentials.access_token" --value "XXX" 
 
 ```
+## Analytics Builder Block SDK
+
+Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
+Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
+
+The provided block is an example of the adding the two inputs.
+
+![Use Extension](resources/images/block-detail.png)
+<!-- <br/>
+<p align="center" style="text-indent:70px;">
+  <a>
+    <img width="70%" src="resources/images/block-detail.png">
+  </a>
+</p>
+<br/> -->
+
 ------------------------------
 
 These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
