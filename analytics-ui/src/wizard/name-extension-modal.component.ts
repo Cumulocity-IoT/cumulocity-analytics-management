@@ -30,7 +30,7 @@ export class NameExtensionComponent implements OnInit {
 
   configFormlyFields: FormlyFieldConfig[] = [];
   configFormly: FormGroup = new FormGroup({});
-  labels: ModalLabels = { ok: "Save", cancel: "Dismiss" };
+  labels: ModalLabels = { ok: "Create extension", cancel: "Dismiss" };
 
   ngOnInit(): void {
     this.configFormlyFields = [

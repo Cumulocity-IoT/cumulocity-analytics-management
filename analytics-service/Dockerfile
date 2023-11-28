@@ -8,12 +8,13 @@ USER root
 
 RUN microdnf install git
 
-USER sagadmin
+# USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
 RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
 
 COPY requirements.txt /apama_work
 COPY flask_wrapper.py /apama_work
+COPY c8y_agent.py /apama_work
 # Used for tes purposes
 RUN mkdir -p /tmp/builder
 #COPY Math_AB_Extension.zip /tmp/builder/

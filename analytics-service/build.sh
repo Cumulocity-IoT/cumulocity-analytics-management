@@ -29,6 +29,7 @@ mkdir -p "$DIST_DIR"
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
 cp ./flask_wrapper.py "$BUILD_DIR"
+cp ./c8y_agent.py "$BUILD_DIR"
 sed -e "s/{VERSION}/$VERSION/g" ./cumulocity.json > "$BUILD_DIR/cumulocity.json"
 sed -e "s/{SAMPLE}/$NAME/g" ./Dockerfile > "$BUILD_DIR/Dockerfile"
 # extend cumulocity.json is defined

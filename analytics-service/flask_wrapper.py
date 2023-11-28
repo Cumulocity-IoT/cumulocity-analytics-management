@@ -7,12 +7,9 @@ import os
 import re
 import io
 import subprocess
+from c8y_agent import C8YAgent
+from github import Auth
 
-app = Flask(__name__)
-# initialize github endpoint
-gh = Github()
-# define work directory
-WORK_DIR_BASE = "/tmp/builder"
 # define logging
 logging.basicConfig(
     level=logging.INFO,
@@ -22,6 +19,17 @@ logging.basicConfig(
 logger = logging.getLogger("flask_wrapper")
 logger.setLevel(logging.INFO)
 
+app = Flask(__name__)
+agent = C8YAgent()
+access_token = agent.get_github_access_token()
+logger.info(
+    f"Github access token: {access_token}"
+)
+auth = Auth.Token(access_token)
+# initialize github endpoint
+gh = Github(auth=auth)
+# define work directory
+WORK_DIR_BASE = "/tmp/builder"
 
 @app.route("/health")
 def health():
@@ -112,6 +120,8 @@ def create_extension():
                     
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
+                f"Bad request: {+ str(e)}", 400
+
 
 def extract_path(path):
     # Extract information from the API URL

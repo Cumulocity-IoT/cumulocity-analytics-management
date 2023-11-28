@@ -13,7 +13,9 @@ Extends the standard Cumulocity web application with a plugin to manage and add 
 
 You can upload blocks that were generated via the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "Add extension" button. Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy Extensions (Restart)" button and wait for the notification that the engine was restarted.
 
-![Extension installation](resources/images/extension-installation.png)
+![Extension installation](resources/images/extension-installation-animated.gif)
+
+<!-- ![Extension installation](resources/images/extension-installation.png) -->
 
 In addition a table lists all installed analytics blocks with the following information: name, category, custom block, extension package name.
 
@@ -99,6 +101,13 @@ To build the backend as a microservice follow these steps:
 FOr the first deployment you have to use:
 ```
 # c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
+```
+
+### Create github access key as tenant option
+
+```
+#  c8y tenantoptions create --category "github" --key "credentials.access_token" --value "XXX" 
+
 ```
 ------------------------------
 

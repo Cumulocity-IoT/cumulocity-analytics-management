@@ -51,7 +51,7 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   refresh: EventEmitter<any> = new EventEmitter<any>();
   showMonitorEditor: boolean = false;
-  samples: any[] = [];
+  samples: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
   source: string = "";
@@ -64,7 +64,7 @@ export class SampleGridComponent implements OnInit {
       header: "Name",
       path: "name",
       dataType: ColumnDataType.TextLong,
-      filterable:true,
+      filterable: true,
       gridTrackSize: "15%",
       visible: true,
     },
@@ -73,7 +73,7 @@ export class SampleGridComponent implements OnInit {
       header: "Repository Name",
       path: "repositoryName",
       dataType: ColumnDataType.TextLong,
-      filterable:true,
+      filterable: true,
       gridTrackSize: "15%",
       visible: true,
     },
@@ -82,7 +82,7 @@ export class SampleGridComponent implements OnInit {
       header: "URL",
       path: "url",
       dataType: ColumnDataType.TextLong,
-      filterable:true,
+      filterable: true,
       visible: true,
     },
   ];
@@ -154,7 +154,9 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (repositories) => {
       console.log("Repositories after edit:", repositories);
       if (repositories) {
-        const response = await this.repositoryService.saveRepositories(repositories);
+        const response = await this.repositoryService.saveRepositories(
+          repositories
+        );
         this.alertService.success(
           gettext(`Updated repositories successfully‚`)
         );
@@ -170,9 +172,16 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (conf) => {
       console.log("Configuration after edit:", conf);
       if (conf) {
+        const monitors = [];
+        for (let i = 0; i < this.samples.length; i++) {
+          if (ids.includes(this.samples[i].id)) {
+            monitors.push(this.samples[i].url);
+          }
+        }
+
         const response = await this.analyticsService.createExtensionsZIP(
           conf.name,
-          ids
+          monitors
         );
         if (response) {
           this.alertService.success(
@@ -187,7 +196,7 @@ export class SampleGridComponent implements OnInit {
 
   async loadSamples() {
     const s = await this.analyticsService.getCEP_BlockSamplesFromRepositories();
-    this.samples = s as any;
+    this.samples = s;
   }
 
   ngOnDestroy() {}
