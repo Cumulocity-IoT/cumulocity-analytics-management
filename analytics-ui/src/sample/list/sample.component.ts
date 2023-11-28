@@ -178,22 +178,8 @@ export class SampleGridComponent implements OnInit {
     const modalRef = this.bsModalService.show(NameExtensionComponent, {
       initialState,
     });
-    modalRef.content.closeSubject.subscribe(async (conf) => {
-      console.log("Configuration after edit:", conf);
-      if (conf) {
-        const response = await this.analyticsService.createExtensionsZIP(
-          conf.name,
-          monitors
-        );
-        if (response) {
-          this.alertService.success(
-            gettext(`Created extension ${conf.name}.zip successfully‚`)
-          );
-        } else {
-          this.alertService.danger(gettext("Failed to create extension"));
-        }
-      }
-    });
+
+    modalRef.content.closeSubject.subscribe ( () => modalRef.hide())
   }
 
   async loadSamples() {

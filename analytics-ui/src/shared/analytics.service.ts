@@ -83,7 +83,7 @@ export class AnalyticsService {
     return result;
   }
 
-  async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
+  async createExtensionsZIP(name: string, monitors: string[]): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
     return this.fetchClient.fetch(`${BASE_URL}/${ENDPOINT_EXTENSION}`, {
       headers: {
@@ -94,6 +94,7 @@ export class AnalyticsService {
         monitors: monitors,
       }),
       method: "POST",
+      responseType: 'blob' 
     });
   }
 

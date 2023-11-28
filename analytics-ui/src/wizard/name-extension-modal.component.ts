@@ -1,15 +1,15 @@
 import { Component, Input, OnInit, Output } from "@angular/core";
 import { AlertService, ModalLabels } from "@c8y/ngx-components";
-import { BehaviorSubject, Subject } from "rxjs";
+import { Subject } from "rxjs";
 import { FormlyFieldConfig } from "@ngx-formly/core";
 import { FormGroup } from "@angular/forms";
 import { AnalyticsService } from "../shared/analytics.service";
+import { saveAs } from "file-saver";
 
 @Component({
   selector: "name-extension-modal",
   template: `<c8y-modal
     title="Edit properties extension"
-    (onClose)="onSave($event)"
     (onDismiss)="onDismiss($event)"
     [labels]="labels"
     [headerClasses]="'modal-header dialog-header'"
@@ -22,7 +22,16 @@ import { AnalyticsService } from "../shared/analytics.service";
           [model]="configuration"
         ></formly-form>
       </div>
+      <button
+        class="btn btn-default"
+        title="{{ 'Create Extension' | translate }}"
+        (click)="createExtension()"
+      >
+        <i c8yIcon="plugin"></i>
+        {{ "Create Extension" | translate }}
+      </button>
     </div>
+    <div *ngIf="loading"><c8y-loading></c8y-loading></div>
   </c8y-modal>`,
 })
 export class NameExtensionComponent implements OnInit {
@@ -32,11 +41,12 @@ export class NameExtensionComponent implements OnInit {
 
   configFormlyFields: FormlyFieldConfig[] = [];
   configFormly: FormGroup = new FormGroup({});
-  labels: ModalLabels = { ok: "Create extension", cancel: "Dismiss" };
+  labels: ModalLabels = { cancel: "Dismiss" };
+  loading: boolean = false;
 
   constructor(
     public analyticsService: AnalyticsService,
-    public alertService: AlertService,
+    public alertService: AlertService
   ) {}
   ngOnInit(): void {
     this.configFormlyFields = [
@@ -58,17 +68,20 @@ export class NameExtensionComponent implements OnInit {
     this.closeSubject.next(undefined);
   }
 
-  async onSave(event) {
-    console.log("Save");
+  async createExtension() {
+    this.loading = true;
+    console.log("Create Extension");
     const response = await this.analyticsService.createExtensionsZIP(
       this.configuration.name,
       this.monitors
     );
-    this.closeSubject.next(this.configuration);
+    const binary = await await response.arrayBuffer();
+    this.loading = false;
+    const blob = new Blob([binary], {
+      type: "application/x-zip-compressed",
+    });
+    saveAs(blob, `${this.configuration.name}.zip`);
+    this.alertService.success(`Created extension ${this.configuration.name}.zip!`)
+    this.closeSubject.next(true);
   }
-
-  get progress(): BehaviorSubject<number> {
-    return this.progress;
-  }
-
 }
