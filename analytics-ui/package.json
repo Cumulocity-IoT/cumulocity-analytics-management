@@ -36,6 +36,7 @@
     "@c8y/ngx-components": "1018.0.125",
     "@c8y/style": "1018.0.125",
     "@ngx-translate/core": "14.0.0",
+    "@types/ws": "<8.5.5",
     "angular": "1.6.9",
     "ngx-bootstrap": "6.2.0",
     "rxjs": "~6.6.3",
