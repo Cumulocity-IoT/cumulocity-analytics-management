@@ -5,6 +5,7 @@
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
+- [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
 
 ## Overview
 
@@ -82,6 +83,23 @@ The provided block is an example of the adding the two inputs.
 </p>
 <br/> -->
 
+## Analytics Builder Extension Backend
+
+To build the backend as a microservice follow these steps:
+* run script: 
+```
+# cd analytics-service
+# ./build.sh analytics-ext-service XXXX 
+```
+* upload created image:
+```
+# c8y microservices list --name analytics-ext-service | c8y microservices createBinary --file dist/analytics-ext-service.zip --timeout 360
+```
+> **NOTE**
+FOr the first deployment you have to use:
+```
+# c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
+```
 ------------------------------
 
 These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.

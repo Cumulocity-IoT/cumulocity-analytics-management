@@ -14,7 +14,6 @@ import {
 import {
   AlertService,
   gettext,
-  ManagedObjectRealtimeService,
   ModalService,
   Status,
 } from "@c8y/ngx-components";
@@ -38,8 +37,10 @@ import {
   ENDPOINT_EXTENSION,
   ANALYTICS_REPOSITORIES_TYPE,
   Repository,
+  uuidCustom,
+  REPO_SAMPLES_BLOCKSDK,
 } from "./analytics.model";
-import { filter, map, pairwise, tap } from "rxjs/operators";
+import { filter, map, pairwise } from "rxjs/operators";
 import { HttpClient } from "@angular/common/http";
 
 @Injectable({ providedIn: "root" })
@@ -49,6 +50,7 @@ export class AnalyticsService {
   private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   protected baseUrl: string;
   private _cepId: Promise<string>;
+  private _repositories: Promise<Repository[]> | Repository[];
   private realtime: Realtime;
   private subscription: Subscription;
 
@@ -84,7 +86,14 @@ export class AnalyticsService {
   }
 
   async getRepositories(): Promise<Repository[]> {
-    let result = [];
+    if (!this._repositories) {
+      this._repositories = this.getUncachedRepositories();
+    }
+    return this._repositories;
+  }
+
+  async getUncachedRepositories(): Promise<Repository[]> {
+    let result = [] as Repository[];
     const filter: object = {
       pageSize: 100,
       withTotalPages: true,
@@ -93,16 +102,24 @@ export class AnalyticsService {
       type: ANALYTICS_REPOSITORIES_TYPE,
     };
     let { data } = await this.inventoryService.listQuery(query, filter);
-    if (!data) {
+    if (!data || data.length == 0) {
       const reposMO: Partial<IManagedObject> = {
         name: "AnalyticsRepositories",
         type: ANALYTICS_REPOSITORIES_TYPE,
       };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [];
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [
+        {
+          id: uuidCustom(),
+          name: "Block SDK Samples",
+          url: REPO_SAMPLES_BLOCKSDK,
+        },
+      ] as Repository[];
       this.inventoryService.create(reposMO);
+      result = reposMO[ANALYTICS_REPOSITORIES_TYPE];
     } else if (data.length > 0) {
       result = data[0][ANALYTICS_REPOSITORIES_TYPE];
     }
+    this._repositories = result;
     return result;
   }
 
@@ -126,6 +143,7 @@ export class AnalyticsService {
       data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
       this.inventoryService.update(data[0]);
     }
+    this._repositories = repositories;
   }
 
   async createExtensionsZIP(name: string, monitors: string[]): Promise<any> {
@@ -164,7 +182,7 @@ export class AnalyticsService {
     this.appDeleted.emit(app);
   }
 
-  async getCEP_Blocks(): Promise<CEP_Block[]> {
+  async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
     const result: CEP_Block[] = [];
     const meta: CEP_Metadata = await this.getCEP_Metadata();
     if (meta && meta.metadatas) {
@@ -176,9 +194,7 @@ export class AnalyticsService {
         const extensionNameAbbreviated =
           extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
         extension.analytics.forEach((block) => {
-          //result.push({ name: block.name, category: block.category });
           const cepBlock = block as CEP_Block;
-          //console.log(block.id);
           cepBlock.custom =
             !block.id.startsWith("apama.analyticsbuilder.blocks") &&
             !block.id.startsWith("apama.analyticskit.blocks.core");
@@ -190,10 +206,31 @@ export class AnalyticsService {
     return result;
   }
 
-  async getBlock_Samples(): Promise<Partial<CEP_Block>[]> {
-    const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
+  async getCEP_BlockSamplesFromRepositories(): Promise<CEP_Block[]> {
+    const promises: Promise<CEP_Block[]>[] = [];
+    const reps: Repository[] = await this.getRepositories();
+
+    for (let i = 0; i < reps.length; i++) {
+      const url = reps[i].url;
+      const promise: Promise<CEP_Block[]> =
+        this.getCEP_BlockSamplesFromRepository(url);
+      promises.push(promise);
+    }
+    // return Promise.all(promises);
+    return promises[0];
+    // return promises.reduce(
+    //   (acc, promise) =>
+    //     acc.then((data) => {
+    //       const r = data.concat(promise.);
+    //       return r;
+    //     }),
+    //   Promise.resolve([])
+    // );
+  }
+
+  async getCEP_BlockSamplesFromRepository(url: string): Promise<CEP_Block[]> {
     const result: any = this.githubFetchClient
-      .get(sampleUrl, {
+      .get(url, {
         headers: {
           "content-type": "application/json",
         },
@@ -259,12 +296,12 @@ export class AnalyticsService {
 
   async getCEPId(): Promise<string> {
     if (!this._cepId) {
-      this._cepId = this.getUncachedCEPId();
+      this._cepId = this.getUncachedCEP_Id();
     }
     return this._cepId;
   }
 
-  async getUncachedCEPId(): Promise<string> {
+  async getUncachedCEP_Id(): Promise<string> {
     // get name of microservice from cep endpoint
     const response: IFetchResponse = await this.fetchClient.fetch(
       `${PATH_CEP_STATUS}`,

@@ -112,7 +112,7 @@ export class BlockGridComponent implements OnInit {
   }
 
   async loadBlocks() {
-    this.blocks = await this.analyticsService.getCEP_Blocks();
+    this.blocks = await this.analyticsService.getLoadedCEP_Blocks();
   }
 
   ngOnDestroy() {}

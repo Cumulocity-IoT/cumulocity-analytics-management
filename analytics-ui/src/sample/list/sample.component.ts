@@ -64,6 +64,7 @@ export class SampleGridComponent implements OnInit {
       header: "Name",
       path: "name",
       dataType: ColumnDataType.TextLong,
+      filterable:true,
       gridTrackSize: "15%",
       visible: true,
     },
@@ -72,6 +73,7 @@ export class SampleGridComponent implements OnInit {
       header: "URL",
       path: "url",
       dataType: ColumnDataType.TextLong,
+      filterable:true,
       visible: true,
     },
   ];
@@ -175,7 +177,7 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
-    this.samples = await this.analyticsService.getBlock_Samples();
+    this.samples = await this.analyticsService.getCEP_BlockSamplesFromRepositories();
   }
 
   ngOnDestroy() {}
