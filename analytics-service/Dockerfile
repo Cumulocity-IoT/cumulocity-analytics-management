@@ -8,7 +8,7 @@ USER root
 
 RUN microdnf install git
 
-USER sagadmin
+# USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
 RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
 

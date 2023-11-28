@@ -4,24 +4,23 @@ import logging
 from github import Github
 import tempfile
 import os
+import sys
 import re
 import io
 import subprocess
 
-app = Flask(__name__)
-# initialize github endpoint
-gh = Github()
-# define work directory
-WORK_DIR_BASE = "/tmp/builder"
-# define logging
 logging.basicConfig(
     level=logging.INFO,
     format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
     datefmt="%d/%b/%Y %H:%M:%S",
 )
+
 logger = logging.getLogger("flask_wrapper")
 logger.setLevel(logging.INFO)
 
+app = Flask(__name__)
+# initialize github endpoint
+gh = Github()
 
 @app.route("/health")
 def health():
@@ -32,23 +31,19 @@ def health():
 def create_extension():
     # sample url
     # "https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples/blocks/CreateEvent.mon?ref=rel/10.18.0.x"
-    
+
     # extract parameter
     data = request.get_json()
-    result_extension_file = ''
-    result_extension_absolute = ''
+    result_extension_file = ""
+    result_extension_absolute = ""
     extension_name = data.get("extension_name", "")
     monitors = data.get("monitors", False)
-    
+
     if extension_name != "":
         with tempfile.TemporaryDirectory() as work_temp_dir:
             try:
-                logger.info(
-                    f"Create extension for: {extension_name} {monitors} "
-                )
-                logger.info(
-                    f"... in temp dir: {work_temp_dir}"
-                )
+                logger.info(f"Create extension for: {extension_name} {monitors} ")
+                logger.info(f"... in temp dir: {work_temp_dir}")
                 # step 1: download all monitors
                 for monitor in monitors:
                     organization, repository_name, file_path, file_name = extract_path(
@@ -92,7 +87,8 @@ def create_extension():
                 subprocess.call(
                     [
                         "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
-                        "build", "extension",
+                        "build",
+                        "extension",
                         "--input",
                         f"{work_temp_dir}",
                         "--output",
@@ -102,16 +98,17 @@ def create_extension():
 
                 size = os.path.getsize(result_extension_absolute)
                 logger.info(f"Returning: {result_extension_absolute} with size {size}")
-                
+
                 with open(result_extension_absolute, "rb") as extension_zip:
                     return send_file(
                         io.BytesIO(extension_zip.read()),
                         # attachment_filename=f"{extension_name}.zip",
                         mimetype="zip",
                     )
-                    
+
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
+
 
 def extract_path(path):
     # Extract information from the API URL
@@ -125,5 +122,6 @@ def extract_path(path):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=80, debug=False)
-    # app.run(host="0.0.0.0", port=1090, debug=False)
+    app.run(host='0.0.0.0', port=80, debug=False)
+
+
