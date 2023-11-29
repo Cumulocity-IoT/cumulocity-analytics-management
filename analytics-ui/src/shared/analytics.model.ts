@@ -73,7 +73,7 @@ export interface Repository {
   id: string;
   name: string;
   url: string;
-  // Add any other properties as needed
+  enabled: boolean;
 }
 
 export const PATH_CEP_BASE = "service/cep";

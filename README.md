@@ -2,10 +2,13 @@
 
 ## Content
 - [Overview](#overview)
-- [Installation](#installation-of-plugin-as-community-plugin)
+- [Upload Custom Extension](#upload-custom-extension)
 - [Build Custom Extension](#build-custom-extension)
+- [Manage Block Samples from Repositories](#manage-block-smaples-from-repositories)
+- [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
+  - [Create github access key as tenant option](#create-github-access-key-as-tenant-option)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 
 ## Overview
@@ -22,21 +25,33 @@ In addition a table lists all installed analytics blocks with the following info
 
 ![Block list](resources/images/block-list.png)
 
+## Upload Custom Extension
+
 After the delployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
 
 ![Use Extension](resources/images/analytics-builder.png)
-
-## Installation of plugin as community plugin
-
-The plugin is available as a community plugin and can be installed from the Administration -> Extensions UI:
-
-![Plugin installation](resources/images/plugin-installation.png)
 
 ## Build Custom Extension
 You can build a custom extension as a zip file by following the screenflow below:
 
 ![Build Custom Extensionn](resources/images/create-custom-extension-animated.gif)
 
+## Manage Block Samples from Repositories
+Block samples from github repositories can be viewed and used to build extensions online.
+You can manage the github repositories using the following UI:
+
+![Manage Repositories](resources/images/samples-manage-repository.png)
+
+In addition you can view the EPL (event processing language) source code:
+
+![View source code](resources/images/samples-view-code.png)
+
+
+## Installation of plugin as community plugin
+
+The plugin is available as a community plugin and can be installed from the Administration -> Extensions UI:
+
+![Plugin installation](resources/images/plugin-installation.png)
 
 ## Build Instructions
 
@@ -78,7 +93,9 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Extension Backend
 
-To build the backend as a microservice follow these steps:
+In order to use the microservice `analytics-ext-service` for retrieving sample blocks from github you have to generate an [access token](https://docs.github.com/en/enterprise-server@3.6/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for the github API, see as well [Create github access key as tenant option](#create-github-access-key-as-tenant-option) . The microservice downloads the smaple blocks from the configured repositories and builds an analtics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension)
+
+To build the backend as a microservice `analytics-ext-service` follow these steps:
 * run script: 
 ```
 # cd analytics-service

@@ -83,7 +83,10 @@ export class AnalyticsService {
     return result;
   }
 
-  async createExtensionsZIP(name: string, monitors: string[]): Promise<IFetchResponse> {
+  async createExtensionsZIP(
+    name: string,
+    monitors: string[]
+  ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
     return this.fetchClient.fetch(`${BASE_URL}/${ENDPOINT_EXTENSION}`, {
       headers: {
@@ -94,7 +97,7 @@ export class AnalyticsService {
         monitors: monitors,
       }),
       method: "POST",
-      responseType: 'blob' 
+      responseType: "blob",
     });
   }
 
@@ -149,9 +152,11 @@ export class AnalyticsService {
     const reps: Repository[] = await this.repositoryService.loadRepositories();
 
     for (let i = 0; i < reps.length; i++) {
-      const promise: Promise<CEP_Block[]> =
-        this.getCEP_BlockSamplesFromRepository(reps[i]);
-      promises.push(promise);
+      if (reps[i].enabled) {
+        const promise: Promise<CEP_Block[]> =
+          this.getCEP_BlockSamplesFromRepository(reps[i]);
+        promises.push(promise);
+      }
     }
     const combinedPromise = Promise.all(promises);
     const result = combinedPromise.then((data) => {
@@ -194,7 +199,7 @@ export class AnalyticsService {
           });
           return name;
         }),
-        catchError(this.handleError),
+        catchError(this.handleError)
       )
       .toPromise();
     return result;
@@ -203,16 +208,18 @@ export class AnalyticsService {
   private handleError(error: HttpErrorResponse) {
     if (error.status === 0) {
       // A client-side or network error occurred. Handle it accordingly.
-      console.error('An error occurred. Ignoring repository:', error.error);
+      console.error("An error occurred. Ignoring repository:", error.error);
     } else {
       // The backend returned an unsuccessful response code.
       // The response body may contain clues as to what went wrong.
       console.error(
-        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `, error.error);
+        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `,
+        error.error
+      );
     }
     // Return an observable with a user-facing error message.
     //return throwError(() => new Error('Something bad happened; please try again later.'));
-    return EMPTY
+    return EMPTY;
   }
 
   async getBlock_Sample_Content(name: string): Promise<string> {

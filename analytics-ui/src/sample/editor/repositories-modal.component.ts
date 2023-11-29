@@ -21,6 +21,7 @@ import { RepositoryService } from "./repository.service";
             <th>#</th>
             <th>Name</th>
             <th>Url</th>
+            <th>Enabled</th>
             <th>Action</th>
           </tr>
         </thead>
@@ -32,8 +33,15 @@ import { RepositoryService } from "./repository.service";
             <td style="padding-top: 4px" width="15%">
               {{ repository.name }}
             </td>
-            <td style="padding-top: 4px" width="70%">
+            <td style="padding-top: 4px" width="65%">
               {{ repository.url }}
+            </td>
+            <td style="padding-top: 8px" width="5%">
+              <i
+                style="text-align: center; width: 100%"
+                [c8yIcon]="!repository?.enabled ? 'circle-o' : 'plus-circle-o'"
+                class="m-r-5"
+              ></i>
             </td>
             <td width="10%" style="padding-top: 0px; padding-bottom: 0px">
               <button
@@ -51,6 +59,14 @@ import { RepositoryService } from "./repository.service";
               >
                 <i c8yIcon="trash-o" class="text-danger"></i>
                 <span class="sr-only" translate>Remove</span>
+              </button>
+              <button
+                title="{{ 'Toggle Activation' | translate }}"
+                class="btn btn-icon btn-clean"
+                (click)="toogleActivation(repository)"
+              >
+                <i c8yIcon="toggle-on" class="text-danger"></i>
+                <span class="sr-only" translate>Toogle activation</span>
               </button>
             </td>
           </tr>
@@ -119,6 +135,7 @@ export class RepositoriesModalComponent implements OnInit {
     if (this.repositoryForm.valid) {
       const newRepository: Repository = this.repositoryForm.value;
       newRepository.id = uuidCustom();
+      newRepository.enabled = true;
       this.repositoryService.addRepository(newRepository);
       this.repositoryForm.reset();
     }
@@ -126,6 +143,11 @@ export class RepositoriesModalComponent implements OnInit {
 
   editRepository(repository: Repository): void {
     this.repositoryForm.patchValue(repository);
+  }
+
+  toogleActivation(repository: Repository): void {
+    repository.enabled = !repository.enabled;
+    this.repositoryService.updateRepository(repository);
   }
 
   updateRepository(): void {
