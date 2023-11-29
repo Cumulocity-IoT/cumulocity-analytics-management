@@ -73,7 +73,7 @@ export class CreateExtensionComponent implements OnInit {
             templateOptions: {
               label: "Upload Extension",
               description:
-              "The generated extension for the selected blocks is uploaded. After initiating a restart they are available in the Analytics Builder model pallet.",
+                "The generated extension for the selected blocks is uploaded. After initiating a restart they are available in the Analytics Builder model pallet.",
             },
           },
         ],
@@ -99,10 +99,17 @@ export class CreateExtensionComponent implements OnInit {
     const blob = new Blob([binary], {
       type: "application/x-zip-compressed",
     });
-    saveAs(blob, `${this.configuration.name}.zip`);
-    this.alertService.success(
-      `Created extension ${this.configuration.name}.zip!`
-    );
+
+    if (!this.configuration.upload) {
+      saveAs(blob, `${this.configuration.name}.zip`);
+      this.alertService.success(
+        `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
+      );
+    } else {
+      this.alertService.success(
+        `Uploaded extension ${this.configuration.name}.zip. Please deploy from UI.`
+      );
+    }
     this.closeSubject.next(true);
   }
 }

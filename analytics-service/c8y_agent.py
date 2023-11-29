@@ -22,7 +22,7 @@ class C8YAgent:
         return self.github_access_token
     def upload_extension(self, name ,ext_file):
         b = Binary(c8y=self.c8y_client,type='ab_ext_bin',name=name,file=ext_file,pas_extension={}).create()
-        self._logger.info(str(b))
+        self._logger.info(f"Uploaded extension {name} as {b.id}")
 
 
 

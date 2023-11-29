@@ -70,15 +70,14 @@ def create_extension():
                     # get the contents of the file
                     try:
                         # file_content = repo.get_contents(file_path).decoded_content
-                        file_name = monitor.rsplit("/", 1)[-1]
-                        logger.info(f"filename: {file_name}")
-                        r = requests.get(monitor, allow_redirects=True)
+                        file_name = extract_raw_path(monitor)
+                        monitor_code = requests.get(monitor, allow_redirects=True)
 
                         # Combine output directory and filename
                         logger.debug(f"File downloaded and saved to: {file_name}")
 
                         named_file = open(os.path.join(work_temp_dir, file_name), "wb")
-                        named_file.write(r.content)
+                        named_file.write(monitor_code.content)
                         named_file.close()
 
                     except Exception as e:
@@ -122,11 +121,11 @@ def create_extension():
                         )
                     else:
                         agent.upload_extension(extension_name, extension_zip)
-                
+                        '', 201     
 
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
-                "Bad request: {+ str(e)}", 400
+                f"Bad request: {str(e)}", 400
 
 
 def extract_path(path):
@@ -138,6 +137,10 @@ def extract_path(path):
     file_path = "/".join(parts[7:-2])  # Extract path excluding "contents" and "ref"
     file_name = parts[-3]  # Extract path excluding "contents" and "ref"
     return organization, repository_name, file_path, file_name
+
+def extract_raw_path(path):
+    # Extract information from the raw API URL
+    return path.rsplit("/", 1)[-1]
 
 
 if __name__ == "__main__":
