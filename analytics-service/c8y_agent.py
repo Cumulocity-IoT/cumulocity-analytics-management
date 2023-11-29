@@ -1,7 +1,7 @@
 import logging
 from dotenv import load_dotenv
 from c8y_api.app import SimpleCumulocityApp
-
+from c8y_api.model import Binary
 class C8YAgent:
 
     def __init__(self):
@@ -14,11 +14,16 @@ class C8YAgent:
         self.c8y_client = SimpleCumulocityApp()
 
         # load config values from tenant options
-        self.github_access_token = self.c8y_client.tenant_options.get_value(
-            "github", "credentials.access_token"
-        )
+        # self.github_access_token = self.c8y_client.tenant_options.get_value(
+        #     "github", "credentials.access_token"
+        # )
 
     def get_github_access_token(self):
         return self.github_access_token
+    def upload_extension(self, name ,ext_file):
+        b = Binary(c8y=self.c8y_client,type='ab_ext_bin',name=name,file=ext_file,pas_extension={}).create()
+        self._logger.info(str(b))
+
+
 
  

@@ -21,7 +21,8 @@ logger = logging.getLogger("flask_wrapper")
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-#agent = C8YAgent()
+agent = C8YAgent()
+
 #access_token = agent.get_github_access_token()
 # logger.info(
 #     f"Github access token: {access_token}"
@@ -46,7 +47,8 @@ def create_extension():
     result_extension_file = ""
     result_extension_absolute = ""
     extension_name = data.get("extension_name", "")
-    monitors = data.get("monitors", False)
+    monitors = data.get("monitors", [])
+    upload = data.get("upload", False)
 
     if extension_name != "":
         with tempfile.TemporaryDirectory() as work_temp_dir:
@@ -81,7 +83,7 @@ def create_extension():
 
                     except Exception as e:
                         logger.error(
-                            f"Error downloading file: {file_path} {monitor} {e}"
+                            f"Error downloading file:  {monitor} {e}"
                         )
 
                 files_in_directory = [
@@ -110,17 +112,21 @@ def create_extension():
 
                 size = os.path.getsize(result_extension_absolute)
                 logger.info(f"Returning: {result_extension_absolute} with size {size}")
-
+                
                 with open(result_extension_absolute, "rb") as extension_zip:
-                    return send_file(
-                        io.BytesIO(extension_zip.read()),
-                        # attachment_filename=f"{extension_name}.zip",
-                        mimetype="zip",
-                    )
+                    if not upload:
+                        return send_file(
+                            io.BytesIO(extension_zip.read()),
+                            # attachment_filename=f"{extension_name}.zip",
+                            mimetype="zip",
+                        )
+                    else:
+                        agent.upload_extension(extension_name, extension_zip)
+                
 
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
-                f"Bad request: {+ str(e)}", 400
+                "Bad request: {+ str(e)}", 400
 
 
 def extract_path(path):

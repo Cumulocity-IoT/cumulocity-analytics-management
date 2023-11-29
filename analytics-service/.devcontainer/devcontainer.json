@@ -9,9 +9,11 @@
 		"dockerfile": "../Dockerfile"
 	},
 	"features": {
-	//	"ghcr.io/devcontainers/features/python:1": {}
+		//"ghcr.io/devcontainers/features/python:1": {}
 	},
-	"runArgs": ["--env-file",".env"],
+	"runArgs": [
+        "--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
+    ], 
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
