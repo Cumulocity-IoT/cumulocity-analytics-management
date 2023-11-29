@@ -91,6 +91,7 @@ export class AnalyticsService {
       body: JSON.stringify({
         extension_name: name,
         monitors: monitors,
+        upload: false,
       }),
       method: "POST",
       responseType: "blob",
