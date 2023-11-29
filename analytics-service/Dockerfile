@@ -6,7 +6,7 @@ WORKDIR /apama_work
 
 USER root
 
-RUN microdnf install git
+RUN microdnf install git tar
 # RUN microdnf install unzip
 
 # USER sagadmin

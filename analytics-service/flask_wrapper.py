@@ -1,14 +1,15 @@
 from requests import HTTPError
+import requests
 from flask import Flask, request, jsonify, send_file
 import logging
-from github import Github
+#from github import Github
 import tempfile
 import os
 import re
 import io
 import subprocess
 from c8y_agent import C8YAgent
-from github import Auth
+#from github import Auth
 
 # define logging
 logging.basicConfig(
@@ -20,18 +21,20 @@ logger = logging.getLogger("flask_wrapper")
 logger.setLevel(logging.INFO)
 
 app = Flask(__name__)
-agent = C8YAgent()
-access_token = agent.get_github_access_token()
+#agent = C8YAgent()
+#access_token = agent.get_github_access_token()
 # logger.info(
 #     f"Github access token: {access_token}"
 # )
-auth = Auth.Token(access_token)
+#auth = Auth.Token(access_token)
 # initialize github endpoint
-gh = Github(auth=auth)
+#gh = Github(auth=auth)
+
 
 @app.route("/health")
 def health():
     return '{"status":"UP"}'
+
 
 @app.route("/extension", methods=["POST"])
 def create_extension():
@@ -52,25 +55,28 @@ def create_extension():
                 logger.info(f"... in temp dir: {work_temp_dir}")
                 # step 1: download all monitors
                 for monitor in monitors:
-                    organization, repository_name, file_path, file_name = extract_path(
-                        monitor
-                    )
-                    logger.info(
-                        f"File ( path / file_name ) : ({file_path} / {file_name} )"
-                    )
+                    #organization, repository_name, file_path, file_name = extract_path(
+                    #    monitor
+                    #)
+                    # logger.info(
+                    #     f"File ( path / file_name ) : ({file_path} / {file_name} )"
+                    # )
 
                     # get repository
-                    repo = gh.get_repo(f"{organization}/{repository_name}")
+                    #repo = gh.get_repo(f"{organization}/{repository_name}")
 
                     # get the contents of the file
                     try:
-                        file_content = repo.get_contents(file_path).decoded_content
+                        # file_content = repo.get_contents(file_path).decoded_content
+                        file_name = monitor.rsplit("/", 1)[-1]
+                        logger.info(f"filename: {file_name}")
+                        r = requests.get(monitor, allow_redirects=True)
 
                         # Combine output directory and filename
                         logger.debug(f"File downloaded and saved to: {file_name}")
 
                         named_file = open(os.path.join(work_temp_dir, file_name), "wb")
-                        named_file.write(file_content)
+                        named_file.write(r.content)
                         named_file.close()
 
                     except Exception as e:
@@ -117,7 +123,6 @@ def create_extension():
                 f"Bad request: {+ str(e)}", 400
 
 
-
 def extract_path(path):
     # Extract information from the API URL
     delimiters = r"[/?]"
@@ -128,5 +133,6 @@ def extract_path(path):
     file_name = parts[-3]  # Extract path excluding "contents" and "ref"
     return organization, repository_name, file_path, file_name
 
+
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=80, debug=False)
+    app.run(host="0.0.0.0", port=80, debug=False)
