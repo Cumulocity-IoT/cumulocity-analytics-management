@@ -113,9 +113,9 @@ jobs:
     #if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
     name: Release assets
     runs-on: ubuntu-latest
-    # defaults:
-    #   run:
-    #     working-directory: ./analytics-ui
+    defaults:
+      run:
+        working-directory: ./analytics-ui
     timeout-minutes: 15
     steps:
       - name: Checkout
