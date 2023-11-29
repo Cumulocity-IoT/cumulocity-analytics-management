@@ -79,11 +79,10 @@ jobs:
         id: save-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
 
-      - name: Run the scripts
+      - name: Build backend
         run: |
           ./build.sh analytics-ext-service  ${{ steps.save-version.outputs.version }}
         working-directory: ./analytics-service
-
 
   release:
     name: Release
@@ -127,7 +126,7 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Run the scripts
+      - name: Build backend
         run: |
           ./build.sh analytics-ext-service  ${{ steps.save-version.outputs.version }}
         working-directory: ./analytics-service
@@ -173,6 +172,15 @@ jobs:
         with:
           files: analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.release.outputs.version }}.zip
           tag_name: v${{ needs.release.outputs.version }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+  
+      - name: Build backend
+        run: |
+          ./build.sh analytics-ext-service  ${{ needs.release.outputs.version}}
+        working-directory: ./analytics-service
 
       - name: Release Backend
         uses: softprops/action-gh-release@v1
