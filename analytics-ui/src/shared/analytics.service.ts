@@ -81,6 +81,7 @@ export class AnalyticsService {
 
   async createExtensionsZIP(
     name: string,
+    upload: boolean,
     monitors: string[]
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
@@ -90,8 +91,8 @@ export class AnalyticsService {
       },
       body: JSON.stringify({
         extension_name: name,
+        upload: upload,
         monitors: monitors,
-        upload: false,
       }),
       method: "POST",
       responseType: "blob",

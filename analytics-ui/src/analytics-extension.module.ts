@@ -22,7 +22,7 @@ import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
 import { SampleGridComponent } from "./sample/list/sample.component";
 import { HttpClientModule } from "@angular/common/http";
-import { NameExtensionComponent } from "./wizard/name-extension-modal.component";
+import { CreateExtensionComponent } from "./wizard/create-extension-modal.component";
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
@@ -60,7 +60,7 @@ const routes: Route[] = [
     AnalyticsExtensionCardComponent,
     AnalyticsAddExtensionComponent,
     AddExtensionWizardComponent,
-    NameExtensionComponent,
+    CreateExtensionComponent,
     BlockGridComponent,
     SampleGridComponent,
     EditorStepperComponent,
