@@ -140,12 +140,12 @@ jobs:
       - name: Zip build
         run: |
           cd dist/apps/sag-ps-pkg-analytics-extension
-          zip -r -q ../../../cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip *
+          zip -r -q ../../../sag-ps-pkg-analytics-extension-${{ needs.release.outputs.version }}.zip *
           cd ../../..
           rm -r dist/apps
   
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
-          files: analytics-ui/cumulocity-administration-plugins-${{ needs.release.outputs.version }}.zip
+          files: analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.release.outputs.version }}.zip
           tag_name: v${{ needs.release.outputs.version }}

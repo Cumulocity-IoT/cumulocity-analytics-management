@@ -25,13 +25,9 @@ import {
   CEP_Block,
   CEP_Extension,
   CEP_Metadata,
-  GITHUB_BASE,
   PATH_CEP_EN,
   PATH_CEP_METADATA_EN,
   PATH_CEP_STATUS,
-  REPO_SAMPLES_OWNER,
-  REPO_SAMPLES_NAME,
-  REPO_SAMPLES_PATH,
   STATUS_MESSAGE_01,
   BASE_URL,
   ENDPOINT_EXTENSION,
@@ -167,18 +163,6 @@ export class AnalyticsService {
       return flattened;
     });
     return result;
-    // const result = promises.reduce(
-    //   (acc, promise) =>
-    //     acc.then((data) => {
-    //       promise.then((blocks) => {
-    //         data.push(...blocks);
-    //         return data;
-    //       });
-    //       return data;
-    //     }),
-    //   Promise.resolve([]) // as Promise<CEP_Block[]>
-    // );
-    // return result;
   }
 
   async getCEP_BlockSamplesFromRepository(
@@ -196,6 +180,14 @@ export class AnalyticsService {
           name.forEach((b) => {
             b.id = b.sha;
             b.repositoryName = rep.name;
+            b.custom = true;
+            b.downloadUrl = b.download_url;
+            delete b.download_url;
+            delete b.html_url;
+            delete b.git_url;
+            delete b._links;
+            delete b.size;
+            delete b.sha;
           });
           return name;
         }),
@@ -217,27 +209,19 @@ export class AnalyticsService {
         error.error
       );
     }
-    // Return an observable with a user-facing error message.
-    //return throwError(() => new Error('Something bad happened; please try again later.'));
     return EMPTY;
   }
 
-  async getBlock_Sample_Content(name: string): Promise<string> {
-    const sampleUrl = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}/${name}`;
+  async getCEP_BlockContent(downloadUrl: string): Promise<string> {
     const result: any = this.githubFetchClient
-      .get(sampleUrl, {
+      .get(downloadUrl, {
         headers: {
-          //    "content-type": "application/json",
-          "content-type": "application/text",
-          Accept: "application/vnd.github.raw",
+          // "content-type": "application/json",
+          "Content-type": "application/text",
+           Accept: "application/vnd.github.raw",
         },
         responseType: "text",
       })
-      // .pipe(
-      //   map((data) => {
-      //     const name = _.values(data);
-      //     return name;
-      //   }),)
       .toPromise();
     return result;
   }
@@ -270,7 +254,7 @@ export class AnalyticsService {
     return data;
   }
 
-  async getCEPId(): Promise<string> {
+  async getCEP_Id(): Promise<string> {
     if (!this._cepId) {
       this._cepId = this.getUncachedCEP_Id();
     }
@@ -309,7 +293,7 @@ export class AnalyticsService {
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
-    const cepId = await this.getCEPId();
+    const cepId = await this.getCEP_Id();
     console.log("Started subscription:", cepId);
 
     const sub = this.realtime.subscribe(

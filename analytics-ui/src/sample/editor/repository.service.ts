@@ -5,6 +5,9 @@ import { BehaviorSubject, Observable } from "rxjs";
 import {
   ANALYTICS_REPOSITORIES_TYPE,
   REPO_SAMPLES_BLOCKSDK,
+  REPO_SAMPLES_CONTRIB_BLOCK,
+  REPO_SAMPLES_CONTRIB_CUMULOCITY,
+  REPO_SAMPLES_CONTRIB_SIMULATION,
   Repository,
   uuidCustom,
 } from "../../shared/analytics.model";
@@ -81,6 +84,25 @@ export class RepositoryService {
           id: uuidCustom(),
           name: "Block SDK Samples",
           url: REPO_SAMPLES_BLOCKSDK,
+          enabled: true
+        },
+        {
+          id: uuidCustom(),
+          name: "Contrib Samples Block",
+          url: REPO_SAMPLES_CONTRIB_BLOCK,
+          enabled: false
+        },
+        {
+          id: uuidCustom(),
+          name: "Contrib Samples Simulation-Block",
+          url: REPO_SAMPLES_CONTRIB_SIMULATION,
+          enabled: false
+        },
+        {
+          id: uuidCustom(),
+          name: "Contrib Samples Cumulocity-Block",
+          url: REPO_SAMPLES_CONTRIB_CUMULOCITY,
+          enabled: false
         },
       ] as Repository[];
       this.inventoryService.create(reposMO);
