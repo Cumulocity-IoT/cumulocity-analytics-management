@@ -36,7 +36,7 @@ import {
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
 import { BsModalService } from "ngx-bootstrap/modal";
-import { NameExtensionComponent } from "../../wizard/name-extension-modal.component";
+import { CreateExtensionComponent } from "../../wizard/create-extension-modal.component";
 import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoriesModalComponent } from "../editor/repositories-modal.component";
 import { RepositoryService } from "../editor/repository.service";
@@ -175,7 +175,8 @@ export class SampleGridComponent implements OnInit {
       monitors
     };
 
-    const modalRef = this.bsModalService.show(NameExtensionComponent, {
+    const modalRef = this.bsModalService.show(CreateExtensionComponent, {
+      class: "modal-lg",
       initialState,
     });
 
