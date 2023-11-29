@@ -122,8 +122,8 @@ export class SampleGridComponent implements OnInit {
 
   async viewMonitor(block: CEP_Block) {
     try {
-      this.source = await this.analyticsService.getBlock_Sample_Content(
-        block.name
+      this.source = await this.analyticsService.getCEP_BlockContent(
+        block.url
       );
     } catch (error) {
       console.log("Something happended:", error);

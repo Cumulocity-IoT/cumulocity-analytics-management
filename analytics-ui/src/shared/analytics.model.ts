@@ -59,12 +59,14 @@ export interface CEP_Extension {
 
 export interface CEP_Block {
   id: string;
+  name: string;
   producesOutput: string;
   description: string;
   url: string;
+  downloadUrl: string;
+  path: string;
   custom: boolean;
   extension: string;
-  name: string;
   repositoryName: string;
   category: Category;
 }
@@ -86,10 +88,11 @@ export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
 
 export const GITHUB_BASE = "https://api.github.com";
-export const REPO_SAMPLES_NAME = "apama-analytics-builder-block-sdk";
 export const REPO_SAMPLES_OWNER = "SoftwareAG";
-export const REPO_SAMPLES_PATH = "samples/blocks";
-export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/${REPO_SAMPLES_NAME}/contents/${REPO_SAMPLES_PATH}`;
+export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
+export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
+export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
+export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
 
 export const BASE_URL = "service/analytics-ext-service";
 export const ENDPOINT_EXTENSION = "extension";
