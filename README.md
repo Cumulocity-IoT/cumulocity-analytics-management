@@ -8,7 +8,6 @@
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
-  - [Create github access key as tenant option](#create-github-access-key-as-tenant-option)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 
 ## Overview
@@ -32,9 +31,9 @@ After the delployment (restart of streaming analytics) the Block will be availab
 ![Use Extension](resources/images/analytics-builder.png)
 
 ## Build Custom Extension
-You can build a custom extension as a zip file by following the screenflow below:
+You can build and uploadas a custom extension by following the screenflow below:
 
-![Build Custom Extensionn](resources/images/create-custom-extension-animated.gif)
+![Build Custom Extensionn](resources/images/create-extension-upload-animated.gif)
 
 ## Manage Block Samples from Repositories
 Block samples from github repositories can be viewed and used to build extensions online.
@@ -93,7 +92,8 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Extension Backend
 
-In order to use the microservice `analytics-ext-service` for retrieving sample blocks from github you have to generate an [access token](https://docs.github.com/en/enterprise-server@3.6/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens) for the github API, see as well [Create github access key as tenant option](#create-github-access-key-as-tenant-option) . The microservice downloads the smaple blocks from the configured repositories and builds an analtics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension)
+ The microservice downloads the sample blocks from the configured repositories and builds an analtics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension).
+ You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
 
 To build the backend as a microservice `analytics-ext-service` follow these steps:
 * run script: 
@@ -111,12 +111,12 @@ For the first deployment you have to use:
 # c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
 ```
 
-### Create github access key as tenant option
+<!-- ### Create github access key as tenant option
 
 ```
 #  c8y tenantoptions create --category "github" --key "credentials.access_token" --value "XXX" 
 
-```
+``` -->
 ## Analytics Builder Block SDK
 
 Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
