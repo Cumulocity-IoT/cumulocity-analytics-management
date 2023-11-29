@@ -99,14 +99,14 @@ To build the backend as a microservice `analytics-ext-service` follow these step
 * run script: 
 ```
 # cd analytics-service
-# ./build.sh analytics-ext-service XXXX 
+# ./build.sh analytics-ext-service VERSION 
 ```
 * upload created image:
 ```
 # c8y microservices list --name analytics-ext-service | c8y microservices createBinary --file dist/analytics-ext-service.zip --timeout 360
 ```
 > **NOTE**
-FOr the first deployment you have to use:
+For the first deployment you have to use:
 ```
 # c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
 ```
