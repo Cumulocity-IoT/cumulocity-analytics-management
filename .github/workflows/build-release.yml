@@ -131,11 +131,12 @@ jobs:
         with:
           name: build-artifact-service
           path: |
-            analytics-service/dist/analytics-ext-service.zip
+            analytics-service/analytics-ext-service.zip
       - name: Release Backend
         uses: softprops/action-gh-release@v1
         with:
-          files: analytics-service/dist/analytics-ext-service.zip
+          files: |
+            analytics-service/*
           tag_name: v${{ needs.build_ui.outputs.version }}
 
       - name: Download build artifact UI
@@ -143,12 +144,13 @@ jobs:
         with:
           name: build-artifact-ui
           path: |
-            analytics-ui/dist/build.zip 
+            analytics-ui/build.zip 
       - name: Rename file 
-        run: mv analytics-ui/dist/build.zip  analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+        run: mv analytics-ui/build.zip  analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
 
       - name: Release UI
         uses: softprops/action-gh-release@v1
         with:
-          files: analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+          files: |
+            analytics-ui/*
           tag_name: v${{ needs.build_ui.outputs.version }}
