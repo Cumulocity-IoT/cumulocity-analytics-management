@@ -27,7 +27,7 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model
             class="btn btn-default"
             title="{{ 'Create Extension' | translate }}"
             (click)="createExtension()"
-            [attr.disabled]="(backendDeployed$ | async) === false"
+            [disabled]="((backendDeployed$ | async) === false) || !configFormly.valid"
           >
             <i c8yIcon="plugin"></i>
             {{ "Create Extension" | translate }}
@@ -98,7 +98,7 @@ export class CreateExtensionComponent implements OnInit {
       this.backendDeployed$.next(status);
       if (!status) {
         this.alertService.warning(
-          `You can't build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}`
+          `You can not build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
         );
       }
     });
