@@ -1,13 +1,13 @@
 import { NgModule } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { Route, RouterModule as ngRouterModule } from '@angular/router';
+import { Route, RouterModule as ngRouterModule } from "@angular/router";
 import {
   CoreModule,
   hookNavigator,
   hookRoute,
   hookTab,
   hookWizard,
-  RouterModule
+  RouterModule,
 } from "@c8y/ngx-components";
 import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
 import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
@@ -27,6 +27,8 @@ import { EditorStepperComponent } from "./sample/editor/editor-stepper.component
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
 import { RepositoryService } from "./sample/editor/repository.service";
+import { FORMLY_CONFIG } from "@ngx-formly/core";
+import { C8YSwitchField } from "./shared/c8y-switch-field";
 
 const routes: Route[] = [
   {
@@ -65,7 +67,8 @@ const routes: Route[] = [
     SampleGridComponent,
     EditorStepperComponent,
     EditorModalComponent,
-    RepositoriesModalComponent
+    RepositoriesModalComponent,
+    C8YSwitchField
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -76,7 +79,7 @@ const routes: Route[] = [
     SampleGridComponent,
     EditorStepperComponent,
     EditorModalComponent,
-    RepositoriesModalComponent
+    RepositoriesModalComponent,
   ],
   providers: [
     AnalyticsService,
@@ -101,6 +104,13 @@ const routes: Route[] = [
       component: SampleGridComponent,
     }),
     hookTab(AnalyticsTabFactory),
+    {
+      provide: FORMLY_CONFIG,
+      multi: true,
+      useValue: {
+        types: [{ name: "custom-switch", component: C8YSwitchField }],
+      },
+    },
   ],
 })
 export class AnalyticsExtensionModule {

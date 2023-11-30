@@ -96,6 +96,7 @@ export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMP
 
 export const BASE_URL = "service/analytics-ext-service";
 export const ENDPOINT_EXTENSION = "extension";
+export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
 export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";
 
 export function uuidCustom(): string {
