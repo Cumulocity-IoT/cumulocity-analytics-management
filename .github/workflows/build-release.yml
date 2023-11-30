@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
   push:
     # Sequence of patterns matched against refs/tags
-    # tags:
-    # - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-    branches:
-      - main
-      - next
-      - beta
-      - '*.x'
-      - '*.*.x'
+    tags:
+    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
+    # branches:
+    #   - main
+    #   - next
+    #   - beta
+    #   - '*.x'
+    #   - '*.*.x'
 
 permissions:
   contents: write
@@ -23,21 +23,28 @@ permissions:
 
 jobs:
   # This workflow contains a single job called "build"
-  build:
+  build_ui:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
     timeout-minutes: 8
     defaults:
       run:
         working-directory: ./analytics-ui
+    outputs:
+      version: ${{ steps.save-version.outputs.version }}
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
+      - name: Save Version
+        id: save-version
+        run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
+
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          ref: v${{ steps.save-version.outputs.version  }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -62,65 +69,31 @@ jobs:
           cd ../../..
           rm -r dist/apps
 
-      - name: Upload build artifact
+      - name: Upload build artifact UI
         uses: actions/upload-artifact@v3
         with:
-          name: build
+          name: build-artifact-ui
           if-no-files-found: error
-          retention-days: 5
+          retention-days: 1
           path: |
            analytics-ui/dist/build.zip
 
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
+  build_service:
+    needs: [build_ui]
 
-      - name: Save Version
-        id: save-version
-        run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
-
-      - name: Build backend
-        run: |
-          ./build.sh analytics-ext-service  ${{ steps.save-version.outputs.version }}
-        working-directory: ./analytics-service
-
-  release:
-    name: Release
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    timeout-minutes: 8
     defaults:
       run:
-        working-directory: ./analytics-ui
-    needs: [build]
-    timeout-minutes: 8
-    outputs:
-      initial-version: ${{ steps.save-initial-version.outputs.version }}
-      version: ${{ steps.save-version.outputs.version }}
+        working-directory: ./analytics-service
+        
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 'lts/*'
-
-      - name: Save initial Version
-        id: save-initial-version
-        run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Release
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
-
-      - name: Save Version
-        id: save-version
-        run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
+      # start building backend
+      # - name: Save Version
+      #   id: save-version
+      #   run: echo "version=$(cat ../analytics-ui/package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
 
       - name: Set up Docker Buildx
         id: buildx
@@ -128,62 +101,48 @@ jobs:
 
       - name: Build backend
         run: |
-          ./build.sh analytics-ext-service  ${{ steps.save-version.outputs.version }}
-        working-directory: ./analytics-service
+          ./build.sh analytics-ext-service  ${{ needs.build_ui.outputs.version }}
+
+      - name: Upload build artifact service
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifact-service
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            ./analytics-service/dist/analytics-ext-service.zip
+  
 
   release-assets:
-    needs: [release]
-    #if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
+    needs: [build_ui, build_service]
+    # if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
     name: Release assets
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./analytics-ui
     timeout-minutes: 15
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - name: Download artifact service
+        uses: actions/download-artifact@v3
         with:
-          fetch-depth: 0
-          ref: v${{ needs.release.outputs.version }}
-  
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json' 
-  
-      - name: Install dependencies
-        run: npm ci
-  
-      - name: Build
-        run: npm run build:ci
-  
-      - name: Zip build
-        run: |
-          cd dist/apps/sag-ps-pkg-analytics-extension
-          zip -r -q ../../../sag-ps-pkg-analytics-extension-${{ needs.release.outputs.version }}.zip *
-          cd ../../..
-          rm -r dist/apps
-  
-      - name: Release UI
-        uses: softprops/action-gh-release@v1
-        with:
-          files: analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.release.outputs.version }}.zip
-          tag_name: v${{ needs.release.outputs.version }}
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
-  
-      - name: Build backend
-        run: |
-          ./build.sh analytics-ext-service  ${{ needs.release.outputs.version}}
-        working-directory: ./analytics-service
-
+          name: build-artifact-service
+          path: |
+            ./analytics-service/dist/analytics-ext-service.zip
       - name: Release Backend
         uses: softprops/action-gh-release@v1
         with:
           files: analytics-service/dist/analytics-ext-service.zip
-          tag_name: v${{ needs.release.outputs.version }}
+          tag_name: v${{ needs.build_ui.outputs.version }}
+
+      - name: Download build artifact UI
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifact-ui
+          path: |
+            ./analytics-ui/dist/build.zip 
+      - name: Rename file 
+        run: mv ./analytics-ui/dist/build.zip  ./analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+
+      - name: Release UI
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+          tag_name: v${{ needs.build_ui.outputs.version }}
