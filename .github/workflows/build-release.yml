@@ -130,19 +130,17 @@ jobs:
         with:
           name: build-artifact-service
           path: |
-            ./analytics-ext-service.zip
+            ./analytics-service
       - name: Debug file 
         run: | 
-          ls -lah .
+          ls -lah ./analytics-service
           pwd
 
       - name: Release Backend
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            ./analytics-ext-service.zip
-            analytics-ext-service.zip
-            /home/runner/work/cumulocity-analytics-management/cumulocity-analytics-management/analytics-ext-service.zip
+            ./analytics-service/*.zip
           tag_name: v${{ needs.build_ui.outputs.version }}
 
       - name: Download build artifact UI
@@ -150,18 +148,16 @@ jobs:
         with:
           name: build-artifact-ui
           path: |
-            ./build.zip 
+           ./analytics-ui 
       - name: Rename file 
         run: | 
-          mv ./build.zip  ./sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
-          ls -lah .
+          mv ./analytics-ui/build.zip  ./analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+          ls -lah ./analytics-ui
           pwd
 
       - name: Release UI
         uses: softprops/action-gh-release@v1
         with:
           files: 
-            ./sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
-            sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
-            /home/runner/work/cumulocity-analytics-management/cumulocity-analytics-management/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+            ./analytics-ui/*.zip
           tag_name: v${{ needs.build_ui.outputs.version }}
