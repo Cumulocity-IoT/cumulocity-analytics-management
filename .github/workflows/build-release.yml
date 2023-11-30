@@ -94,7 +94,7 @@ jobs:
       # - name: Save Version
       #   id: save-version
       #   run: echo "version=$(cat ../analytics-ui/package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
-      
+
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -135,7 +135,7 @@ jobs:
       - name: Release Backend
         uses: softprops/action-gh-release@v1
         with:
-          files: analytics-service/dist/analytics-ext-service.zip
+          files: ./analytics-service/dist/analytics-ext-service.zip
           tag_name: v${{ needs.build_ui.outputs.version }}
 
       - name: Download build artifact UI
