@@ -23,15 +23,6 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 agent = C8YAgent()
 
-#access_token = agent.get_github_access_token()
-# logger.info(
-#     f"Github access token: {access_token}"
-# )
-#auth = Auth.Token(access_token)
-# initialize github endpoint
-#gh = Github(auth=auth)
-
-
 @app.route("/health")
 def health():
     return '{"status":"UP"}'

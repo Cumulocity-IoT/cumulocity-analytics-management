@@ -11,15 +11,24 @@
 	"features": {
 		//"ghcr.io/devcontainers/features/python:1": {}
 	},
-	"runArgs": [
-        "--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
-    ], 
+	// "runArgs": [
+        // "--env-file", "${localWorkspaceFolder}/.devcontainer/.env"
+    // ],
+	"customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python"
+            ]
+        }
+    }, 
+	"postAttachCommand": "python3 .devcontainer/get_service_creds.py",
+
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": ["80:1080"],
 
 	// Uncomment the next line to run commands after the container is created.
 
