@@ -112,11 +112,11 @@ def create_extension():
                         )
                     else:
                         agent.upload_extension(extension_name, extension_zip)
-                        '', 201     
+                        return '', 201
 
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
-                f"Bad request: {str(e)}", 400
+                return f"Bad request: {str(e)}", 400
 
 
 def extract_path(path):
