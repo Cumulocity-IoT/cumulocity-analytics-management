@@ -49,12 +49,12 @@ In addition you can view the EPL (event processing language) source code:
 ## Installation of plugin as community plugin
 
 > **NOTE**
-This solution consists of two part:
-* backend as a mictoservice, which can be found in the release section of the github project: [analytics-ext-service.zip
+This solution consists of two parts:
+* the backend as a microservice, which can be found in the release section of the github project: [analytics-ext-service.zip
 ](https://github.com/SoftwareAG/cumulocity-analytics-management/releases)
 
   If the microservice is not deployed you **can't** build customes extensions.
-* web plugin that is installed using, see installation below
+* the web plugin that is installed using the Cumulocity Administration UI (Administration -> Extensions -> Analytics Extension), see installation below:
 
 The plugin is available as a community plugin and can be installed from the Administration -> Extensions -> Analytics Extension:
 
