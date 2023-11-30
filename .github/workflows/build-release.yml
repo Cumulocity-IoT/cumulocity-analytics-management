@@ -116,7 +116,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-            ./analytics-service/dist/analytics-ext-service.zip
+            ./dist/analytics-ext-service.zip
 
   release-assets:
     needs: [build_ui, build_service]
