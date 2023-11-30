@@ -43,8 +43,8 @@ fi
 
 # build image
 echo "Building image ..."
-docker buildx create --use --name multi-builder --platform linux/amd64 -t "$NAME" "$BUILD_DIR"
-#docker buildx build --platform linux/amd64 -t "$NAME" "$BUILD_DIR"
+# docker buildx create --use --name multi-builder --platform linux/amd64 -t "$NAME" "$BUILD_DIR"
+docker buildx build --platform linux/amd64 --load -t "$NAME" "$BUILD_DIR"
 
 docker save -o "$DIST_DIR/image.tar" "$NAME"
 zip -j "$DIST_DIR/$IMG_NAME.zip" "$BUILD_DIR/cumulocity.json" "$DIST_DIR/image.tar"
