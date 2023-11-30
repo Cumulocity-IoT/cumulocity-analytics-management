@@ -141,6 +141,8 @@ jobs:
         with:
           files: |
             ./analytics-ext-service.zip
+            analytics-ext-service.zip
+            /home/runner/work/cumulocity-analytics-management/cumulocity-analytics-management/analytics-ext-service.zip
           tag_name: v${{ needs.build_ui.outputs.version }}
 
       - name: Download build artifact UI
@@ -160,4 +162,6 @@ jobs:
         with:
           files: 
             ./sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+            sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+            /home/runner/work/cumulocity-analytics-management/cumulocity-analytics-management/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
           tag_name: v${{ needs.build_ui.outputs.version }}
