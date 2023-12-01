@@ -1,5 +1,6 @@
 import { EventEmitter, Injectable } from "@angular/core";
 import {
+  ApplicationService,
   FetchClient,
   IFetchOptions,
   IFetchResponse,
@@ -32,6 +33,7 @@ import {
   BASE_URL,
   ENDPOINT_EXTENSION,
   Repository,
+  APPLICATION_ANALYTICS_BUILDER_SERVICE,
 } from "./analytics.model";
 import { catchError, filter, map, pairwise } from "rxjs/operators";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
@@ -44,6 +46,7 @@ export class AnalyticsService {
   private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   protected baseUrl: string;
   private _cepId: Promise<string>;
+  private _isBackendDeployed: Promise<boolean>;
   private realtime: Realtime;
   private subscription: Subscription;
 
@@ -55,7 +58,8 @@ export class AnalyticsService {
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
     private githubFetchClient: HttpClient,
-    private repositoryService: RepositoryService
+    private repositoryService: RepositoryService,
+    private applicationService: ApplicationService
   ) {
     this.realtime = new Realtime(this.fetchClient);
   }
@@ -135,9 +139,11 @@ export class AnalyticsService {
         extension.analytics.forEach((block) => {
           const cepBlock = block as CEP_Block;
           cepBlock.custom =
-            !block.id.startsWith("apama.analyticsbuilder.blocks") &&
-            !block.id.startsWith("apama.analyticskit.blocks.core");
+            !cepBlock.id.startsWith("apama.analyticsbuilder.blocks") &&
+            !cepBlock.id.startsWith("apama.analyticskit.blocks.core") &&
+            !cepBlock.id.startsWith("apama.analyticskit.blocks.cumulocity");
           cepBlock.extension = extensionNameAbbreviated;
+          //console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
           result.push(cepBlock);
         });
       }
@@ -220,7 +226,7 @@ export class AnalyticsService {
         headers: {
           // "content-type": "application/json",
           "Content-type": "application/text",
-           Accept: "application/vnd.github.raw",
+          Accept: "application/vnd.github.raw",
         },
         responseType: "text",
       })
@@ -258,12 +264,12 @@ export class AnalyticsService {
 
   async getCEP_Id(): Promise<string> {
     if (!this._cepId) {
-      this._cepId = this.getUncachedCEP_Id();
+      this._cepId = this.getCEP_Id_Uncached();
     }
     return this._cepId;
   }
 
-  async getUncachedCEP_Id(): Promise<string> {
+  async getCEP_Id_Uncached(): Promise<string> {
     // get name of microservice from cep endpoint
     const response: IFetchResponse = await this.fetchClient.fetch(
       `${PATH_CEP_STATUS}`,
@@ -367,5 +373,24 @@ export class AnalyticsService {
     if (app) {
       this.inventoryBinaryService.delete(app);
     }
+  }
+
+  async isBackendDeployed_Uncached(): Promise<boolean> {
+    return this.applicationService
+      .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
+      .then((av) => {
+        let result = false;
+        if (av) {
+          result = av.data;
+        }
+        return result;
+      });
+  }
+
+  async isBackendDeployed(): Promise<boolean> {
+    if (!this._isBackendDeployed) {
+      this._isBackendDeployed = this.isBackendDeployed_Uncached()
+    }
+    return this._isBackendDeployed;
   }
 }

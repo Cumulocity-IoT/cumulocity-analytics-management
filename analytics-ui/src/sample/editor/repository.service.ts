@@ -12,6 +12,7 @@ import {
   uuidCustom,
 } from "../../shared/analytics.model";
 import { IManagedObject, InventoryService } from "@c8y/client";
+import { AlertService, gettext } from "@c8y/ngx-components";
 
 @Injectable({
   providedIn: "root",
@@ -21,8 +22,12 @@ export class RepositoryService {
   private repositoriesSubject: BehaviorSubject<Repository[]> =
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
+  private _isDirty: boolean = false;
 
-  constructor(private inventoryService: InventoryService) {
+  constructor(
+    private inventoryService: InventoryService,
+    public alertService: AlertService
+  ) {
     this.init();
   }
 
@@ -38,6 +43,7 @@ export class RepositoryService {
   addRepository(repository: Repository): void {
     this.repositories.push(repository);
     this.repositoriesSubject.next([...this.repositories]);
+    this._isDirty = true;
   }
 
   updateRepository(updatedRepository: Repository): void {
@@ -47,6 +53,7 @@ export class RepositoryService {
     if (index !== -1) {
       this.repositories[index] = updatedRepository;
       this.repositoriesSubject.next([...this.repositories]);
+      this._isDirty = true;
     }
   }
 
@@ -55,16 +62,17 @@ export class RepositoryService {
       (repo) => repo.id !== repositoryId
     );
     this.repositoriesSubject.next([...this.repositories]);
+    this._isDirty = true;
   }
 
   async loadRepositories(): Promise<Repository[]> {
     if (!this._repositories) {
-      this._repositories = this.loadUncachedRepositories();
+      this._repositories = this.loadRepositories_Uncached();
     }
     return this._repositories;
   }
 
-  async loadUncachedRepositories(): Promise<Repository[]> {
+  async loadRepositories_Uncached(): Promise<Repository[]> {
     let result = [] as Repository[];
     const filter: object = {
       pageSize: 100,
@@ -84,25 +92,25 @@ export class RepositoryService {
           id: uuidCustom(),
           name: "Block SDK Samples",
           url: REPO_SAMPLES_BLOCKSDK,
-          enabled: true
+          enabled: true,
         },
         {
           id: uuidCustom(),
           name: "Contrib Samples Block",
           url: REPO_SAMPLES_CONTRIB_BLOCK,
-          enabled: false
+          enabled: false,
         },
         {
           id: uuidCustom(),
           name: "Contrib Samples Simulation-Block",
           url: REPO_SAMPLES_CONTRIB_SIMULATION,
-          enabled: false
+          enabled: false,
         },
         {
           id: uuidCustom(),
           name: "Contrib Samples Cumulocity-Block",
           url: REPO_SAMPLES_CONTRIB_CUMULOCITY,
-          enabled: false
+          enabled: false,
         },
       ] as Repository[];
       this.inventoryService.create(reposMO);
@@ -115,25 +123,30 @@ export class RepositoryService {
   }
 
   async saveRepositories(repositories: Repository[]): Promise<void> {
-    const filter: object = {
-      pageSize: 100,
-      withTotalPages: true,
-    };
-    const query: object = {
-      type: ANALYTICS_REPOSITORIES_TYPE,
-    };
-    let { data } = await this.inventoryService.listQuery(query, filter);
-    if (!data || data.length == 0) {
-      const reposMO: Partial<IManagedObject> = {
-        name: "AnalyticsRepositories",
+    if (this._isDirty) {
+      const filter: object = {
+        pageSize: 100,
+        withTotalPages: true,
+      };
+      const query: object = {
         type: ANALYTICS_REPOSITORIES_TYPE,
       };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
-      this.inventoryService.create(reposMO);
-    } else if (data.length > 0) {
-      data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
-      this.inventoryService.update(data[0]);
+      let { data } = await this.inventoryService.listQuery(query, filter);
+      if (!data || data.length == 0) {
+        const reposMO: Partial<IManagedObject> = {
+          name: "AnalyticsRepositories",
+          type: ANALYTICS_REPOSITORIES_TYPE,
+        };
+        reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
+        this.inventoryService.create(reposMO);
+      } else if (data.length > 0) {
+        data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
+        this.inventoryService.update(data[0]);
+      }
+      this._repositories = repositories;
+      this._isDirty = false;
+
+      this.alertService.success(gettext(`Updated repositories successfully‚`));
     }
-    this._repositories = repositories;
   }
 }

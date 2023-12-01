@@ -1,10 +1,11 @@
 import { Component, Input, OnInit, Output } from "@angular/core";
 import { AlertService, ModalLabels } from "@c8y/ngx-components";
-import { Subject } from "rxjs";
+import { BehaviorSubject, Subject, from } from "rxjs";
 import { FormlyFieldConfig } from "@ngx-formly/core";
 import { FormGroup } from "@angular/forms";
 import { AnalyticsService } from "../shared/analytics.service";
 import { saveAs } from "file-saver";
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model";
 
 @Component({
   selector: "name-extension-modal",
@@ -26,6 +27,7 @@ import { saveAs } from "file-saver";
             class="btn btn-default"
             title="{{ 'Create Extension' | translate }}"
             (click)="createExtension()"
+            [disabled]="((backendDeployed$ | async) === false) || !configFormly.valid"
           >
             <i c8yIcon="plugin"></i>
             {{ "Create Extension" | translate }}
@@ -45,12 +47,17 @@ export class CreateExtensionComponent implements OnInit {
   configFormly: FormGroup = new FormGroup({});
   labels: ModalLabels = { cancel: "Dismiss" };
   loading: boolean = false;
+  backendDeployed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
+    false
+  );
 
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService
   ) {}
-  ngOnInit(): void {
+
+  ngOnInit() {
+    this.isDeployed();
     this.configFormlyFields = [
       {
         fieldGroup: [
@@ -67,9 +74,9 @@ export class CreateExtensionComponent implements OnInit {
           {
             className: "col-lg-4",
             key: "upload",
-            type: "switch",
+            type: "custom-switch",
             defaultValue: false,
-            wrappers: ["c8y-form-field"],
+            //wrappers: ["c8y-form-field"],
             templateOptions: {
               label: "Upload Extension",
               description:
@@ -84,6 +91,17 @@ export class CreateExtensionComponent implements OnInit {
   onDismiss(event) {
     console.log("Dismiss");
     this.closeSubject.next(undefined);
+  }
+
+  async isDeployed() {
+    from(this.analyticsService.isBackendDeployed()).subscribe((status) => {
+      this.backendDeployed$.next(status);
+      if (!status) {
+        this.alertService.warning(
+          `You can not build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
+        );
+      }
+    });
   }
 
   async createExtension() {

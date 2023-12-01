@@ -157,9 +157,7 @@ export class SampleGridComponent implements OnInit {
         const response = await this.repositoryService.saveRepositories(
           repositories
         );
-        this.alertService.success(
-          gettext(`Updated repositories successfully‚`)
-        );
+
       }
     });
   }
