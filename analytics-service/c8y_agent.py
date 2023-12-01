@@ -25,8 +25,18 @@ class C8YAgent:
         return b.id
 
     def restart_cep(self):
-        result = self.c8y_client.put(
-            resource="/service/cep/restart",
-            json={},
-        )
+        try:
+            self._logger.info(f"Restarted CEP Format 1")
+            result = self.c8y_client.put(resource="/service/cep/restart", json="")
+        except Exception as e:
+            self._logger.error(f"Ignoring exceptiom!", exc_info=True)
+            # try:
+            #     self._logger.info(f"Restarted CEP Format 2")
+            #     result = self.c8y_client.put(resource="/service/cep/restart", json={})
+            # except:
+            #     self._logger.info(f"Restarted CEP Format 3")
+            #     result = self.c8y_client.put(
+            #         resource="/service/cep/restart", json=json.dumps({})
+            #     )
+
         self._logger.info(f"Restarted CEP {json.dumps(result) } as {id}")
