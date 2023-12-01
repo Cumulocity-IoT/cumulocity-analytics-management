@@ -19,28 +19,42 @@
  * @authors Christof Strack
  */
 
-import { Component } from "@angular/core";
+import { ChangeDetectionStrategy, Component } from "@angular/core";
 import { FieldType } from "@ngx-formly/core";
 
 @Component({
   selector: "custom-formly-switch",
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <c8y-form-group>
-    <label>{{ to.label }}</label>
-    <span></span>
-      <label class="c8y-switch" *ngIf="to.label">
-        <input
-          type="checkbox"
-          [formControl]="formControl"
-          [formlyAttributes]="field"
-        />
-        <span></span>
-        {{ to.label }}
-      </label>
-      <div *ngIf="showError" class="col-sm-3 invalid-feedback d-block">
-        <formly-validation-message [field]="field"></formly-validation-message>
-      </div>
-    </c8y-form-group>
+<label
+  [class.c8y-checkbox]="!to.switchMode"
+  [class.c8y-switch]="to.switchMode"
+  [class.has-error]="showError"
+>
+  <input
+    type="checkbox"
+    [formControl]="formControl"
+    [formlyAttributes]="field"
+    [attr.data-cy]="'c8y-field-checkbox--' + (field.templateOptions?.optionDataCy || to.label)"
+  />
+  <span></span>
+  <span class="text-truncate" title="{{ to.label | humanize }}">{{ to.label | humanize }}</span>
+  <span *ngIf="to.required && to.hideRequiredMarker !== true">
+    <em class="m-l-4" translate>(required)</em>
+  </span>
+  <!-- <button
+    class="btn-help btn-help--sm m-t-auto m-b-auto"
+    type="button"
+    [attr.aria-label]="'Help' | translate"
+    [popover]="to.description"
+    triggers="focus"
+    placement="right"
+    *ngIf="!!to.description"
+  ></button> -->
+</label>
+
   `,
 })
-export class C8YSwitchField extends FieldType {}
+export class C8YSwitchField extends FieldType {
+
+}

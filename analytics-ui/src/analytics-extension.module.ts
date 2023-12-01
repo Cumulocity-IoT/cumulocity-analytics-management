@@ -29,6 +29,7 @@ import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.c
 import { RepositoryService } from "./sample/editor/repository.service";
 import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { C8YSwitchField } from "./shared/c8y-switch-field";
+import { FieldCheckbox } from "@c8y/ngx-components/core/dynamic-forms/checkbox/checkbox.type.component";
 
 const routes: Route[] = [
   {
@@ -68,7 +69,7 @@ const routes: Route[] = [
     EditorStepperComponent,
     EditorModalComponent,
     RepositoriesModalComponent,
-    C8YSwitchField
+    C8YSwitchField,
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -108,7 +109,9 @@ const routes: Route[] = [
       provide: FORMLY_CONFIG,
       multi: true,
       useValue: {
-        types: [{ name: "custom-switch", component: C8YSwitchField }],
+        types: [
+          { name: "custom-switch", component: C8YSwitchField },
+        ],
       },
     },
   ],

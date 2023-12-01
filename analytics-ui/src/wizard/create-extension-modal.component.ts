@@ -60,9 +60,10 @@ export class CreateExtensionComponent implements OnInit {
     this.isDeployed();
     this.configFormlyFields = [
       {
+        fieldGroupClassName: "row",
         fieldGroup: [
           {
-            className: "col-lg-8",
+            className: "col-lg-6",
             key: "name",
             type: "input",
             wrappers: ["c8y-form-field"],
@@ -72,13 +73,14 @@ export class CreateExtensionComponent implements OnInit {
             },
           },
           {
-            className: "col-lg-4",
+            className: "col-lg-6",
             key: "upload",
             type: "custom-switch",
             defaultValue: false,
-            //wrappers: ["c8y-form-field"],
+            wrappers: ["c8y-form-field"],
             templateOptions: {
               label: "Upload Extension",
+              switchMode: true,
               description:
                 "The generated extension for the selected blocks is uploaded. After initiating a restart they are available in the Analytics Builder model pallet.",
             },

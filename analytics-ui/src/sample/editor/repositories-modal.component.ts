@@ -91,7 +91,7 @@ import { RepositoryService } from "./repository.service";
           type="text"
           id="url"
           formControlName="url"
-          placeholder="enter in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+          placeholder="use form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
           class="form-control"
         />
       </c8y-form-group>
