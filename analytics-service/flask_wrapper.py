@@ -112,10 +112,10 @@ def create_extension():
                             mimetype="zip",
                         )
                     else:
-                        id = agent.upload_extension(extension_name, extension_zip)
+                        id = agent.upload_extension(extension_name, extension_zip,request_headers=request.headers)
                         logger.info(f"Uploaded extension {extension_name} as {id} and restart: {deploy}")
                         if deploy:
-                            agent.restart_cep()
+                            agent.restart_cep(request_headers=request.headers)
                         return '', 201
 
             except Exception as e:

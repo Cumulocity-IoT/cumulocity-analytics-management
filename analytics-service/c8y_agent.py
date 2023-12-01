@@ -1,6 +1,6 @@
 import logging
 from dotenv import load_dotenv
-from c8y_api.app import SimpleCumulocityApp
+from c8y_api.app import MultiTenantCumulocityApp
 from c8y_api.model import Binary
 import json
 
@@ -11,11 +11,11 @@ class C8YAgent:
         self._logger.setLevel(logging.INFO)
         load_dotenv()
         # c8y
-        self.c8y_client = SimpleCumulocityApp()
+        self.c8yapp = MultiTenantCumulocityApp()
 
-    def upload_extension(self, name, ext_file):
+    def upload_extension(self, name, ext_file, request_headers):
         b = Binary(
-            c8y=self.c8y_client,
+            c8y=self.c8yapp.get_tenant_instance(headers=request_headers),
             type="ab_ext_bin",
             name=name,
             file=ext_file,
@@ -24,10 +24,10 @@ class C8YAgent:
 
         return b.id
 
-    def restart_cep(self):
+    def restart_cep(self,request_headers):
         try:
             self._logger.info(f"Restarted CEP Format 1")
-            result = self.c8y_client.put(resource="/service/cep/restart", json="")
+            result = self.c8yapp.get_tenant_instance(headers=request_headers).put(resource="/service/cep/restart", json="")
         except Exception as e:
             self._logger.error(f"Ignoring exceptiom!", exc_info=True)
             # try:
