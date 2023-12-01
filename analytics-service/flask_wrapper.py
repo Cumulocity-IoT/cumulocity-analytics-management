@@ -40,6 +40,7 @@ def create_extension():
     extension_name = data.get("extension_name", "")
     monitors = data.get("monitors", [])
     upload = data.get("upload", False)
+    deploy = data.get("deploy", False)
 
     if extension_name != "":
         with tempfile.TemporaryDirectory() as work_temp_dir:
@@ -111,7 +112,10 @@ def create_extension():
                             mimetype="zip",
                         )
                     else:
-                        agent.upload_extension(extension_name, extension_zip)
+                        id = agent.upload_extension(extension_name, extension_zip)
+                        logger.info(f"Uploaded extension {extension_name} as {id} and restart: {deploy}")
+                        if deploy:
+                            agent.restart_cep()
                         return '', 201
 
             except Exception as e:

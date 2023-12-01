@@ -46,6 +46,7 @@ export class AnalyticsService {
   private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   protected baseUrl: string;
   private _cepId: Promise<string>;
+  private _blocksDeployed: Promise<CEP_Block[]>;
   private _isBackendDeployed: Promise<boolean>;
   private realtime: Realtime;
   private subscription: Subscription;
@@ -83,9 +84,10 @@ export class AnalyticsService {
     return result;
   }
 
-  async createExtensionsZIP(
+  async createExtensionZIP(
     name: string,
     upload: boolean,
+    deploy: boolean,
     monitors: string[]
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
@@ -96,6 +98,7 @@ export class AnalyticsService {
       body: JSON.stringify({
         extension_name: name,
         upload: upload,
+        deploy: deploy,
         monitors: monitors,
       }),
       method: "POST",
@@ -124,8 +127,19 @@ export class AnalyticsService {
     this.alertService.success(gettext("Extension deleted."));
     this.appDeleted.emit(app);
   }
+  
+  async resetCEP_Block_Cache(){
+    this._blocksDeployed = undefined
+  }
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
+    if (!this._blocksDeployed) {
+      this._blocksDeployed = this.getLoadedCEP_Blocks_Uncached();
+    }
+    return this._blocksDeployed;
+  }
+
+  async getLoadedCEP_Blocks_Uncached(): Promise<CEP_Block[]> {
     const result: CEP_Block[] = [];
     const meta: CEP_Metadata = await this.getCEP_Metadata();
     if (meta && meta.metadatas) {
@@ -356,6 +370,7 @@ export class AnalyticsService {
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
     this.alertService.warning(gettext("Deployment (Restart) submitted ..."));
+    this.resetCEP_Block_Cache();
   }
 
   async uploadExtension(

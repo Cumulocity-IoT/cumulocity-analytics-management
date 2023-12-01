@@ -63,7 +63,7 @@ export class CreateExtensionComponent implements OnInit {
         fieldGroupClassName: "row",
         fieldGroup: [
           {
-            className: "col-lg-6",
+            className: "col-lg-12",
             key: "name",
             type: "input",
             wrappers: ["c8y-form-field"],
@@ -72,6 +72,11 @@ export class CreateExtensionComponent implements OnInit {
               required: true,
             },
           },
+        ],
+      },
+      {
+        fieldGroupClassName: "row",
+        fieldGroup: [
           {
             className: "col-lg-6",
             key: "upload",
@@ -82,8 +87,23 @@ export class CreateExtensionComponent implements OnInit {
               label: "Upload Extension",
               switchMode: true,
               description:
-                "The generated extension for the selected blocks is uploaded. After initiating a restart they are available in the Analytics Builder model pallet.",
+                "The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.",
             },
+          },
+          {
+            className: "col-lg-6",
+            key: "deploy",
+            type: "custom-switch",
+            defaultValue: false,
+            wrappers: ["c8y-form-field"],
+            templateOptions: {
+              label: "Deploy automatically",
+              switchMode: true,
+              description:
+                "Deploy the extension after uploading to the repository.",
+            },
+            hideExpression: () =>
+              !this.configuration.upload
           },
         ],
       },
@@ -109,9 +129,10 @@ export class CreateExtensionComponent implements OnInit {
   async createExtension() {
     this.loading = true;
     console.log("Create Extension");
-    const response = await this.analyticsService.createExtensionsZIP(
+    const response = await this.analyticsService.createExtensionZIP(
       this.configuration.name,
       this.configuration.upload,
+      this.configuration.deploy,
       this.monitors
     );
     const binary = await await response.arrayBuffer();

@@ -182,6 +182,11 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
+    // TODO filter out already loaded blocks
+    // we need to develop a concept how we manage the retrieved information form git, in order to processing all the informatiion again.
+    // we need to remove the already loaded blocks
+    // this.analyticsService.resetCEP_Block_Cache();
+    // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
     const s = await this.analyticsService.getCEP_BlockSamplesFromRepositories();
     this.samples = s;
   }

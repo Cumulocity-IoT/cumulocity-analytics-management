@@ -37,13 +37,23 @@ import { RepositoryService } from "./repository.service";
               {{ repository.url }}
             </td>
             <td style="padding-top: 8px" width="5%">
-              <i
+              <!-- <i
                 style="text-align: center; width: 100%"
                 [c8yIcon]="!repository?.enabled ? 'circle-o' : 'plus-circle-o'"
                 class="m-r-5"
-              ></i>
+              ></i> -->
+              <button
+                title="{{ 'Toggle Activation' | translate }}"
+                class="btn btn-icon btn-clean"
+                (click)="toogleActivation(repository)"
+              >
+                <i  [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
+                class="m-r-5" c8yIcon="toggle-on" class="text-danger"></i>
+                <span class="sr-only" translate>Toogle activation</span>
+              </button>
             </td>
-            <td width="10%" style="padding-top: 0px; padding-bottom: 0px">
+            <!-- <td width="10%" style="padding-top: 0px; padding-bottom: 0px"> -->
+            <td width="10%" style="padding-top: 8px;">
               <button
                 title="{{ 'Update' | translate }}"
                 class="btn btn-icon btn-clean p-r-4"
@@ -59,14 +69,6 @@ import { RepositoryService } from "./repository.service";
               >
                 <i c8yIcon="trash-o" class="text-danger"></i>
                 <span class="sr-only" translate>Remove</span>
-              </button>
-              <button
-                title="{{ 'Toggle Activation' | translate }}"
-                class="btn btn-icon btn-clean"
-                (click)="toogleActivation(repository)"
-              >
-                <i c8yIcon="toggle-on" class="text-danger"></i>
-                <span class="sr-only" translate>Toogle activation</span>
               </button>
             </td>
           </tr>
