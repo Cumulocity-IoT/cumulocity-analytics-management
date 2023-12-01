@@ -92,8 +92,26 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Extension Backend
 
- The microservice downloads the sample blocks from the configured repositories and builds an analtics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension).
+ The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension).
  You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
+
+## Prerequisites to build/deploy the microservice
+* Docker host/client 
+* [c8y-go-cli](https://goc8ycli.netlify.app)
+
+## Local debugging using Vscode/Devcontainer
+To run the microservice locally you an use Vscode and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). To use your own credentials comment the line `"postAttachCommand": "python3 .devcontainer/get_service_creds.py",` in devcontainer.json and create .env file with credentials of your liking. Env file format is:
+
+```
+C8Y_BASEURL=https://<tenant>.cumulocity.com
+C8Y_TENANT=<tenantId>
+C8Y_USER=<user>
+C8Y_PASSWORD=<passowrd>
+``````
+
+After the dev container has started you can debug flask-wrapper.py as a python file. 
+
+## Build/Deploy
 
 To build the backend as a microservice `analytics-ext-service` follow these steps:
 * run script: 
