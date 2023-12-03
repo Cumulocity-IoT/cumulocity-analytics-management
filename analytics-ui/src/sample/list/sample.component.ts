@@ -48,6 +48,7 @@ import { RepositoryService } from "../editor/repository.service";
 })
 export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
+  removeInstalled: boolean = false;
   refresh: EventEmitter<any> = new EventEmitter<any>();
   showMonitorEditor: boolean = false;
   samples: CEP_Block[] = [];
@@ -186,7 +187,7 @@ export class SampleGridComponent implements OnInit {
     // we need to remove the already loaded blocks
     // this.analyticsService.resetCEP_Block_Cache();
     // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
-    const s = await this.repositoryService.getAll_CEP_BlockSamples(true);
+    const s = await this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled);
     this.samples = s;
   }
 
