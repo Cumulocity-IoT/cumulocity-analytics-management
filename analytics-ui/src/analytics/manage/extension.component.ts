@@ -35,7 +35,6 @@ export class AnalyticsExtensionComponent implements OnInit {
   ngOnInit() {
     this.loadExtensions();
     this.initializeMonitoringService();
-
   }
 
   loadExtensions() {

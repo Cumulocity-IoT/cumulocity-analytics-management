@@ -21,7 +21,7 @@ import {
 
 import { TranslateService } from "@ngx-translate/core";
 import * as _ from "lodash";
-import { BehaviorSubject, EMPTY, Subscription, throwError } from "rxjs";
+import { BehaviorSubject, Subscription } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
@@ -32,12 +32,9 @@ import {
   STATUS_MESSAGE_01,
   BASE_URL,
   ENDPOINT_EXTENSION,
-  Repository,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
 } from "./analytics.model";
-import { catchError, filter, map, pairwise } from "rxjs/operators";
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
-import { RepositoryService } from "../sample/editor/repository.service";
+import { filter, map, pairwise } from "rxjs/operators";
 
 @Injectable({ providedIn: "root" })
 export class AnalyticsService {
@@ -58,8 +55,6 @@ export class AnalyticsService {
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
-    private githubFetchClient: HttpClient,
-    private repositoryService: RepositoryService,
     private applicationService: ApplicationService
   ) {
     this.realtime = new Realtime(this.fetchClient);
@@ -107,7 +102,15 @@ export class AnalyticsService {
   }
 
   async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
-    return (await this.getExtensions(customFilter)).data;
+    const extensions = (await this.getExtensions(customFilter)).data;
+    const loadedExtensions: CEP_Metadata = await this.getCEP_Metadata();
+    extensions.forEach((ext) => {
+      const key = ext.name + ".json";
+      ext.loaded = loadedExtensions.metadatas.some((le) =>
+        key.includes(le)
+      );
+    });
+    return extensions;
   }
 
   async deleteExtension(app: IManagedObject): Promise<void> {
@@ -127,9 +130,9 @@ export class AnalyticsService {
     this.alertService.success(gettext("Extension deleted."));
     this.appDeleted.emit(app);
   }
-  
-  async resetCEP_Block_Cache(){
-    this._blocksDeployed = undefined
+
+  async resetCEP_Block_Cache() {
+    this._blocksDeployed = undefined;
   }
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
@@ -145,11 +148,11 @@ export class AnalyticsService {
     if (meta && meta.metadatas) {
       for (let index = 0; index < meta.metadatas.length; index++) {
         const extensionName = meta.metadatas[index];
-        const extension: CEP_Extension = await this.getCEP_Extension(
-          extensionName
-        );
         const extensionNameAbbreviated =
           extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
+        const extension: CEP_Extension = await this.getCEP_Extension(
+          extensionNameAbbreviated
+        );
         extension.analytics.forEach((block) => {
           const cepBlock = block as CEP_Block;
           cepBlock.custom =
@@ -162,89 +165,6 @@ export class AnalyticsService {
         });
       }
     }
-    return result;
-  }
-
-  async getCEP_BlockSamplesFromRepositories(): Promise<CEP_Block[]> {
-    const promises: Promise<CEP_Block[]>[] = [];
-    const reps: Repository[] = await this.repositoryService.loadRepositories();
-
-    for (let i = 0; i < reps.length; i++) {
-      if (reps[i].enabled) {
-        const promise: Promise<CEP_Block[]> =
-          this.getCEP_BlockSamplesFromRepository(reps[i]);
-        promises.push(promise);
-      }
-    }
-    const combinedPromise = Promise.all(promises);
-    const result = combinedPromise.then((data) => {
-      const flattened = data.reduce(
-        (accumulator, value) => accumulator.concat(value),
-        []
-      );
-      return flattened;
-    });
-    return result;
-  }
-
-  async getCEP_BlockSamplesFromRepository(
-    rep: Repository
-  ): Promise<CEP_Block[]> {
-    const result: any = this.githubFetchClient
-      .get(rep.url, {
-        headers: {
-          "content-type": "application/json",
-        },
-      })
-      .pipe(
-        map((data) => {
-          const name = _.values(data);
-          name.forEach((b) => {
-            b.id = b.sha;
-            b.repositoryName = rep.name;
-            b.custom = true;
-            b.downloadUrl = b.download_url;
-            delete b.download_url;
-            delete b.html_url;
-            delete b.git_url;
-            delete b._links;
-            delete b.size;
-            delete b.sha;
-          });
-          return name;
-        }),
-        catchError(this.handleError)
-      )
-      .toPromise();
-    return result;
-  }
-
-  private handleError(error: HttpErrorResponse) {
-    if (error.status === 0) {
-      // A client-side or network error occurred. Handle it accordingly.
-      console.error("An error occurred. Ignoring repository:", error.error);
-    } else {
-      // The backend returned an unsuccessful response code.
-      // The response body may contain clues as to what went wrong.
-      console.error(
-        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `,
-        error.error
-      );
-    }
-    return EMPTY;
-  }
-
-  async getCEP_BlockContent(downloadUrl: string): Promise<string> {
-    const result: any = this.githubFetchClient
-      .get(downloadUrl, {
-        headers: {
-          // "content-type": "application/json",
-          "Content-type": "application/text",
-          Accept: "application/vnd.github.raw",
-        },
-        responseType: "text",
-      })
-      .toPromise();
     return result;
   }
 
@@ -264,7 +184,7 @@ export class AnalyticsService {
 
   async getCEP_Extension(name: string): Promise<CEP_Extension> {
     const response: IFetchResponse = await this.fetchClient.fetch(
-      `${PATH_CEP_EN}/${name}`,
+      `${PATH_CEP_EN}/${name}.json`,
       {
         headers: {
           "content-type": "application/json",
@@ -273,6 +193,7 @@ export class AnalyticsService {
       }
     );
     const data = await response.json();
+    data.name = name;
     return data;
   }
 
@@ -404,7 +325,7 @@ export class AnalyticsService {
 
   async isBackendDeployed(): Promise<boolean> {
     if (!this._isBackendDeployed) {
-      this._isBackendDeployed = this.isBackendDeployed_Uncached()
+      this._isBackendDeployed = this.isBackendDeployed_Uncached();
     }
     return this._isBackendDeployed;
   }

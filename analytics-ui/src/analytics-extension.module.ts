@@ -29,7 +29,7 @@ import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.c
 import { RepositoryService } from "./sample/editor/repository.service";
 import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { C8YSwitchField } from "./shared/c8y-switch-field";
-import { FieldCheckbox } from "@c8y/ngx-components/core/dynamic-forms/checkbox/checkbox.type.component";
+import { AnalyticsExtensionDetailsComponent } from "./analytics/manage/extension-details.component";
 
 const routes: Route[] = [
   {
@@ -69,6 +69,7 @@ const routes: Route[] = [
     EditorStepperComponent,
     EditorModalComponent,
     RepositoriesModalComponent,
+    AnalyticsExtensionDetailsComponent,
     C8YSwitchField,
   ],
   entryComponents: [
@@ -81,6 +82,7 @@ const routes: Route[] = [
     EditorStepperComponent,
     EditorModalComponent,
     RepositoriesModalComponent,
+    AnalyticsExtensionDetailsComponent
   ],
   providers: [
     AnalyticsService,
@@ -94,7 +96,17 @@ const routes: Route[] = [
     }),
     hookRoute({
       path: "sag-ps-pkg-analytics-extension/manage",
-      component: AnalyticsExtensionComponent,
+      children:[
+        {
+          path: "",
+          pathMatch: "full",
+          component: AnalyticsExtensionComponent,
+        },
+        {
+          path: "properties/:name",
+          component: AnalyticsExtensionDetailsComponent,
+        },
+      ]
     }),
     hookRoute({
       path: "sag-ps-pkg-analytics-extension/list",

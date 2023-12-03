@@ -1,9 +1,10 @@
 // repository.service.ts
 
 import { Injectable } from "@angular/core";
-import { BehaviorSubject, Observable } from "rxjs";
+import { BehaviorSubject, EMPTY, Observable } from "rxjs";
 import {
   ANALYTICS_REPOSITORIES_TYPE,
+  CEP_Block,
   REPO_SAMPLES_BLOCKSDK,
   REPO_SAMPLES_CONTRIB_BLOCK,
   REPO_SAMPLES_CONTRIB_CUMULOCITY,
@@ -13,6 +14,9 @@ import {
 } from "../../shared/analytics.model";
 import { IManagedObject, InventoryService } from "@c8y/client";
 import { AlertService, gettext } from "@c8y/ngx-components";
+import { HttpClient, HttpErrorResponse } from "@angular/common/http";
+import { catchError, map } from "rxjs/operators";
+import * as _ from "lodash";
 
 @Injectable({
   providedIn: "root",
@@ -22,11 +26,13 @@ export class RepositoryService {
   private repositoriesSubject: BehaviorSubject<Repository[]> =
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
+  private _cep_block_cache: Map<string, Promise<CEP_Block[]>> = new Map();
   private _isDirty: boolean = false;
 
   constructor(
     private inventoryService: InventoryService,
-    public alertService: AlertService
+    public alertService: AlertService,
+    private githubFetchClient: HttpClient
   ) {
     this.init();
   }
@@ -148,5 +154,114 @@ export class RepositoryService {
 
       this.alertService.success(gettext(`Updated repositories successfully‚`));
     }
+  }
+
+  async resolveFullyQualified_CEP_Block_name(
+    block: CEP_Block,
+    rep: Repository
+  ): Promise<string> {
+    let fqn;
+    if (block.name.slice(-4) == ".mon") {
+      let content: string = await this.getCEP_BlockContent(block.url);
+      // (?<=^package\s) look ahead of "package "
+      // (?=;) look behind of ";"
+      const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+      const match = content.match(regex);
+      fqn = match[0].trim() + "." + block.name.slice(0, -4);
+    }
+    return fqn;
+  }
+
+  async getCEP_BlockContent(downloadUrl: string): Promise<string> {
+    const result: any = this.githubFetchClient
+      .get(downloadUrl, {
+        headers: {
+          // "content-type": "application/json",
+          "Content-type": "application/text",
+          Accept: "application/vnd.github.raw",
+        },
+        responseType: "text",
+      })
+      .toPromise();
+    return result;
+  }
+
+  async getCEP_BlockSamples(rep: Repository): Promise<CEP_Block[]> {
+    if (!this._cep_block_cache || !this._cep_block_cache.get(rep.id)) {
+      console.log(`Looking for samples ${rep.id} - ${rep.name}`);
+      this._cep_block_cache.set(rep.id, this.getCEP_BlockSamples_Uncached(rep));
+    }
+    return this._cep_block_cache.get(rep.id);
+  }
+
+  async getCEP_BlockSamples_Uncached(rep: Repository): Promise<CEP_Block[]> {
+    const result: any = this.githubFetchClient
+      .get(rep.url, {
+        headers: {
+          "content-type": "application/json",
+        },
+      })
+      .pipe(
+        map(async (data) => {
+          const blocks = _.values(data);
+          for (let index = 0; index < blocks.length; index++) {
+            blocks[index].repositoryName = rep.name;
+            blocks[index].custom = true;
+            blocks[index].downloadUrl = blocks[index].download_url;
+            delete blocks[index].download_url;
+            delete blocks[index].html_url;
+            delete blocks[index].git_url;
+            delete blocks[index]._links;
+            delete blocks[index].size;
+            delete blocks[index].sha;
+            blocks[index].id = await this.resolveFullyQualified_CEP_Block_name(
+              blocks[index],
+              rep
+            );
+            console.log(`FQN: ${blocks[index].name} ${blocks[index].id}`);
+          }
+          blocks.forEach(async (b) => {});
+          return blocks;
+        }),
+        catchError(this.handleError)
+      )
+      .toPromise();
+    return result;
+  }
+
+  private handleError(error: HttpErrorResponse) {
+    if (error.status === 0) {
+      // A client-side or network error occurred. Handle it accordingly.
+      console.error("An error occurred. Ignoring repository:", error.error);
+    } else {
+      // The backend returned an unsuccessful response code.
+      // The response body may contain clues as to what went wrong.
+      console.error(
+        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `,
+        error.error
+      );
+    }
+    return EMPTY;
+  }
+
+  async getAll_CEP_BlockSamples(): Promise<CEP_Block[]> {
+    const promises: Promise<CEP_Block[]>[] = [];
+    const reps: Repository[] = await this.loadRepositories();
+
+    for (let i = 0; i < reps.length; i++) {
+      if (reps[i].enabled) {
+        const promise: Promise<CEP_Block[]> = this.getCEP_BlockSamples(reps[i]);
+        promises.push(promise);
+      }
+    }
+    const combinedPromise = Promise.all(promises);
+    const result = combinedPromise.then((data) => {
+      const flattened = data.reduce(
+        (accumulator, value) => accumulator.concat(value),
+        []
+      );
+      return flattened;
+    });
+    return result;
   }
 }

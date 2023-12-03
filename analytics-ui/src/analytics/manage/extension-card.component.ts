@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { AnalyticsService } from '../../shared/analytics.service';
@@ -15,13 +15,19 @@ export class AnalyticsExtensionCardComponent implements OnInit {
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
-    private router: Router
+    private router: Router,
+    private activatedRoute: ActivatedRoute
   ) {}
 
   async ngOnInit() {
   }
 
-  detail() {
+  async detail() {
+    //this.router.navigateByUrl(`/sag-ps-pkg-dynamic-mapping/extensions/${this.app.id}`);
+    this.router.navigate(["properties/", this.app.name], {
+      relativeTo: this.activatedRoute,
+    });
+    console.log("Details for extension:", this.app.name, this.activatedRoute);
   }
 
   async delete() {

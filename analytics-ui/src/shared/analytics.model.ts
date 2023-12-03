@@ -53,8 +53,10 @@ export interface CEP_Metadata {
 }
 
 export interface CEP_Extension {
+  name: string;
   analytics: CEP_Block[];
   version: string;
+  loaded: true;
 }
 
 export interface CEP_Block {

@@ -31,7 +31,6 @@ import {
   Column,
   ColumnDataType,
   Pagination,
-  gettext,
 } from "@c8y/ngx-components";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
@@ -122,7 +121,7 @@ export class SampleGridComponent implements OnInit {
 
   async viewMonitor(block: CEP_Block) {
     try {
-      this.source = await this.analyticsService.getCEP_BlockContent(
+      this.source = await this.repositoryService.getCEP_BlockContent(
         block.url
       );
     } catch (error) {
@@ -187,7 +186,7 @@ export class SampleGridComponent implements OnInit {
     // we need to remove the already loaded blocks
     // this.analyticsService.resetCEP_Block_Cache();
     // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
-    const s = await this.analyticsService.getCEP_BlockSamplesFromRepositories();
+    const s = await this.repositoryService.getAll_CEP_BlockSamples();
     this.samples = s;
   }
 
