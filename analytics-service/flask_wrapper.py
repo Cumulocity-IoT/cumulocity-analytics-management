@@ -8,8 +8,7 @@ import os
 import re
 import io
 import subprocess
-
-import urllib3
+import urllib.parse
 from c8y_agent import C8YAgent
 #from github import Auth
 
@@ -37,7 +36,7 @@ def get_content(repository):
         encoded_url = request.args.get('url')
         logger.info(f"Get content encoded_url: {repository} {encoded_url}")
         
-        decoded_url = urllib3.parse.unquote(encoded_url)
+        decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
         monitor_code = requests.get(decoded_url, allow_redirects=True)
         response = make_response(monitor_code, 200)
