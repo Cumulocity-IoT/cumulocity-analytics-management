@@ -96,8 +96,9 @@ export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_O
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
 
-export const BASE_URL = "service/analytics-ext-service";
-export const ENDPOINT_EXTENSION = "extension";
+export const BASE_BACKEND_URL = "service/analytics-ext-service";
+export const EXTENSION_ENDPOINT = "extension";
+export const REPOSITORY_ENDPOINT = "repository";
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
 export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";
 

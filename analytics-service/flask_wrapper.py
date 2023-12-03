@@ -1,6 +1,6 @@
 from requests import HTTPError
 import requests
-from flask import Flask, request, jsonify, send_file
+from flask import Flask, request, jsonify, send_file, make_response
 import logging
 #from github import Github
 import tempfile
@@ -8,6 +8,8 @@ import os
 import re
 import io
 import subprocess
+
+import urllib3
 from c8y_agent import C8YAgent
 #from github import Auth
 
@@ -28,6 +30,24 @@ def health():
     return '{"status":"UP"}'
 
 
+
+@app.route("/repository/<repository>/content", methods=["GET"])
+def get_content(repository):  
+    try:  
+        encoded_url = request.args.get('url')
+        logger.info(f"Get content encoded_url: {repository} {encoded_url}")
+        
+        decoded_url = urllib3.parse.unquote(encoded_url)
+        logger.info(f"Get content decoded_url: {decoded_url}")
+        monitor_code = requests.get(decoded_url, allow_redirects=True)
+        response = make_response(monitor_code, 200)
+        response.mimetype = "text/plain"
+        return response
+    except Exception as e:
+        logger.error(f"Exception when retrieving content extension!", exc_info=True)
+        return f"Bad request: {str(e)}", 400
+
+    
 @app.route("/extension", methods=["POST"])
 def create_extension():
     # sample url

@@ -122,7 +122,7 @@ export class SampleGridComponent implements OnInit {
   async viewMonitor(block: CEP_Block) {
     try {
       this.source = await this.repositoryService.getCEP_BlockContent(
-        block.url
+        block, true
       );
     } catch (error) {
       console.log("Something happended:", error);

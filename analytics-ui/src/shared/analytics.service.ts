@@ -30,8 +30,8 @@ import {
   PATH_CEP_METADATA_EN,
   PATH_CEP_STATUS,
   STATUS_MESSAGE_01,
-  BASE_URL,
-  ENDPOINT_EXTENSION,
+  BASE_BACKEND_URL,
+  EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
@@ -86,7 +86,7 @@ export class AnalyticsService {
     monitors: string[]
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
-    return this.fetchClient.fetch(`${BASE_URL}/${ENDPOINT_EXTENSION}`, {
+    return this.fetchClient.fetch(`${BASE_BACKEND_URL}/${EXTENSION_ENDPOINT}`, {
       headers: {
         "content-type": "application/json",
       },

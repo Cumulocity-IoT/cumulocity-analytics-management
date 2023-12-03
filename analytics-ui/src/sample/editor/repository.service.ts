@@ -4,7 +4,9 @@ import { Injectable } from "@angular/core";
 import { BehaviorSubject, EMPTY, Observable } from "rxjs";
 import {
   ANALYTICS_REPOSITORIES_TYPE,
+  BASE_BACKEND_URL,
   CEP_Block,
+  REPOSITORY_ENDPOINT,
   REPO_SAMPLES_BLOCKSDK,
   REPO_SAMPLES_CONTRIB_BLOCK,
   REPO_SAMPLES_CONTRIB_CUMULOCITY,
@@ -12,7 +14,7 @@ import {
   Repository,
   uuidCustom,
 } from "../../shared/analytics.model";
-import { IManagedObject, InventoryService } from "@c8y/client";
+import { FetchClient, IManagedObject, InventoryService } from "@c8y/client";
 import { AlertService, gettext } from "@c8y/ngx-components";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { catchError, map } from "rxjs/operators";
@@ -32,7 +34,8 @@ export class RepositoryService {
   constructor(
     private inventoryService: InventoryService,
     public alertService: AlertService,
-    private githubFetchClient: HttpClient
+    private githubFetchClient: HttpClient,
+    private fetchClient: FetchClient,
   ) {
     this.init();
   }
@@ -162,7 +165,7 @@ export class RepositoryService {
   ): Promise<string> {
     let fqn;
     if (block.name.slice(-4) == ".mon") {
-      let content: string = await this.getCEP_BlockContent(block.url);
+      let content: string = await this.getCEP_BlockContent(block, true);
       // (?<=^package\s) look ahead of "package "
       // (?=;) look behind of ";"
       const regex = /(?<=^package\s)(.*?)(?=;)/gm;
@@ -172,17 +175,31 @@ export class RepositoryService {
     return fqn;
   }
 
-  async getCEP_BlockContent(downloadUrl: string): Promise<string> {
-    const result: any = this.githubFetchClient
-      .get(downloadUrl, {
+  async getCEP_BlockContent(
+    block: CEP_Block,
+    backend: boolean
+  ): Promise<string> {
+    let result;
+    if (backend) {
+      result =  await this.fetchClient.fetch(`${BASE_BACKEND_URL}/${REPOSITORY_ENDPOINT}/any_repository/content`, {
         headers: {
-          // "content-type": "application/json",
-          "Content-type": "application/text",
-          Accept: "application/vnd.github.raw",
+          "content-type": "text/plain",
         },
-        responseType: "text",
-      })
-      .toPromise();
+        params: {url: encodeURIComponent(block.downloadUrl)},
+        method: "GET",
+      });
+    } else {
+      result = this.githubFetchClient
+        .get(block.downloadUrl, {
+          headers: {
+            // "content-type": "application/json",
+            "Content-type": "application/text",
+            Accept: "application/vnd.github.raw",
+          },
+          responseType: "text",
+        })
+        .toPromise();
+    }
     return result;
   }
 
