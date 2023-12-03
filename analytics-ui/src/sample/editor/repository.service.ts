@@ -14,11 +14,17 @@ import {
   Repository,
   uuidCustom,
 } from "../../shared/analytics.model";
-import { FetchClient, IManagedObject, InventoryService } from "@c8y/client";
+import {
+  FetchClient,
+  IFetchResponse,
+  IManagedObject,
+  InventoryService,
+} from "@c8y/client";
 import { AlertService, gettext } from "@c8y/ngx-components";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { catchError, map } from "rxjs/operators";
 import * as _ from "lodash";
+import { AnalyticsService } from "../../shared/analytics.service";
 
 @Injectable({
   providedIn: "root",
@@ -33,9 +39,10 @@ export class RepositoryService {
 
   constructor(
     private inventoryService: InventoryService,
+    private analyticsService: AnalyticsService,
     public alertService: AlertService,
     private githubFetchClient: HttpClient,
-    private fetchClient: FetchClient,
+    private fetchClient: FetchClient
   ) {
     this.init();
   }
@@ -165,7 +172,7 @@ export class RepositoryService {
   ): Promise<string> {
     let fqn;
     if (block.name.slice(-4) == ".mon") {
-      let content: string = await this.getCEP_BlockContent(block, true);
+      let content: string = await this.getCEP_BlockContent(block, true, true);
       // (?<=^package\s) look ahead of "package "
       // (?=;) look behind of ";"
       const regex = /(?<=^package\s)(.*?)(?=;)/gm;
@@ -177,17 +184,25 @@ export class RepositoryService {
 
   async getCEP_BlockContent(
     block: CEP_Block,
-    backend: boolean
+    backend: boolean,
+    extractFQN_CEP_Block: boolean
   ): Promise<string> {
     let result;
     if (backend) {
-      result =  await this.fetchClient.fetch(`${BASE_BACKEND_URL}/${REPOSITORY_ENDPOINT}/any_repository/content`, {
-        headers: {
-          "content-type": "text/plain",
-        },
-        params: {url: encodeURIComponent(block.downloadUrl)},
-        method: "GET",
-      });
+      const response: IFetchResponse = await this.fetchClient.fetch(
+        `${BASE_BACKEND_URL}/${REPOSITORY_ENDPOINT}/any_repository/content`,
+        {
+          headers: {
+            "content-type": "text/plain",
+          },
+          params: {
+            url: encodeURIComponent(block.downloadUrl),
+            extract_fqn_cep_block: extractFQN_CEP_Block,
+          },
+          method: "GET",
+        }
+      );
+      result = response.text();
     } else {
       result = this.githubFetchClient
         .get(block.downloadUrl, {
@@ -199,6 +214,12 @@ export class RepositoryService {
           responseType: "text",
         })
         .toPromise();
+      if (extractFQN_CEP_Block) {
+        const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+        const match = result.match(regex);
+        let fqn = match[0].trim() + "." + block.name.slice(0, -4);
+        result = fqn
+      }
     }
     return result;
   }
@@ -261,9 +282,13 @@ export class RepositoryService {
     return EMPTY;
   }
 
-  async getAll_CEP_BlockSamples(): Promise<CEP_Block[]> {
+  async getAll_CEP_BlockSamples(
+    removeInstalled: boolean
+  ): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
     const reps: Repository[] = await this.loadRepositories();
+    const loadedBlocks = await this.analyticsService.getLoadedCEP_Blocks();
+    const loadedBlocksIds: string[] = loadedBlocks.map((block) => block.id);
 
     for (let i = 0; i < reps.length; i++) {
       if (reps[i].enabled) {
@@ -272,13 +297,22 @@ export class RepositoryService {
       }
     }
     const combinedPromise = Promise.all(promises);
-    const result = combinedPromise.then((data) => {
+    let result;
+    let resultUnfiltered = await combinedPromise.then((data) => {
       const flattened = data.reduce(
         (accumulator, value) => accumulator.concat(value),
         []
       );
       return flattened;
     });
+    if (removeInstalled) {
+      result = resultUnfiltered.filter(
+        (block) => !loadedBlocksIds.includes(block.id)
+      );
+    }
+    {
+      result = resultUnfiltered;
+    }
     return result;
   }
 }

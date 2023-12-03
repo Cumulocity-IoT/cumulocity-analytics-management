@@ -122,7 +122,7 @@ export class SampleGridComponent implements OnInit {
   async viewMonitor(block: CEP_Block) {
     try {
       this.source = await this.repositoryService.getCEP_BlockContent(
-        block, true
+        block, true, false
       );
     } catch (error) {
       console.log("Something happended:", error);
@@ -186,7 +186,7 @@ export class SampleGridComponent implements OnInit {
     // we need to remove the already loaded blocks
     // this.analyticsService.resetCEP_Block_Cache();
     // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
-    const s = await this.repositoryService.getAll_CEP_BlockSamples();
+    const s = await this.repositoryService.getAll_CEP_BlockSamples(true);
     this.samples = s;
   }
 

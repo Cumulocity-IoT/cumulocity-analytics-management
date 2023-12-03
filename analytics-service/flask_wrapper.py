@@ -2,7 +2,8 @@ from requests import HTTPError
 import requests
 from flask import Flask, request, jsonify, send_file, make_response
 import logging
-#from github import Github
+
+# from github import Github
 import tempfile
 import os
 import re
@@ -10,7 +11,8 @@ import io
 import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
-#from github import Auth
+
+# from github import Auth
 
 # define logging
 logging.basicConfig(
@@ -24,29 +26,44 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 agent = C8YAgent()
 
+
 @app.route("/health")
 def health():
     return '{"status":"UP"}'
 
 
-
 @app.route("/repository/<repository>/content", methods=["GET"])
-def get_content(repository):  
-    try:  
-        encoded_url = request.args.get('url')
+def get_content(repository):
+    try:
+        encoded_url = request.args.get("url")
+        extract_fqn_cep_block = request.args.get("extract_fqn_cep_block", type=bool)
         logger.info(f"Get content encoded_url: {repository} {encoded_url}")
-        
+
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
         monitor_code = requests.get(decoded_url, allow_redirects=True)
-        response = make_response(monitor_code, 200)
-        response.mimetype = "text/plain"
-        return response
+        if extract_fqn_cep_block:
+            regex = "(package\s)(.*?);"
+            package = re.findall(regex, monitor_code.text)
+            try:
+                fqn = package[0][1]
+                logger.info(f"Return only fqn of block: {fqn}")
+                response = make_response(fqn, 200)
+                response.mimetype = "text/plain"
+                return response
+            except Exception as e:
+                logger.error(f"Exception when retrieving fqn !", exc_info=True)
+                return f"Bad request: {str(e)}", 400
+        else:
+            logger.info(f"Response: {monitor_code}")
+            response = make_response(monitor_code.content, 200)
+            response.mimetype = "text/plain"
+            return response
     except Exception as e:
         logger.error(f"Exception when retrieving content extension!", exc_info=True)
         return f"Bad request: {str(e)}", 400
 
-    
+
 @app.route("/extension", methods=["POST"])
 def create_extension():
     # sample url
@@ -68,15 +85,15 @@ def create_extension():
                 logger.info(f"... in temp dir: {work_temp_dir}")
                 # step 1: download all monitors
                 for monitor in monitors:
-                    #organization, repository_name, file_path, file_name = extract_path(
+                    # organization, repository_name, file_path, file_name = extract_path(
                     #    monitor
-                    #)
+                    # )
                     # logger.info(
                     #     f"File ( path / file_name ) : ({file_path} / {file_name} )"
                     # )
 
                     # get repository
-                    #repo = gh.get_repo(f"{organization}/{repository_name}")
+                    # repo = gh.get_repo(f"{organization}/{repository_name}")
 
                     # get the contents of the file
                     try:
@@ -92,9 +109,7 @@ def create_extension():
                         named_file.close()
 
                     except Exception as e:
-                        logger.error(
-                            f"Error downloading file:  {monitor} {e}"
-                        )
+                        logger.error(f"Error downloading file:  {monitor} {e}")
 
                 files_in_directory = [
                     f
@@ -122,7 +137,7 @@ def create_extension():
 
                 size = os.path.getsize(result_extension_absolute)
                 logger.info(f"Returning: {result_extension_absolute} with size {size}")
-                
+
                 with open(result_extension_absolute, "rb") as extension_zip:
                     if not upload:
                         return send_file(
@@ -131,11 +146,17 @@ def create_extension():
                             mimetype="zip",
                         )
                     else:
-                        id = agent.upload_extension(extension_name, extension_zip,request_headers=request.headers)
-                        logger.info(f"Uploaded extension {extension_name} as {id} and restart: {deploy}")
+                        id = agent.upload_extension(
+                            extension_name,
+                            extension_zip,
+                            request_headers=request.headers,
+                        )
+                        logger.info(
+                            f"Uploaded extension {extension_name} as {id} and restart: {deploy}"
+                        )
                         if deploy:
                             agent.restart_cep(request_headers=request.headers)
-                        return '', 201
+                        return "", 201
 
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
@@ -151,6 +172,7 @@ def extract_path(path):
     file_path = "/".join(parts[7:-2])  # Extract path excluding "contents" and "ref"
     file_name = parts[-3]  # Extract path excluding "contents" and "ref"
     return organization, repository_name, file_path, file_name
+
 
 def extract_raw_path(path):
     # Extract information from the raw API URL
