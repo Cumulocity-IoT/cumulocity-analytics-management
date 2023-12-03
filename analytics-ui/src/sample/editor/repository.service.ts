@@ -172,12 +172,12 @@ export class RepositoryService {
   ): Promise<string> {
     let fqn;
     if (block.name.slice(-4) == ".mon") {
-      let content: string = await this.getCEP_BlockContent(block, true, true);
+      fqn = await this.getCEP_BlockContent(block, true, true);
       // (?<=^package\s) look ahead of "package "
       // (?=;) look behind of ";"
-      const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-      const match = content.match(regex);
-      fqn = match[0].trim() + "." + block.name.slice(0, -4);
+      // const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+      // const match = content.match(regex);
+      // fqn = match[0].trim() + "." + block.name.slice(0, -4);
     }
     return fqn;
   }
