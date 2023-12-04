@@ -12,6 +12,8 @@ import {
   REPO_SAMPLES_CONTRIB_CUMULOCITY,
   REPO_SAMPLES_CONTRIB_SIMULATION,
   Repository,
+  getFileExtension,
+  removeFileExtension,
   uuidCustom,
 } from "../../shared/analytics.model";
 import {
@@ -245,17 +247,17 @@ export class RepositoryService {
           let dataArray = _.values(data);
           const blocks = [];
           for (let index = 0; index < dataArray.length; index++) {
-            if (dataArray[index].name.slice(-4) != ".json") {
+            if (getFileExtension(dataArray[index].name) != ".json") {
               const tb: any = {
                 repositoryName: rep.name,
-                name: dataArray[index].name.slice(0, -4),
+                name: removeFileExtension(dataArray[index].name),
                 custom: true,
                 downloadUrl: dataArray[index].download_url,
                 url: dataArray[index].url,
               };
               tb.id = await this.resolveFullyQualified_CEP_Block_name(tb, rep);
               blocks.push(tb);
-              console.log(`FQN:`,tb);
+              console.log(`FQN:`, tb);
             }
           }
           return blocks;
@@ -281,9 +283,7 @@ export class RepositoryService {
     return EMPTY;
   }
 
-  async getAll_CEP_BlockSamples(
-    hideInstalled: boolean
-  ): Promise<CEP_Block[]> {
+  async getAll_CEP_BlockSamples(hideInstalled: boolean): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
     const reps: Repository[] = await this.loadRepositories();
     const loadedBlocks = await this.analyticsService.getLoadedCEP_Blocks();

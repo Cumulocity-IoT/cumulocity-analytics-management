@@ -34,6 +34,8 @@ import {
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   removeFileExtension,
+  CEP_METADATA_FILE_EXTENSION,
+  isCustomCEP_Block,
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
 
@@ -105,7 +107,7 @@ export class AnalyticsService {
     const loadedExtensions: CEP_Metadata = await this.getCEP_Metadata();
     extensions.forEach((ext) => {
       ext.name  = removeFileExtension(ext.name)
-      const key = ext.name + ".json";
+      const key = ext.name + CEP_METADATA_FILE_EXTENSION;
       ext.loaded = loadedExtensions.metadatas.some((le) =>
         key.includes(le)
       );
@@ -153,10 +155,7 @@ export class AnalyticsService {
         );
         extension.analytics.forEach((block) => {
           const cepBlock = block as CEP_Block;
-          cepBlock.custom =
-            !cepBlock.id.startsWith("apama.analyticsbuilder.blocks") &&
-            !cepBlock.id.startsWith("apama.analyticskit.blocks.core") &&
-            !cepBlock.id.startsWith("apama.analyticskit.blocks.cumulocity");
+          cepBlock.custom = isCustomCEP_Block(cepBlock);
           cepBlock.extension = extensionNameAbbreviated;
           //console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
           result.push(cepBlock);

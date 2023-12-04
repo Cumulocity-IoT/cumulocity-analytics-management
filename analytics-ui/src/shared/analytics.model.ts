@@ -90,6 +90,7 @@ export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
 
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
 
+export const CEP_METADATA_FILE_EXTENSION = ".json";
 export const GITHUB_BASE = "https://api.github.com";
 export const REPO_SAMPLES_OWNER = "SoftwareAG";
 export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
@@ -107,9 +108,24 @@ export function uuidCustom(): string {
   let id = Math.random().toString(36).slice(-6);
   return id;
 }
+
 export function removeFileExtension(name: string): string {
   let result = name.replace(/\.[^.]*$/, "");
   return result;
+}
+
+export function getFileExtension(name: string): string {
+  const pattern = /\.([0-9a-z]+)(?:[\?#]|$)/i;
+  let result = name.match(pattern);
+  return result[0];
+}
+
+export function isCustomCEP_Block(block: CEP_Block): boolean {
+  return (
+    !block.id.startsWith("apama.analyticsbuilder.blocks") &&
+    !block.id.startsWith("apama.analyticskit.blocks.core") &&
+    !block.id.startsWith("apama.analyticskit.blocks.cumulocity")
+  );
 }
 
 // https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
