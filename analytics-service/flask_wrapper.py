@@ -31,11 +31,16 @@ agent = C8YAgent()
 def health():
     return '{"status":"UP"}'
 
-
+# download the content from github
+# params:
+#    url                     url of monitor to download
+#    extract_fqn_cep_block   extract the fqn name from the monitor file
+#    cep_block_name          block name, required to return the fqn name, including the Apama package
 @app.route("/repository/<repository>/content", methods=["GET"])
 def get_content(repository):
     try:
         encoded_url = request.args.get("url")
+        cep_block_name = request.args.get("cep_block_name")
         extract_fqn_cep_block = request.args.get("extract_fqn_cep_block", type=bool)
         logger.info(f"Get content encoded_url: {repository} {encoded_url}")
 
@@ -46,7 +51,7 @@ def get_content(repository):
             regex = "(package\s)(.*?);"
             package = re.findall(regex, monitor_code.text)
             try:
-                fqn = package[0][1]
+                fqn = package[0][1] + "." + cep_block_name
                 logger.info(f"Return only fqn of block: {fqn}")
                 response = make_response(fqn, 200)
                 response.mimetype = "text/plain"

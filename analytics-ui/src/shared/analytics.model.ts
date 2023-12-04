@@ -62,6 +62,7 @@ export interface CEP_Extension {
 export interface CEP_Block {
   id: string;
   name: string;
+  installed: boolean;
   producesOutput: string;
   description: string;
   url: string;

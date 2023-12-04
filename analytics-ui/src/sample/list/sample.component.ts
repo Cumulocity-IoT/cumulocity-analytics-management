@@ -18,12 +18,7 @@
  *
  * @authors Christof Strack
  */
-import {
-  Component,
-  EventEmitter,
-  OnInit,
-  ViewEncapsulation,
-} from "@angular/core";
+import { Component, OnInit, ViewEncapsulation } from "@angular/core";
 import {
   ActionControl,
   AlertService,
@@ -39,6 +34,17 @@ import { CreateExtensionComponent } from "../../wizard/create-extension-modal.co
 import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoriesModalComponent } from "../editor/repositories-modal.component";
 import { RepositoryService } from "../editor/repository.service";
+import { BehaviorSubject, Observable, of } from "rxjs";
+import {
+  filter,
+  first,
+  flatMap,
+  map,
+  mergeMap,
+  switchMap,
+  tap,
+  toArray,
+} from "rxjs/operators";
 
 @Component({
   selector: "c8y-sample-grid",
@@ -49,9 +55,11 @@ import { RepositoryService } from "../editor/repository.service";
 export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   removeInstalled: boolean = false;
-  refresh: EventEmitter<any> = new EventEmitter<any>();
+  reload$: BehaviorSubject<void> = new BehaviorSubject(null);
+  loading: boolean = false;
   showMonitorEditor: boolean = false;
-  samples: CEP_Block[] = [];
+  samples$: Observable<CEP_Block[]>;
+  samples: CEP_Block[];
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
   source: string = "";
@@ -65,7 +73,7 @@ export class SampleGridComponent implements OnInit {
       path: "name",
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: "15%",
+      gridTrackSize: "10%",
       visible: true,
     },
     {
@@ -75,6 +83,15 @@ export class SampleGridComponent implements OnInit {
       dataType: ColumnDataType.TextLong,
       filterable: true,
       gridTrackSize: "15%",
+      visible: true,
+    },
+    {
+      name: "installed",
+      header: "Installed",
+      path: "installed",
+      dataType: ColumnDataType.TextLong,
+      filterable: true,
+      gridTrackSize: "7.5%",
       visible: true,
     },
     {
@@ -100,11 +117,14 @@ export class SampleGridComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    await this.loadSamples();
-    this.refresh.subscribe(() => {
-      this.loadSamples();
-    });
-
+    this.samples$ = this.reload$.pipe(
+      tap(() => (this.loading = true)),
+      switchMap(() =>
+        this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled)
+      ),
+      tap(() => (this.loading = false))
+    );
+    this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: "CREATE",
       text: "Create Extension",
@@ -123,13 +143,13 @@ export class SampleGridComponent implements OnInit {
   async viewMonitor(block: CEP_Block) {
     try {
       this.source = await this.repositoryService.getCEP_BlockContent(
-        block, true, false
+        block,
+        true,
+        false
       );
     } catch (error) {
       console.log("Something happended:", error);
     }
-    //this.showMonitorEditor = true;
-
     const initialState = {
       source: this.source,
       monitor: block.name,
@@ -157,20 +177,43 @@ export class SampleGridComponent implements OnInit {
         const response = await this.repositoryService.saveRepositories(
           repositories
         );
-
       }
     });
   }
 
   public async createExtension(ids: string[]) {
+    // const monitors = [];
+    // this.samples$.pipe(
+    //   first(),
+    //   tap((samples) => {
+    //     console.log("Samples")
+    //     for (let i = 0; i < samples.length; i++) {
+    //       if (ids.includes(samples[i].id) && !samples[i].installed) {
+    //         monitors.push(samples[i].downloadUrl);
+    //       }
+    //     }
+    //   },
+    //   map(samples => samples)),
+    // ).subscribe();
+    // const monitorsx = this.samples$
+    //   // .pipe(
+    //   //   map((blocks) =>
+    //   //     blocks.filter((block) => ids.includes(block.id) && !block.installed)
+    //   //   ),
+    //   //   map((blocks) => blocks.map((block) => block.downloadUrl))
+    //   // )
+    //   // .pipe(
+    //   //   map((blocks) => blocks.map((block) => block.downloadUrl))
+    //   // )
+    // .toPromise();
     const monitors = [];
     for (let i = 0; i < this.samples.length; i++) {
-      if (ids.includes(this.samples[i].id)) {
+      if (ids.includes(this.samples[i].id) && !this.samples[i].installed) {
         monitors.push(this.samples[i].downloadUrl);
       }
     }
     const initialState = {
-      monitors
+      monitors,
     };
 
     const modalRef = this.bsModalService.show(CreateExtensionComponent, {
@@ -178,7 +221,7 @@ export class SampleGridComponent implements OnInit {
       initialState,
     });
 
-    modalRef.content.closeSubject.subscribe ( () => modalRef.hide())
+    modalRef.content.closeSubject.subscribe(() => modalRef.hide());
   }
 
   async loadSamples() {
@@ -187,8 +230,8 @@ export class SampleGridComponent implements OnInit {
     // we need to remove the already loaded blocks
     // this.analyticsService.resetCEP_Block_Cache();
     // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
-    const s = await this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled);
-    this.samples = s;
+    // this.samples$ = from(this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled));
+    this.reload$.next();
   }
 
   ngOnDestroy() {}

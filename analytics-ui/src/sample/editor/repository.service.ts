@@ -35,7 +35,7 @@ export class RepositoryService {
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
   private _cep_block_cache: Map<string, Promise<CEP_Block[]>> = new Map();
-  private _isDirty: boolean = false;
+  private _isDirty: boolean = true;
 
   constructor(
     private inventoryService: InventoryService,
@@ -171,14 +171,14 @@ export class RepositoryService {
     rep: Repository
   ): Promise<string> {
     let fqn;
-    if (block.name.slice(-4) == ".mon") {
-      fqn = await this.getCEP_BlockContent(block, true, true);
-      // (?<=^package\s) look ahead of "package "
-      // (?=;) look behind of ";"
-      // const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-      // const match = content.match(regex);
-      // fqn = match[0].trim() + "." + block.name.slice(0, -4);
-    }
+    //if (block.name.slice(-4) == ".mon") {
+    fqn = await this.getCEP_BlockContent(block, true, true);
+    // (?<=^package\s) look ahead of "package "
+    // (?=;) look behind of ";"
+    // const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+    // const match = content.match(regex);
+    // fqn = match[0].trim() + "." + block.name.slice(0, -4);
+    // }
     return fqn;
   }
 
@@ -198,6 +198,7 @@ export class RepositoryService {
           params: {
             url: encodeURIComponent(block.downloadUrl),
             extract_fqn_cep_block: extractFQN_CEP_Block,
+            cep_block_name: block.name,
           },
           method: "GET",
         }
@@ -218,7 +219,7 @@ export class RepositoryService {
         const regex = /(?<=^package\s)(.*?)(?=;)/gm;
         const match = result.match(regex);
         let fqn = match[0].trim() + "." + block.name.slice(0, -4);
-        result = fqn
+        result = fqn;
       }
     }
     return result;
@@ -241,24 +242,22 @@ export class RepositoryService {
       })
       .pipe(
         map(async (data) => {
-          const blocks = _.values(data);
-          for (let index = 0; index < blocks.length; index++) {
-            blocks[index].repositoryName = rep.name;
-            blocks[index].custom = true;
-            blocks[index].downloadUrl = blocks[index].download_url;
-            delete blocks[index].download_url;
-            delete blocks[index].html_url;
-            delete blocks[index].git_url;
-            delete blocks[index]._links;
-            delete blocks[index].size;
-            delete blocks[index].sha;
-            blocks[index].id = await this.resolveFullyQualified_CEP_Block_name(
-              blocks[index],
-              rep
-            );
-            console.log(`FQN: ${blocks[index].name} ${blocks[index].id}`);
+          let dataArray = _.values(data);
+          const blocks = [];
+          for (let index = 0; index < dataArray.length; index++) {
+            if (dataArray[index].name.slice(-4) != ".json") {
+              const tb: any = {
+                repositoryName: rep.name,
+                name: dataArray[index].name.slice(0, -4),
+                custom: true,
+                downloadUrl: dataArray[index].download_url,
+                url: dataArray[index].url,
+              };
+              tb.id = await this.resolveFullyQualified_CEP_Block_name(tb, rep);
+              blocks.push(tb);
+              console.log(`FQN:`,tb);
+            }
           }
-          blocks.forEach(async (b) => {});
           return blocks;
         }),
         catchError(this.handleError)
@@ -309,10 +308,13 @@ export class RepositoryService {
       result = resultUnfiltered.filter(
         (block) => !loadedBlocksIds.includes(block.id)
       );
-    }
-    {
+    } else {
       result = resultUnfiltered;
     }
+    result.forEach(
+      (block: CEP_Block) =>
+        (block.installed = loadedBlocksIds.includes(block.id))
+    );
     return result;
   }
 }

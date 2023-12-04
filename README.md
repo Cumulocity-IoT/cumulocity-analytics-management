@@ -9,6 +9,7 @@
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
+- [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -158,6 +159,13 @@ The provided block is an example of the adding the two inputs.
   </a>
 </p>
 <br/> -->
+
+## Troubleshooting
+> **Note**
+In order to checkif an extension is deployed look in the log file of the analytics engine for a relevant message:
+`[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
+
+The log file can be accessed: Adminstration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
 
 ------------------------------
 

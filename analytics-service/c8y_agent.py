@@ -16,7 +16,7 @@ class C8YAgent:
     def upload_extension(self, name, ext_file, request_headers):
         b = Binary(
             c8y=self.c8yapp.get_tenant_instance(headers=request_headers),
-            type="ab_ext_bin",
+            type="application/zip",
             name=name,
             file=ext_file,
             pas_extension={},
@@ -25,6 +25,7 @@ class C8YAgent:
         return b.id
 
     def restart_cep(self,request_headers):
+        result = {}
         try:
             self._logger.info(f"Restarted CEP Format 1")
             result = self.c8yapp.get_tenant_instance(headers=request_headers).put(resource="/service/cep/restart", json="")
