@@ -147,7 +147,6 @@ def create_extension():
                     if not upload:
                         return send_file(
                             io.BytesIO(extension_zip.read()),
-                            # attachment_filename=f"{extension_name}.zip",
                             mimetype="zip",
                         )
                     else:

@@ -33,6 +33,7 @@ import {
   BASE_BACKEND_URL,
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
+  removeFileExtension,
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
 
@@ -67,9 +68,7 @@ export class AnalyticsService {
       fragmentType: "pas_extension",
     };
     Object.assign(filter, customFilter);
-    const query: object = {
-      //   fragmentType: 'pas_extension',
-    };
+    const query: object = {};
     let result;
     if (Object.keys(customFilter).length == 0) {
       result = this.inventoryService.list(filter);
@@ -101,10 +100,11 @@ export class AnalyticsService {
     });
   }
 
-  async getWebExtensions(customFilter: any = {}): Promise<IManagedObject[]> {
+  async getExtensionsEnriched(customFilter: any = {}): Promise<IManagedObject[]> {
     const extensions = (await this.getExtensions(customFilter)).data;
     const loadedExtensions: CEP_Metadata = await this.getCEP_Metadata();
     extensions.forEach((ext) => {
+      ext.name  = removeFileExtension(ext.name)
       const key = ext.name + ".json";
       ext.loaded = loadedExtensions.metadatas.some((le) =>
         key.includes(le)
@@ -147,9 +147,7 @@ export class AnalyticsService {
     const meta: CEP_Metadata = await this.getCEP_Metadata();
     if (meta && meta.metadatas) {
       for (let index = 0; index < meta.metadatas.length; index++) {
-        const extensionName = meta.metadatas[index];
-        const extensionNameAbbreviated =
-          extensionName.match(/(.+?)(\.[^.]*$|$)/)[1];
+        const extensionNameAbbreviated = removeFileExtension(meta.metadatas[index]);
         const extension: CEP_Extension = await this.getCEP_Extension(
           extensionNameAbbreviated
         );

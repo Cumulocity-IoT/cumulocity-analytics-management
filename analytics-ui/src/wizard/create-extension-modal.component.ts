@@ -148,7 +148,7 @@ export class CreateExtensionComponent implements OnInit {
       );
     } else {
       this.alertService.success(
-        `Uploaded extension ${this.configuration.name}.zip. Please deploy from UI.`
+        `Uploaded extension ${this.configuration.name}.zip.`
       );
     }
     this.closeSubject.next(true);

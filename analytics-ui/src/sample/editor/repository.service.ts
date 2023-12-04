@@ -282,7 +282,7 @@ export class RepositoryService {
   }
 
   async getAll_CEP_BlockSamples(
-    removeInstalled: boolean
+    hideInstalled: boolean
   ): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
     const reps: Repository[] = await this.loadRepositories();
@@ -304,7 +304,7 @@ export class RepositoryService {
       );
       return flattened;
     });
-    if (removeInstalled) {
+    if (hideInstalled) {
       result = resultUnfiltered.filter(
         (block) => !loadedBlocksIds.includes(block.id)
       );

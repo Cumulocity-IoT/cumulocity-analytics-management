@@ -13,13 +13,13 @@ class C8YAgent:
         # c8y
         self.c8yapp = MultiTenantCumulocityApp()
 
-    def upload_extension(self, name, ext_file, request_headers):
+    def upload_extension(self, extension_name, ext_file, request_headers):
         b = Binary(
             c8y=self.c8yapp.get_tenant_instance(headers=request_headers),
             type="application/zip",
-            name=name,
+            name=f"{extension_name}.zip",
             file=ext_file,
-            pas_extension={},
+            pas_extension=extension_name,
         ).create()
 
         return b.id

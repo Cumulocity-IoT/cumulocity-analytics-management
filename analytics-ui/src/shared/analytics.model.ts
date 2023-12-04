@@ -107,6 +107,10 @@ export function uuidCustom(): string {
   let id = Math.random().toString(36).slice(-6);
   return id;
 }
+export function removeFileExtension(name: string): string {
+  let result = name.replace(/\.[^.]*$/, "");
+  return result;
+}
 
 // https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
 // http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json

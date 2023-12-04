@@ -54,7 +54,7 @@ import {
 })
 export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
-  removeInstalled: boolean = false;
+  hideInstalled: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   loading: boolean = false;
   showMonitorEditor: boolean = false;
@@ -120,7 +120,7 @@ export class SampleGridComponent implements OnInit {
     this.samples$ = this.reload$.pipe(
       tap(() => (this.loading = true)),
       switchMap(() =>
-        this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled)
+        this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
       ),
       tap(() => (this.loading = false))
     );
@@ -230,7 +230,7 @@ export class SampleGridComponent implements OnInit {
     // we need to remove the already loaded blocks
     // this.analyticsService.resetCEP_Block_Cache();
     // const loadedBlocks: CEP_Block[] = await this.analyticsService.getLoadedCEP_Blocks()
-    // this.samples$ = from(this.repositoryService.getAll_CEP_BlockSamples(this.removeInstalled));
+    // this.samples$ = from(this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled));
     this.reload$.next();
   }
 
