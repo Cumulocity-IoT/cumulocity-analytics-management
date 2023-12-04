@@ -27,8 +27,10 @@ class C8YAgent:
     def restart_cep(self,request_headers):
         result = {}
         try:
-            self._logger.info(f"Restarted CEP Format 1")
-            result = self.c8yapp.get_tenant_instance(headers=request_headers).put(resource="/service/cep/restart", json="")
+            self._logger.info(f"Restarted CEP!")
+            # self.c8yapp.get_tenant_instance(headers=request_headers).put(resource="/service/cep/restart", json="")
+            # self.c8yapp.bootstrap_instance.put(resource="/service/cep/restart", json="")
+            self.c8yapp.bootstrap_instance.put(resource="/service/cep/restart", json={})
         except Exception as e:
             self._logger.error(f"Ignoring exceptiom!", exc_info=True)
             # try:
@@ -40,4 +42,4 @@ class C8YAgent:
             #         resource="/service/cep/restart", json=json.dumps({})
             #     )
 
-        self._logger.info(f"Restarted CEP {json.dumps(result) } as {id}")
+        self._logger.info(f"Restarted CEP!")
