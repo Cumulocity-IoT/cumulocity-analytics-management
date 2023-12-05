@@ -37,16 +37,16 @@
       <table class="table table-condensed table-striped">
         <thead>
           <tr>
-            <th>Block Name</th>
+            <th style="width: 15%">Block Name</th>
+            <th style="width: 10%">Block Category</th>
             <th>Block Description</th>
-            <th>Block Category</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let block of extension?.analytics">
-            <td>{{ block.id }}</td>
-            <td>{{ block.description }}</td>
-            <td>{{ block.category }}</td>
+            <td [title]="block.id">{{ block.id }}</td>
+            <td [title]="block.category">{{ block.category }}</td>
+            <td [title]="block.description">{{ block.description }}</td>
           </tr>
         </tbody>
       </table>

@@ -31,6 +31,12 @@ agent = C8YAgent()
 def health():
     return '{"status":"UP"}'
 
+# this endpoint was only exposed for test purposes
+# @app.route("/service/cep/restart", methods=["PUT"])
+# def restart():
+#     agent.restart_cep(request_headers=request.headers)
+#     return f"OK", 200
+
 # download the content from github
 # params:
 #    url                     url of monitor to download
@@ -90,19 +96,9 @@ def create_extension():
                 logger.info(f"... in temp dir: {work_temp_dir}")
                 # step 1: download all monitors
                 for monitor in monitors:
-                    # organization, repository_name, file_path, file_name = extract_path(
-                    #    monitor
-                    # )
-                    # logger.info(
-                    #     f"File ( path / file_name ) : ({file_path} / {file_name} )"
-                    # )
-
-                    # get repository
-                    # repo = gh.get_repo(f"{organization}/{repository_name}")
 
                     # get the contents of the file
                     try:
-                        # file_content = repo.get_contents(file_path).decoded_content
                         file_name = extract_raw_path(monitor)
                         monitor_code = requests.get(monitor, allow_redirects=True)
 
