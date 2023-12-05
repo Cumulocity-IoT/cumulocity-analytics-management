@@ -1,6 +1,5 @@
-from requests import HTTPError
 import requests
-from flask import Flask, request, jsonify, send_file, make_response
+from flask import Flask, request, send_file, make_response
 import logging
 
 # from github import Github
@@ -11,6 +10,7 @@ import io
 import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
+import json
 
 # from github import Auth
 
@@ -49,8 +49,8 @@ def get_content(repository):
         cep_block_name = request.args.get("cep_block_name")
         extract_fqn_cep_block_raw = request.args.get("extract_fqn_cep_block", default=False)
         extract_fqn_cep_block = json.loads(extract_fqn_cep_block_raw.lower())
-        logger.info(f"Get content encoded_url: {repository} {encoded_url}")
-
+        logger.info(f"Get content encoded_url: {repository} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}")
+        
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
         monitor_code = requests.get(decoded_url, allow_redirects=True)
