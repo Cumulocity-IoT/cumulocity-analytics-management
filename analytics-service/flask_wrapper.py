@@ -47,7 +47,8 @@ def get_content(repository):
     try:
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
-        extract_fqn_cep_block = request.args.get("extract_fqn_cep_block", type=bool)
+        extract_fqn_cep_block_raw = request.args.get("extract_fqn_cep_block", default=False)
+        extract_fqn_cep_block = json.loads(extract_fqn_cep_block_raw.lower())
         logger.info(f"Get content encoded_url: {repository} {encoded_url}")
 
         decoded_url = urllib.parse.unquote(encoded_url)

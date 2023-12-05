@@ -33,7 +33,6 @@ import {
 import { C8yStepper } from "@c8y/ngx-components";
 import * as _ from "lodash";
 import { BsModalService } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Subject } from "rxjs";
 import { AnalyticsService } from "../../shared/analytics.service";
 
 @Component({
