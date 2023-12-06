@@ -31,7 +31,7 @@ import {
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
 import { BsModalService } from "ngx-bootstrap/modal";
-import { CreateExtensionComponent } from "../../wizard/create-extension-modal.component";
+import { CreateExtensionComponent } from "../../component/create-extension-modal.component";
 import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoryService } from "../../shared/repository.service";
 import { BehaviorSubject, Observable, of } from "rxjs";

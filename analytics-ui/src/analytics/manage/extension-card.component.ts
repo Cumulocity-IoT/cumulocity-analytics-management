@@ -4,6 +4,8 @@ import { IManagedObject } from "@c8y/client";
 import { AlertService } from "@c8y/ngx-components";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { saveAs } from "file-saver";
+import { ConfirmationModalComponent } from "../../component/confirmation-modal.component";
+import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
 
 @Component({
   selector: "extension-card",
@@ -17,7 +19,8 @@ export class AnalyticsExtensionCardComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private router: Router,
-    private activatedRoute: ActivatedRoute
+    private activatedRoute: ActivatedRoute,
+    private bsModalService: BsModalService
   ) {}
 
   async ngOnInit() {}
@@ -31,15 +34,36 @@ export class AnalyticsExtensionCardComponent implements OnInit {
   }
 
   async delete() {
-    try {
-      await this.analyticsService.deleteExtension(this.app);
-      this.onAppDeleted.emit();
-    } catch (ex) {
-      if (ex) {
-        this.alertService.addServerFailure(ex);
+    const initialState = {
+      title: "Delete connector",
+      message: "You are about to delete a connector. Do you want to proceed?",
+      labels: {
+        ok: "Delete",
+        cancel: "Cancel",
+      },
+    };
+    const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
+      ConfirmationModalComponent,
+      { initialState }
+    );
+    confirmDeletionModalRef.content.closeSubject.subscribe(
+      async (result: boolean) => {
+        console.log("Confirmation delete result:", result);
+        if (!!result) {
+          try {
+            await this.analyticsService.deleteExtension(this.app);
+            this.onAppDeleted.emit();
+          } catch (ex) {
+            if (ex) {
+              this.alertService.addServerFailure(ex);
+            }
+          }
+        }
+        confirmDeletionModalRef.hide();
       }
-    }
+    );
   }
+
   async download() {
     try {
       let bin: ArrayBuffer = await this.analyticsService.downloadExtension(

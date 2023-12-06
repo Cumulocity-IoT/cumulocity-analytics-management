@@ -12,7 +12,7 @@ import {
 import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
 import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
-import { AddExtensionWizardComponent } from "./wizard/add-extension-wizard.component";
+import { AddExtensionWizardComponent } from "./component/add-extension-wizard.component";
 import { AnalyticsExtensionCardComponent } from "./analytics/manage/extension-card.component";
 import { AnalyticsExtensionComponent } from "./analytics/manage/extension.component";
 import { AnalyticsService } from "./shared/analytics.service";
@@ -22,14 +22,15 @@ import { BlockGridComponent } from "./analytics/list/block.component";
 import { AnalyticsAddExtensionComponent } from "./analytics/manage/extension-add.component";
 import { SampleGridComponent } from "./sample/list/sample.component";
 import { HttpClientModule } from "@angular/common/http";
-import { CreateExtensionComponent } from "./wizard/create-extension-modal.component";
+import { CreateExtensionComponent } from "./component/create-extension-modal.component";
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
 import { RepositoryService } from "./shared/repository.service";
 import { FORMLY_CONFIG } from "@ngx-formly/core";
-import { C8YSwitchField } from "./shared/c8y-switch-field";
+import { C8YSwitchField } from "./component/c8y-switch-field";
 import { AnalyticsExtensionDetailsComponent } from "./analytics/manage/extension-details.component";
+import { ConfirmationModalComponent } from "./component/confirmation-modal.component";
 
 const routes: Route[] = [
   {
@@ -71,6 +72,7 @@ const routes: Route[] = [
     RepositoriesModalComponent,
     AnalyticsExtensionDetailsComponent,
     C8YSwitchField,
+    ConfirmationModalComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -82,7 +84,8 @@ const routes: Route[] = [
     EditorStepperComponent,
     EditorModalComponent,
     RepositoriesModalComponent,
-    AnalyticsExtensionDetailsComponent
+    AnalyticsExtensionDetailsComponent,
+    ConfirmationModalComponent
   ],
   providers: [
     AnalyticsService,

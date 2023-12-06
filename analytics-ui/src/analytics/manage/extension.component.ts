@@ -16,14 +16,6 @@ export class AnalyticsExtensionComponent implements OnInit {
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   subscription: any;
   extensions$: Observable<IManagedObject>;
-  // extensions$: Observable<IManagedObject> = this.reload$.pipe(
-  //   tap(() => (this.reloading = true)),
-  //   switchMap(() => this.analyticsService.getWebExtensions()),
-  //   tap(console.log),
-  //   tap(() => (this.reloading = false)),
-  //   shareReplay()
-  // );
-
   listClass: string;
 
   constructor(
