@@ -2,9 +2,11 @@
 
 ## Content
 - [Overview](#overview)
-- [Upload Custom Extension](#upload-custom-extension)
-- [Build Custom Extension](#build-custom-extension)
-- [Manage Block Samples from Repositories](#manage-block-smaples-from-repositories)
+- [Manage Custom Extension](#manage-custom-extension)
+  - [Upload Custom Extension](#upload-custom-extension)
+  - [Build Custom Extension](#build-custom-extension)
+  - [Options for Custom Extension](#options-for-custom-extension)
+- [Samples Repositories and Building Custom Extensions](#samples-repositories-and-building-custom-extensions)
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
@@ -15,7 +17,7 @@
 
 Extends the standard Cumulocity web application with a plugin to manage and add Analytics Builder extensions. Currently the standard UI does not offer the upload of custom blocks via .zip files. This extension enhances the standard Streaming-Analytics UI with these capabilities.
 
-You can upload blocks that were generated via the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the "Add extension" button. Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy Extensions (Restart)" button and wait for the notification that the engine was restarted.
+You can upload blocks that were generated via the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk) via the `Add Extension`` button. Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy Extensions (Restart)" button and wait for the notification that the engine was restarted.
 
 ![Extension installation](resources/images/extension-installation-animated.gif)
 
@@ -25,19 +27,34 @@ In addition a table lists all installed analytics blocks with the following info
 
 ![Block list](resources/images/block-list.png)
 
-## Upload Custom Extension
+## Manage Custom Extension
+Custom extension can be uploaded from your local system. In addition they can be downloaded and deletes as well.
+For a deletion or upload to take effect you need to restart the analytics stremaing engine.
+
+### Upload Custom Extension
 
 After the delployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
 
 ![Use Extension](resources/images/analytics-builder.png)
 
-## Build Custom Extension
-You can build and uploadas a custom extension by following the screenflow below:
+### Build Custom Extension
+You can build and uploads a custom extension by following the screenflow below:
 
 ![Build Custom Extensionn](resources/images/create-extension-upload-animated.gif)
 
-## Manage Block Samples from Repositories
-Block samples from github repositories can be viewed and used to build extensions online.
+### Options for Custom Extension
+For a custom extension you have the following options:
+* Delete: deletes the custom extension permanently. To take effect you need to restart the stremaing analytics engine
+* Details: lists the included blocks of the custom extension on a deail page.
+* Download: downloads the custom extension as a zip file.
+
+![Build Custom Extensionn](resources/images/manage-extension.png)
+
+
+## Samples Repositories and Building Custom Extensions
+Block samples from github repositories can selected to build custome extension online.
+In order to use this option first you have to configure your Github repsoitory.
+The configured repositories can be updated, deleted and de-/enabled. Only enabled repsoitories are shown in the list of block smaples.
 You can manage the github repositories using the following UI:
 
 ![Manage Repositories](resources/images/samples-manage-repository.png)
@@ -46,6 +63,13 @@ In addition you can view the EPL (event processing language) source code:
 
 ![View source code](resources/images/samples-view-code.png)
 
+Buildin a custom extension starts by selecting the blocks from the list of samples. On selection of blocks an action in the table header appears `Custom Extension`.
+The modal dialog provides the option:
+* to name the custom extension
+* to upload the extension automatically to the Cumulocity Inventory. The created custom extension is otherwise downloaded to locally. It still requires the restart of the analytics engine.
+* to restart the stremaning analytics engine to load the created custom extension.
+
+![Create Extension](resources/images/create-extension-modal.png)
 
 ## Installation of plugin as community plugin
 
