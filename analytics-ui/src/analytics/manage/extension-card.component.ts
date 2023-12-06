@@ -36,7 +36,7 @@ export class AnalyticsExtensionCardComponent implements OnInit {
   async delete() {
     const initialState = {
       title: "Delete connector",
-      message: "You are about to delete a connector. Do you want to proceed?",
+      message: "You are about to delete an extension. Do you want to proceed?",
       labels: {
         ok: "Delete",
         cancel: "Cancel",
@@ -48,7 +48,7 @@ export class AnalyticsExtensionCardComponent implements OnInit {
     );
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        console.log("Confirmation delete result:", result);
+        //console.log("Confirmation delete result:", result);
         if (!!result) {
           try {
             await this.analyticsService.deleteExtension(this.app);

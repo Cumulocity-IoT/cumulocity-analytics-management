@@ -1,10 +1,13 @@
 import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { ModalLabels } from "@c8y/ngx-components";
+import { AlertService, ModalLabels } from "@c8y/ngx-components";
 import { Subject } from "rxjs";
 import { Repository } from "../../shared/analytics.model";
 import { RepositoryService } from "../../shared/repository.service";
 import { uuidCustom } from "../../shared/utils";
+import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
+import { ConfirmationModalComponent } from "../../component/confirmation-modal.component";
+import { AlarmService } from "@c8y/client";
 
 @Component({
   selector: "name-repositories-modal",
@@ -48,8 +51,12 @@ import { uuidCustom } from "../../shared/utils";
                 class="btn btn-icon btn-clean"
                 (click)="toogleActivation(repository)"
               >
-                <i  [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
-                class="m-r-5" c8yIcon="toggle-on" class="text-danger"></i>
+                <i
+                  [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
+                  class="m-r-5"
+                  c8yIcon="toggle-on"
+                  class="text-danger"
+                ></i>
                 <span class="sr-only" translate>Toogle activation</span>
               </button>
             </td>
@@ -118,13 +125,14 @@ export class RepositoriesModalComponent implements OnInit {
 
   constructor(
     private repositoryService: RepositoryService,
-    private fb: FormBuilder
+    private fb: FormBuilder,
+    private bsModalService: BsModalService,
+    private alertService: AlertService
   ) {
     this.repositoryForm = this.fb.group({
       id: [null],
       name: ["", Validators.required],
       url: ["", Validators.required],
-      // Add any other form controls based on your repository model
     });
   }
 
@@ -162,7 +170,33 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   removeRepository(repositoryId: string): void {
-    this.repositoryService.removeRepository(repositoryId);
+    const initialState = {
+      title: "Delete connector",
+      message: "You are about to delete a repository. Do you want to proceed?",
+      labels: {
+        ok: "Delete",
+        cancel: "Cancel",
+      },
+    };
+    const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
+      ConfirmationModalComponent,
+      { initialState }
+    );
+    confirmDeletionModalRef.content.closeSubject.subscribe(
+      async (result: boolean) => {
+        //console.log("Confirmation delete result:", result);
+        if (!!result) {
+          try {
+            this.repositoryService.removeRepository(repositoryId);
+          } catch (ex) {
+            if (ex) {
+              this.alertService.addServerFailure(ex);
+            }
+          }
+        }
+        confirmDeletionModalRef.hide();
+      }
+    );
   }
 
   onSave(event) {
