@@ -2,8 +2,9 @@ import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { ModalLabels } from "@c8y/ngx-components";
 import { Subject } from "rxjs";
-import { Repository, uuidCustom } from "../../shared/analytics.model";
+import { Repository } from "../../shared/analytics.model";
 import { RepositoryService } from "../../shared/repository.service";
+import { uuidCustom } from "../../shared/utils";
 
 @Component({
   selector: "name-repositories-modal",

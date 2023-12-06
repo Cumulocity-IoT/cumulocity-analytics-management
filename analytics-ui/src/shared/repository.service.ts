@@ -4,13 +4,11 @@ import { Injectable } from "@angular/core";
 import { BehaviorSubject, EMPTY, Observable } from "rxjs";
 import {
   ANALYTICS_REPOSITORIES_TYPE,
-  BASE_BACKEND_URL,
+  BASE_PATH_BACKEND,
   CEP_Block,
   REPOSITORY_ENDPOINT,
   REPO_SAMPLES,
   Repository,
-  getFileExtension,
-  removeFileExtension,
 } from "./analytics.model";
 import {
   FetchClient,
@@ -23,6 +21,7 @@ import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { catchError, map } from "rxjs/operators";
 import * as _ from "lodash";
 import { AnalyticsService } from "./analytics.service";
+import { getFileExtension, removeFileExtension } from "./utils";
 
 @Injectable({
   providedIn: "root",
@@ -155,7 +154,7 @@ export class RepositoryService {
     let result;
     if (backend) {
       const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BASE_BACKEND_URL}/${REPOSITORY_ENDPOINT}/any_repository/content`,
+        `${BASE_PATH_BACKEND}/${REPOSITORY_ENDPOINT}/any_repository/content`,
         {
           headers: {
             "content-type": "text/plain",

@@ -29,8 +29,6 @@
     />
     <span></span> Hide installed
   </label>
-  <!-- <c8y-form-group>
-    </c8y-form-group> -->
 </c8y-action-bar-item>
 <c8y-action-bar-item [placement]="'right'">
   <button
@@ -54,7 +52,9 @@
 </c8y-action-bar-item>
 <div class="card">
   <div class="card-block" *ngIf="!loading">
-    <c8y-data-grid id="dataGrid" #dataGrid
+    <c8y-data-grid
+      id="dataGrid"
+      #dataGrid
       [title]="titleSample | translate"
       [columns]="columnsSamples"
       [rows]="samples$ | async"
@@ -67,10 +67,18 @@
     </c8y-data-grid>
   </div>
 
-  <div class="card-block" style="padding-top:48px" *ngIf="loading">
+  <div class="card-block" style="padding-top: 48px" *ngIf="loading">
+    <div class="col-lg-8 col-lg-offset-3 m-b-48">
+      <h2>
+        <span class="label label-primary text-14">
+          Please stand by until the samples are scanned for meta information. This
+          may take a short while ...
+        </span>
+      </h2>
+    </div>
     <c8y-loading></c8y-loading>
   </div>
-  <div class="card-block col-md-offset-5 bg-white">
+  <div class="card-block col-md-offset-5">
     <div class="c8y-empty-state" *ngIf="(samples$ | async)?.length === 0">
       <h1 [c8yIcon]="'file-text'"></h1>
       <p><strong>No samples loaded.</strong><br /></p>

@@ -1,9 +1,10 @@
+import { uuidCustom } from "./utils";
+
 export interface ApplicationState {
   label: string;
   class: string;
 }
 
-/** Wizard types  */
 export enum Wizards {
   APPLICATION_UPLOAD = "applicationUpload",
   MICROSERVICE_UPLOAD = "microserviceUpload",
@@ -30,7 +31,6 @@ export interface ApplicationPlugin {
   contextPath?: string;
 }
 
-/** Wizard types  */
 export enum Category {
   INPUT = "INPUT",
   OUPUT = "OUTPUT",
@@ -40,12 +40,6 @@ export enum Category {
   FLOW_MANIPULATION = "FLOW_MANIPULATION",
   UTILITY = "UTILITY",
 }
-
-// export interface Block {
-//   name: string;
-//   custom: boolean;
-//   category: Category;
-// }
 
 export interface CEP_Metadata {
   metadatas: string[];
@@ -81,12 +75,12 @@ export interface Repository {
   enabled: boolean;
 }
 
-export const PATH_CEP_BASE = "service/cep";
-export const PATH_CEP_CORRELATOR = `${PATH_CEP_BASE}/apamacorrelator`;
-export const PATH_CEP_EN = `${PATH_CEP_CORRELATOR}/EN`;
-export const PATH_CEP_METADATA_EN = `${PATH_CEP_CORRELATOR}/EN/block-metadata.json`;
-export const PATH_CEP_DIAGNOSTICS = `${PATH_CEP_BASE}/diagnostics`;
-export const PATH_CEP_STATUS = `${PATH_CEP_DIAGNOSTICS}/apamaCtrlStatus`;
+export const CEP_PATH_BASE = "service/cep";
+export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
+export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/EN`;
+export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/EN/block-metadata.json`;
+export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
+export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
 
@@ -124,36 +118,8 @@ export const REPO_SAMPLES = [
   },
 ] as Repository[];
 
-export const BASE_BACKEND_URL = "service/analytics-ext-service";
+export const BASE_PATH_BACKEND = "service/analytics-ext-service";
 export const EXTENSION_ENDPOINT = "extension";
 export const REPOSITORY_ENDPOINT = "repository";
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
 export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";
-
-export function uuidCustom(): string {
-  let id = Math.random().toString(36).slice(-6);
-  return id;
-}
-
-export function removeFileExtension(name: string): string {
-  let result = name.replace(/\.[^.]*$/, "");
-  return result;
-}
-
-export function getFileExtension(name: string): string {
-  const pattern = /\.([0-9a-z]+)(?:[\?#]|$)/i;
-  let result = name.match(pattern);
-  return result[0];
-}
-
-export function isCustomCEP_Block(block: CEP_Block): boolean {
-  return (
-    !block.id.startsWith("apama.analyticsbuilder.blocks") &&
-    !block.id.startsWith("apama.analyticskit.blocks.core") &&
-    !block.id.startsWith("apama.analyticskit.blocks.cumulocity")
-  );
-}
-
-// https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples
-// http://localhost:9000/cep/apamacorrelator/EN/block-metadata.json
-// http://localhost:9000/service/cep/apamacorrelator/EN/core.json

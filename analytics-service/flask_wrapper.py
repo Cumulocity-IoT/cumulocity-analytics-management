@@ -31,11 +31,6 @@ agent = C8YAgent()
 def health():
     return '{"status":"UP"}'
 
-# this endpoint was only exposed for test purposes
-# @app.route("/service/cep/restart", methods=["PUT"])
-# def restart():
-#     agent.restart_cep(request_headers=request.headers)
-#     return f"OK", 200
 
 # download the content from github
 # params:
@@ -47,10 +42,14 @@ def get_content(repository):
     try:
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
-        extract_fqn_cep_block_raw = request.args.get("extract_fqn_cep_block", default=False)
+        extract_fqn_cep_block_raw = request.args.get(
+            "extract_fqn_cep_block", default=False
+        )
         extract_fqn_cep_block = json.loads(extract_fqn_cep_block_raw.lower())
-        logger.info(f"Get content encoded_url: {repository} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}")
-        
+        logger.info(
+            f"Get content encoded_url: {repository} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}"
+        )
+
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
         monitor_code = requests.get(decoded_url, allow_redirects=True)
@@ -97,7 +96,6 @@ def create_extension():
                 logger.info(f"... in temp dir: {work_temp_dir}")
                 # step 1: download all monitors
                 for monitor in monitors:
-
                     # get the contents of the file
                     try:
                         file_name = extract_raw_path(monitor)
@@ -162,6 +160,65 @@ def create_extension():
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
                 return f"Bad request: {str(e)}", 400
+
+
+# return the details for the extension
+# params:
+#    name                    name of monitor to download
+# returns:
+#    list of monitors included in the extension with the following structure
+# export interface CEP_Extension {
+#   name: string;
+#   analytics: CEP_Block[];
+#   version: string;
+#   loaded: true;
+# }
+
+# export interface CEP_Block {
+#   id: string;
+#   name: string;
+#   installed: boolean;
+#   producesOutput: string;
+#   description: string;
+#   url: string;
+#   downloadUrl: string;
+#   path: string;
+#   custom: boolean;
+#   extension: string;
+#   repositoryName: string;
+#   category: Category;
+# }
+@app.route("/cep/extension/<name>", methods=["GET"])
+def get_cep_extension(name):
+    cep_extension = {name}
+    return cep_extension, 200
+
+# return the details on all loaded extensions
+# returns:
+#    list of all loaded extensions with the following structure
+# export interface CEP_Metadata {
+#   metadatas: string[];
+#   messages: string[];
+# }
+@app.route("/cep/extension", methods=["GET"])
+def get_cep_extension_metadata():
+    cep_extension_metadata = []
+    return cep_extension_metadata, 200
+
+# return the managedObject that represents the cep ctrl microservice  
+# returns:
+#    id
+@app.route("/cep/diagnostic", methods=["GET"])
+def get_cep_id():
+    cep_id = {}
+    return cep_id, 200
+
+
+# this endpoint was only exposed for test purposes
+# @app.route("/cep/restart", methods=["PUT"])
+# def restart():
+#     agent.restart_cep(request_headers=request.headers)
+#     return f"OK", 200
 
 
 def extract_path(path):
