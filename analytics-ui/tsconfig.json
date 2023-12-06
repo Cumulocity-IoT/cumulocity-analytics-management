@@ -12,9 +12,9 @@
     "lib": ["dom", "es2015", "es2016"],
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-
   },
   "angularCompilerOptions": {
+    "strictTemplates": true,
     "enableIvy": true
   }
 }

@@ -1,12 +1,13 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { IManagedObject } from '@c8y/client';
-import { AlertService } from '@c8y/ngx-components';
-import { AnalyticsService } from '../../shared/analytics.service';
+import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
+import { ActivatedRoute, Router } from "@angular/router";
+import { IManagedObject } from "@c8y/client";
+import { AlertService } from "@c8y/ngx-components";
+import { AnalyticsService } from "../../shared/analytics.service";
+import { saveAs } from "file-saver";
 
 @Component({
-  selector: 'extension-card',
-  templateUrl: './extension-card.component.html'
+  selector: "extension-card",
+  templateUrl: "./extension-card.component.html",
 })
 export class AnalyticsExtensionCardComponent implements OnInit {
   @Input() app: IManagedObject;
@@ -19,8 +20,7 @@ export class AnalyticsExtensionCardComponent implements OnInit {
     private activatedRoute: ActivatedRoute
   ) {}
 
-  async ngOnInit() {
-  }
+  async ngOnInit() {}
 
   async detail() {
     //this.router.navigateByUrl(`/sag-ps-pkg-dynamic-mapping/extensions/${this.app.id}`);
@@ -34,6 +34,19 @@ export class AnalyticsExtensionCardComponent implements OnInit {
     try {
       await this.analyticsService.deleteExtension(this.app);
       this.onAppDeleted.emit();
+    } catch (ex) {
+      if (ex) {
+        this.alertService.addServerFailure(ex);
+      }
+    }
+  }
+  async download() {
+    try {
+      let bin: ArrayBuffer = await this.analyticsService.downloadExtension(
+        this.app
+      );
+      const blob = new Blob([bin]);
+      saveAs(blob, `${this.app.name}.zip`);
     } catch (ex) {
       if (ex) {
         this.alertService.addServerFailure(ex);

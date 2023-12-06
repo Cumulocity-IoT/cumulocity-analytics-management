@@ -97,6 +97,32 @@ export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}
 export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
+export const REPO_SAMPLES = [
+  {
+    id: uuidCustom(),
+    name: "Block SDK Samples",
+    url: REPO_SAMPLES_BLOCKSDK,
+    enabled: true,
+  },
+  {
+    id: uuidCustom(),
+    name: "Contrib Samples Block",
+    url: REPO_SAMPLES_CONTRIB_BLOCK,
+    enabled: false,
+  },
+  {
+    id: uuidCustom(),
+    name: "Contrib Samples Simulation-Block",
+    url: REPO_SAMPLES_CONTRIB_SIMULATION,
+    enabled: false,
+  },
+  {
+    id: uuidCustom(),
+    name: "Contrib Samples Cumulocity-Block",
+    url: REPO_SAMPLES_CONTRIB_CUMULOCITY,
+    enabled: false,
+  },
+] as Repository[];
 
 export const BASE_BACKEND_URL = "service/analytics-ext-service";
 export const EXTENSION_ENDPOINT = "extension";

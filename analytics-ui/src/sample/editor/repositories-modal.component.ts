@@ -3,7 +3,7 @@ import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { ModalLabels } from "@c8y/ngx-components";
 import { Subject } from "rxjs";
 import { Repository, uuidCustom } from "../../shared/analytics.model";
-import { RepositoryService } from "./repository.service";
+import { RepositoryService } from "../../shared/repository.service";
 
 @Component({
   selector: "name-repositories-modal",

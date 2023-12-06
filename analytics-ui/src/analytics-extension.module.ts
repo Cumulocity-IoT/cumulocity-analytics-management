@@ -26,7 +26,7 @@ import { CreateExtensionComponent } from "./wizard/create-extension-modal.compon
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
-import { RepositoryService } from "./sample/editor/repository.service";
+import { RepositoryService } from "./shared/repository.service";
 import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { C8YSwitchField } from "./shared/c8y-switch-field";
 import { AnalyticsExtensionDetailsComponent } from "./analytics/manage/extension-details.component";

@@ -54,12 +54,13 @@
 </c8y-action-bar-item>
 <div class="card">
   <div class="card-block" *ngIf="!loading">
-    <c8y-data-grid
+    <c8y-data-grid id="dataGrid" #dataGrid
       [title]="titleSample | translate"
       [columns]="columnsSamples"
       [rows]="samples$ | async"
       [pagination]="pagination"
-      [selectable]="'true'"
+      [selectable]="true"
+      (itemsSelect)="checkSeletion($event)"
       [actionControls]="actionControls"
       [bulkActionControls]="bulkActionControls"
     >

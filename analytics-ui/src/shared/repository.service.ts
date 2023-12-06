@@ -7,15 +7,11 @@ import {
   BASE_BACKEND_URL,
   CEP_Block,
   REPOSITORY_ENDPOINT,
-  REPO_SAMPLES_BLOCKSDK,
-  REPO_SAMPLES_CONTRIB_BLOCK,
-  REPO_SAMPLES_CONTRIB_CUMULOCITY,
-  REPO_SAMPLES_CONTRIB_SIMULATION,
+  REPO_SAMPLES,
   Repository,
   getFileExtension,
   removeFileExtension,
-  uuidCustom,
-} from "../../shared/analytics.model";
+} from "./analytics.model";
 import {
   FetchClient,
   IFetchResponse,
@@ -26,7 +22,7 @@ import { AlertService, gettext } from "@c8y/ngx-components";
 import { HttpClient, HttpErrorResponse } from "@angular/common/http";
 import { catchError, map } from "rxjs/operators";
 import * as _ from "lodash";
-import { AnalyticsService } from "../../shared/analytics.service";
+import { AnalyticsService } from "./analytics.service";
 
 @Injectable({
   providedIn: "root",
@@ -85,12 +81,12 @@ export class RepositoryService {
 
   async loadRepositories(): Promise<Repository[]> {
     if (!this._repositories) {
-      this._repositories = this.loadRepositories_Uncached();
+      this._repositories = this.loadRepositoriesUncached();
     }
     return this._repositories;
   }
 
-  async loadRepositories_Uncached(): Promise<Repository[]> {
+  async loadRepositoriesUncached(): Promise<Repository[]> {
     let result = [] as Repository[];
     const filter: object = {
       pageSize: 100,
@@ -105,32 +101,7 @@ export class RepositoryService {
         name: "AnalyticsRepositories",
         type: ANALYTICS_REPOSITORIES_TYPE,
       };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = [
-        {
-          id: uuidCustom(),
-          name: "Block SDK Samples",
-          url: REPO_SAMPLES_BLOCKSDK,
-          enabled: true,
-        },
-        {
-          id: uuidCustom(),
-          name: "Contrib Samples Block",
-          url: REPO_SAMPLES_CONTRIB_BLOCK,
-          enabled: false,
-        },
-        {
-          id: uuidCustom(),
-          name: "Contrib Samples Simulation-Block",
-          url: REPO_SAMPLES_CONTRIB_SIMULATION,
-          enabled: false,
-        },
-        {
-          id: uuidCustom(),
-          name: "Contrib Samples Cumulocity-Block",
-          url: REPO_SAMPLES_CONTRIB_CUMULOCITY,
-          enabled: false,
-        },
-      ] as Repository[];
+      reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
       this.inventoryService.create(reposMO);
       result = reposMO[ANALYTICS_REPOSITORIES_TYPE];
     } else if (data.length > 0) {
@@ -172,15 +143,7 @@ export class RepositoryService {
     block: CEP_Block,
     rep: Repository
   ): Promise<string> {
-    let fqn;
-    //if (block.name.slice(-4) == ".mon") {
-    fqn = await this.getCEP_BlockContent(block, true, true);
-    // (?<=^package\s) look ahead of "package "
-    // (?=;) look behind of ";"
-    // const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-    // const match = content.match(regex);
-    // fqn = match[0].trim() + "." + block.name.slice(0, -4);
-    // }
+    let fqn = await this.getCEP_BlockContent(block, true, true);
     return fqn;
   }
 
@@ -230,12 +193,12 @@ export class RepositoryService {
   async getCEP_BlockSamples(rep: Repository): Promise<CEP_Block[]> {
     if (!this._cep_block_cache || !this._cep_block_cache.get(rep.id)) {
       console.log(`Looking for samples ${rep.id} - ${rep.name}`);
-      this._cep_block_cache.set(rep.id, this.getCEP_BlockSamples_Uncached(rep));
+      this._cep_block_cache.set(rep.id, this.getCEP_BlockSamplesUncached(rep));
     }
     return this._cep_block_cache.get(rep.id);
   }
 
-  async getCEP_BlockSamples_Uncached(rep: Repository): Promise<CEP_Block[]> {
+  async getCEP_BlockSamplesUncached(rep: Repository): Promise<CEP_Block[]> {
     const result: any = this.githubFetchClient
       .get(rep.url, {
         headers: {

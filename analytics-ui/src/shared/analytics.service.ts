@@ -102,15 +102,15 @@ export class AnalyticsService {
     });
   }
 
-  async getExtensionsEnriched(customFilter: any = {}): Promise<IManagedObject[]> {
+  async getExtensionsEnriched(
+    customFilter: any = {}
+  ): Promise<IManagedObject[]> {
     const extensions = (await this.getExtensions(customFilter)).data;
     const loadedExtensions: CEP_Metadata = await this.getCEP_Metadata();
     extensions.forEach((ext) => {
-      ext.name  = removeFileExtension(ext.name)
+      ext.name = removeFileExtension(ext.name);
       const key = ext.name + CEP_METADATA_FILE_EXTENSION;
-      ext.loaded = loadedExtensions.metadatas.some((le) =>
-        key.includes(le)
-      );
+      ext.loaded = loadedExtensions.metadatas.some((le) => key.includes(le));
     });
     return extensions;
   }
@@ -140,17 +140,19 @@ export class AnalyticsService {
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
     if (!this._blocksDeployed) {
-      this._blocksDeployed = this.getLoadedCEP_Blocks_Uncached();
+      this._blocksDeployed = this.getLoadedCEP_BlocksUncached();
     }
     return this._blocksDeployed;
   }
 
-  async getLoadedCEP_Blocks_Uncached(): Promise<CEP_Block[]> {
+  async getLoadedCEP_BlocksUncached(): Promise<CEP_Block[]> {
     const result: CEP_Block[] = [];
     const meta: CEP_Metadata = await this.getCEP_Metadata();
     if (meta && meta.metadatas) {
       for (let index = 0; index < meta.metadatas.length; index++) {
-        const extensionNameAbbreviated = removeFileExtension(meta.metadatas[index]);
+        const extensionNameAbbreviated = removeFileExtension(
+          meta.metadatas[index]
+        );
         const extension: CEP_Extension = await this.getCEP_Extension(
           extensionNameAbbreviated
         );
@@ -197,12 +199,12 @@ export class AnalyticsService {
 
   async getCEP_Id(): Promise<string> {
     if (!this._cepId) {
-      this._cepId = this.getCEP_Id_Uncached();
+      this._cepId = this.getCEP_IdUncached();
     }
     return this._cepId;
   }
 
-  async getCEP_Id_Uncached(): Promise<string> {
+  async getCEP_IdUncached(): Promise<string> {
     // get name of microservice from cep endpoint
     const response: IFetchResponse = await this.fetchClient.fetch(
       `${PATH_CEP_STATUS}`,
@@ -299,7 +301,6 @@ export class AnalyticsService {
   ): Promise<IManagedObjectBinary> {
     const result = (await this.inventoryBinaryService.create(archive, app))
       .data;
-
     return result;
   }
 
@@ -309,7 +310,7 @@ export class AnalyticsService {
     }
   }
 
-  async isBackendDeployed_Uncached(): Promise<boolean> {
+  async isBackendDeployedUncached(): Promise<boolean> {
     return this.applicationService
       .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
       .then((av) => {
@@ -321,9 +322,17 @@ export class AnalyticsService {
       });
   }
 
+  async downloadExtension(app: IManagedObject): Promise<ArrayBuffer> {
+    let response: IFetchResponse = await this.inventoryBinaryService.download(
+      app
+    );
+    console.log("Downloading Extension", app);
+    return response.arrayBuffer();
+  }
+
   async isBackendDeployed(): Promise<boolean> {
     if (!this._isBackendDeployed) {
-      this._isBackendDeployed = this.isBackendDeployed_Uncached();
+      this._isBackendDeployed = this.isBackendDeployedUncached();
     }
     return this._isBackendDeployed;
   }
