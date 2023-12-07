@@ -19,18 +19,6 @@ export enum ERROR_TYPE {
   INVALID_APPLICATION = "INVALID_APPLICATION",
 }
 
-export interface ApplicationPlugin {
-  id: string;
-  name?: string;
-  module: string;
-  path: string;
-  description?: string;
-  version?: string;
-  scope?: string;
-  installed?: boolean;
-  contextPath?: string;
-}
-
 export enum Category {
   INPUT = "INPUT",
   OUPUT = "OUTPUT",

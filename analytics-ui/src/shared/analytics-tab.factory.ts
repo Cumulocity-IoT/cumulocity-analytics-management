@@ -26,12 +26,12 @@ export class AnalyticsTabFactory implements TabFactory {
   constructor(public router: Router) {}
 
   async get() {
-    // console.log(
-    //   "AnalyticsTabFactory",
-    //   this.router.url,
-    //   this.router.url.match(/sag-ps-pkg-analytics-extension/g)
-    // );
-    // console.log("AnalyticsTabFactory", this.router.config);
+    console.log(
+      "AnalyticsTabFactory",
+      this.router.url,
+      this.router.url.match(/sag-ps-pkg-analytics-extension/g)
+    );
+    console.log("AnalyticsTabFactory", this.router.config);
 
     const tabs: Tab[] = [];
     if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
