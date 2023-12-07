@@ -127,22 +127,47 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
  The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension).
  You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
+ 
+ The microservice is multi tenant ready
 
 ## Prerequisites to build/deploy the microservice
 * Docker host/client 
 * [c8y-go-cli](https://goc8ycli.netlify.app)
 
 ## Local debugging using Vscode/Devcontainer
-To run the microservice locally you an use Vscode and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). To use your own credentials comment the line `"postAttachCommand": "python3 .devcontainer/get_service_creds.py",` in devcontainer.json and create .env file with credentials of your liking. Env file format is:
+To run and debug the microservice locally you an use Vscode and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin (Administrative Credentials to fetch BootStrap Credentials) file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). The get_service_creds.py fetch the credentials and create the .env file containing the bootstrep credentials. 
 
+To use your own credentials in the .env file comment the line `"postAttachCommand": "python3 .devcontainer/get_service_creds.py",` in devcontainer.json and create .env file with credentials of your liking. Env file format is:
+
+* Example .env-admin
 ```
 C8Y_BASEURL=https://<tenant>.cumulocity.com
 C8Y_TENANT=<tenantId>
 C8Y_USER=<user>
-C8Y_PASSWORD=<passowrd>
-``````
+C8Y_PASSWORD=<password>
+```
+
+* Example .env
+```
+C8Y_BASEURL=https://<tenant>.eu-latest.cumulocity.com
+C8Y_BOOTSTRAP_TENANT=<tenant_id>
+C8Y_BOOTSTRAP_USER=servicebootstrap_analytics-ext-service
+C8Y_BOOTSTRAP_PASSWORD=<password>
+```
 
 After the dev container has started you can debug flask-wrapper.py as a python file. 
+
+To test the microservice you can issue the following curl command
+```
+curl --location 'http://127.0.0.1:<container host port>/extension' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Basic <tenant_id>/<username> as base64' \
+--data '{
+    "extension_name": "Test",
+    "upload": true,
+    "monitors": ["https://raw.githubusercontent.com/SoftwareAG/apama-analytics-builder-block-sdk/rel/10.18.0.x/samples/blocks/CreateEvent.mon"]
+}'
+```
 
 ## Build/Deploy
 
