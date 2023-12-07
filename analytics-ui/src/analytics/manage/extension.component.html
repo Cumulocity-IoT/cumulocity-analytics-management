@@ -36,9 +36,9 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button (click)="loadExtensions()" class="btn btn-link" title="{{ 'Reload' | translate }}">
-    <i [ngClass]="{ 'icon-spin': reloading }" c8yIcon="refresh"></i>
-    {{ 'Reload' | translate }}
+  <button (click)="loadExtensions()" class="btn btn-link" title="{{ 'Refresh' | translate }}">
+    <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
+    {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -49,7 +49,7 @@
   ></c8y-list-display-switch>
 </c8y-action-bar-item>
 
-<div *ngIf="(extensions$ | async)?.length === 0" class="c8y-empty-state text-center">
+<div *ngIf="!loadingError &&((extensions$ | async)?.length === 0)" class="c8y-empty-state text-center">
   <h1 class="c8y-icon c8y-icon-modules c8y-icon-duocolor"></h1>
   <h3 translate>No extension to display.</h3>
   <p translate>Add your first extension by clicking below.</p>
@@ -64,7 +64,7 @@
   </p>
 </div>
 
-<div [ngClass]="listClass" class="card-group">
+<div [ngClass]="listClass" class="card-group"  *ngIf="!loading">
   <div class="page-sticky-header hidden-xs flex-row" *ngIf="(extensions$ | async)?.length > 0">
     <div class="card-block card-column-40">
       <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
@@ -81,4 +81,15 @@
       class="d-contents"
     ></extension-card>
   </div>
+
+</div>
+<div class="card-block" style="padding-top: 48px" *ngIf="loadingError">
+  <div class="col-lg-8 col-lg-offset-3 m-b-48">
+    <h2>
+      <span class="label label-primary text-14">
+        Please stand by until the streaming analytics engine is started successfully. Retry in a short while ...
+      </span>
+    </h2>
+  </div>
+  <!-- <c8y-loading></c8y-loading> -->
 </div>

@@ -29,6 +29,7 @@ import {
   AlertService,
   Column,
   ColumnDataType,
+  DisplayOptions,
   Pagination,
 } from "@c8y/ngx-components";
 import { AnalyticsService } from "../../shared/analytics.service";
@@ -41,7 +42,7 @@ import { CEP_Block } from "../../shared/analytics.model";
   encapsulation: ViewEncapsulation.None,
 })
 export class BlockGridComponent implements OnInit {
-  showConfigBlock: boolean = false;
+  loading: boolean = true;
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
   blocks: CEP_Block[] = [];
@@ -112,7 +113,9 @@ export class BlockGridComponent implements OnInit {
   }
 
   async loadBlocks() {
+    this.loading = true;
     this.blocks = await this.analyticsService.getLoadedCEP_Blocks();
+    this.loading = false;
   }
 
   ngOnDestroy() {}

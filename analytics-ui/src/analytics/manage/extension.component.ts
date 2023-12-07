@@ -1,8 +1,14 @@
 import { Component, OnInit } from "@angular/core";
 import { IManagedObject } from "@c8y/client";
 import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
-import { BehaviorSubject, Observable } from "rxjs";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
+import { BehaviorSubject, Observable, of, throwError } from "rxjs";
+import {
+  catchError,
+  finalize,
+  shareReplay,
+  switchMap,
+  tap,
+} from "rxjs/operators";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { ModalOptions } from "ngx-bootstrap/modal";
 
@@ -12,7 +18,8 @@ import { ModalOptions } from "ngx-bootstrap/modal";
   styleUrls: ["./extension.component.css"],
 })
 export class AnalyticsExtensionComponent implements OnInit {
-  reloading: boolean = false;
+  loading: boolean = false;
+  loadingError: boolean = false;
   reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   subscription: any;
   extensions$: Observable<IManagedObject>;
@@ -25,12 +32,19 @@ export class AnalyticsExtensionComponent implements OnInit {
 
   ngOnInit() {
     this.extensions$ = this.reload$.pipe(
-      tap(() => (this.reloading = true)),
+      tap(() => {
+        this.loading = true;
+        this.loadingError = false;
+      }),
       switchMap(() => this.analyticsService.getExtensionsEnriched()),
-      tap(console.log),
-      tap(() => (this.reloading = false)),
+      catchError(() => {
+        this.loadingError = true;
+        return of(undefined);
+      }),
+      tap(() => (this.loading = false)),
       shareReplay()
     );
+
     this.loadExtensions();
     this.initializeMonitoringService();
   }

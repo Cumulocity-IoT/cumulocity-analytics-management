@@ -32,7 +32,7 @@
 
 </c8y-action-bar-item>
 <div class="card">
-  <div class="card-block">
+  <div class="card-block" *ngIf="!loading">
     <c8y-data-grid
       [title]="titleBlock | translate"
       [refresh]="refresh"
@@ -42,6 +42,17 @@
       [actionControls]="actionControls"
     >
     </c8y-data-grid>
+  </div>
+  <div class="card-block" style="padding-top: 48px" *ngIf="loading">
+    <div class="col-lg-8 col-lg-offset-3 m-b-48">
+      <h2>
+        <span class="label label-primary text-14">
+          Please stand by until the streaming analytics engine is started successfully. This
+          may take a short while ...
+        </span>
+      </h2>
+    </div>
+    <c8y-loading></c8y-loading>
   </div>
   <div class="card-block col-md-offset-5 bg-white">
     <div class="c8y-empty-state" *ngIf="blocks.length === 0">

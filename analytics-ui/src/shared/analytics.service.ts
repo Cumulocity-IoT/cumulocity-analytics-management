@@ -111,6 +111,8 @@ export class AnalyticsService {
       const key = ext.name + CEP_METADATA_FILE_EXTENSION;
       ext.loaded = loadedExtensions.metadatas.some((le) => key.includes(le));
     });
+    // const extensions =undefined;
+    // throw new Error ("Thusday morning!");
     return extensions;
   }
 
