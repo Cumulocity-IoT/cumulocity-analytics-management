@@ -7,7 +7,6 @@ import {
   hookRoute,
   hookTab,
   hookWizard,
-  RouterModule,
 } from "@c8y/ngx-components";
 import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
 import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
@@ -54,7 +53,7 @@ const routes: Route[] = [
     BinaryFileDownloadModule,
     BsDropdownModule.forRoot(),
     //ngRouterModule.forRoot([], { enableTracing: false, useHash: true }),
-    RouterModule.forRoot(),
+    //RouterModule.forRoot(),
     //RouterModule.forChild(routes),
     DefaultSubscriptionsModule,
     HttpClientModule,
