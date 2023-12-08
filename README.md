@@ -1,5 +1,5 @@
 # cumulocity-analytics-management
-
+> **NOTE**: The plugin can for the moment only be installed in the Administration app, not as shown below direclty in the Streaming Analytics app. This limitation will be fixed shortly!
 ## Content
 - [Overview](#overview)
 - [Manage Custom Extension](#manage-custom-extension)

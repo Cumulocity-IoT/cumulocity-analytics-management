@@ -51,7 +51,6 @@ const routes: Route[] = [
     FormsModule,
     ReactiveFormsModule,
     BinaryFileDownloadModule,
-    BsDropdownModule.forRoot(),
     //ngRouterModule.forRoot([], { enableTracing: false, useHash: true }),
     //RouterModule.forRoot(),
     //RouterModule.forChild(routes),
