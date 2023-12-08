@@ -48,7 +48,7 @@ export class BlockGridComponent implements OnInit {
   blocks: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
 
-  titleBlock: string = "AnalyticsBuilder Blocks";
+  titleBlock: string = "Analytics Builder Blocks";
 
   columnsBlocks: Column[] = [
     {
