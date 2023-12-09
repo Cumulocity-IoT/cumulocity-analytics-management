@@ -21,7 +21,7 @@
 
 <c8y-title translate>Analytics Builder Blocks</c8y-title>
 <c8y-action-bar-item [placement]="'right'">
-   <button
+  <button
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
     (click)="loadBlocks()"
@@ -29,37 +29,35 @@
     <i c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
-
 </c8y-action-bar-item>
-<div class="card">
-  <div class="card-block" *ngIf="!loading">
-    <c8y-data-grid
-      [title]="titleBlock | translate"
-      [refresh]="refresh"
-      [columns]="columnsBlocks"
-      [rows]="blocks"
-      [pagination]="pagination"
-      [actionControls]="actionControls"
-    >
-    </c8y-data-grid>
-  </div>
-  <div class="card-block" style="padding-top: 48px" *ngIf="loading">
+
+<div class="content-fullpage border-top border-bottom">
+  <c8y-data-grid
+    *ngIf="!loading"
+    [title]="titleBlock | translate"
+    [refresh]="refresh"
+    [columns]="columnsBlocks"
+    [rows]="blocks"
+    [pagination]="pagination"
+    [actionControls]="actionControls"
+  >
+    <c8y-ui-empty-state
+      [icon]="'plugin'"
+      [title]="'No blocks loaded.' | translate"
+      [subtitle]="'Wait for Analytics Streaming to load blocks.' | translate"
+      [horizontal]="true"
+    ></c8y-ui-empty-state>
+  </c8y-data-grid>
+
+  <div style="padding-top: 48px" *ngIf="loading">
     <div class="col-lg-8 col-lg-offset-3 m-b-48">
       <h2>
         <span class="label label-primary text-14">
-          Please stand by until the streaming analytics engine is started successfully. This
-          may take a short while ...
+          Please stand by until the streaming analytics engine is started
+          successfully. This may take a short while ...
         </span>
       </h2>
     </div>
     <c8y-loading></c8y-loading>
-  </div>
-  <div class="card-block col-md-offset-5 bg-white">
-    <div class="c8y-empty-state" *ngIf="blocks.length === 0">
-      <h1 [c8yIcon]="'file-text'"></h1>
-      <p>
-        <strong>No blocks loaded.</strong><br />
-      </p>
-    </div>
   </div>
 </div>

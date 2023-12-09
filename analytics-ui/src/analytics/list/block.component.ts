@@ -29,11 +29,11 @@ import {
   AlertService,
   Column,
   ColumnDataType,
-  DisplayOptions,
   Pagination,
 } from "@c8y/ngx-components";
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
+import { BoolenRendererComponent } from "../../shared/boolean-renderer.component";
 
 @Component({
   selector: "c8y-block-grid",
@@ -76,6 +76,8 @@ export class BlockGridComponent implements OnInit {
       filterable: true,
       dataType: ColumnDataType.TextShort,
       sortable: true,
+      cellCSSClassName: 'text-center',
+      cellRendererComponent: BoolenRendererComponent
     },
     {
       header: "Description",

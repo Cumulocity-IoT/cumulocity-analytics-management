@@ -50,38 +50,37 @@
     {{ "Repositories" | translate }}
   </button>
 </c8y-action-bar-item>
-<div class="card">
-  <div class="card-block" *ngIf="!loading">
-    <c8y-data-grid
-      id="dataGrid"
-      #dataGrid
-      [title]="titleSample | translate"
-      [columns]="columnsSamples"
-      [rows]="samples$ | async"
-      [pagination]="pagination"
-      [selectable]="true"
-      (itemsSelect)="checkSeletion($event)"
-      [actionControls]="actionControls"
-      [bulkActionControls]="bulkActionControls"
-    >
-    </c8y-data-grid>
-  </div>
-
-  <div class="card-block" style="padding-top: 48px" *ngIf="loading">
+<!-- <div class="card-block" *ngIf="!loading"> -->
+<div class="content-fullpage border-top border-bottom">
+  <c8y-data-grid
+    *ngIf="!loading"
+    id="dataGrid"
+    #dataGrid
+    [title]="titleSample | translate"
+    [columns]="columnsSamples"
+    [rows]="samples$ | async"
+    [pagination]="pagination"
+    [selectable]="true"
+    (itemsSelect)="checkSeletion($event)"
+    [actionControls]="actionControls"
+    [bulkActionControls]="bulkActionControls"
+  >
+    <c8y-ui-empty-state
+      [icon]="'cog'"
+      [title]="'No samples to display.' | translate"
+      [subtitle]="'Configure sample repositories.' | translate"
+      [horizontal]="true"
+    ></c8y-ui-empty-state>
+  </c8y-data-grid>
+  <div style="padding-top: 48px" *ngIf="loading">
     <div class="col-lg-8 col-lg-offset-3 m-b-48">
       <h2>
         <span class="label label-primary text-14">
-          Please stand by until the samples are scanned for meta information. This
-          may take a short while ...
+          Please stand by until the samples are scanned for meta information.
+          This may take a short while ...
         </span>
       </h2>
     </div>
     <c8y-loading></c8y-loading>
-  </div>
-  <div class="card-block col-md-offset-5">
-    <div class="c8y-empty-state" *ngIf="(samples$ | async)?.length === 0">
-      <h1 [c8yIcon]="'file-text'"></h1>
-      <p><strong>No samples loaded.</strong><br /></p>
-    </div>
   </div>
 </div>

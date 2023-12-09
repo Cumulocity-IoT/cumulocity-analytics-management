@@ -10,7 +10,6 @@ import {
 } from "@c8y/ngx-components";
 import { BinaryFileDownloadModule } from "@c8y/ngx-components/binary-file-download";
 import { DefaultSubscriptionsModule } from "@c8y/ngx-components/default-subscriptions";
-import { BsDropdownModule } from "ngx-bootstrap/dropdown";
 import { AddExtensionWizardComponent } from "./component/add-extension-wizard.component";
 import { AnalyticsExtensionCardComponent } from "./analytics/manage/extension-card.component";
 import { AnalyticsExtensionComponent } from "./analytics/manage/extension.component";
@@ -30,6 +29,7 @@ import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { C8YSwitchField } from "./component/c8y-switch-field";
 import { AnalyticsExtensionDetailsComponent } from "./analytics/manage/extension-details.component";
 import { ConfirmationModalComponent } from "./component/confirmation-modal.component";
+import { BoolenRendererComponent } from "./shared/boolean-renderer.component";
 
 const routes: Route[] = [
   {
@@ -51,9 +51,6 @@ const routes: Route[] = [
     FormsModule,
     ReactiveFormsModule,
     BinaryFileDownloadModule,
-    //ngRouterModule.forRoot([], { enableTracing: false, useHash: true }),
-    //RouterModule.forRoot(),
-    //RouterModule.forChild(routes),
     DefaultSubscriptionsModule,
     HttpClientModule,
   ],
@@ -70,7 +67,8 @@ const routes: Route[] = [
     RepositoriesModalComponent,
     AnalyticsExtensionDetailsComponent,
     C8YSwitchField,
-    ConfirmationModalComponent
+    ConfirmationModalComponent,
+    BoolenRendererComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -83,7 +81,8 @@ const routes: Route[] = [
     EditorModalComponent,
     RepositoriesModalComponent,
     AnalyticsExtensionDetailsComponent,
-    ConfirmationModalComponent
+    ConfirmationModalComponent,
+    BoolenRendererComponent
   ],
   providers: [
     AnalyticsService,
