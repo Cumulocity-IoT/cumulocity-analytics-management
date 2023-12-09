@@ -70,7 +70,16 @@
       [title]="'No samples to display.' | translate"
       [subtitle]="'Configure sample repositories.' | translate"
       [horizontal]="true"
-    ></c8y-ui-empty-state>
+    >
+      <button
+        class="btn btn-link m-t-24"
+        title="{{ 'Repositories' | translate }}"
+        (click)="updateRepositories()"
+      >
+        <i c8yIcon="change-theme"></i>
+        {{ "Repositories" | translate }}
+      </button></c8y-ui-empty-state
+    >
   </c8y-data-grid>
   <div style="padding-top: 48px" *ngIf="loading">
     <div class="col-lg-8 col-lg-offset-3 m-b-48">
