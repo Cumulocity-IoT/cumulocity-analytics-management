@@ -87,7 +87,7 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       gridTrackSize: "7.5%",
       visible: true,
-      cellCSSClassName: 'text-center',
+      //cellCSSClassName: 'text-center',
       cellRendererComponent: BoolenRendererComponent
     },
     {

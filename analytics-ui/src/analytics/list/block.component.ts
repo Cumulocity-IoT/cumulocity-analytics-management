@@ -76,7 +76,7 @@ export class BlockGridComponent implements OnInit {
       filterable: true,
       dataType: ColumnDataType.TextShort,
       sortable: true,
-      cellCSSClassName: 'text-center',
+      //cellCSSClassName: 'text-center',
       cellRendererComponent: BoolenRendererComponent
     },
     {
