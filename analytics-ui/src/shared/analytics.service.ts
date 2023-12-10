@@ -107,19 +107,22 @@ export class AnalyticsService {
   async getExtensionsEnrichedUncached(
     customFilter: any = {}
   ): Promise<IManagedObject[]> {
+    console.log("Calling: getExtensionsEnrichedUncached()");
     const extensions = (await this.getExtensions(customFilter)).data;
     const loadedExtensions: CEP_ExtensionsMetadata =
       await this.getCEP_ExtensionsMetadata();
     for (let index = 0; index < extensions.length; index++) {
       extensions[index].name = removeFileExtension(extensions[index].name);
-      let extensionDetails = await this.getCEP_Extension(
-        extensions[index].name
-      );
       const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
       extensions[index].loaded = loadedExtensions.metadatas.some((le) =>
         key.includes(le)
       );
-      extensions[index].blocksCount = extensionDetails?.analytics.length;
+      if (extensions[index].loaded) {
+        let extensionDetails = await this.getCEP_Extension(
+          extensions[index].name
+        );
+        extensions[index].blocksCount = extensionDetails?.analytics.length;
+      }
     }
     return extensions;
   }
