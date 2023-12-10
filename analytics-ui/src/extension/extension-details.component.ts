@@ -21,8 +21,8 @@
 import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { gettext } from "@c8y/ngx-components";
-import { AnalyticsService } from "../../shared/analytics.service";
-import { CEP_Extension } from "../../shared/analytics.model";
+import { AnalyticsService } from "../shared/analytics.service";
+import { CEP_Extension } from "../shared/analytics.model";
 
 @Component({
   selector: "analytics-extension-details",

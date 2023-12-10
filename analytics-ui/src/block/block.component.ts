@@ -31,9 +31,9 @@ import {
   ColumnDataType,
   Pagination,
 } from "@c8y/ngx-components";
-import { AnalyticsService } from "../../shared/analytics.service";
-import { CEP_Block } from "../../shared/analytics.model";
-import { BoolenRendererComponent } from "../../shared/boolean-renderer.component";
+import { AnalyticsService } from "../shared/analytics.service";
+import { CEP_Block } from "../shared/analytics.model";
+import { BoolenRendererComponent } from "../shared/boolean-renderer.component";
 
 @Component({
   selector: "c8y-block-grid",

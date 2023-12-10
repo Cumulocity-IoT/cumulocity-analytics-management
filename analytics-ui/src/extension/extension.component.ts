@@ -9,7 +9,7 @@ import {
   switchMap,
   tap,
 } from "rxjs/operators";
-import { AnalyticsService } from "../../shared/analytics.service";
+import { AnalyticsService } from "../shared/analytics.service";
 import { ModalOptions } from "ngx-bootstrap/modal";
 
 @Component({
