@@ -75,11 +75,11 @@
     </div>
   </div>
   <div *ngFor="let extension of extensions$ | async" class="col-xs-12 col-sm-4 col-md-3">
-    <extension-card
-      (onAppDeleted)="loadExtensions()"
-      [extension]="extension"
-      class="d-contents"
-    ></extension-card>
+      <extension-card
+        (onAppDeleted)="loadExtensions()"
+        [extension]="extension"
+        class="d-contents"
+      ></extension-card>
   </div>
 
 </div>

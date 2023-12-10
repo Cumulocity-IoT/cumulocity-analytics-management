@@ -30,6 +30,7 @@ import { C8YSwitchField } from "./component/c8y-switch-field";
 import { AnalyticsExtensionDetailsComponent } from "./analytics/manage/extension-details.component";
 import { ConfirmationModalComponent } from "./component/confirmation-modal.component";
 import { BoolenRendererComponent } from "./shared/boolean-renderer.component";
+import { BsDropdownModule } from "ngx-bootstrap/dropdown";
 
 const routes: Route[] = [
   {
@@ -53,6 +54,7 @@ const routes: Route[] = [
     BinaryFileDownloadModule,
     DefaultSubscriptionsModule,
     HttpClientModule,
+    BsDropdownModule.forRoot(),
   ],
   declarations: [
     AnalyticsExtensionComponent,

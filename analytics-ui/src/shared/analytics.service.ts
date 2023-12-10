@@ -42,12 +42,11 @@ import { isCustomCEP_Block, removeFileExtension } from "./utils";
 export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
-  private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
-  protected baseUrl: string;
   private _cepId: Promise<string>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
+  private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   private realtime: Realtime;
   private subscription: Subscription;
 

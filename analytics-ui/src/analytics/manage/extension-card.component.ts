@@ -26,11 +26,16 @@ export class AnalyticsExtensionCardComponent implements OnInit {
   async ngOnInit() {}
 
   async detail() {
-    //this.router.navigateByUrl(`/sag-ps-pkg-dynamic-mapping/extensions/${this.app.id}`);
-    this.router.navigate(["properties/", this.extension.name], {
-      relativeTo: this.activatedRoute,
-    });
-    console.log("Details for extension:", this.extension.name, this.activatedRoute);
+    if (this.extension.loaded) {
+      this.router.navigate(["properties/", this.extension.name], {
+        relativeTo: this.activatedRoute,
+      });
+    }
+    console.log(
+      "Details for extension:",
+      this.extension.name,
+      this.activatedRoute
+    );
   }
 
   async delete() {
