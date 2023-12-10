@@ -29,7 +29,7 @@ export enum Category {
   UTILITY = "UTILITY",
 }
 
-export interface CEP_Metadata {
+export interface CEP_ExtensionsMetadata {
   metadatas: string[];
   messages: string[];
 }

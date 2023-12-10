@@ -21,15 +21,21 @@
       </div>
     </div>
     <div class="card-footer separator card-column-30">
-      <div class="c8y-realtime">
-        <span
-          class="c8y-pulse animated pulse animation-slow"
-          [ngClass]="{
-            active: app.loaded == true,
-            inactive: !app.loaded || app.loaded == false
-          }"
-        ></span>
-        {{ app.loaded == true ? "Loaded" : ("Not Loaded" | translate) }}
+      <div class="col-lg-3">
+        <div class="c8y-realtime">
+          <span
+            class="c8y-pulse animated pulse animation-slow"
+            [ngClass]="{
+              active: app.loaded == true,
+              inactive: !app.loaded || app.loaded == false
+            }"
+          ></span>
+          {{ app.loaded == true ? "Loaded" : ("Not Loaded" | translate) }}
+        </div>
+      </div>
+      <div class="col-lg-9 text-right">
+          <span
+          >{{app.blocksCount}}&nbsp;{{app.blocksCount == 1 ?'Block':'Blocks'}}</span>
       </div>
     </div>
   </div>

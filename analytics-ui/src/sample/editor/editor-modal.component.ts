@@ -15,7 +15,7 @@ import { Subject } from "rxjs";
   selector: "name-extension-modal",
   styleUrls: ["./editor-stepper.component.css"],
   template: `<c8y-modal
-    title="Show source code {{ monitor }}"
+    title="Source code {{ monitor }}"
     (onClose)="onSave($event)"
     [labels]="labels"
     [headerClasses]="'modal-header dialog-header'"

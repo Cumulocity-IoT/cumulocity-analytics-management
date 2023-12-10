@@ -33,6 +33,7 @@ export class AnalyticsExtensionComponent implements OnInit {
   ngOnInit() {
     this.extensions$ = this.reload$.pipe(
       tap(() => {
+        this.analyticsService.clearCaches();
         this.loading = true;
         this.loadingError = false;
       }),

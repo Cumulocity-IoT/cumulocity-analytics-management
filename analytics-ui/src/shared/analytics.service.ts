@@ -25,7 +25,7 @@ import { BehaviorSubject, Subscription } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
-  CEP_Metadata as CEP_ExtensionMetadata,
+  CEP_ExtensionsMetadata,
   CEP_PATH_EN,
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
@@ -46,6 +46,7 @@ export class AnalyticsService {
   protected baseUrl: string;
   private _cepId: Promise<string>;
   private _blocksDeployed: Promise<CEP_Block[]>;
+  private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
   private realtime: Realtime;
   private subscription: Subscription;
@@ -86,34 +87,51 @@ export class AnalyticsService {
     monitors: string[]
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
-    return this.fetchClient.fetch(`${BASE_PATH_BACKEND}/${EXTENSION_ENDPOINT}`, {
-      headers: {
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        extension_name: name,
-        upload: upload,
-        deploy: deploy,
-        monitors: monitors,
-      }),
-      method: "POST",
-      responseType: "blob",
-    });
+    return this.fetchClient.fetch(
+      `${BASE_PATH_BACKEND}/${EXTENSION_ENDPOINT}`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          upload: upload,
+          deploy: deploy,
+          monitors: monitors,
+        }),
+        method: "POST",
+        responseType: "blob",
+      }
+    );
+  }
+
+  async getExtensionsEnrichedUncached(
+    customFilter: any = {}
+  ): Promise<IManagedObject[]> {
+    const extensions = (await this.getExtensions(customFilter)).data;
+    const loadedExtensions: CEP_ExtensionsMetadata =
+      await this.getCEP_ExtensionsMetadata();
+    for (let index = 0; index < extensions.length; index++) {
+      extensions[index].name = removeFileExtension(extensions[index].name);
+      let extensionDetails = await this.getCEP_Extension(
+        extensions[index].name
+      );
+      const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
+      extensions[index].loaded = loadedExtensions.metadatas.some((le) =>
+        key.includes(le)
+      );
+      extensions[index].blocksCount = extensionDetails.analytics.length;
+    }
+    return extensions;
   }
 
   async getExtensionsEnriched(
     customFilter: any = {}
   ): Promise<IManagedObject[]> {
-    const extensions = (await this.getExtensions(customFilter)).data;
-    const loadedExtensions: CEP_ExtensionMetadata = await this.getCEP_ExtensionMetadata();
-    extensions.forEach((ext) => {
-      ext.name = removeFileExtension(ext.name);
-      const key = ext.name + CEP_METADATA_FILE_EXTENSION;
-      ext.loaded = loadedExtensions.metadatas.some((le) => key.includes(le));
-    });
-    // const extensions =undefined;
-    // throw new Error ("Thusday morning!");
-    return extensions;
+    if (!this._extensionsDeployed) {
+      this._extensionsDeployed = this.getExtensionsEnrichedUncached();
+    }
+    return this._extensionsDeployed;
   }
 
   async deleteExtension(app: IManagedObject): Promise<void> {
@@ -134,9 +152,9 @@ export class AnalyticsService {
     this.appDeleted.emit(app);
   }
 
-  async resetCEP_BlockCache() {
+  async clearCaches() {
     this._blocksDeployed = undefined;
-    //this._
+    this._extensionsDeployed = undefined;
   }
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
@@ -148,7 +166,7 @@ export class AnalyticsService {
 
   async getLoadedCEP_BlocksUncached(): Promise<CEP_Block[]> {
     const result: CEP_Block[] = [];
-    const meta: CEP_ExtensionMetadata = await this.getCEP_ExtensionMetadata();
+    const meta: CEP_ExtensionsMetadata = await this.getCEP_ExtensionsMetadata();
     if (meta && meta.metadatas) {
       for (let index = 0; index < meta.metadatas.length; index++) {
         const extensionNameAbbreviated = removeFileExtension(
@@ -169,7 +187,7 @@ export class AnalyticsService {
     return result;
   }
 
-  async getCEP_ExtensionMetadata(): Promise<CEP_ExtensionMetadata> {
+  async getCEP_ExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
     const response: IFetchResponse = await this.fetchClient.fetch(
       `/${CEP_PATH_METADATA_EN}`,
       {
@@ -292,7 +310,7 @@ export class AnalyticsService {
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
     this.alertService.warning(gettext("Deployment (Restart) submitted ..."));
-    this.resetCEP_BlockCache();
+    this.clearCaches();
   }
 
   async uploadExtension(
