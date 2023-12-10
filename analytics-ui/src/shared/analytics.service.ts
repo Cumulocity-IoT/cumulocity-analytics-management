@@ -120,7 +120,7 @@ export class AnalyticsService {
       extensions[index].loaded = loadedExtensions.metadatas.some((le) =>
         key.includes(le)
       );
-      extensions[index].blocksCount = extensionDetails.analytics.length;
+      extensions[index].blocksCount = extensionDetails?.analytics.length;
     }
     return extensions;
   }
@@ -211,8 +211,11 @@ export class AnalyticsService {
         method: "GET",
       }
     );
-    const data = await response.json();
-    data.name = name;
+    let data;
+    if (response.status < 400) {
+      data = await response.json();
+      data.name = name;
+    }
     return data;
   }
 

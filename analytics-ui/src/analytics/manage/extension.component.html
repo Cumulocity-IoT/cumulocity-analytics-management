@@ -74,10 +74,10 @@
       <div class="card-block card-column-20"></div>
     </div>
   </div>
-  <div *ngFor="let app of extensions$ | async" class="col-xs-12 col-sm-4 col-md-3">
+  <div *ngFor="let extension of extensions$ | async" class="col-xs-12 col-sm-4 col-md-3">
     <extension-card
       (onAppDeleted)="loadExtensions()"
-      [app]="app"
+      [extension]="extension"
       class="d-contents"
     ></extension-card>
   </div>
@@ -91,5 +91,4 @@
       </span>
     </h2>
   </div>
-  <!-- <c8y-loading></c8y-loading> -->
 </div>

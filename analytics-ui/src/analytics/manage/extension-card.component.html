@@ -2,21 +2,23 @@
   <div (click)="detail()" class="card-block text-center card-column-40">
     <div class="card-appicon">
       <c8y-app-icon
-        [app]="app"
-        [contextPath]="app.contextPath"
-        [name]="app.name"
+        [app]="extension"
+        [contextPath]="extension.contextPath"
+        [name]="extension.name"
       ></c8y-app-icon>
     </div>
-    <p class="e2e-appCardName text-medium" title="{{ app.name }}">
-      {{ app.name }}
+    <p class="e2e-appCardName text-medium" title="{{ extension.name }}">
+      {{ extension.name }}
     </p>
   </div>
-  <div class="card-block p-0 no-min-height card--d-col card-column-80 flex-grow">
+  <div
+    class="card-block p-0 no-min-height card--d-col card-column-80 flex-grow"
+  >
     <div class="card-block no-min-height p-t-0 p-b-0 card-column-80">
-      <div *ngIf="app.description" class="text-center-grid">
+      <div *ngIf="extension.description" class="text-center-grid">
         <div class="p-b-8 card-hidden-grid"></div>
         <p class="small l-h-tight p-b-8 p-l-0 p-r-0">
-          {{ app.description | translate }}
+          {{ extension.description | translate }}
         </p>
       </div>
     </div>
@@ -26,16 +28,19 @@
           <span
             class="c8y-pulse animated pulse animation-slow"
             [ngClass]="{
-              active: app.loaded == true,
-              inactive: !app.loaded || app.loaded == false
+              active: extension.loaded == true,
+              inactive: !extension.loaded || extension.loaded == false
             }"
           ></span>
-          {{ app.loaded == true ? "Loaded" : ("Not Loaded" | translate) }}
+          {{ extension.loaded == true ? "Loaded" : ("Not Loaded" | translate) }}
         </div>
       </div>
-      <div class="col-lg-9 text-right">
-          <span
-          >{{app.blocksCount}}&nbsp;{{app.blocksCount == 1 ?'Block':'Blocks'}}</span>
+      <div class="col-lg-9 text-right" *ngIf="extension.loaded">
+        <span
+          >{{ extension.blocksCount }}&nbsp;{{
+            extension.blocksCount == 1 ? "Block" : "Blocks"
+          }}</span
+        >
       </div>
     </div>
   </div>

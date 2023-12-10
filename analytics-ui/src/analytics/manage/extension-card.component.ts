@@ -12,7 +12,7 @@ import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
   templateUrl: "./extension-card.component.html",
 })
 export class AnalyticsExtensionCardComponent implements OnInit {
-  @Input() app: IManagedObject;
+  @Input() extension: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
   constructor(
@@ -27,10 +27,10 @@ export class AnalyticsExtensionCardComponent implements OnInit {
 
   async detail() {
     //this.router.navigateByUrl(`/sag-ps-pkg-dynamic-mapping/extensions/${this.app.id}`);
-    this.router.navigate(["properties/", this.app.name], {
+    this.router.navigate(["properties/", this.extension.name], {
       relativeTo: this.activatedRoute,
     });
-    console.log("Details for extension:", this.app.name, this.activatedRoute);
+    console.log("Details for extension:", this.extension.name, this.activatedRoute);
   }
 
   async delete() {
@@ -51,7 +51,7 @@ export class AnalyticsExtensionCardComponent implements OnInit {
         //console.log("Confirmation delete result:", result);
         if (!!result) {
           try {
-            await this.analyticsService.deleteExtension(this.app);
+            await this.analyticsService.deleteExtension(this.extension);
             this.onAppDeleted.emit();
           } catch (ex) {
             if (ex) {
@@ -67,10 +67,10 @@ export class AnalyticsExtensionCardComponent implements OnInit {
   async download() {
     try {
       let bin: ArrayBuffer = await this.analyticsService.downloadExtension(
-        this.app
+        this.extension
       );
       const blob = new Blob([bin]);
-      saveAs(blob, `${this.app.name}.zip`);
+      saveAs(blob, `${this.extension.name}.zip`);
     } catch (ex) {
       if (ex) {
         this.alertService.addServerFailure(ex);
