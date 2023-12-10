@@ -20,7 +20,7 @@ import { ModalOptions } from "ngx-bootstrap/modal";
 export class AnalyticsExtensionComponent implements OnInit {
   loading: boolean = false;
   loadingError: boolean = false;
-  reload$: BehaviorSubject<void> = new BehaviorSubject(null);
+  reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
   subscription: any;
   extensions$: Observable<IManagedObject>;
   listClass: string;
@@ -31,9 +31,12 @@ export class AnalyticsExtensionComponent implements OnInit {
   ) {}
 
   ngOnInit() {
+    console.log("AnalyticsExtensionComponent init!");
     this.extensions$ = this.reload$.pipe(
-      tap(() => {
-        this.analyticsService.clearCaches();
+      tap((clearCache) => {
+        if (clearCache) {
+          this.analyticsService.clearCaches();
+        }
         this.loading = true;
         this.loadingError = false;
       }),
@@ -46,12 +49,12 @@ export class AnalyticsExtensionComponent implements OnInit {
       shareReplay()
     );
 
-    this.loadExtensions();
+    this.reload$.next(false);
     this.initializeMonitoringService();
   }
 
   loadExtensions() {
-    this.reload$.next();
+    this.reload$.next(true);
   }
 
   restartCEP() {
