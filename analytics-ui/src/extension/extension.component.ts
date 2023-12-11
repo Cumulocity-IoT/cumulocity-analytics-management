@@ -10,7 +10,8 @@ import {
   tap,
 } from "rxjs/operators";
 import { AnalyticsService } from "../shared/analytics.service";
-import { ModalOptions } from "ngx-bootstrap/modal";
+import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
+import { RescueModalComponent } from "./rescue/rescue-modal.component";
 
 @Component({
   selector: "extension",
@@ -24,10 +25,12 @@ export class AnalyticsExtensionComponent implements OnInit {
   subscription: any;
   extensions$: Observable<IManagedObject>;
   listClass: string;
+  rescue: boolean = false;
 
   constructor(
     private analyticsService: AnalyticsService,
-    private wizardModalService: WizardModalService
+    private wizardModalService: WizardModalService,
+    private bsModalService: BsModalService
   ) {}
 
   ngOnInit() {
@@ -77,6 +80,19 @@ export class AnalyticsExtensionComponent implements OnInit {
     modalRef.content.onClose.subscribe(() => {
       this.loadExtensions();
     });
+  }
+
+  async troubleshoot() {
+    const initialState = {
+      cepId: await this.analyticsService.getCEP_Id(),
+    };
+    this.bsModalService.show(RescueModalComponent, {
+      class: "modal-lg",
+      initialState,
+      ariaDescribedby: "modal-body",
+      ariaLabelledBy: "modal-title",
+      ignoreBackdropClick: true,
+    }).content as RescueModalComponent;
   }
 
   private async initializeMonitoringService(): Promise<void> {

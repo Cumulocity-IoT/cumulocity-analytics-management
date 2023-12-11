@@ -62,20 +62,13 @@ export class AnalyticsService {
     this.realtime = new Realtime(this.fetchClient);
   }
 
-  getExtensions(customFilter: any = {}): Promise<IResultList<IManagedObject>> {
+  getExtensions(): Promise<IResultList<IManagedObject>> {
     const filter: object = {
       pageSize: 100,
       withTotalPages: true,
       fragmentType: "pas_extension",
     };
-    Object.assign(filter, customFilter);
-    const query: object = {};
-    let result;
-    if (Object.keys(customFilter).length == 0) {
-      result = this.inventoryService.list(filter);
-    } else {
-      result = this.inventoryService.listQuery(query, filter);
-    }
+    let result = this.inventoryService.list(filter);
     return result;
   }
 
@@ -105,10 +98,9 @@ export class AnalyticsService {
   }
 
   async getExtensionsEnrichedUncached(
-    customFilter: any = {}
   ): Promise<IManagedObject[]> {
     console.log("Calling: getExtensionsEnrichedUncached()");
-    const extensions = (await this.getExtensions(customFilter)).data;
+    const extensions = (await this.getExtensions()).data;
     const loadedExtensions: CEP_ExtensionsMetadata =
       await this.getCEP_ExtensionsMetadata();
     for (let index = 0; index < extensions.length; index++) {

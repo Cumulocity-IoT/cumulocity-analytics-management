@@ -1,4 +1,4 @@
-<c8y-title>{{ 'All extensions' | translate }}</c8y-title>
+<c8y-title>{{ "All extensions" | translate }}</c8y-title>
 
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
@@ -24,7 +24,7 @@
     title="{{ 'Add Extension' | translate }}"
   >
     <i c8yIcon="plus-circle"></i>
-    {{ 'Add Extension' | translate }}
+    {{ "Add Extension" | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -35,14 +35,29 @@
     title="{{ 'Deploy Extensions (Restart)' | translate }}"
   >
     <i c8yIcon="c8y-solution-accelerator"></i>
-    {{ 'Deploy Extensions (Restart)' | translate }}
+    {{ "Deploy Extensions (Restart)" | translate }}
   </button>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button (click)="loadExtensions()" class="btn btn-link" title="{{ 'Refresh' | translate }}">
+  <button
+    (click)="loadExtensions()"
+    class="btn btn-link"
+    title="{{ 'Refresh' | translate }}"
+  >
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
-    {{ 'Refresh' | translate }}
+    {{ "Refresh" | translate }}
+  </button>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
+  <button
+    (click)="troubleshoot()"
+    class="btn btn-link"
+    title="{{ 'Troubleshoot' | translate }}"
+  >
+    <i  [ngClass]="{ 'icon-spin': rescue }" c8yIcon="bug1"></i>
+    {{ "Troubleshoot" | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -53,7 +68,10 @@
   ></c8y-list-display-switch>
 </c8y-action-bar-item>
 
-<div *ngIf="!loadingError &&((extensions$ | async)?.length === 0)" class="c8y-empty-state text-center">
+<div
+  *ngIf="!loadingError && (extensions$ | async)?.length === 0"
+  class="c8y-empty-state text-center"
+>
   <h1 class="c8y-icon c8y-icon-modules c8y-icon-duocolor"></h1>
   <h3 translate>No extension to display.</h3>
   <p translate>Add your first extension by clicking below.</p>
@@ -63,35 +81,45 @@
       class="btn btn-primary"
       title="{{ 'Add Extension' | translate }}"
     >
-      {{ 'Add Extension' | translate }}
+      {{ "Add Extension" | translate }}
     </button>
   </p>
 </div>
 
-<div [ngClass]="listClass" class="card-group"  *ngIf="!loading">
-  <div class="page-sticky-header hidden-xs flex-row" *ngIf="(extensions$ | async)?.length > 0">
-    <div class="card-block card-column-40">
-      <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
-      {{ 'Extension' | translate }}
-    </div>
-    <div class="card-block p-0 card-column-80">
-      <div class="card-block card-column-20"></div>
-    </div>
+<div [ngClass]="listClass" class="card-group" *ngIf="!loading">
+  <div
+    class="page-sticky-header hidden-xs d-flex"
+    *ngIf="(extensions$ | async)?.length > 0"
+  >
+  <div class="card-block card-column-20">
+    <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
+    {{ 'Extension' | translate }}
   </div>
-  <div *ngFor="let extension of extensions$ | async" class="col-xs-12 col-sm-4 col-md-3">
-      <extension-card
-        (onAppDeleted)="loadExtensions()"
-        [extension]="extension"
-        class="d-contents"
-      ></extension-card>
+  <div class="card-block p-0 card-column-70 m-r-40">
+    <div class="card-block card-column-30">{{ 'Loaded' | translate }}</div>
+    <div class="card-block card-column-30">{{ 'Number Blocks' | translate }}</div>
+    <div class="card-block card-column-10">{{ 'Created' | translate }}</div>
+    <div class="card-block card-column-10"></div>
   </div>
-
 </div>
+  <div
+    *ngFor="let extension of extensions$ | async"
+    class="col-xs-12 col-sm-4 col-md-3"
+  >
+    <extension-card
+      (onAppDeleted)="loadExtensions()"
+      [extension]="extension"
+      class="d-contents"
+    ></extension-card>
+  </div>
+</div>
+
 <div class="card-block" style="padding-top: 48px" *ngIf="loadingError">
   <div class="col-lg-8 col-lg-offset-3 m-b-48">
     <h2>
       <span class="label label-primary text-14">
-        Please stand by until the streaming analytics engine is started successfully. Retry in a short while ...
+        Please stand by until the streaming analytics engine is started
+        successfully. Retry in a short while ...
       </span>
     </h2>
   </div>

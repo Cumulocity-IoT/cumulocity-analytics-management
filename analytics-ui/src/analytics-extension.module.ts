@@ -31,6 +31,7 @@ import { AnalyticsExtensionDetailsComponent } from "./extension/extension-detail
 import { ConfirmationModalComponent } from "./component/confirmation-modal.component";
 import { BoolenRendererComponent } from "./shared/boolean-renderer.component";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
+import { RescueModalComponent } from "./extension/rescue/rescue-modal.component";
 
 const routes: Route[] = [
   {
@@ -70,7 +71,8 @@ const routes: Route[] = [
     AnalyticsExtensionDetailsComponent,
     C8YSwitchField,
     ConfirmationModalComponent,
-    BoolenRendererComponent
+    BoolenRendererComponent,
+    RescueModalComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -84,7 +86,8 @@ const routes: Route[] = [
     RepositoriesModalComponent,
     AnalyticsExtensionDetailsComponent,
     ConfirmationModalComponent,
-    BoolenRendererComponent
+    BoolenRendererComponent,
+    RescueModalComponent
   ],
   providers: [
     AnalyticsService,
