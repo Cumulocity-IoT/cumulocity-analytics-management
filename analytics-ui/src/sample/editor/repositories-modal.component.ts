@@ -13,7 +13,7 @@ import { AlarmService } from "@c8y/client";
   selector: "name-repositories-modal",
   styleUrls: ["./editor-stepper.component.css"],
   template: `<c8y-modal
-    title="Show repositories for blocks"
+    title="Repositories for blocks"
     (onClose)="onSave($event)"
     [labels]="labels"
     [headerClasses]="'modal-header dialog-header'"
