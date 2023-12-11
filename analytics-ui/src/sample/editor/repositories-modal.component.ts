@@ -83,8 +83,9 @@ import { AlarmService } from "@c8y/client";
         </tbody>
       </table>
     </div>
-    <div class="legend form-block">Update Repository</div>
-    <form [formGroup]="repositoryForm">
+    <fieldset class="c8y-fieldset">
+      <legend>Update Repository</legend>
+      <form [formGroup]="repositoryForm">
       <input type="hidden" formControlName="id" />
       <c8y-form-group>
         <label for="name">Name</label>
@@ -105,14 +106,15 @@ import { AlarmService } from "@c8y/client";
           class="form-control"
         />
       </c8y-form-group>
-      <!-- Add any other form controls based on your repository model -->
-      <button (click)="addRepository()" class="btn btn-default">
-        Add Repository
-      </button>
-      <button (click)="updateRepository()" class="btn btn-default">
-        Update Repository
-      </button>
     </form>
+  </fieldset>
+  <!-- Add any other form controls based on your repository model -->
+  <button (click)="addRepository()" class="btn btn-default">
+    Add Repository
+  </button>
+  <button (click)="updateRepository()" class="btn btn-default">
+    Update Repository
+  </button>
   </c8y-modal>`,
   encapsulation: ViewEncapsulation.None,
 })

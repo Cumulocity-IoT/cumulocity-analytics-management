@@ -56,7 +56,7 @@
     class="btn btn-link"
     title="{{ 'Troubleshooting' | translate }}"
   >
-    <i  [ngClass]="{ 'icon-spin': rescue }" c8yIcon="bug1"></i>
+    <i [ngClass]="{ 'icon-spin': rescue }" c8yIcon="bug1"></i>
     {{ "Troubleshooting" | translate }}
   </button>
 </c8y-action-bar-item>
@@ -91,17 +91,17 @@
     class="page-sticky-header hidden-xs d-flex"
     *ngIf="(extensions$ | async)?.length > 0"
   >
-  <div class="card-block card-column-20">
-    <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
-    {{ 'Extension' | translate }}
-  </div>
-  <div class="card-block p-0 card-column-70 m-r-40">
-    <div class="card-block card-column-30">{{ 'Loaded' | translate }}</div>
-    <div class="card-block card-column-30">{{ 'Number Blocks' | translate }}</div>
-    <div class="card-block card-column-10">{{ 'Created' | translate }}</div>
+    <div class="card-block card-column-20">
+      <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
+      {{ "Extension" | translate }}
+    </div>
+    <div class="card-block card-column-20">{{ "Loaded" | translate }}</div>
+    <div class="card-block card-column-20">
+      {{ "Number Blocks" | translate }}
+    </div>
+    <div class="card-block card-column-20">{{ "Created" | translate }}</div>
     <div class="card-block card-column-10"></div>
   </div>
-</div>
   <div
     *ngFor="let extension of extensions$ | async"
     class="col-xs-12 col-sm-4 col-md-3"
