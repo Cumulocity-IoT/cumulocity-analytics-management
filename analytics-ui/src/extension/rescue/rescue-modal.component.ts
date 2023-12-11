@@ -8,7 +8,7 @@ import {
 import { ModalLabels } from "@c8y/ngx-components";
 import { BehaviorSubject, Observable, Subject, of } from "rxjs";
 import { AlarmService, IAlarm, IResultList } from "@c8y/client";
-import { catchError, shareReplay, switchMap, tap } from "rxjs/operators";
+import { shareReplay, switchMap, tap } from "rxjs/operators";
 import { BsModalRef } from "ngx-bootstrap/modal";
 
 @Component({
@@ -30,19 +30,16 @@ export class RescueModalComponent implements OnInit {
   ngOnInit(): void {
     let filter: object = {
       pageSize: 5,
-
       source: this.cepId,
+      currentPage: 1,
       withTotalPages: true,
     };
     this.alarms$ = this.nextPage$.pipe(
       tap((nextPage) => {
         this.currentPage = this.currentPage + nextPage;
         if  (this.currentPage < 1) this.currentPage = 1;
-        filter = {
-          currentPage: this.currentPage,
-          pageSize: 5,
-          withTotalPages: true,
-        };
+        filter['currentPage'] =  this.currentPage
+        ;
       }),
       switchMap(() => this.alarmService.list(filter)),
       shareReplay()
