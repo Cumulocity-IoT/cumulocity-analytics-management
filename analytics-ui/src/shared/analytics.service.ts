@@ -97,8 +97,7 @@ export class AnalyticsService {
     );
   }
 
-  async getExtensionsEnrichedUncached(
-  ): Promise<IManagedObject[]> {
+  async getExtensionsEnrichedUncached(): Promise<IManagedObject[]> {
     console.log("Calling: getExtensionsEnrichedUncached()");
     const extensions = (await this.getExtensions()).data;
     const loadedExtensions: CEP_ExtensionsMetadata =
@@ -106,7 +105,7 @@ export class AnalyticsService {
     for (let index = 0; index < extensions.length; index++) {
       extensions[index].name = removeFileExtension(extensions[index].name);
       const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
-      extensions[index].loaded = loadedExtensions.metadatas.some((le) =>
+      extensions[index].loaded = loadedExtensions?.metadatas?.some((le) =>
         key.includes(le)
       );
       if (extensions[index].loaded) {
@@ -119,9 +118,7 @@ export class AnalyticsService {
     return extensions;
   }
 
-  async getExtensionsEnriched(
-    customFilter: any = {}
-  ): Promise<IManagedObject[]> {
+  async getExtensionsEnriched(): Promise<IManagedObject[]> {
     if (!this._extensionsDeployed) {
       this._extensionsDeployed = this.getExtensionsEnrichedUncached();
     }
@@ -149,6 +146,7 @@ export class AnalyticsService {
   async clearCaches() {
     this._blocksDeployed = undefined;
     this._extensionsDeployed = undefined;
+    this._cepId = undefined;
   }
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
@@ -231,24 +229,28 @@ export class AnalyticsService {
         method: "GET",
       }
     );
-    const data1 = await response.json();
-    const cepMicroservice = data1.microservice_name;
+    if (response.status < 400) {
+      const data1 = await response.json();
+      const cepMicroservice = data1.microservice_name;
 
-    // get source id of microservice representation in inventory
-    const filter: object = {
-      pageSize: 100,
-      withTotalPages: true,
-    };
-    const query: object = {
-      name: cepMicroservice,
-    };
-    let { data, res }: IResultList<IManagedObject> =
-      await this.inventoryService.listQuery(query, filter);
-    if (!data || data.length > 1) {
-      this.alertService.warning("Can't find microservice for CEP!");
+      // get source id of microservice representation in inventory
+      const filter: object = {
+        pageSize: 100,
+        withTotalPages: true,
+      };
+      const query: object = {
+        name: cepMicroservice,
+      };
+      let { data, res }: IResultList<IManagedObject> =
+        await this.inventoryService.listQuery(query, filter);
+      if (!data || data.length > 1) {
+        this.alertService.warning("Can't find microservice for CEP!");
+        return;
+      }
+      return data[0].id;
+    } else {
       return;
     }
-    return data[0].id;
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
@@ -266,7 +268,7 @@ export class AnalyticsService {
         map(([prev, current]) => [prev, current])
       )
       .subscribe((pair) => {
-        // this.alertService.warning(`Current message: ${pair}`);
+        this.alertService.warning(`Current message: ${pair}`);
         if (pair[0] == STATUS_MESSAGE_01)
           this.alertService.warning(`Deployment successful`);
       });

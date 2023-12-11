@@ -23,7 +23,7 @@ export class AnalyticsExtensionComponent implements OnInit {
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
   subscription: any;
-  extensions$: Observable<IManagedObject>;
+  extensions$: Observable<IManagedObject[]>;
   listClass: string;
   rescue: boolean = false;
 
@@ -45,7 +45,8 @@ export class AnalyticsExtensionComponent implements OnInit {
       switchMap(() => this.analyticsService.getExtensionsEnriched()),
       catchError(() => {
         this.loadingError = true;
-        return of(undefined);
+        this.loading = false;
+        return of([]);
       }),
       tap(() => (this.loading = false)),
       shareReplay()
