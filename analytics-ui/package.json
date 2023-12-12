@@ -1,6 +1,6 @@
 {
   "name": "analytics-extension",
-  "version": "2.2.3",
+  "version": "2.2.5",
   "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
   "repository": {
     "type": "git",
@@ -10,6 +10,7 @@
     "start": "c8ycli server",
     "start:admin": "npm start -- --shell administration",
     "start:ab": "npm start -- --shell streaminganalytics",
+    "start:cockpit": "npm start -- --shell cockpit",
     "build": "c8ycli build",
     "build:ci": "npm run build -- --ci",
     "deploy": "c8ycli deploy",

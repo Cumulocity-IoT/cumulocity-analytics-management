@@ -232,6 +232,7 @@ export class AnalyticsService {
     if (response.status < 400) {
       const data1 = await response.json();
       const cepMicroservice = data1.microservice_name;
+      const microservice_application_id = data1.microservice_application_id;
 
       // get source id of microservice representation in inventory
       const filter: object = {
@@ -240,11 +241,13 @@ export class AnalyticsService {
       };
       const query: object = {
         name: cepMicroservice,
+        applicationId: microservice_application_id,
       };
       let { data, res }: IResultList<IManagedObject> =
         await this.inventoryService.listQuery(query, filter);
+      console.log("Found ctrl-microservice:", data1, data)
       if (!data || data.length > 1) {
-        this.alertService.warning("Can't find microservice for CEP!");
+        this.alertService.warning("Can't find ctrl-microservice for Streaming Analytics! Please report this issue.");
         return;
       }
       return data[0].id;

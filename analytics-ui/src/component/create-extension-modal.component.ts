@@ -120,7 +120,7 @@ export class CreateExtensionComponent implements OnInit {
       this.backendDeployed$.next(status);
       if (!status) {
         this.alertService.warning(
-          `You can not build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
+          `You cannot build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
         );
       }
     });
