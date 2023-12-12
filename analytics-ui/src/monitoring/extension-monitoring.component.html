@@ -16,8 +16,9 @@
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <div class="card card--fullpage">
-  <!-- <div class="card-header separator">
-  </div> -->
+  <div class="card-header separator">
+    <span>Safe Mode</span>
+  </div>
   <div class="inner-scroll">
     <div class="card-block separator">
       <p>
@@ -45,21 +46,42 @@
         >
       </p>
     </div>
-    <div class="card-block separator">
-      <div class="legend">Latest Alarms</div>
-      <!-- <c8y-form-group>
-        <label for="name">Search</label>
+    <div class="legend form-block p-l-24 p-r-24">Latest Alarms</div>
+    <div class="card-block">
+      <c8y-form-group>
         <form class="form-inline">
-          <input
+          <!-- <label for="name">Search</label>
+         <input
             [(ngModel)]="searchString"
             type="text"
             id="name"
             formControlName="name"
             class="form-control"
-          />
-          <button type="submit" (click)="search()" class="btn btn-primary">Search</button>
+          /> -->
+          <label
+            *ngFor="let stat of AlarmStatus | keyvalue"
+            class="c8y-radio radio-inline"
+            title="{{ stat.value }}"
+          >
+            <input
+              type="radio"
+              checked="checked"
+              name="c8y-group"
+              value="{{ stat.value }}"
+              [(ngModel)]="status"
+            />
+            <span></span>
+            <span>{{ stat.value }}</span>
+          </label>
+          <button
+            type="submit"
+            (click)="search()"
+            class="btn btn-primary btn-sm m-b-8"
+          >
+            Search
+          </button>
         </form>
-      </c8y-form-group> -->
+      </c8y-form-group>
       <div style="height: 450px; overflow: auto">
         <div class="card-block">
           <div class="timeline-list list-condensed">
@@ -79,7 +101,9 @@
                     <div class="col-sm-9">
                       <label class="small" translate>Severity&nbsp;</label>
                       <span>{{ alarm.severity }}</span>
-                      <label class="small" translate>&nbsp;&nbsp;Type&nbsp;</label>
+                      <label class="small" translate
+                        >&nbsp;&nbsp;Type&nbsp;</label
+                      >
                       <span>{{ alarm.type }}</span>
                       <br />
                       <span>{{ alarm.text }}</span>
@@ -92,6 +116,11 @@
                 </div>
               </div>
             </div>
+            <c8y-ui-empty-state *ngIf="(alarms$ | async)?.data.length == 0"
+              [icon]="'alarm'"
+              [title]="'No alarms found.' | translate"
+              [horizontal]="true"
+            ></c8y-ui-empty-state>
           </div>
         </div>
       </div>
