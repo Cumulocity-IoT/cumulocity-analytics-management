@@ -79,9 +79,9 @@ This solution consists of two parts:
 ](https://github.com/SoftwareAG/cumulocity-analytics-management/releases)
 
   If the microservice is not deployed you **can't** build customes extensions.
-* the web plugin that is installed using the Cumulocity Administration UI (Administration -> Extensions -> Analytics Extension), see installation below:
+* the web plugin that is installed using the Cumulocity Administration UI (Administration -> Extensions -> Analytics Extensions), see installation below:
 
-The plugin is available as a community plugin and can be installed from the Administration -> Extensions -> Analytics Extension:
+The plugin is available as a community plugin and can be installed from the Administration -> Extensions -> Analytics Extensions:
 
 ![Plugin installation](resources/images/plugin-installation.png)
 

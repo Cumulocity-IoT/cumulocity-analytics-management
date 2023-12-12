@@ -15,7 +15,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   get() {
     let navs: NavigatorNode[] = [];
     const extensionsNode = new NavigatorNode({
-      label: gettext("Analytics Extension"),
+      label: gettext("Analytics Extensions"),
       icon: "c8y-tools",
       path: "sag-ps-pkg-analytics-extension/list",
       parent: gettext("Ecosystem"),
