@@ -1,6 +1,5 @@
 import { NgModule } from "@angular/core";
 import { FormsModule, ReactiveFormsModule } from "@angular/forms";
-import { Route, RouterModule as ngRouterModule } from "@angular/router";
 import {
   CoreModule,
   hookNavigator,
@@ -32,21 +31,8 @@ import { ConfirmationModalComponent } from "./component/confirmation-modal.compo
 import { BoolenRendererComponent } from "./shared/boolean-renderer.component";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
 import { RescueModalComponent } from "./extension/rescue/rescue-modal.component";
+import { ExtensionMonitoringComponent } from "./monitoring/extension-monitoring.component";
 
-const routes: Route[] = [
-  {
-    path: "sag-ps-pkg-analytics-extension/manage",
-    component: AnalyticsExtensionComponent,
-  },
-  {
-    path: "sag-ps-pkg-analytics-extension/list",
-    component: BlockGridComponent,
-  },
-  {
-    path: "sag-ps-pkg-analytics-extension/sample",
-    component: SampleGridComponent,
-  },
-];
 @NgModule({
   imports: [
     CoreModule,
@@ -72,7 +58,8 @@ const routes: Route[] = [
     C8YSwitchField,
     ConfirmationModalComponent,
     BoolenRendererComponent,
-    RescueModalComponent
+    RescueModalComponent,
+    ExtensionMonitoringComponent
   ],
   entryComponents: [
     AnalyticsExtensionComponent,
@@ -87,7 +74,8 @@ const routes: Route[] = [
     AnalyticsExtensionDetailsComponent,
     ConfirmationModalComponent,
     BoolenRendererComponent,
-    RescueModalComponent
+    RescueModalComponent,
+    ExtensionMonitoringComponent
   ],
   providers: [
     AnalyticsService,
@@ -120,6 +108,10 @@ const routes: Route[] = [
     hookRoute({
       path: "sag-ps-pkg-analytics-extension/sample",
       component: SampleGridComponent,
+    }),
+    hookRoute({
+      path: "sag-ps-pkg-analytics-extension/monitoring",
+      component: ExtensionMonitoringComponent,
     }),
     hookTab(AnalyticsTabFactory),
     {

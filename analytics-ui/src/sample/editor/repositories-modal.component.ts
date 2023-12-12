@@ -7,7 +7,6 @@ import { RepositoryService } from "../../shared/repository.service";
 import { uuidCustom } from "../../shared/utils";
 import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
 import { ConfirmationModalComponent } from "../../component/confirmation-modal.component";
-import { AlarmService } from "@c8y/client";
 
 @Component({
   selector: "name-repositories-modal",
