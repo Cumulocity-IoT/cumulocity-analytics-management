@@ -72,21 +72,23 @@ class C8YAgent:
                 # managed_objects_app = self.c8yapp.get_tenant_instance(
                 #     headers=request_headers
                 # ).inventory.select(query=query)
-                managed_objects_app = self.c8yapp.get_tenant_instance(
-                    headers=request_headers
-                ).get(f"/inventory/managedObjects?query={filter}")
+                response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"/inventory/managedObjects?query={filter}"
+                )
+                self._logger.info(f"Found managed object for app: {response}")
 
-                managed_object_id = None
-                for managed_object in managed_objects_app:
-                    managed_object_id = managed_object.id
-                    self._logger.info(
-                        f"Found managed object for app: {managed_object_id}"
-                    )
-                    break
-                if managed_object_id == None:
-                    self._logger.error(f"Not found !")
-                    return None
-                return {"id": managed_object_id}
+
+                # managed_object_id = None
+                # for managed_object in managed_objects_app:
+                #     self._logger.info(
+                #         f"Found managed object for app: {managed_object}"
+                #     )
+                #     managed_object_id = managed_object
+                #     break
+                # if managed_object_id == None:
+                #     self._logger.error(f"Not found !")
+                #     return None
+                return {"id": response.id}
             except:
                 self._logger.error(
                     f"Error Ffinding app id: {app_id}",
@@ -96,5 +98,3 @@ class C8YAgent:
             self._logger.error(f"Ignoring exceptiom!", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
-
-        self._logger.info(f"Restarted CEP!")
