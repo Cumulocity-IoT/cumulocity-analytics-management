@@ -1,6 +1,6 @@
 import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
 import { BehaviorSubject, Observable, Subject, of } from "rxjs";
-import { AlarmService, AlarmStatus, IAlarm, IEvent, IResultList } from "@c8y/client";
+import { AlarmService, AlarmStatus, EventService, IAlarm, IEvent, IResultList } from "@c8y/client";
 import { shareReplay, switchMap, tap } from "rxjs/operators";
 import { BsModalRef } from "ngx-bootstrap/modal";
 import { AnalyticsService } from "../shared/analytics.service";
@@ -27,7 +27,7 @@ export class ExtensionMonitoringComponent implements OnInit {
 
   constructor(
     private alarmService: AlarmService,
-    private eventService: AlarmService,
+    private eventService: EventService,
     private analyticsService: AnalyticsService,
     public bsModalRef: BsModalRef
   ) {}
@@ -66,13 +66,14 @@ export class ExtensionMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageEvent = this.currentPageEvent + options.direction;
           if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterAlarm["currentPage"] = this.currentPageEvent;
+          filterEvent["currentPage"] = this.currentPageEvent;
         }
       }),
       switchMap(() => this.eventService.list(filterEvent)),
       shareReplay()
     );
     this.nextPageAlarm$.next({ direction: 0 });
+    this.nextPageEvent$.next({ direction: 0 });
   }
 
   private async init() {
