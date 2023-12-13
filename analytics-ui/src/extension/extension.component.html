@@ -50,17 +50,6 @@
   </button>
 </c8y-action-bar-item>
 
-<!-- <c8y-action-bar-item [placement]="'right'">
-  <button
-    (click)="troubleshoot()"
-    class="btn btn-link"
-    title="{{ 'Troubleshooting' | translate }}"
-  >
-    <i [ngClass]="{ 'icon-spin': rescue }" c8yIcon="bug1"></i>
-    {{ "Troubleshooting" | translate }}
-  </button>
-</c8y-action-bar-item> -->
-
 <c8y-action-bar-item [placement]="'left'" itemClass="navbar-form hidden-xs">
   <c8y-list-display-switch
     (onListClassChange)="listClass = $event"
@@ -69,21 +58,25 @@
 </c8y-action-bar-item>
 
 <div
-  *ngIf="!loadingError && (extensions$ | async)?.length === 0"
-  class="c8y-empty-state text-center"
+  *ngIf="(!loadingError && (extensions$ | async)?.length === 0)"
+  class="row"
 >
-  <h1 class="c8y-icon c8y-icon-modules c8y-icon-duocolor"></h1>
-  <h3 translate>No extension to display.</h3>
-  <p translate>Add your first extension by clicking below.</p>
-  <p>
-    <button
-      (click)="addExtension()"
-      class="btn btn-primary"
-      title="{{ 'Add Extension' | translate }}"
-    >
-      {{ "Add Extension" | translate }}
-    </button>
-  </p>
+    <div class="col-lg-4 col-lg-offset-5  text-center">
+      <c8y-ui-empty-state
+        [icon]="'plugin'"
+        [title]="'No extensions loaded.' | translate"
+        [subtitle]="'Add your first extension by clicking below.' | translate"
+        [horizontal]="true"
+      >
+        <button
+          (click)="addExtension()"
+          class="btn btn-default btn-sm"
+          title="{{ 'Add Extension' | translate }}"
+        >
+          {{ "Add Extension" | translate }}
+        </button></c8y-ui-empty-state
+      >
+    </div>
 </div>
 
 <div [ngClass]="listClass" class="card-group" *ngIf="!loading">
@@ -114,13 +107,28 @@
   </div>
 </div>
 
-<div class="card-block" style="padding-top: 48px" *ngIf="loadingError">
-  <div class="col-lg-8 col-lg-offset-3 m-b-48">
-    <h2>
-      <span class="label label-primary text-14">
-        Please stand by until the streaming analytics engine is started
-        successfully. Retry in a short while ...
-      </span>
-    </h2>
-  </div>
+<div
+  class="col-lg-8 col-lg-offset-2 m-b-48 text-center"
+  style="padding-top: 48px"
+  *ngIf="loadingError"
+>
+  <h2>
+    <span class="label label-primary text-14">
+      Please stand by until the streaming analytics engine is started
+      successfully. Retry in a short while ...
+    </span>
+  </h2>
+</div>
+
+<div
+  class="col-lg-8 col-lg-offset-2 m-b-48 text-center"
+  style="padding-top: 48px"
+  *ngIf="loading"
+>
+  <h2 class="p-b-24">
+    <span class="label label-primary text-14">
+      Please stand by until the information about the extension is loaded.
+    </span>
+  </h2>
+  <c8y-loading></c8y-loading>
 </div>
