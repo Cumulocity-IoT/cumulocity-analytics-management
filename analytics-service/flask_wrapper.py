@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, request, send_file, make_response
+from flask import Flask, request, send_file, make_response, jsonify
 import logging
 
 # from github import Github
@@ -174,6 +174,7 @@ def create_extension():
 #   loaded: true;
 # }
 
+
 # export interface CEP_Block {
 #   id: string;
 #   name: string;
@@ -193,6 +194,7 @@ def get_cep_extension(name):
     cep_extension = {name}
     return cep_extension, 200
 
+
 # return the details on all loaded extensions
 # returns:
 #    list of all loaded extensions with the following structure
@@ -205,13 +207,22 @@ def get_cep_extension_metadata():
     cep_extension_metadata = []
     return cep_extension_metadata, 200
 
-# return the managedObject that represents the cep ctrl microservice  
+
+# return the managedObject that represents the cep ctrl microservice
 # returns:
 #    id
-@app.route("/cep/diagnostic", methods=["GET"])
+# @app.route("/cep/diagnostic", methods=["GET"])
+# def get_cep_id():
+#     cep_id = {}
+#     return cep_id, 200
+
+
+@app.route("/cep/id", methods=["GET"])
 def get_cep_id():
-    cep_id = {}
-    return cep_id, 200
+    result = agent.get_cep_id(request_headers=request.headers)
+    if (result == None):
+        return f"Not found", 400
+    return jsonify(result)
 
 
 # this endpoint was only exposed for test purposes

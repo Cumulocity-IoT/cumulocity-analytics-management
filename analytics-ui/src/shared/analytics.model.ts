@@ -108,6 +108,7 @@ export const REPO_SAMPLES = [
 
 export const BASE_PATH_BACKEND = "service/analytics-ext-service";
 export const EXTENSION_ENDPOINT = "extension";
+export const CEP_ENDPOINT = "cep";
 export const REPOSITORY_ENDPOINT = "repository";
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
 export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";

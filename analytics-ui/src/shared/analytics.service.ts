@@ -34,6 +34,7 @@ import {
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
+  CEP_ENDPOINT,
 } from "./analytics.model";
 import { filter, map, pairwise } from "rxjs/operators";
 import { isCustomCEP_Block, removeFileExtension } from "./utils";
@@ -213,46 +214,63 @@ export class AnalyticsService {
 
   async getCEP_Id(): Promise<string> {
     if (!this._cepId) {
-      this._cepId = this.getCEP_IdUncached();
+      this._cepId = this.getCEP_IdUncached(true);
     }
     return this._cepId;
   }
 
-  async getCEP_IdUncached(): Promise<string> {
-    // get name of microservice from cep endpoint
-    const response: IFetchResponse = await this.fetchClient.fetch(
-      `${CEP_PATH_STATUS}`,
-      {
-        headers: {
-          "content-type": "application/json",
-        },
-        method: "GET",
-      }
-    );
-    if (response.status < 400) {
-      const data1 = await response.json();
-      const cepMicroservice = data1.microservice_name;
-      const microservice_application_id = data1.microservice_application_id;
+  async getCEP_IdUncached(backend: boolean): Promise<string> {
+    if (backend) {
+      // get name of microservice from cep endpoint
+      const response: IFetchResponse = await this.fetchClient.fetch(
+        `${BASE_PATH_BACKEND}/${CEP_ENDPOINT}/id`,
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "GET",
+        }
+      );
+      const data = await response.json();
+      return data.id;
+    } else {
+      // get name of microservice from cep endpoint
+      const response: IFetchResponse = await this.fetchClient.fetch(
+        `${CEP_PATH_STATUS}`,
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "GET",
+        }
+      );
+      if (response.status < 400) {
+        const data1 = await response.json();
+        const cepMicroservice = data1.microservice_name;
+        const microservice_application_id = data1.microservice_application_id;
 
-      // get source id of microservice representation in inventory
-      const filter: object = {
-        pageSize: 100,
-        withTotalPages: true,
-      };
-      const query: object = {
-        name: cepMicroservice,
-        applicationId: microservice_application_id,
-      };
-      let { data, res }: IResultList<IManagedObject> =
-        await this.inventoryService.listQuery(query, filter);
-      console.log("Found ctrl-microservice:", data1, data)
-      if (!data || data.length > 1) {
-        this.alertService.warning("Can't find ctrl-microservice for Streaming Analytics! Please report this issue.");
+        // get source id of microservice representation in inventory
+        const filter: object = {
+          pageSize: 100,
+          withTotalPages: true,
+        };
+        const query: object = {
+          name: cepMicroservice,
+          applicationId: microservice_application_id,
+        };
+        let { data, res }: IResultList<IManagedObject> =
+          await this.inventoryService.listQuery(query, filter);
+        console.log("Found ctrl-microservice:", data1, data);
+        if (!data || data.length > 1) {
+          this.alertService.warning(
+            "Can't find ctrl-microservice for Streaming Analytics! Please report this issue."
+          );
+          return;
+        }
+        return data[0].id;
+      } else {
         return;
       }
-      return data[0].id;
-    } else {
-      return;
     }
   }
 

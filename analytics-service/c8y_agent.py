@@ -19,7 +19,10 @@ import json
 # requests_log.setLevel(logging.DEBUG)
 # requests_log.propagate = True
 
+
 class C8YAgent:
+    APAMA_CTRL_APPLICATION_NAME = "apama-ctrl-1c-4g"
+
     def __init__(self):
         self._logger = logging.getLogger("C8YAgent")
         self._logger.setLevel(logging.DEBUG)
@@ -38,10 +41,54 @@ class C8YAgent:
 
         return b.id
 
-    def restart_cep(self,request_headers):
+    def restart_cep(self, request_headers):
         try:
             self._logger.info(f"Restarting CEP ...")
-            self.c8yapp.get_tenant_instance(headers=request_headers).put(resource="/service/cep/restart", json={})
+            self.c8yapp.get_tenant_instance(headers=request_headers).put(
+                resource="/service/cep/restart", json={}
+            )
+        except Exception as e:
+            self._logger.error(f"Ignoring exceptiom!", exc_info=True)
+            # for keys,values in request_headers.items():
+            #     self._logger.info(f"Headers: {keys} {values}")
+
+        self._logger.info(f"Restarted CEP!")
+
+    def get_cep_id(self, request_headers):
+        try:
+            self._logger.info(f"Retrieving CEP id ...")
+            apps = self.c8yapp.get_tenant_instance(
+                headers=request_headers
+            ).applications.select(name=self.APAMA_CTRL_APPLICATION_NAME)
+            try:
+                for app in apps:
+                    app_id = app.id
+                    self._logger.info(f"Found app id: {app_id}")
+                    break
+                query = f"applicationId eq {app_id} and name eq {self.APAMA_CTRL_APPLICATION_NAME}"
+                self._logger.info(f"Build query: {query}")
+                
+                managed_objects_app = self.c8yapp.get_tenant_instance(
+                    headers=request_headers
+                ).inventory.select(query=query)
+                
+                for managed_object in managed_objects_app:
+                    managed_object_id = managed_object.id
+                    self._logger.info(
+                        f"Found managed object for app: {managed_object_id}"
+                    )
+                    break
+                if ( managed_object_id == None):
+                    self._logger.error(
+                        f"Not found !"
+                    )
+                    return None
+                return {id: managed_object_id}
+            except:
+                self._logger.error(
+                    f"Error Ffinding app id: {app_id}",
+                    exc_info=True,
+                )
         except Exception as e:
             self._logger.error(f"Ignoring exceptiom!", exc_info=True)
             # for keys,values in request_headers.items():
