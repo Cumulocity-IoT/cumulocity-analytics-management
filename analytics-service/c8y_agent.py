@@ -65,13 +65,16 @@ class C8YAgent:
                 for app in apps:
                     app_id = app.id
                     self._logger.info(f"Found app id: {app_id}")
-                    #break
-                query = f"applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
-                self._logger.info(f"Build query: {query}")
+                    # break
+                filter = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
+                self._logger.info(f"Build filter: {filter}")
 
+                # managed_objects_app = self.c8yapp.get_tenant_instance(
+                #     headers=request_headers
+                # ).inventory.select(query=query)
                 managed_objects_app = self.c8yapp.get_tenant_instance(
                     headers=request_headers
-                ).inventory.select(query=query)
+                ).get(f"/inventory/managedObjects?query={filter}")
 
                 managed_object_id = None
                 for managed_object in managed_objects_app:
@@ -79,7 +82,7 @@ class C8YAgent:
                     self._logger.info(
                         f"Found managed object for app: {managed_object_id}"
                     )
-                    #break
+                    break
                 if managed_object_id == None:
                     self._logger.error(f"Not found !")
                     return None
