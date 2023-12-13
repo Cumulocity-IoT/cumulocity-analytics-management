@@ -32,7 +32,7 @@ export class RepositoryService {
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
   private _cep_block_cache: Map<string, Promise<CEP_Block[]>> = new Map();
-  private _isDirty: boolean = true;
+  private _isDirty: boolean = false;
 
   constructor(
     private inventoryService: InventoryService,

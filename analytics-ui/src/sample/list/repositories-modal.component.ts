@@ -10,7 +10,7 @@ import { ConfirmationModalComponent } from "../../component/confirmation-modal.c
 
 @Component({
   selector: "name-repositories-modal",
-  styleUrls: ["./editor-stepper.component.css"],
+  styleUrls: ["../editor/editor-stepper.component.css"],
   templateUrl: "./repositories-modal.component.html",
   encapsulation: ViewEncapsulation.None,
 })
@@ -19,7 +19,7 @@ export class RepositoriesModalComponent implements OnInit {
   @Output() closeSubject: Subject<Repository[]> = new Subject();
   repositoryForm: FormGroup;
 
-  labels: ModalLabels = { ok: "Close" };
+  labels: ModalLabels = { ok: "Save", cancel: "Cancel" };
 
   constructor(
     private repositoryService: RepositoryService,
@@ -98,7 +98,10 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onSave(event) {
-    console.log("Save");
     this.closeSubject.next(this.repositories);
+  }
+
+  onCancel(event) {
+    this.closeSubject.next();
   }
 }

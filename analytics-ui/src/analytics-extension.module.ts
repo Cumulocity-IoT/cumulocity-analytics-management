@@ -22,7 +22,7 @@ import { HttpClientModule } from "@angular/common/http";
 import { CreateExtensionComponent } from "./component/create-extension-modal.component";
 import { EditorStepperComponent } from "./sample/editor/editor-stepper.component";
 import { EditorModalComponent } from "./sample/editor/editor-modal.component";
-import { RepositoriesModalComponent } from "./sample/editor/repositories-modal.component";
+import { RepositoriesModalComponent } from "./sample/list/repositories-modal.component";
 import { RepositoryService } from "./shared/repository.service";
 import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { C8YSwitchField } from "./component/c8y-switch-field";

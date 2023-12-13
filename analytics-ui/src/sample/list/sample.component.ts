@@ -36,7 +36,7 @@ import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoryService } from "../../shared/repository.service";
 import { BehaviorSubject, Observable, of } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
-import { RepositoriesModalComponent } from "../editor/repositories-modal.component";
+import { RepositoriesModalComponent } from "./repositories-modal.component";
 import { BoolenRendererComponent } from "../../shared/boolean-renderer.component";
 
 @Component({
@@ -87,7 +87,6 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       gridTrackSize: "7.5%",
       visible: true,
-      //cellCSSClassName: 'text-center',
       cellRendererComponent: BoolenRendererComponent
     },
     {
