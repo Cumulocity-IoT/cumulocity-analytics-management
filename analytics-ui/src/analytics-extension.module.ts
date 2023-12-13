@@ -32,6 +32,7 @@ import { BoolenRendererComponent } from "./shared/boolean-renderer.component";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
 import { RescueModalComponent } from "./extension/rescue/rescue-modal.component";
 import { ExtensionMonitoringComponent } from "./monitoring/extension-monitoring.component";
+import { CollapseModule } from "ngx-bootstrap/collapse";
 
 @NgModule({
   imports: [
@@ -42,6 +43,7 @@ import { ExtensionMonitoringComponent } from "./monitoring/extension-monitoring.
     DefaultSubscriptionsModule,
     HttpClientModule,
     BsDropdownModule.forRoot(),
+    CollapseModule.forRoot()
   ],
   declarations: [
     AnalyticsExtensionComponent,

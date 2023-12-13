@@ -17,7 +17,7 @@
 </c8y-breadcrumb>
 <div class="card card--fullpage">
   <div class="card-header separator">
-    <span>Safe Mode</span>
+    <h3>Safe Mode</h3>
   </div>
   <div class="inner-scroll">
     <div class="card-block separator">
@@ -46,103 +46,204 @@
         >
       </p>
     </div>
-    <div class="legend form-block p-l-24 p-r-24">Latest Alarms</div>
-    <div class="card-block">
-      <c8y-form-group>
-        <form class="form-inline">
-          <!-- <label for="name">Search</label>
-         <input
-            [(ngModel)]="searchString"
-            type="text"
-            id="name"
-            formControlName="name"
-            class="form-control"
-          /> -->
-          <label
-            *ngFor="let stat of AlarmStatus | keyvalue"
-            class="c8y-radio radio-inline"
-            title="{{ stat.value }}"
-          >
-            <input
-              type="radio"
-              checked="checked"
-              name="c8y-group"
-              value="{{ stat.value }}"
-              [(ngModel)]="status"
-            />
-            <span></span>
-            <span>{{ stat.value }}</span>
-          </label>
-          <button
-            type="submit"
-            (click)="search()"
-            class="btn btn-primary btn-sm m-b-8"
-          >
-            Search
-          </button>
-        </form>
-      </c8y-form-group>
-      <div style="height: 450px; overflow: auto">
+  </div>
+  <div class="card-header separator">
+    <h3>Latest Alarms & Events for Streaming Analytics Engine</h3>
+  </div>
+  <div>
+    <div class="card-block xlist-group-item collapsible card-inner-scroll">
+      <div class="xlist-item-actions d-flex" style="background: var(--c8y-navigator-background-selected)">
+        <button
+          type="button"
+          title="Show alarms"
+          class="collapse-btn"
+          (click)="
+            isAlarmExpanded = !isAlarmExpanded;
+            isEventExpanded = !isEventExpanded
+          "
+          [attr.aria-expanded]="isAlarmExpanded"
+          aria-controls="collapseBasic"
+        >
+        <i [class]="isAlarmExpanded ? 'dlt-c8y-icon-chevron-right': 'dlt-c8y-icon-chevron-down'"></i>
+        </button>
+        <span class="p-t-8">Alarms</span>
+      </div>
+      <div
+        id="collapseBasic"
+        class="collapse"
+        [collapse]="!isAlarmExpanded"
+        [isAnimated]="true"
+      >
         <div class="card-block">
-          <div class="timeline-list list-condensed">
-            <div
-              class="timeline-list-item d-flex"
-              *ngFor="let alarm of (alarms$ | async)?.data"
-            >
-              <small class="timeline-item-date">
-                {{ alarm.lastUpdated | date : "short" }}
-              </small>
-              <div class="timeline-item-content d-flex flex-wrap">
-                <div class="list-item-icon">
-                  <i c8yIcon="alarm"></i>
-                </div>
-                <div class="list-item-body">
-                  <div class="row">
-                    <div class="col-sm-9">
-                      <label class="small" translate>Severity&nbsp;</label>
-                      <span>{{ alarm.severity }}</span>
-                      <label class="small" translate
-                        >&nbsp;&nbsp;Type&nbsp;</label
-                      >
-                      <span>{{ alarm.type }}</span>
-                      <br />
-                      <span>{{ alarm.text }}</span>
-                    </div>
-                    <div class="col-sm-3">
-                      <label class="small" translate>Status&nbsp;</label>
-                      <span>{{ alarm.status }}</span>
+          <c8y-form-group>
+            <form class="form-inline">
+              <label
+                *ngFor="let stat of AlarmStatus | keyvalue"
+                class="c8y-radio radio-inline"
+                title="{{ stat.value }}"
+              >
+                <input
+                  type="radio"
+                  checked="checked"
+                  name="c8y-group"
+                  value="{{ stat.value }}"
+                  [(ngModel)]="status"
+                />
+                <span></span>
+                <span>{{ stat.value }}</span>
+              </label>
+              <button
+                type="submit"
+                (click)="search()"
+                class="btn btn-default btn-sm m-b-8"
+              >
+                Search
+              </button>
+            </form>
+          </c8y-form-group>
+          <div style="height: 430px; overflow: auto">
+            <div class="timeline-list list-condensed">
+              <div
+                class="timeline-list-item d-flex"
+                *ngFor="let alarm of (alarms$ | async)?.data"
+              >
+                <small class="timeline-item-date">
+                  {{ alarm.lastUpdated | date : "short" }}
+                </small>
+                <div class="timeline-item-content d-flex flex-wrap">
+                  <div class="list-item-icon">
+                    <i c8yIcon="alarm"></i>
+                  </div>
+                  <div class="list-item-body">
+                    <div class="row">
+                      <div class="col-sm-9">
+                        <label class="small" translate>Severity&nbsp;</label>
+                        <span>{{ alarm.severity }}</span>
+                        <label class="small" translate
+                          >&nbsp;&nbsp;Type&nbsp;</label
+                        >
+                        <span>{{ alarm.type }}</span>
+                        <br />
+                        <span>{{ alarm.text }}</span>
+                      </div>
+                      <div class="col-sm-3">
+                        <label class="small" translate>Status&nbsp;</label>
+                        <span>{{ alarm.status }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
+              <c8y-ui-empty-state
+                *ngIf="(alarms$ | async)?.data.length == 0"
+                [icon]="'alarm'"
+                [title]="'No alarms found.' | translate"
+                [horizontal]="true"
+              ></c8y-ui-empty-state>
             </div>
-            <c8y-ui-empty-state *ngIf="(alarms$ | async)?.data.length == 0"
-              [icon]="'alarm'"
-              [title]="'No alarms found.' | translate"
-              [horizontal]="true"
-            ></c8y-ui-empty-state>
+            <div class="p-t-48">
+              <button
+                class="btn btn-default"
+                title="{{ 'Previous page' | translate }}"
+                (click)="nextPageAlarm(-1)"
+              >
+                <i c8yIcon="arrow-left"></i>
+                {{ "Previous alarms" | translate }}
+              </button>
+              <button
+                class="btn btn-default"
+                title="{{ 'Next page' | translate }}"
+                (click)="nextPageAlarm(1)"
+              >
+                <i c8yIcon="arrow-right"></i>
+                {{ "Next alarms" | translate }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-block xlist-group-item collapsible card-inner-scroll">
+        <div class="xlist-item-actions d-flex"  style="background: var(--c8y-navigator-background-selected)">
+          <button
+            type="button"
+            title="Show events"
+            class="collapse-btn"
+            (click)="
+              isAlarmExpanded = !isAlarmExpanded;
+              isEventExpanded = !isEventExpanded
+            "
+            [attr.aria-expanded]="isEventExpanded"
+            aria-controls="collapseBasic"
+          >
+          <i [class]="isEventExpanded ? 'dlt-c8y-icon-chevron-right': 'dlt-c8y-icon-chevron-down'"></i>
+          </button>
+          <span class="p-t-8">Events</span>
+        </div>
+        <div
+          id="collapseBasic"
+          class="collapse"
+          [collapse]="!isEventExpanded"
+          [isAnimated]="true"
+        >
+          <div class="card-block">
+            <div style="height: 430px; overflow: auto">
+              <div class="timeline-list list-condensed">
+                <div
+                  class="timeline-list-item d-flex"
+                  *ngFor="let event of (events$ | async)?.data"
+                >
+                  <small class="timeline-item-date">
+                    {{ event.lastUpdated | date : "short" }}
+                  </small>
+                  <div class="timeline-item-content d-flex flex-wrap">
+                    <div class="list-item-icon">
+                      <i c8yIcon="c8y-events"></i>
+                    </div>
+                    <div class="list-item-body">
+                      <div class="row">
+                        <div class="col-sm-9">
+                          <label class="small" translate
+                            >&nbsp;&nbsp;Type&nbsp;</label
+                          >
+                          <span>{{ event.type }}</span>
+                          <br />
+                          <span>{{ event.text }}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <c8y-ui-empty-state
+                  *ngIf="(events$ | async)?.data.length == 0"
+                  [icon]="'event'"
+                  [title]="'No events found.' | translate"
+                  [horizontal]="true"
+                ></c8y-ui-empty-state>
+              </div>
+              <div class="p-t-48">
+                <button
+                  class="btn btn-default"
+                  title="{{ 'Previous page' | translate }}"
+                  (click)="nextPageEvent(-1)"
+                >
+                  <i c8yIcon="arrow-left"></i>
+                  {{ "Previous events" | translate }}
+                </button>
+                <button
+                  class="btn btn-default"
+                  title="{{ 'Next page' | translate }}"
+                  (click)="nextPageEvent(1)"
+                >
+                  <i c8yIcon="arrow-right"></i>
+                  {{ "Next events" | translate }}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 
-  <div class="card-footer separator">
-    <button
-      class="btn btn-primary"
-      title="{{ 'Previous page' | translate }}"
-      (click)="nextPage(-1)"
-    >
-      <i c8yIcon="arrow-left"></i>
-      {{ "Previous page" | translate }}
-    </button>
-    <button
-      class="btn btn-primary"
-      title="{{ 'Next page' | translate }}"
-      (click)="nextPage(1)"
-    >
-      <i c8yIcon="arrow-right"></i>
-      {{ "Next page" | translate }}
-    </button>
-  </div>
+  <!-- <div class="card-footer separator"></div> -->
 </div>

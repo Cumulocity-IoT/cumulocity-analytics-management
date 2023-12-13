@@ -4,7 +4,7 @@
   [labels]="labels"
   [headerClasses]="'modal-header dialog-header'"
 >
-  <div>
+  <div class="viewport-modal">
     <table class="table table-striped">
       <thead>
         <tr>
@@ -68,37 +68,38 @@
         </tr>
       </tbody>
     </table>
+
+    <fieldset class="c8y-fieldset p-16">
+      <legend>Update Repository</legend>
+      <form [formGroup]="repositoryForm">
+        <input type="hidden" formControlName="id" />
+        <c8y-form-group>
+          <label for="name">Name</label>
+          <input
+            type="text"
+            id="name"
+            formControlName="name"
+            class="form-control"
+          />
+        </c8y-form-group>
+        <c8y-form-group>
+          <label for="name">Url</label>
+          <input
+            type="text"
+            id="url"
+            formControlName="url"
+            placeholder="use form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+            class="form-control"
+          />
+        </c8y-form-group>
+        <!-- Add any other form controls based on your repository model -->
+        <button (click)="addRepository()" class="btn btn-default">
+          Add Repository
+        </button>
+        <button (click)="updateRepository()" class="btn btn-default">
+          Update Repository
+        </button>
+      </form>
+    </fieldset>
   </div>
-  <fieldset class="c8y-fieldset p-16">
-    <legend>Update Repository</legend>
-    <form [formGroup]="repositoryForm">
-      <input type="hidden" formControlName="id" />
-      <c8y-form-group>
-        <label for="name">Name</label>
-        <input
-          type="text"
-          id="name"
-          formControlName="name"
-          class="form-control"
-        />
-      </c8y-form-group>
-      <c8y-form-group>
-        <label for="name">Url</label>
-        <input
-          type="text"
-          id="url"
-          formControlName="url"
-          placeholder="use form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-          class="form-control"
-        />
-      </c8y-form-group>
-    </form>
-  </fieldset>
-  <!-- Add any other form controls based on your repository model -->
-  <button (click)="addRepository()" class="btn btn-default">
-    Add Repository
-  </button>
-  <button (click)="updateRepository()" class="btn btn-default">
-    Update Repository
-  </button>
 </c8y-modal>
