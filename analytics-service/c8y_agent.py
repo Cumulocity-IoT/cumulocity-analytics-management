@@ -75,8 +75,8 @@ class C8YAgent:
                 response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
                     resource=f"/inventory/managedObjects?query={filter}"
                 )
-                self._logger.info(f"Found managed object for app: {response}")
-
+                cep_id = response["managedObjects"][0]["id"]
+                self._logger.info(f"Found managed object for app: {cep_id}")
 
                 # managed_object_id = None
                 # for managed_object in managed_objects_app:
@@ -88,10 +88,10 @@ class C8YAgent:
                 # if managed_object_id == None:
                 #     self._logger.error(f"Not found !")
                 #     return None
-                return {"id": response.id}
+                return {"id": cep_id}
             except:
                 self._logger.error(
-                    f"Error Ffinding app id: {app_id}",
+                    f"Error finding app id: {app_id}",
                     exc_info=True,
                 )
         except Exception as e:
