@@ -67,17 +67,18 @@ class C8YAgent:
                     self._logger.info(f"Found app id: {app_id}")
                     # break
                 filter = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
-                self._logger.info(f"Build filter: {filter}")
 
-                # managed_objects_app = self.c8yapp.get_tenant_instance(
-                #     headers=request_headers
-                # ).inventory.select(query=query)
+                self._logger.info(f"Build filter: {filter}")
+                params = {"query": filter}
                 response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
-                    resource=f"/inventory/managedObjects?query={filter}"
+                    resource=f"/inventory/managedObjects", params=params
                 )
                 cep_id = response["managedObjects"][0]["id"]
                 self._logger.info(f"Found managed object for app: {cep_id}")
 
+                # managed_objects_app = self.c8yapp.get_tenant_instance(
+                #     headers=request_headers
+                # ).inventory.select(query=query)
                 # managed_object_id = None
                 # for managed_object in managed_objects_app:
                 #     self._logger.info(

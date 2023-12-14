@@ -7,6 +7,7 @@
   - [Build Custom Extension](#build-custom-extension)
   - [Options for Custom Extension](#options-for-custom-extension)
 - [Samples Repositories and Building Custom Extensions](#samples-repositories-and-building-custom-extensions)
+- [Monitoring](#monitoring)
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
@@ -63,13 +64,22 @@ In addition you can view the EPL (event processing language) source code:
 
 ![View source code](resources/images/samples-view-code.png)
 
-Buildin a custom extension starts by selecting the blocks from the list of samples. On selection of blocks an action in the table header appears `Custom Extension`.
+Building a custom extension starts by selecting the blocks from the list of samples. On selection of blocks an action in the table header appears `Custom Extension`.
 The modal dialog provides the option:
 * to name the custom extension
 * to upload the extension automatically to the Cumulocity Inventory. The created custom extension is otherwise downloaded to locally. It still requires the restart of the analytics engine.
 * to restart the stremaning analytics engine to load the created custom extension.
 
 ![Create Extension](resources/images/create-extension-modal.png)
+
+## Monitoring
+
+On the monitoring tab you can view the latest alarms and events for the Streaming Analytics Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
+
+This is an indication that the engine was started in **Safe Mode**, i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
+
+![Monitoring](resources/images/monitoring.png)
+
 
 ## Installation of plugin as community plugin
 
