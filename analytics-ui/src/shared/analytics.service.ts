@@ -98,30 +98,27 @@ export class AnalyticsService {
     );
   }
 
-  async getExtensionsEnrichedUncached(): Promise<IManagedObject[]> {
-    console.log("Calling: getExtensionsEnrichedUncached()");
-    const extensions = (await this.getExtensions()).data;
-    const loadedExtensions: CEP_ExtensionsMetadata =
-      await this.getCEP_ExtensionsMetadata();
-    for (let index = 0; index < extensions.length; index++) {
-      extensions[index].name = removeFileExtension(extensions[index].name);
-      const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
-      extensions[index].loaded = loadedExtensions?.metadatas?.some((le) =>
-        key.includes(le)
-      );
-      if (extensions[index].loaded) {
-        let extensionDetails = await this.getCEP_Extension(
-          extensions[index].name
-        );
-        extensions[index].blocksCount = extensionDetails?.analytics.length;
-      }
-    }
-    return extensions;
-  }
-
   async getExtensionsEnriched(): Promise<IManagedObject[]> {
     if (!this._extensionsDeployed) {
-      this._extensionsDeployed = this.getExtensionsEnrichedUncached();
+      const { data } = await this.getExtensions();
+      const extensions = data;
+      const loadedExtensions: CEP_ExtensionsMetadata =
+        await this.getCEP_ExtensionsMetadata();
+      for (let index = 0; index < extensions.length; index++) {
+        extensions[index].name = removeFileExtension(extensions[index].name);
+        const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
+        extensions[index].loaded = loadedExtensions?.metadatas?.some((le) =>
+          key.includes(le)
+        );
+        if (extensions[index].loaded) {
+          let extensionDetails = await this.getCEP_Extension(
+            extensions[index].name
+          );
+          extensions[index].blocksCount = extensionDetails?.analytics.length;
+        }
+      }
+
+      this._extensionsDeployed = Promise.resolve(extensions);
     }
     return this._extensionsDeployed;
   }
@@ -152,32 +149,29 @@ export class AnalyticsService {
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
     if (!this._blocksDeployed) {
-      this._blocksDeployed = this.getLoadedCEP_BlocksUncached();
+      const blocks: CEP_Block[] = [];
+      const meta: CEP_ExtensionsMetadata =
+        await this.getCEP_ExtensionsMetadata();
+      if (meta && meta.metadatas) {
+        for (let index = 0; index < meta.metadatas.length; index++) {
+          const extensionNameAbbreviated = removeFileExtension(
+            meta.metadatas[index]
+          );
+          const extension: CEP_Extension = await this.getCEP_Extension(
+            extensionNameAbbreviated
+          );
+          extension.analytics.forEach((block) => {
+            const cepBlock = block as CEP_Block;
+            cepBlock.custom = isCustomCEP_Block(cepBlock);
+            cepBlock.extension = extensionNameAbbreviated;
+            //console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
+            blocks.push(cepBlock);
+          });
+        }
+      }
+      this._blocksDeployed = Promise.resolve(blocks);
     }
     return this._blocksDeployed;
-  }
-
-  async getLoadedCEP_BlocksUncached(): Promise<CEP_Block[]> {
-    const result: CEP_Block[] = [];
-    const meta: CEP_ExtensionsMetadata = await this.getCEP_ExtensionsMetadata();
-    if (meta && meta.metadatas) {
-      for (let index = 0; index < meta.metadatas.length; index++) {
-        const extensionNameAbbreviated = removeFileExtension(
-          meta.metadatas[index]
-        );
-        const extension: CEP_Extension = await this.getCEP_Extension(
-          extensionNameAbbreviated
-        );
-        extension.analytics.forEach((block) => {
-          const cepBlock = block as CEP_Block;
-          cepBlock.custom = isCustomCEP_Block(cepBlock);
-          cepBlock.extension = extensionNameAbbreviated;
-          //console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
-          result.push(cepBlock);
-        });
-      }
-    }
-    return result;
   }
 
   async getCEP_ExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
@@ -213,65 +207,62 @@ export class AnalyticsService {
   }
 
   async getCEP_Id(): Promise<string> {
+    let cepId: string;
     if (!this._cepId) {
-      this._cepId = this.getCEP_IdUncached(true);
+      let backend = true;
+      if (backend) {
+        // get name of microservice from cep endpoint
+        const response: IFetchResponse = await this.fetchClient.fetch(
+          `${BASE_PATH_BACKEND}/${CEP_ENDPOINT}/id`,
+          {
+            headers: {
+              "content-type": "application/json",
+            },
+            method: "GET",
+          }
+        );
+        const data = await response.json();
+        return data.id;
+      } else {
+        // get name of microservice from cep endpoint
+        const response: IFetchResponse = await this.fetchClient.fetch(
+          `${CEP_PATH_STATUS}`,
+          {
+            headers: {
+              "content-type": "application/json",
+            },
+            method: "GET",
+          }
+        );
+        if (response.status < 400) {
+          const data1 = await response.json();
+          const cepMicroservice = data1.microservice_name;
+          const microservice_application_id = data1.microservice_application_id;
+
+          // get source id of microservice representation in inventory
+          const filter: object = {
+            pageSize: 100,
+            withTotalPages: true,
+          };
+          const query: object = {
+            name: cepMicroservice,
+            applicationId: microservice_application_id,
+          };
+          let { data, res }: IResultList<IManagedObject> =
+            await this.inventoryService.listQuery(query, filter);
+          console.log("Found ctrl-microservice:", data1, data);
+          if (!data || data.length > 1) {
+            this.alertService.warning(
+              "Can't find ctrl-microservice for Streaming Analytics! Please report this issue."
+            );
+            return;
+          }
+          cepId = data[0].id;
+        }
+      }
+      this._cepId = Promise.resolve(cepId);
     }
     return this._cepId;
-  }
-
-  async getCEP_IdUncached(backend: boolean): Promise<string> {
-    if (backend) {
-      // get name of microservice from cep endpoint
-      const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BASE_PATH_BACKEND}/${CEP_ENDPOINT}/id`,
-        {
-          headers: {
-            "content-type": "application/json",
-          },
-          method: "GET",
-        }
-      );
-      const data = await response.json();
-      return data.id;
-    } else {
-      // get name of microservice from cep endpoint
-      const response: IFetchResponse = await this.fetchClient.fetch(
-        `${CEP_PATH_STATUS}`,
-        {
-          headers: {
-            "content-type": "application/json",
-          },
-          method: "GET",
-        }
-      );
-      if (response.status < 400) {
-        const data1 = await response.json();
-        const cepMicroservice = data1.microservice_name;
-        const microservice_application_id = data1.microservice_application_id;
-
-        // get source id of microservice representation in inventory
-        const filter: object = {
-          pageSize: 100,
-          withTotalPages: true,
-        };
-        const query: object = {
-          name: cepMicroservice,
-          applicationId: microservice_application_id,
-        };
-        let { data, res }: IResultList<IManagedObject> =
-          await this.inventoryService.listQuery(query, filter);
-        console.log("Found ctrl-microservice:", data1, data);
-        if (!data || data.length > 1) {
-          this.alertService.warning(
-            "Can't find ctrl-microservice for Streaming Analytics! Please report this issue."
-          );
-          return;
-        }
-        return data[0].id;
-      } else {
-        return;
-      }
-    }
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
@@ -349,18 +340,6 @@ export class AnalyticsService {
     }
   }
 
-  async isBackendDeployedUncached(): Promise<boolean> {
-    return this.applicationService
-      .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
-      .then((av) => {
-        let result = false;
-        if (av) {
-          result = av.data;
-        }
-        return result;
-      });
-  }
-
   async downloadExtension(app: IManagedObject): Promise<ArrayBuffer> {
     let response: IFetchResponse = await this.inventoryBinaryService.download(
       app
@@ -371,7 +350,15 @@ export class AnalyticsService {
 
   async isBackendDeployed(): Promise<boolean> {
     if (!this._isBackendDeployed) {
-      this._isBackendDeployed = this.isBackendDeployedUncached();
+      this._isBackendDeployed = this.applicationService
+        .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
+        .then((av) => {
+          let result = false;
+          if (av) {
+            result = av.data;
+          }
+          return result;
+        });
     }
     return this._isBackendDeployed;
   }

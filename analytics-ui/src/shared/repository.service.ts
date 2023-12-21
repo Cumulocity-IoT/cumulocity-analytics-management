@@ -80,34 +80,29 @@ export class RepositoryService {
 
   async loadRepositories(): Promise<Repository[]> {
     if (!this._repositories) {
-      this._repositories = this.loadRepositoriesUncached();
-    }
-    return this._repositories;
-  }
-
-  async loadRepositoriesUncached(): Promise<Repository[]> {
-    let result = [] as Repository[];
-    const filter: object = {
-      pageSize: 100,
-      withTotalPages: true,
-    };
-    const query: object = {
-      type: ANALYTICS_REPOSITORIES_TYPE,
-    };
-    let { data } = await this.inventoryService.listQuery(query, filter);
-    if (!data || data.length == 0) {
-      const reposMO: Partial<IManagedObject> = {
-        name: "AnalyticsRepositories",
+      let repositories = [] as Repository[];
+      const filter: object = {
+        pageSize: 100,
+        withTotalPages: true,
+      };
+      const query: object = {
         type: ANALYTICS_REPOSITORIES_TYPE,
       };
-      reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
-      this.inventoryService.create(reposMO);
-      result = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-    } else if (data.length > 0) {
-      result = data[0][ANALYTICS_REPOSITORIES_TYPE];
+      let { data } = await this.inventoryService.listQuery(query, filter);
+      if (!data || data.length == 0) {
+        const reposMO: Partial<IManagedObject> = {
+          name: "AnalyticsRepositories",
+          type: ANALYTICS_REPOSITORIES_TYPE,
+        };
+        reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
+        this.inventoryService.create(reposMO);
+        repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
+      } else if (data.length > 0) {
+        repositories = data[0][ANALYTICS_REPOSITORIES_TYPE];
+      }
+      this._repositories = Promise.resolve(repositories);
     }
-    this._repositories = result;
-    return result;
+    return this._repositories;
   }
 
   async saveRepositories(repositories: Repository[]): Promise<void> {
