@@ -102,6 +102,6 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onCancel(event) {
-    this.closeSubject.next();
+    this.closeSubject.next([]);
   }
 }

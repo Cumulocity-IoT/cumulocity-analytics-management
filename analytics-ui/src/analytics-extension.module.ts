@@ -63,22 +63,6 @@ import { CollapseModule } from "ngx-bootstrap/collapse";
     RescueModalComponent,
     ExtensionMonitoringComponent
   ],
-  entryComponents: [
-    AnalyticsExtensionComponent,
-    AnalyticsExtensionCardComponent,
-    AnalyticsAddExtensionComponent,
-    AnalyticsExtensionCardComponent,
-    BlockGridComponent,
-    SampleGridComponent,
-    EditorStepperComponent,
-    EditorModalComponent,
-    RepositoriesModalComponent,
-    AnalyticsExtensionDetailsComponent,
-    ConfirmationModalComponent,
-    BoolenRendererComponent,
-    RescueModalComponent,
-    ExtensionMonitoringComponent
-  ],
   providers: [
     AnalyticsService,
     RepositoryService,

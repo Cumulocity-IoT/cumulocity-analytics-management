@@ -287,7 +287,7 @@ export class AnalyticsService {
     return sub;
   }
 
-  unsubscribeFromMonitoringChannel(subscription: object) {
+  unsubscribeFromMonitoringChannel(subscription: any) {
     this.realtime.unsubscribe(subscription);
     this.subscription.unsubscribe();
   }

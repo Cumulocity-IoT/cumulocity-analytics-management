@@ -66,29 +66,31 @@ class C8YAgent:
                     app_id = app.id
                     self._logger.info(f"Found app id: {app_id}")
                     # break
-                filter = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
+                query = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
 
-                self._logger.info(f"Build filter: {filter}")
-                params = {"query": filter}
-                response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
-                    resource=f"/inventory/managedObjects", params=params
-                )
-                cep_id = response["managedObjects"][0]["id"]
-                self._logger.info(f"Found managed object for app: {cep_id}")
+                self._logger.info(f"Build filter: {query}")
+                
+                # previous version, workaround for issue https://github.com/SoftwareAG/cumulocity-python-api/issues/51
+                # params = {"query": filter}
+                # response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                #     resource=f"/inventory/managedObjects", params=params
+                # )
+                # cep_id = response["managedObjects"][0]["id"]
+                # self._logger.info(f"Found managed object for app: {cep_id}")
 
-                # managed_objects_app = self.c8yapp.get_tenant_instance(
-                #     headers=request_headers
-                # ).inventory.select(query=query)
-                # managed_object_id = None
-                # for managed_object in managed_objects_app:
-                #     self._logger.info(
-                #         f"Found managed object for app: {managed_object}"
-                #     )
-                #     managed_object_id = managed_object
-                #     break
-                # if managed_object_id == None:
-                #     self._logger.error(f"Not found !")
-                #     return None
+                managed_objects_app = self.c8yapp.get_tenant_instance(
+                    headers=request_headers
+                ).inventory.select(query)
+                managed_object_id = None
+                for managed_object in managed_objects_app:
+                    self._logger.info(
+                        f"Found managed object for app: {managed_object}"
+                    )
+                    managed_object_id = managed_object
+                    break
+                if managed_object_id == None:
+                    self._logger.error(f"Not found !")
+                    return None
                 return {"id": cep_id}
             except:
                 self._logger.error(
