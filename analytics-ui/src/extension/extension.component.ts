@@ -1,10 +1,9 @@
 import { Component, OnInit } from "@angular/core";
 import { IManagedObject } from "@c8y/client";
 import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
-import { BehaviorSubject, Observable, of, throwError } from "rxjs";
+import { BehaviorSubject, Observable, of } from "rxjs";
 import {
   catchError,
-  finalize,
   shareReplay,
   switchMap,
   tap,

@@ -31,18 +31,18 @@ import {
 import { AnalyticsService } from "../../shared/analytics.service";
 import { CEP_Block } from "../../shared/analytics.model";
 import { BsModalService } from "ngx-bootstrap/modal";
-import { CreateExtensionComponent } from "../../component/create-extension-modal.component";
+import { CreateExtensionComponent } from "../../shared/component/create-extension-modal.component";
 import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoryService } from "../../shared/repository.service";
 import { BehaviorSubject, Observable, of } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
 import { RepositoriesModalComponent } from "./repositories-modal.component";
-import { BoolenRendererComponent } from "../../shared/boolean-renderer.component";
+import { BoolenRendererComponent } from "../../shared/component/boolean-renderer.component";
 
 @Component({
   selector: "c8y-sample-grid",
-  templateUrl: "sample.component.html",
-  styleUrls: ["./sample.component.css"],
+  templateUrl: "sample-grid.component.html",
+  styleUrls: ["./sample-grid.component.css"],
   encapsulation: ViewEncapsulation.None,
 })
 export class SampleGridComponent implements OnInit {
@@ -211,5 +211,4 @@ export class SampleGridComponent implements OnInit {
     this.reload$.next();
   }
 
-  ngOnDestroy() {}
 }

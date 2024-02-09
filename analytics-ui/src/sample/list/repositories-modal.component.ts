@@ -6,7 +6,7 @@ import { Repository } from "../../shared/analytics.model";
 import { RepositoryService } from "../../shared/repository.service";
 import { uuidCustom } from "../../shared/utils";
 import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { ConfirmationModalComponent } from "../../component/confirmation-modal.component";
+import { ConfirmationModalComponent } from "../../shared/component/confirmation-modal.component";
 
 @Component({
   selector: "name-repositories-modal",

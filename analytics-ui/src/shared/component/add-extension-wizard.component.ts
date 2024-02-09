@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
-import { AnalyticsService } from '../shared/analytics.service';
+import { AnalyticsService } from '../analytics.service';
 
 @Component({
     selector: 'analytics-add-extension',

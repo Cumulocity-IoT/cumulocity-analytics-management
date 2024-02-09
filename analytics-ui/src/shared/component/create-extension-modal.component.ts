@@ -3,9 +3,9 @@ import { AlertService, ModalLabels } from "@c8y/ngx-components";
 import { BehaviorSubject, Subject, from } from "rxjs";
 import { FormlyFieldConfig } from "@ngx-formly/core";
 import { FormGroup } from "@angular/forms";
-import { AnalyticsService } from "../shared/analytics.service";
+import { AnalyticsService } from "../analytics.service";
 import { saveAs } from "file-saver";
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model";
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../analytics.model";
 
 @Component({
   selector: "name-extension-modal",

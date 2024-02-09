@@ -4,7 +4,7 @@ import { IManagedObject } from "@c8y/client";
 import { AlertService } from "@c8y/ngx-components";
 import { AnalyticsService } from "../shared/analytics.service";
 import { saveAs } from "file-saver";
-import { ConfirmationModalComponent } from "../component/confirmation-modal.component";
+import { ConfirmationModalComponent } from "../shared/component/confirmation-modal.component";
 import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
 
 @Component({
