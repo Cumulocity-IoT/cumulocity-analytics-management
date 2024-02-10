@@ -65,7 +65,7 @@ export class ExtensionGridComponent implements OnInit {
 
   addExtension() {
     const wizardConfig: WizardConfig = {
-      headerText: "Add Extension",
+      headerText: "Add extension",
       headerIcon: "c8y-atom",
     };
 

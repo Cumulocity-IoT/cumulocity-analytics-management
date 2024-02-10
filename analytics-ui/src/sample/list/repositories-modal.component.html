@@ -33,7 +33,7 @@
                 class="m-r-5"
               ></i> -->
             <button
-              title="{{ 'Toggle Activation' | translate }}"
+              title="{{ 'Toggle activation' | translate }}"
               class="btn btn-icon btn-clean"
               (click)="toggleActivation(repository)"
             >
@@ -54,15 +54,15 @@
               (click)="editRepository(repository)"
             >
               <i c8yIcon="pencil" class="text-danger"></i>
-              <span class="sr-only" translate>Update controller</span>
+              <span class="sr-only" translate>Update</span>
             </button>
             <button
-              title="{{ 'Remove' | translate }}"
+              title="{{ 'Delete' | translate }}"
               class="btn btn-icon btn-clean"
               (click)="deleteRepository(repository.id)"
             >
               <i c8yIcon="trash-o" class="text-danger"></i>
-              <span class="sr-only" translate>Remove</span>
+              <span class="sr-only" translate>Delete</span>
             </button>
           </td>
         </tr>
@@ -70,7 +70,7 @@
     </table>
 
     <fieldset class="c8y-fieldset p-16">
-      <legend>Update Repository</legend>
+      <legend>Update repository</legend>
       <form [formGroup]="repositoryForm">
         <input type="hidden" formControlName="id" />
         <c8y-form-group>
@@ -112,10 +112,10 @@
         </c8y-form-group>
         <!-- Add any other form controls based on your repository model -->
         <button (click)="addRepository()" class="btn btn-default">
-          Add Repository
+          Add repository
         </button>
         <button (click)="updateRepository()" class="btn btn-default">
-          Update Repository
+          Update repository
         </button>
       </form>
     </fieldset>

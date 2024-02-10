@@ -38,21 +38,21 @@ export class AnalyticsTabFactory implements TabFactory {
       tabs.push({
         path: "sag-ps-pkg-analytics-extension/manage",
         priority: 960,
-        label: "Manage Extensions",
+        label: "Manage extensions",
         icon: "plugin",
         orientation: "horizontal",
       } as Tab);
       tabs.push({
         path: "sag-ps-pkg-analytics-extension/list",
         priority: 940,
-        label: "Installed Blocks",
+        label: "Blocks installed",
         icon: "flow-chart",
         orientation: "horizontal",
       } as Tab);
       tabs.push({
         path: "sag-ps-pkg-analytics-extension/sample",
         priority: 920,
-        label: "Sample Repositories",
+        label: "Sample repositories",
         icon: "test",
         orientation: "horizontal",
       } as Tab);
