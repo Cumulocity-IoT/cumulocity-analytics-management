@@ -46,7 +46,7 @@ You can build and uploads a custom extension by following the screenflow below:
 ### Options for Custom Extension
 For a custom extension you have the following options:
 * Delete: deletes the custom extension permanently. To take effect you need to restart the stremaing analytics engine
-* Details: lists the included blocks of the custom extension on a deail page.
+* Details: lists the included blocks of the custom extension on a detail page.
 * Download: downloads the custom extension as a zip file.
 
 ![Build Custom Extensionn](resources/images/manage-extension.png)
@@ -206,7 +206,7 @@ For the first deployment you have to use:
 ## Analytics Builder Block SDK
 
 Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
-Find addtional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
+Find additional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
 
 The provided block is an example of the adding the two inputs.
 
