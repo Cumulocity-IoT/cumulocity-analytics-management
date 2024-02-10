@@ -33,7 +33,7 @@ import { BehaviorSubject, Observable } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
 import {
   AnalyticsService,
-  BoolenRendererComponent,
+  BooleanRendererComponent,
   CEP_Block,
   ConfirmationModalComponent,
   ExtensionCreateComponent,
@@ -90,7 +90,7 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       gridTrackSize: "7.5%",
       visible: true,
-      cellRendererComponent: BoolenRendererComponent,
+      cellRendererComponent: BooleanRendererComponent,
     },
     {
       name: "url",
@@ -147,7 +147,7 @@ export class SampleGridComponent implements OnInit {
         false
       );
     } catch (error) {
-      console.log("Something happended:", error);
+      console.log("Something happened:", error);
     }
     const initialState = {
       source: source,
@@ -178,7 +178,7 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
-  checkSeletion(ids: string[]) {
+  checkSelection(ids: string[]) {
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(

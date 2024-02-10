@@ -7,7 +7,7 @@ import { FORMLY_CONFIG } from "@ngx-formly/core";
 import { PopoverModule } from "ngx-bootstrap/popover";
 import { C8YSwitchField } from "./component/c8y-switch-field";
 import { ConfirmationModalComponent } from "./component/confirmation-modal.component";
-import { BoolenRendererComponent } from "./component/boolean-renderer.component";
+import { BooleanRendererComponent } from "./component/boolean-renderer.component";
 import { ExtensionCreateComponent } from "./component/extension-create-modal.component";
 
 @NgModule({
@@ -21,7 +21,7 @@ import { ExtensionCreateComponent } from "./component/extension-create-modal.com
   ],
   declarations: [
     ConfirmationModalComponent,
-    BoolenRendererComponent,
+    BooleanRendererComponent,
     ExtensionCreateComponent,
     C8YSwitchField
   ],

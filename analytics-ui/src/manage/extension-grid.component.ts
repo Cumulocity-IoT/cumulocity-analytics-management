@@ -71,7 +71,7 @@ export class ExtensionGridComponent implements OnInit {
 
     const initialState: any = {
       wizardConfig,
-      id: "uploadAnalyticsExtention",
+      id: "uploadAnalyticsExtension",
     };
 
     const modalOptions: ModalOptions = { initialState };

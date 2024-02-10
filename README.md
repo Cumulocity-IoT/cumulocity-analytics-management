@@ -1,5 +1,5 @@
 # cumulocity-analytics-management
-> **NOTE**: The plugin can for the moment only be installed in the Administration app, not as shown below direclty in the Streaming Analytics app. This limitation will be fixed shortly!
+> **NOTE**: The plugin can for the moment only be installed in the Administration app, not as shown below directly in the Streaming Analytics app. This limitation will be fixed shortly!
 ## Content
 - [Overview](#overview)
 - [Manage Custom Extension](#manage-custom-extension)
@@ -34,7 +34,7 @@ For a deletion or upload to take effect you need to restart the analytics strema
 
 ### Upload Custom Extension
 
-After the delployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus straming flows might not work anymore.
+After the delployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus streaming flows might not work anymore.
 
 ![Use Extension](resources/images/analytics-builder.png)
 
@@ -53,9 +53,9 @@ For a custom extension you have the following options:
 
 
 ## Samples Repositories and Building Custom Extensions
-Block samples from github repositories can selected to build custome extension online.
+Block samples from github repositories can selected to build custom extension online.
 In order to use this option first you have to configure your Github repsoitory.
-The configured repositories can be updated, deleted and de-/enabled. Only enabled repsoitories are shown in the list of block smaples.
+The configured repositories can be updated, deleted and de-/enabled. Only enabled repsoitories are shown in the list of block samples.
 You can manage the github repositories using the following UI:
 
 ![Manage Repositories](resources/images/samples-manage-repository.png)
@@ -101,7 +101,7 @@ This guide will teach you how to add the modified Cumulocity standard applicatio
 * to upload the latest plugin release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-analytics-management/releases) and download the analytics-extension.zip package.
 * login to your Cumulocity IoT Tenant, open Administration--Ecosystem--Extensions -> Add extension package
 * upload analytics-extension.zip
-* login to your Cumulocity IoT Tenant and clone Cumulocity standard application in  Administration--Applications--CHOOSE_STANARD_APPLICATION_TO_CONE -> Clone.
+* login to your Cumulocity IoT Tenant and clone Cumulocity standard application in  Administration--Applications--CHOOSE_STANDARD_APPLICATION_TO_CONE -> Clone.
 * to add the modified Cumulocity standard application click on Clone application. After that, select Upload web application and drop the pre-downloaded zip-folder into the field.
 * install plugin in cloned application
 
@@ -135,7 +135,7 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Extension Backend
 
- The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded throught UI, see [Upload Custom Extension](#upload-custom-extension).
+ The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded through UI, see [Upload Custom Extension](#upload-custom-extension).
  You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
  
  The microservice is multi tenant ready
@@ -224,7 +224,7 @@ The provided block is an example of the adding the two inputs.
 In order to checkif an extension is deployed look in the log file of the analytics engine for a relevant message:
 `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 
-The log file can be accessed: Adminstration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
+The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
 
 ------------------------------
 

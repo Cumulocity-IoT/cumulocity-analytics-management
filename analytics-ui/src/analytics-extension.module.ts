@@ -38,7 +38,7 @@ import { ExtensionAddComponent } from "./shared";
   providers: [
     hookNavigator(AnalyticsNavigationFactory),
     hookWizard({
-      wizardId: "uploadAnalyticsExtention",
+      wizardId: "uploadAnalyticsExtension",
       component: ExtensionAddWizardComponent,
       name: "Upload analytics extension",
       c8yIcon: "upload",

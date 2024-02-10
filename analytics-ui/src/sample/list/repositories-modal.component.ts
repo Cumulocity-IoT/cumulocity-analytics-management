@@ -51,7 +51,7 @@ export class RepositoriesModalComponent implements OnInit {
     this.repositoryForm.patchValue(repository);
   }
 
-  toogleActivation(repository: Repository): void {
+  toggleActivation(repository: Repository): void {
     repository.enabled = !repository.enabled;
     this.repositoryService.updateRepository(repository);
   }

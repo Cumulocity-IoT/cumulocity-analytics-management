@@ -7,4 +7,4 @@ msgstr ""
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
 msgid "Module Federation widget"
-msgstr "Modul Federation Dingsbums"
+msgstr "Module Federation Dingsbums"

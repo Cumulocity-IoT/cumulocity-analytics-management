@@ -35,7 +35,7 @@
             <button
               title="{{ 'Toggle Activation' | translate }}"
               class="btn btn-icon btn-clean"
-              (click)="toogleActivation(repository)"
+              (click)="toggleActivation(repository)"
             >
               <i
                 [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
@@ -43,7 +43,7 @@
                 c8yIcon="toggle-on"
                 class="text-danger"
               ></i>
-              <span class="sr-only" translate>Toogle activation</span>
+              <span class="sr-only" translate>Toggle activation</span>
             </button>
           </td>
           <!-- <td width="10%" style="padding-top: 0px; padding-bottom: 0px"> -->
