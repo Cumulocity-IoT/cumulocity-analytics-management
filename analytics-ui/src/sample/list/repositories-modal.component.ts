@@ -1,12 +1,9 @@
 import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
 import { FormBuilder, FormGroup, Validators } from "@angular/forms";
 import { AlertService, ModalLabels } from "@c8y/ngx-components";
-import { Subject } from "rxjs";
-import { Repository } from "../../shared/analytics.model";
-import { RepositoryService } from "../../shared/repository.service";
-import { uuidCustom } from "../../shared/utils";
 import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { ConfirmationModalComponent } from "../../shared/component/confirmation-modal.component";
+import { Subject } from "rxjs";
+import { ConfirmationModalComponent, Repository, RepositoryService, uuidCustom } from "../../shared";
 
 @Component({
   selector: "name-repositories-modal",
@@ -67,9 +64,9 @@ export class RepositoriesModalComponent implements OnInit {
     }
   }
 
-  removeRepository(repositoryId: string): void {
+  deleteRepository(repositoryId: string): void {
     const initialState = {
-      title: "Delete connector",
+      title: "Delete repository",
       message: "You are about to delete a repository. Do you want to proceed?",
       labels: {
         ok: "Delete",
@@ -82,10 +79,10 @@ export class RepositoriesModalComponent implements OnInit {
     );
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        //console.log("Confirmation delete result:", result);
+        console.log("Confirmation delete result:", result);
         if (!!result) {
           try {
-            this.repositoryService.removeRepository(repositoryId);
+            this.repositoryService.deleteRepository(repositoryId);
           } catch (ex) {
             if (ex) {
               this.alertService.addServerFailure(ex);

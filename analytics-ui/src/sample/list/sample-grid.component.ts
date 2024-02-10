@@ -28,16 +28,19 @@ import {
   DataGridComponent,
   Pagination,
 } from "@c8y/ngx-components";
-import { AnalyticsService } from "../../shared/analytics.service";
-import { CEP_Block } from "../../shared/analytics.model";
-import { BsModalService } from "ngx-bootstrap/modal";
-import { CreateExtensionComponent } from "../../shared/component/create-extension-modal.component";
-import { EditorModalComponent } from "../editor/editor-modal.component";
-import { RepositoryService } from "../../shared/repository.service";
-import { BehaviorSubject, Observable, of } from "rxjs";
+import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
+import { BehaviorSubject, Observable } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
+import {
+  AnalyticsService,
+  BoolenRendererComponent,
+  CEP_Block,
+  ConfirmationModalComponent,
+  ExtensionCreateComponent,
+  RepositoryService,
+} from "../../shared";
+import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./repositories-modal.component";
-import { BoolenRendererComponent } from "../../shared/component/boolean-renderer.component";
 
 @Component({
   selector: "c8y-sample-grid",
@@ -87,7 +90,7 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       gridTrackSize: "7.5%",
       visible: true,
-      cellRendererComponent: BoolenRendererComponent
+      cellRendererComponent: BoolenRendererComponent,
     },
     {
       name: "url",
@@ -199,7 +202,7 @@ export class SampleGridComponent implements OnInit {
       monitors,
     };
 
-    const modalRef = this.bsModalService.show(CreateExtensionComponent, {
+    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
       class: "modal-lg",
       initialState,
     });

@@ -8,7 +8,7 @@ import { saveAs } from "file-saver";
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../analytics.model";
 
 @Component({
-  selector: "name-extension-modal",
+  selector: "extension-create-modal",
   template: `<c8y-modal
     title="Edit properties extension"
     (onDismiss)="onDismiss($event)"
@@ -38,7 +38,7 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../analytics.model";
     <div *ngIf="loading"><c8y-loading></c8y-loading></div>
   </c8y-modal>`,
 })
-export class CreateExtensionComponent implements OnInit {
+export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
   @Input() monitors: string[];
   configuration: any = {};

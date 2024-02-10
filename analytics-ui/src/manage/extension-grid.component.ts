@@ -1,23 +1,23 @@
 import { Component, OnInit } from "@angular/core";
 import { IManagedObject } from "@c8y/client";
 import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
+import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
 import { BehaviorSubject, Observable, of } from "rxjs";
 import {
-  catchError,
-  shareReplay,
-  switchMap,
-  tap,
+    catchError,
+    shareReplay,
+    switchMap,
+    tap,
 } from "rxjs/operators";
-import { AnalyticsService } from "../shared/analytics.service";
-import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
+import { AnalyticsService } from "../shared";
 import { RescueModalComponent } from "./rescue/rescue-modal.component";
 
 @Component({
   selector: "extension",
-  templateUrl: "./extension.component.html",
-  styleUrls: ["./extension.component.css"],
+  templateUrl: "./extension-grid.component.html",
+  styleUrls: ["./extension-grid.component.css"],
 })
-export class AnalyticsExtensionComponent implements OnInit {
+export class ExtensionGridComponent implements OnInit {
   loading: boolean = false;
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);

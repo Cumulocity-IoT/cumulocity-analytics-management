@@ -20,20 +20,19 @@
  */
 import { CdkStep } from "@angular/cdk/stepper";
 import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  EventEmitter,
-  Input,
-  OnInit,
-  Output,
-  ViewChild,
-  ViewEncapsulation,
+    AfterViewInit,
+    Component,
+    ElementRef,
+    EventEmitter,
+    Input,
+    OnInit,
+    Output,
+    ViewChild,
+    ViewEncapsulation,
 } from "@angular/core";
 import { C8yStepper } from "@c8y/ngx-components";
-import * as _ from "lodash";
 import { BsModalService } from "ngx-bootstrap/modal";
-import { AnalyticsService } from "../../shared/analytics.service";
+import { AnalyticsService } from "../../shared";
 
 @Component({
   selector: "c8y-editor-stepper",

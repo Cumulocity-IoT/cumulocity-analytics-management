@@ -19,26 +19,24 @@
  * @authors Christof Strack
  */
 import {
-  Component,
-  EventEmitter,
-  OnInit,
-  ViewEncapsulation,
+    Component,
+    EventEmitter,
+    OnInit,
+    ViewEncapsulation,
 } from "@angular/core";
 import {
-  ActionControl,
-  AlertService,
-  Column,
-  ColumnDataType,
-  Pagination,
+    ActionControl,
+    AlertService,
+    Column,
+    ColumnDataType,
+    Pagination,
 } from "@c8y/ngx-components";
-import { AnalyticsService } from "../shared/analytics.service";
-import { CEP_Block } from "../shared/analytics.model";
-import { BoolenRendererComponent } from "../shared/component/boolean-renderer.component";
+import { AnalyticsService, BoolenRendererComponent, CEP_Block } from "../shared";
 
 @Component({
   selector: "c8y-block-grid",
-  templateUrl: "block.component.html",
-  styleUrls:['./block.component.css'],
+  templateUrl: "block-grid.component.html",
+  styleUrls:['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
 })
 export class BlockGridComponent implements OnInit {

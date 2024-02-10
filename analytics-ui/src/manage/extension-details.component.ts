@@ -21,14 +21,13 @@
 import { Component, OnInit } from "@angular/core";
 import { ActivatedRoute } from "@angular/router";
 import { gettext } from "@c8y/ngx-components";
-import { AnalyticsService } from "../shared/analytics.service";
-import { CEP_Extension } from "../shared/analytics.model";
+import { AnalyticsService, CEP_Extension } from "../shared";
 
 @Component({
   selector: "analytics-extension-details",
   templateUrl: "./extension-details.component.html",
 })
-export class AnalyticsExtensionDetailsComponent implements OnInit {
+export class ExtensionDetailsComponent implements OnInit {
   extension: CEP_Extension;
   breadcrumbConfig: { icon: string; label: string; path: string };
 

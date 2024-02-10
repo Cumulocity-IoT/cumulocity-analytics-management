@@ -1,16 +1,16 @@
 import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
-import { BehaviorSubject, Observable, Subject, of } from "rxjs";
 import { AlarmService, AlarmStatus, EventService, IAlarm, IEvent, IResultList } from "@c8y/client";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
 import { BsModalRef } from "ngx-bootstrap/modal";
-import { AnalyticsService } from "../shared/analytics.service";
+import { BehaviorSubject, Observable, Subject } from "rxjs";
+import { shareReplay, switchMap, tap } from "rxjs/operators";
+import { AnalyticsService } from "../shared";
 
 @Component({
-  selector: "extensionmonitoring",
-  templateUrl: "./extension-monitoring.component.html",
+  selector: "engine-monitoring",
+  templateUrl: "./engine-monitoring.component.html",
   encapsulation: ViewEncapsulation.None,
 })
-export class ExtensionMonitoringComponent implements OnInit {
+export class EngineMonitoringComponent implements OnInit {
   cepId: string;
   @Output() closeSubject: Subject<void> = new Subject();
   alarms$: Observable<IResultList<IAlarm>>;
