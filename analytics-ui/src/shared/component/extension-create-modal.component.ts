@@ -25,12 +25,12 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../analytics.model";
         <div class="col-lg-8">
           <button
             class="btn btn-default"
-            title="{{ 'Create Extension' | translate }}"
+            title="{{ 'Create extension' | translate }}"
             (click)="createExtension()"
             [disabled]="((backendDeployed$ | async) === false) || !configFormly.valid"
           >
             <i c8yIcon="plugin"></i>
-            {{ "Create Extension" | translate }}
+            {{ "Create extension" | translate }}
           </button>
         </div>
       </div>
@@ -128,7 +128,7 @@ export class ExtensionCreateComponent implements OnInit {
 
   async createExtension() {
     this.loading = true;
-    console.log("Create Extension");
+    console.log("Create extension");
     const response = await this.analyticsService.createExtensionZIP(
       this.configuration.name,
       this.configuration.upload,

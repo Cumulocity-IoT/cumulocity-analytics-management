@@ -125,7 +125,7 @@ export class SampleGridComponent implements OnInit {
     this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: "CREATE",
-      text: "Create Extension",
+      text: "Create extension",
       icon: "export",
       callback: this.createExtension.bind(this),
     });

@@ -2,11 +2,11 @@
 > **NOTE**: The plugin can for the moment only be installed in the Administration app, not as shown below directly in the Streaming Analytics app. This limitation will be fixed shortly!
 ## Content
 - [Overview](#overview)
-- [Manage Custom Extension](#manage-custom-extension)
-  - [Upload Custom Extension](#upload-custom-extension)
-  - [Build Custom Extension](#build-custom-extension)
-  - [Options for Custom Extension](#options-for-custom-extension)
-- [Samples Repositories and Building Custom Extensions](#samples-repositories-and-building-custom-extensions)
+- [Manage custom extension](#manage-custom-extension)
+  - [Upload custom extension](#upload-custom-extension)
+  - [Build custom extension](#build-custom-extension)
+  - [Options for custom extension](#options-for-custom-extension)
+- [Samples repositories and building custom extensions](#samples-repositories-and-building-custom-extensions)
 - [Monitoring](#monitoring)
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
@@ -28,49 +28,49 @@ In addition a table lists all installed analytics blocks with the following info
 
 ![Block list](resources/images/block-list.png)
 
-## Manage Custom Extension
+## Manage custom extension
 Custom extension can be uploaded from your local system. In addition they can be downloaded and deletes as well.
 For a deletion or upload to take effect you need to restart the analytics stremaing engine.
 
-### Upload Custom Extension
+### Upload custom extension
 
 After the delployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus streaming flows might not work anymore.
 
 ![Use Extension](resources/images/analytics-builder.png)
 
-### Build Custom Extension
+### Build custom extension
 You can build and uploads a custom extension by following the screenflow below:
 
-![Build Custom Extensionn](resources/images/create-extension-upload-animated.gif)
+![Build custom extensionn](resources/images/create-extension-upload-animated.gif)
 
-### Options for Custom Extension
+### Options for custom extension
 For a custom extension you have the following options:
 * Delete: deletes the custom extension permanently. To take effect you need to restart the stremaing analytics engine
 * Details: lists the included blocks of the custom extension on a detail page.
 * Download: downloads the custom extension as a zip file.
 
-![Build Custom Extensionn](resources/images/manage-extension.png)
+![Build custom extensionn](resources/images/manage-extension.png)
 
 
-## Samples Repositories and Building Custom Extensions
+## Samples repositories and building custom extensions
 Block samples from github repositories can selected to build custom extension online.
 In order to use this option first you have to configure your Github repsoitory.
 The configured repositories can be updated, deleted and de-/enabled. Only enabled repsoitories are shown in the list of block samples.
 You can manage the github repositories using the following UI:
 
-![Manage Repositories](resources/images/samples-manage-repository.png)
+![Manage repositories](resources/images/samples-manage-repository.png)
 
 In addition you can view the EPL (event processing language) source code:
 
 ![View source code](resources/images/samples-view-code.png)
 
-Building a custom extension starts by selecting the blocks from the list of samples. On selection of blocks an action in the table header appears `Custom Extension`.
+Building a custom extension starts by selecting the blocks from the list of samples. On selection of blocks an action in the table header appears `custom extension`.
 The modal dialog provides the option:
 * to name the custom extension
 * to upload the extension automatically to the Cumulocity Inventory. The created custom extension is otherwise downloaded to locally. It still requires the restart of the analytics engine.
 * to restart the stremaning analytics engine to load the created custom extension.
 
-![Create Extension](resources/images/create-extension-modal.png)
+![Create extension](resources/images/create-extension-modal.png)
 
 ## Monitoring
 
@@ -135,7 +135,7 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
 
 ## Analytics Builder Extension Backend
 
- The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded through UI, see [Upload Custom Extension](#upload-custom-extension).
+ The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded through UI, see [Upload custom extension](#upload-custom-extension).
  You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
  
  The microservice is multi tenant ready
