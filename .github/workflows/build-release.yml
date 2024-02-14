@@ -67,7 +67,7 @@ jobs:
           cd dist/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
           cd ../../..
-          ls
+          ls analytics-ui/
         # rm -r dist/*
 
       - name: Upload build artifact UI
@@ -77,7 +77,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-           sag-ps-pkg-analytics-extension/dist/build.zip
+           analytics-ui/dist/build.zip
 
   build_service:
     needs: [build_ui]
