@@ -68,6 +68,7 @@ jobs:
           zip -r -q ../../build.zip *
           cd ../../..
           ls analytics-ui/
+          ls analytics-ui/dist/
         # rm -r dist/*
 
       - name: Upload build artifact UI
@@ -77,7 +78,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-           analytics-ui/dist/build.zip
+           analytics-ui/build.zip
 
   build_service:
     needs: [build_ui]
