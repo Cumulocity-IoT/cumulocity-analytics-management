@@ -112,7 +112,7 @@ jobs:
           ./build.sh analytics-ext-service  ${{ needs.build_ui.outputs.version }}
 
       - name: Upload build artifact service
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: build-artifact-service
           if-no-files-found: error
