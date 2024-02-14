@@ -67,8 +67,8 @@ jobs:
           cd dist/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
           cd ../../..
-          ls analytics-ui/
-          ls analytics-ui/dist/
+        # ls analytics-ui/
+        # ls analytics-ui/dist/
         # rm -r dist/*
 
       - name: Upload build artifact UI
