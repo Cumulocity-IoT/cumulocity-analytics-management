@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "analtics-ui": {
+    "analytics-ui": {
       "projectType": "application",
       "schematics": {
         "@schematics/angular:component": {
@@ -17,11 +17,12 @@
         "build": {
           "builder": "@c8y/devkit:build",
           "options": {
-            "outputPath": "dist/analtics-ui",
+            "outputPath": "dist/analytics-ui",
             "main": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
+            "sourceMap": true,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
             "assets": [
@@ -72,10 +73,10 @@
           "builder": "@c8y/devkit:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "analtics-ui:build:production"
+              "browserTarget": "analytics-ui:build:production"
             },
             "development": {
-              "browserTarget": "analtics-ui:build:development"
+              "browserTarget": "analytics-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -106,10 +107,10 @@
           "builder": "@c8y/devkit:deploy",
           "configurations": {
             "production": {
-              "browserTarget": "analtics-ui:build:production"
+              "browserTarget": "analytics-ui:build:production"
             },
             "development": {
-              "browserTarget": "analtics-ui:build:development"
+              "browserTarget": "analytics-ui:build:development"
             }
           },
           "defaultConfiguration": "production"

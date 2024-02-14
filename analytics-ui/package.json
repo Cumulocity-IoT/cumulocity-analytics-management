@@ -7,7 +7,7 @@
     "url": "git@github.com:SoftwareAG/cumulocity-analytics-management.git"
   },
   "scripts": {
-    "start": "ng serv",
+    "start": "ng serve",
     "start:admin": "npm start -- --shell administration",
     "start:ab": "npm start -- --shell streaminganalytics",
     "start:cockpit": "npm start -- --shell cockpit",
