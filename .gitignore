@@ -28,3 +28,4 @@ setEnv.sh
 **/dist
 .env
 attic/
+.angular

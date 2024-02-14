@@ -1,12 +1,12 @@
 import {
-  AfterViewInit,
-  Component,
-  ElementRef,
-  Input,
-  OnInit,
-  Output,
-  ViewChild,
-  ViewEncapsulation,
+    AfterViewInit,
+    Component,
+    ElementRef,
+    Input,
+    OnInit,
+    Output,
+    ViewChild,
+    ViewEncapsulation,
 } from "@angular/core";
 import { ModalLabels } from "@c8y/ngx-components";
 import { Subject } from "rxjs";

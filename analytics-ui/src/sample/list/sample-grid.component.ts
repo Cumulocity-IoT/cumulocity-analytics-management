@@ -28,21 +28,24 @@ import {
   DataGridComponent,
   Pagination,
 } from "@c8y/ngx-components";
-import { AnalyticsService } from "../../shared/analytics.service";
-import { CEP_Block } from "../../shared/analytics.model";
-import { BsModalService } from "ngx-bootstrap/modal";
-import { CreateExtensionComponent } from "../../component/create-extension-modal.component";
-import { EditorModalComponent } from "../editor/editor-modal.component";
-import { RepositoryService } from "../../shared/repository.service";
-import { BehaviorSubject, Observable, of } from "rxjs";
+import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
+import { BehaviorSubject, Observable } from "rxjs";
 import { switchMap, tap } from "rxjs/operators";
+import {
+  AnalyticsService,
+  BooleanRendererComponent,
+  CEP_Block,
+  ConfirmationModalComponent,
+  ExtensionCreateComponent,
+  RepositoryService,
+} from "../../shared";
+import { EditorModalComponent } from "../editor/editor-modal.component";
 import { RepositoriesModalComponent } from "./repositories-modal.component";
-import { BoolenRendererComponent } from "../../shared/boolean-renderer.component";
 
 @Component({
   selector: "c8y-sample-grid",
-  templateUrl: "sample.component.html",
-  styleUrls: ["./sample.component.css"],
+  templateUrl: "sample-grid.component.html",
+  styleUrls: ["./sample-grid.component.css"],
   encapsulation: ViewEncapsulation.None,
 })
 export class SampleGridComponent implements OnInit {
@@ -58,7 +61,7 @@ export class SampleGridComponent implements OnInit {
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
-  titleSample: string = "Analytics Builder Community Samples";
+  titleSample: string = "Analytics Builder community samples";
 
   columnsSamples: Column[] = [
     {
@@ -87,7 +90,7 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       gridTrackSize: "7.5%",
       visible: true,
-      cellRendererComponent: BoolenRendererComponent
+      cellRendererComponent: BooleanRendererComponent,
     },
     {
       name: "url",
@@ -122,7 +125,7 @@ export class SampleGridComponent implements OnInit {
     this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: "CREATE",
-      text: "Create Extension",
+      text: "Create extension",
       icon: "export",
       callback: this.createExtension.bind(this),
     });
@@ -144,7 +147,7 @@ export class SampleGridComponent implements OnInit {
         false
       );
     } catch (error) {
-      console.log("Something happended:", error);
+      console.log("Something happened:", error);
     }
     const initialState = {
       source: source,
@@ -175,7 +178,7 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
-  checkSeletion(ids: string[]) {
+  checkSelection(ids: string[]) {
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(
@@ -199,7 +202,7 @@ export class SampleGridComponent implements OnInit {
       monitors,
     };
 
-    const modalRef = this.bsModalService.show(CreateExtensionComponent, {
+    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
       class: "modal-lg",
       initialState,
     });
@@ -211,5 +214,4 @@ export class SampleGridComponent implements OnInit {
     this.reload$.next();
   }
 
-  ngOnDestroy() {}
 }

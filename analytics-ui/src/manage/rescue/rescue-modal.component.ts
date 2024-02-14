@@ -1,15 +1,15 @@
 import {
-  Component,
-  Input,
-  OnInit,
-  Output,
-  ViewEncapsulation,
+    Component,
+    Input,
+    OnInit,
+    Output,
+    ViewEncapsulation,
 } from "@angular/core";
-import { ModalLabels } from "@c8y/ngx-components";
-import { BehaviorSubject, Observable, Subject, of } from "rxjs";
 import { AlarmService, IAlarm, IResultList } from "@c8y/client";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
+import { ModalLabels } from "@c8y/ngx-components";
 import { BsModalRef } from "ngx-bootstrap/modal";
+import { BehaviorSubject, Observable, Subject } from "rxjs";
+import { shareReplay, switchMap, tap } from "rxjs/operators";
 
 @Component({
   selector: "rescue-modal",

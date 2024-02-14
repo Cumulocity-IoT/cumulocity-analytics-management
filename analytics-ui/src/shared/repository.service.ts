@@ -70,7 +70,7 @@ export class RepositoryService {
     }
   }
 
-  removeRepository(repositoryId: string): void {
+  deleteRepository(repositoryId: string): void {
     this.repositories = this.repositories.filter(
       (repo) => repo.id !== repositoryId
     );

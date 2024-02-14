@@ -33,9 +33,9 @@
                 class="m-r-5"
               ></i> -->
             <button
-              title="{{ 'Toggle Activation' | translate }}"
+              title="{{ 'Toggle activation' | translate }}"
               class="btn btn-icon btn-clean"
-              (click)="toogleActivation(repository)"
+              (click)="toggleActivation(repository)"
             >
               <i
                 [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
@@ -43,7 +43,7 @@
                 c8yIcon="toggle-on"
                 class="text-danger"
               ></i>
-              <span class="sr-only" translate>Toogle activation</span>
+              <span class="sr-only" translate>Toggle activation</span>
             </button>
           </td>
           <!-- <td width="10%" style="padding-top: 0px; padding-bottom: 0px"> -->
@@ -54,15 +54,15 @@
               (click)="editRepository(repository)"
             >
               <i c8yIcon="pencil" class="text-danger"></i>
-              <span class="sr-only" translate>Update controller</span>
+              <span class="sr-only" translate>Update</span>
             </button>
             <button
-              title="{{ 'Remove' | translate }}"
+              title="{{ 'Delete' | translate }}"
               class="btn btn-icon btn-clean"
-              (click)="removeRepository(repository.id)"
+              (click)="deleteRepository(repository.id)"
             >
               <i c8yIcon="trash-o" class="text-danger"></i>
-              <span class="sr-only" translate>Remove</span>
+              <span class="sr-only" translate>Delete</span>
             </button>
           </td>
         </tr>
@@ -70,7 +70,7 @@
     </table>
 
     <fieldset class="c8y-fieldset p-16">
-      <legend>Update Repository</legend>
+      <legend>Update repository</legend>
       <form [formGroup]="repositoryForm">
         <input type="hidden" formControlName="id" />
         <c8y-form-group>
@@ -83,21 +83,39 @@
           />
         </c8y-form-group>
         <c8y-form-group>
-          <label for="name">Url</label>
+          <label for="name"
+            ><span>{{'Repository Url  '}}</span>
+            <ng-template #popTemplateRepositoryUrl>
+              {{
+                " Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+              }}
+            </ng-template>
+            <button
+              class="btn-clean text-primary"
+              [popover]="popTemplateRepositoryUrl"
+              popoverTitle="Repository Url"
+              placement="right"
+              triggers="focus"
+              type="button"
+            >
+              <i c8yIcon="question-circle-o"></i>
+            </button>
+          </label>
           <input
             type="text"
+            title="Repository Url"
             id="url"
             formControlName="url"
-            placeholder="use form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+            placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
             class="form-control"
           />
         </c8y-form-group>
         <!-- Add any other form controls based on your repository model -->
         <button (click)="addRepository()" class="btn btn-default">
-          Add Repository
+          Add repository
         </button>
         <button (click)="updateRepository()" class="btn btn-default">
-          Update Repository
+          Update repository
         </button>
       </form>
     </fieldset>

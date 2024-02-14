@@ -48,7 +48,7 @@ class C8YAgent:
                 resource="/service/cep/restart", json={}
             )
         except Exception as e:
-            self._logger.error(f"Ignoring exceptiom!", exc_info=True)
+            self._logger.error(f"Ignoring exception!", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
 
@@ -62,33 +62,29 @@ class C8YAgent:
             ).applications.select(name=self.APAMA_CTRL_APPLICATION_NAME)
             try:
                 app_id = None
+                cep_id = None
                 for app in apps:
                     app_id = app.id
                     self._logger.info(f"Found app id: {app_id}")
                     # break
-                filter = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
+                query = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
 
-                self._logger.info(f"Build filter: {filter}")
-                params = {"query": filter}
-                response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
-                    resource=f"/inventory/managedObjects", params=params
-                )
-                cep_id = response["managedObjects"][0]["id"]
-                self._logger.info(f"Found managed object for app: {cep_id}")
-
-                # managed_objects_app = self.c8yapp.get_tenant_instance(
-                #     headers=request_headers
-                # ).inventory.select(query=query)
-                # managed_object_id = None
-                # for managed_object in managed_objects_app:
-                #     self._logger.info(
-                #         f"Found managed object for app: {managed_object}"
-                #     )
-                #     managed_object_id = managed_object
-                #     break
-                # if managed_object_id == None:
-                #     self._logger.error(f"Not found !")
-                #     return None
+                self._logger.info(f"Build filter: {query}")
+                
+                managed_objects_app = self.c8yapp.get_tenant_instance(
+                    headers=request_headers
+                ).inventory.select(query)
+                managed_object_id = None
+                for managed_object in managed_objects_app:
+                    self._logger.info(
+                        f"Found managed object: {managed_object.id} for cep app: {app_id}"
+                    )
+                    managed_object_id = managed_object
+                    cep_id = managed_object_id.id
+                    break
+                if managed_object_id == None:
+                    self._logger.error(f"Not found !")
+                    return None
                 return {"id": cep_id}
             except:
                 self._logger.error(
@@ -96,6 +92,6 @@ class C8YAgent:
                     exc_info=True,
                 )
         except Exception as e:
-            self._logger.error(f"Ignoring exceptiom!", exc_info=True)
+            self._logger.error(f"Ignoring exception!", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")

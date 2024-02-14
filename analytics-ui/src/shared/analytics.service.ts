@@ -47,7 +47,7 @@ export class AnalyticsService {
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private restart: BehaviorSubject<string> = new BehaviorSubject<string>(null);
+  private restart$: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   private realtime: Realtime;
   private subscription: Subscription;
 
@@ -273,7 +273,7 @@ export class AnalyticsService {
       `/events/${cepId}`,
       this.updateStatus.bind(this)
     );
-    this.subscription = this.restart
+    this.subscription = this.restart$
       .pipe(
         pairwise(),
         filter(([prev, current]) => prev === STATUS_MESSAGE_01),
@@ -287,14 +287,14 @@ export class AnalyticsService {
     return sub;
   }
 
-  unsubscribeFromMonitoringChannel(subscription: object) {
+  unsubscribeFromMonitoringChannel(subscription: any) {
     this.realtime.unsubscribe(subscription);
     this.subscription.unsubscribe();
   }
 
   private updateStatus(p: object): void {
     let payload = p["data"]["data"];
-    this.restart.next(payload.text);
+    this.restart$.next(payload.text);
     if (payload.text == STATUS_MESSAGE_01) {
       this.alertService.warning("Deployment pending ...");
     }

@@ -1,21 +1,20 @@
 {
   "name": "analytics-extension",
-  "version": "2.2.4",
+  "version": "2.3.0",
   "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
   "repository": {
     "type": "git",
     "url": "git@github.com:SoftwareAG/cumulocity-analytics-management.git"
   },
   "scripts": {
-    "start": "c8ycli server",
+    "start": "ng serve",
     "start:admin": "npm start -- --shell administration",
     "start:ab": "npm start -- --shell streaminganalytics",
     "start:cockpit": "npm start -- --shell cockpit",
-    "build": "c8ycli build",
+    "build": "ng build",
     "build:ci": "npm run build -- --ci",
-    "deploy": "c8ycli deploy",
-    "locale-extract": "c8ycli locale-extract",
-    "postinstall": "ngcc"
+    "deploy": "ng deploy",
+    "locale-extract": "c8ycli locale-extract"
   },
   "keywords": [
     "c8y"
@@ -23,74 +22,39 @@
   "author": "murat.bayram@softwareag.com, christof.strack@softwareag.com",
   "license": "ISC",
   "dependencies": {
-    "@angular/animations": "15.2.7",
-    "@angular/cdk": "15.2.7",
-    "@angular/common": "15.2.7",
-    "@angular/compiler": "15.2.7",
-    "@angular/core": "15.2.7",
-    "@angular/forms": "15.2.7",
-    "@angular/platform-browser": "15.2.7",
-    "@angular/platform-browser-dynamic": "15.2.7",
-    "@angular/router": "15.2.7",
-    "@angular/upgrade": "15.2.7",
-    "@c8y/client": "1018.487.7",
-    "@c8y/ngx-components": "1018.487.7",
+    "@angular/animations": "^16.2.0",
+    "@angular/cdk": "^16.2.0",
+    "@angular/common": "^16.2.0",
+    "@angular/compiler": "^16.2.0",
+    "@angular/core": "^16.2.0",
+    "@angular/forms": "^16.2.0",
+    "@angular/platform-browser": "^16.2.0",
+    "@angular/platform-browser-dynamic": "^16.2.0",
+    "@angular/router": "^16.2.0",
+    "@angular/upgrade": "^16.2.0",
+    "@c8y/client": "1019.4.11",
+    "@c8y/ngx-components": "1019.4.11",
     "@ngx-translate/core": "14.0.0",
-    "@c8y/style": "1018.487.7",
+    "@c8y/style": "1019.4.11",
     "@types/ws": "<8.5.5",
     "angular": "1.6.9",
-    "ngx-bootstrap": "10.2.0",
-    "rxjs": "~6.6.7",
-    "zone.js": "~0.11.7"
+    "@c8y/websdk": "^1019.0.7",
+    "ngx-bootstrap": "11.0.2",
+    "rxjs": "^7.4.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.13.0"
   },
   "devDependencies": {
-    "@angular-devkit/build-angular": "15.2.7",
-    "@angular/cli": "15.2.7",
-    "@angular/compiler-cli": "15.2.7",
-    "@angular/language-service": "15.2.7",
-    "@c8y/cli": "1018.487.7",
+    "@angular-devkit/build-angular": "^16.2.12",
+    "@angular/cli": "^16.2.12",
+    "@angular/compiler-cli": "^16.2.0",
+    "@angular/language-service": "^16.2.0",
+    "@c8y/widget-plugin": "1019.4.11",
     "@semantic-release/changelog": "^6.0.2",
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
     "file-loader": "^6.2.0",
-    "jest": "^27.4.5",
-    "typescript": "~4.9.5"
-  },
-  "c8y": {
-    "application": {
-      "name": "Analytics Extension",
-      "contextPath": "sag-ps-pkg-analytics-extension",
-      "key": "sag-ps-pkg-analytics-extension-pluginn-key",
-      "globalTitle": "Analytics Builder Extension Plugin",
-      "tabsHorizontal": true,
-      "isPackage": true,
-      "noAppSwitcher": true,
-      "package": "plugin",
-      "exports": [
-        {
-          "name": "Analytics Builder Extension",
-          "module": "AnalyticsExtensionModule",
-          "path": "./src/analytics-extension.module",
-          "description": "Adds Extensions for the Analytics Builder"
-        }
-      ],
-      "remotes": {
-        "sag-ps-pkg-analytics-extension": [
-          "AnalyticsExtensionModule"
-        ]
-      },
-      "copy": [
-        {
-          "from": "../resources/images",
-          "to": "resources/images"
-        },
-        {
-          "from": "../README.md",
-          "to": "README.md"
-        }
-      ]
-    },
-    "cli": {}
+    "typescript": "~5.1.3"
   },
   "browserslist": [
     "last 2 major versions"

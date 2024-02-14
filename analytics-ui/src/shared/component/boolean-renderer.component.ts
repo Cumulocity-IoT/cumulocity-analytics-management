@@ -22,10 +22,10 @@ import { Component } from "@angular/core";
 import { CellRendererContext } from "@c8y/ngx-components";
 
 @Component({
-  template: ` <i [c8yIcon]="context.value ? 'checkbox-unselected' : 'square-o'"></i> `,
+  template: ` <i [c8yIcon]="context.value ? 'check' : ''"></i> `,
 })
-export class BoolenRendererComponent {
+export class BooleanRendererComponent {
   constructor(public context: CellRendererContext) {
-    console.log("Renderer context:", context.value);
+    // console.log("Renderer context:", context.value);
   }
 }

@@ -21,7 +21,7 @@ export enum ERROR_TYPE {
 
 export enum Category {
   INPUT = "INPUT",
-  OUPUT = "OUTPUT",
+  OUTPUT = "OUTPUT",
   LOGIC = "LOGIC",
   CALCULATION = "CALCULATION",
   AGGREGATE = "AGGREGATE",

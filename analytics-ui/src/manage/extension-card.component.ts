@@ -2,16 +2,15 @@ import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
 import { ActivatedRoute, Router } from "@angular/router";
 import { IManagedObject } from "@c8y/client";
 import { AlertService } from "@c8y/ngx-components";
-import { AnalyticsService } from "../shared/analytics.service";
 import { saveAs } from "file-saver";
-import { ConfirmationModalComponent } from "../component/confirmation-modal.component";
 import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
+import { AnalyticsService, ConfirmationModalComponent } from "../shared";
 
 @Component({
   selector: "extension-card",
   templateUrl: "./extension-card.component.html",
 })
-export class AnalyticsExtensionCardComponent implements OnInit {
+export class ExtensionCardComponent implements OnInit {
   @Input() extension: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
@@ -40,7 +39,7 @@ export class AnalyticsExtensionCardComponent implements OnInit {
 
   async delete() {
     const initialState = {
-      title: "Delete connector",
+      title: "Delete extension",
       message: "You are about to delete an extension. Do you want to proceed?",
       labels: {
         ok: "Delete",

@@ -1,4 +1,4 @@
-<c8y-title translate>Analytics Builder Community Samples</c8y-title>
+<c8y-title translate>Analytics Builder community samples</c8y-title>
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
     [icon]="'c8y-atom'"
@@ -10,7 +10,7 @@
   ></c8y-breadcrumb-item>
   <c8y-breadcrumb-item
     [icon]="'monitoring'"
-    [label]="'Monitiring' | translate"
+    [label]="'Monitoring' | translate"
     [path]="'sag-ps-pkg-analytics-extension/monitoring'"
   >
   </c8y-breadcrumb-item>
@@ -48,11 +48,14 @@
     </div>
   </div>
   <div class="card-header separator">
-    <h3>Latest Alarms & Events for Streaming Analytics Engine</h3>
+    <h3>Latest alarms & events for Streaming Analytics</h3>
   </div>
   <div>
     <div class="card-block xlist-group-item collapsible card-inner-scroll">
-      <div class="xlist-item-actions d-flex" style="background: var(--c8y-navigator-background-selected)">
+      <div
+        class="xlist-item-actions d-flex"
+        style="background: var(--c8y-navigator-background-selected); margin:4px"
+      >
         <button
           type="button"
           title="Show alarms"
@@ -64,7 +67,13 @@
           [attr.aria-expanded]="isAlarmExpanded"
           aria-controls="collapseBasic"
         >
-        <i [class]="isAlarmExpanded ? 'dlt-c8y-icon-chevron-right': 'dlt-c8y-icon-chevron-down'"></i>
+          <i
+            [class]="
+              isAlarmExpanded
+                ? 'dlt-c8y-icon-chevron-right'
+                : 'dlt-c8y-icon-chevron-down'
+            "
+          ></i>
         </button>
         <span class="p-t-8">Alarms</span>
       </div>
@@ -163,7 +172,10 @@
         </div>
       </div>
       <div class="card-block xlist-group-item collapsible card-inner-scroll">
-        <div class="xlist-item-actions d-flex"  style="background: var(--c8y-navigator-background-selected)">
+        <div
+          class="xlist-item-actions d-flex"
+          style="background: var(--c8y-navigator-background-selected); margin: 4px;"
+        >
           <button
             type="button"
             title="Show events"
@@ -175,7 +187,13 @@
             [attr.aria-expanded]="isEventExpanded"
             aria-controls="collapseBasic"
           >
-          <i [class]="isEventExpanded ? 'dlt-c8y-icon-chevron-right': 'dlt-c8y-icon-chevron-down'"></i>
+            <i
+              [class]="
+                isEventExpanded
+                  ? 'dlt-c8y-icon-chevron-right'
+                  : 'dlt-c8y-icon-chevron-down'
+              "
+            ></i>
           </button>
           <span class="p-t-8">Events</span>
         </div>

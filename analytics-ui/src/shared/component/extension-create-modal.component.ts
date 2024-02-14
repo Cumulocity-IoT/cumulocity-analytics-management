@@ -3,12 +3,12 @@ import { AlertService, ModalLabels } from "@c8y/ngx-components";
 import { BehaviorSubject, Subject, from } from "rxjs";
 import { FormlyFieldConfig } from "@ngx-formly/core";
 import { FormGroup } from "@angular/forms";
-import { AnalyticsService } from "../shared/analytics.service";
+import { AnalyticsService } from "../analytics.service";
 import { saveAs } from "file-saver";
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model";
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../analytics.model";
 
 @Component({
-  selector: "name-extension-modal",
+  selector: "extension-create-modal",
   template: `<c8y-modal
     title="Edit properties extension"
     (onDismiss)="onDismiss($event)"
@@ -25,12 +25,12 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model
         <div class="col-lg-8">
           <button
             class="btn btn-default"
-            title="{{ 'Create Extension' | translate }}"
+            title="{{ 'Create extension' | translate }}"
             (click)="createExtension()"
             [disabled]="((backendDeployed$ | async) === false) || !configFormly.valid"
           >
             <i c8yIcon="plugin"></i>
-            {{ "Create Extension" | translate }}
+            {{ "Create extension" | translate }}
           </button>
         </div>
       </div>
@@ -38,7 +38,7 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from "../shared/analytics.model
     <div *ngIf="loading"><c8y-loading></c8y-loading></div>
   </c8y-modal>`,
 })
-export class CreateExtensionComponent implements OnInit {
+export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
   @Input() monitors: string[];
   configuration: any = {};
@@ -128,7 +128,7 @@ export class CreateExtensionComponent implements OnInit {
 
   async createExtension() {
     this.loading = true;
-    console.log("Create Extension");
+    console.log("Create extension");
     const response = await this.analyticsService.createExtensionZIP(
       this.configuration.name,
       this.configuration.upload,

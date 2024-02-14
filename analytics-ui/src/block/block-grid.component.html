@@ -19,7 +19,7 @@
   ~ @authors Christof Strack
   -->
 
-<c8y-title translate>Analytics Builder Community Samples</c8y-title>
+<c8y-title translate>Analytics Builder blocks</c8y-title>
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
     [icon]="'c8y-atom'"
@@ -30,79 +30,47 @@
     [label]="'Analytics' | translate"
   ></c8y-breadcrumb-item>
   <c8y-breadcrumb-item
-    [icon]="'test'"
-    [label]="'Sample Repositories' | translate"
-    [path]="'sag-ps-pkg-analytics-extension/sample'"
+    [icon]="'flow-chart'"
+    [label]="'Blocks installed' | translate"
+    [path]="'sag-ps-pkg-analytics-extension/list'"
   >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <c8y-action-bar-item [placement]="'right'">
-  <label class="c8y-switch">
-    <input
-      type="checkbox"
-      [(ngModel)]="hideInstalled"
-      (change)="loadSamples()"
-    />
-    <span></span> Hide installed
-  </label>
-</c8y-action-bar-item>
-<c8y-action-bar-item [placement]="'right'">
   <button
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
-    (click)="loadSamples()"
+    (click)="loadBlocks()"
   >
-    <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
+    <i c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
 </c8y-action-bar-item>
-<c8y-action-bar-item [placement]="'right'">
-  <button
-    class="btn btn-link"
-    title="{{ 'Repositories' | translate }}"
-    (click)="updateRepositories()"
-  >
-    <i c8yIcon="change-theme"></i>
-    {{ "Repositories" | translate }}
-  </button>
-</c8y-action-bar-item>
-<!-- <div class="card-block" *ngIf="!loading"> -->
+
 <div class="content-fullpage border-top border-bottom">
   <c8y-data-grid
     *ngIf="!loading"
-    id="dataGrid"
-    #dataGrid
-    [title]="titleSample | translate"
-    [columns]="columnsSamples"
-    [rows]="samples$ | async"
+    [title]="titleBlock | translate"
+    [refresh]="refresh"
+    [columns]="columnsBlocks"
+    [rows]="blocks"
     [pagination]="pagination"
-    [selectable]="true"
-    (itemsSelect)="checkSeletion($event)"
     [actionControls]="actionControls"
-    [bulkActionControls]="bulkActionControls"
   >
     <c8y-ui-empty-state
-      [icon]="'cog'"
-      [title]="'No samples to display.' | translate"
-      [subtitle]="'Configure sample repositories.' | translate"
+      [icon]="'plugin'"
+      [title]="'No blocks loaded.' | translate"
+      [subtitle]="'Wait for Analytics Streaming to load blocks.' | translate"
       [horizontal]="true"
-    >
-      <button
-        class="btn btn-link m-t-24"
-        title="{{ 'Repositories' | translate }}"
-        (click)="updateRepositories()"
-      >
-        <i c8yIcon="change-theme"></i>
-        {{ "Repositories" | translate }}
-      </button></c8y-ui-empty-state
-    >
+    ></c8y-ui-empty-state>
   </c8y-data-grid>
+
   <div style="padding-top: 48px" *ngIf="loading">
     <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
       <h2>
-        <span class="label label-primary text-center text-14 ">
-          Please stand by until the samples are scanned for meta information.
-          This may take a short while ...
+        <span class="label label-primary text-center text-14">
+          Please stand by until the streaming analytics engine is started
+          successfully. This may take a short while ...
         </span>
       </h2>
     </div>

@@ -5,16 +5,23 @@
     "outDir": "./dist/out-tsc",
     "sourceMap": true,
     "declaration": false,
-    "moduleResolution": "node",
     "experimentalDecorators": true,
-    "target": "es6",
-    "module": "es2020",
-    "lib": ["dom", "es2015", "es2016"],
+    "moduleResolution": "node",
+    "importHelpers": true,
+    "target": "ES2022",
+    "module": "ES2022",
+    "useDefineForClassFields": false,
+    "lib": [
+      "ES2022",
+      "dom"
+    ],
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
   },
   "angularCompilerOptions": {
-    "strictTemplates": true,
-    "enableIvy": true
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": false
   }
 }

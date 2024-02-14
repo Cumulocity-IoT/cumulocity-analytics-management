@@ -31,7 +31,7 @@ import { Subject } from "rxjs";
 
 @Component({
   selector: "confirmation-modal",
-  templateUrl: "confirmation-modal.component.html",
+  templateUrl: "./confirmation-modal.component.html",
 })
 export class ConfirmationModalComponent implements OnInit {
   @Input() title: string;
@@ -40,7 +40,7 @@ export class ConfirmationModalComponent implements OnInit {
   messageTranslated: string;
   closeSubject: Subject<boolean> = new Subject();
   @Input() labels: ModalLabels = {
-    ok: gettext("Disconnect"),
+    ok: gettext("Ok"),
     cancel: gettext("Cancel"),
   };
   status: StatusType = Status.WARNING;

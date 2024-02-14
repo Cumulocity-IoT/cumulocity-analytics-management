@@ -19,26 +19,24 @@
  * @authors Christof Strack
  */
 import {
-  Component,
-  EventEmitter,
-  OnInit,
-  ViewEncapsulation,
+    Component,
+    EventEmitter,
+    OnInit,
+    ViewEncapsulation,
 } from "@angular/core";
 import {
-  ActionControl,
-  AlertService,
-  Column,
-  ColumnDataType,
-  Pagination,
+    ActionControl,
+    AlertService,
+    Column,
+    ColumnDataType,
+    Pagination,
 } from "@c8y/ngx-components";
-import { AnalyticsService } from "../shared/analytics.service";
-import { CEP_Block } from "../shared/analytics.model";
-import { BoolenRendererComponent } from "../shared/boolean-renderer.component";
+import { AnalyticsService, BooleanRendererComponent, CEP_Block } from "../shared";
 
 @Component({
   selector: "c8y-block-grid",
-  templateUrl: "block.component.html",
-  styleUrls:['./block.component.css'],
+  templateUrl: "block-grid.component.html",
+  styleUrls:['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
 })
 export class BlockGridComponent implements OnInit {
@@ -48,7 +46,7 @@ export class BlockGridComponent implements OnInit {
   blocks: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
 
-  titleBlock: string = "Analytics Builder Blocks";
+  titleBlock: string = "Analytics Builder blocks";
 
   columnsBlocks: Column[] = [
     {
@@ -77,7 +75,7 @@ export class BlockGridComponent implements OnInit {
       dataType: ColumnDataType.TextShort,
       sortable: true,
       //cellCSSClassName: 'text-center',
-      cellRendererComponent: BoolenRendererComponent
+      cellRendererComponent: BooleanRendererComponent
     },
     {
       header: "Description",
