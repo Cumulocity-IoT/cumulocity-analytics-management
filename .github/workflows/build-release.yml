@@ -60,14 +60,16 @@ jobs:
       #   run: npm run lint
 
       - name: Build
-        run: npm run build:ci
+        run: npm run build
 
       - name: Zip build
         run: |
-          cd dist/apps/sag-ps-pkg-analytics-extension
+          cd dist/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
           cd ../../..
-          rm -r dist/apps
+        # ls analytics-ui/
+        # ls analytics-ui/dist/
+        # rm -r dist/*
 
       - name: Upload build artifact UI
         uses: actions/upload-artifact@v3
@@ -76,7 +78,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-           analytics-ui/dist/build.zip
+           analytics-ui/build.zip
 
   build_service:
     needs: [build_ui]
