@@ -64,10 +64,10 @@ jobs:
 
       - name: Zip build
         run: |
-          cd dist/apps/sag-ps-pkg-analytics-extension
+          cd dist/sag-ps-pkg-analytics-extension
           zip -r -q ../../build.zip *
           cd ../../..
-          rm -r dist/apps
+          rm -r dist/*
 
       - name: Upload build artifact UI
         uses: actions/upload-artifact@v3
