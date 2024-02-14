@@ -17,7 +17,7 @@
         "build": {
           "builder": "@c8y/devkit:build",
           "options": {
-            "outputPath": "dist/analytics-ui",
+            "outputPath": "dist/sag-ps-pkg-analytics-extension",
             "main": "src/main.ts",
             "polyfills": [
               "zone.js"
