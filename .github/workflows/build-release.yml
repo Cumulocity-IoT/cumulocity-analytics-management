@@ -79,7 +79,6 @@ jobs:
           retention-days: 1
           path: |
            analytics-ui/build.zip
-
   build_service:
     needs: [build_ui]
 
@@ -110,7 +109,6 @@ jobs:
       - name: Build backend
         run: |
           ./build.sh analytics-ext-service  ${{ needs.build_ui.outputs.version }}
-
       - name: Upload build artifact service
         uses: actions/upload-artifact@v3
         with:
@@ -119,7 +117,6 @@ jobs:
           retention-days: 1
           path: |
             ./analytics-service/dist/analytics-ext-service.zip
-
   release-assets:
     needs: [build_ui, build_service]
     # if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
@@ -137,7 +134,6 @@ jobs:
         run: | 
           ls -lah ./analytics-service
           pwd
-
       - name: Release Backend
         uses: softprops/action-gh-release@v1
         with:
@@ -156,7 +152,6 @@ jobs:
           mv ./analytics-ui/build.zip  ./analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
           ls -lah ./analytics-ui
           pwd
-
       - name: Release UI
         uses: softprops/action-gh-release@v1
         with:

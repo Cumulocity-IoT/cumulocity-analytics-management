@@ -1,10 +1,11 @@
 import { EnvironmentOptions } from "@c8y/devkit/dist/options";
-import { author, description, version } from "./package.json";
+import { author, description, version, license } from "./package.json";
 
 export default {
   runTime: {
     author,
     description,
+    license,
     version,
     name: "Analytics Extension",                      // key for repository connect
     contextPath: "sag-ps-pkg-analytics-extension",    // key for repository connect

@@ -12,8 +12,7 @@
     "start:ab": "npm start -- --shell streaminganalytics",
     "start:cockpit": "npm start -- --shell cockpit",
     "build": "ng build",
-    "deploy": "ng deploy",
-    "locale-extract": "c8ycli locale-extract"
+    "deploy": "ng deploy"
   },
   "keywords": [
     "c8y"
