@@ -71,6 +71,7 @@ export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
 export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
+export const STATUS_MESSAGE_02 = "Deployment was changed";
 
 export const CEP_METADATA_FILE_EXTENSION = ".json";
 export const GITHUB_BASE = "https://api.github.com";

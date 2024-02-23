@@ -10,7 +10,6 @@ import {
     tap,
 } from "rxjs/operators";
 import { AnalyticsService } from "../shared";
-import { RescueModalComponent } from "./rescue/rescue-modal.component";
 
 @Component({
   selector: "extension",
@@ -80,19 +79,6 @@ export class ExtensionGridComponent implements OnInit {
     modalRef.content.onClose.subscribe(() => {
       this.loadExtensions();
     });
-  }
-
-  async troubleshoot() {
-    const initialState = {
-      cepId: await this.analyticsService.getCEP_Id(),
-    };
-    this.bsModalService.show(RescueModalComponent, {
-      class: "modal-lg",
-      initialState,
-      ariaDescribedby: "modal-body",
-      ariaLabelledBy: "modal-title",
-      ignoreBackdropClick: true,
-    }).content as RescueModalComponent;
   }
 
   private async initializeMonitoringService(): Promise<void> {

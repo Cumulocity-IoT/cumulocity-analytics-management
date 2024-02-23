@@ -35,8 +35,9 @@ import {
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
   CEP_ENDPOINT,
+  STATUS_MESSAGE_02,
 } from "./analytics.model";
-import { filter, map, pairwise } from "rxjs/operators";
+import { filter, map, pairwise, tap } from "rxjs/operators";
 import { isCustomCEP_Block, removeFileExtension } from "./utils";
 
 @Injectable({ providedIn: "root" })
@@ -276,13 +277,27 @@ export class AnalyticsService {
     this.subscription = this.restart$
       .pipe(
         pairwise(),
-        filter(([prev, current]) => prev === STATUS_MESSAGE_01),
+        tap((pair) => {
+          const [prev, current] = pair;
+          console.log(`Message: prev: ${prev}, current: ${current}`);
+        }),
+        // filter(([prev, current]) => prev === STATUS_MESSAGE_01),
+        // Cleansed message: prev: Recording apama-ctrl safe mode state, current: Deployment was changed
+        filter(([prev, current]) => !!current),
+        tap((pair) => {
+            const [prev, current] = pair;
+            console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
+          }),
+        filter(([prev, current]) => prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02),
         map(([prev, current]) => [prev, current])
       )
       .subscribe((pair) => {
-        this.alertService.warning(`Current message: ${pair}`);
-        if (pair[0] == STATUS_MESSAGE_01)
-          this.alertService.warning(`Deployment successful`);
+        const [prev, current] = pair;
+        // this.alertService.warning(
+        //   `Message: prev: ${prev}, current: ${current}`
+        // );
+        if (current == STATUS_MESSAGE_02)
+          this.alertService.success(`Deployment successful`);
       });
     return sub;
   }
@@ -296,9 +311,9 @@ export class AnalyticsService {
     let payload = p["data"]["data"];
     this.restart$.next(payload.text);
     if (payload.text == STATUS_MESSAGE_01) {
-      this.alertService.warning("Deployment pending ...");
+      this.alertService.success("Deployment pending ...");
     }
-    console.log("New status for cep:", payload);
+    // console.log("New status for cep:", payload);
   }
 
   updateUploadProgress(event): void {
@@ -320,7 +335,7 @@ export class AnalyticsService {
     };
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
-    this.alertService.warning(gettext("Deployment (Restart) submitted ..."));
+    this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
   }
 

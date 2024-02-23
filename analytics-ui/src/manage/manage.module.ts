@@ -6,7 +6,6 @@ import { PopoverModule } from "ngx-bootstrap/popover";
 import { ExtensionCardComponent } from "./extension-card.component";
 import { ExtensionDetailsComponent } from "./extension-details.component";
 import { ExtensionGridComponent } from "./extension-grid.component";
-import { RescueModalComponent } from "./rescue/rescue-modal.component";
 import { SharedModule } from "../shared/shared.module";
 import { BsDropdownModule } from "ngx-bootstrap/dropdown";
 
@@ -24,7 +23,6 @@ import { BsDropdownModule } from "ngx-bootstrap/dropdown";
     ExtensionGridComponent,
     ExtensionCardComponent,
     ExtensionDetailsComponent,
-    RescueModalComponent,
   ],
   providers: [
     hookRoute({
