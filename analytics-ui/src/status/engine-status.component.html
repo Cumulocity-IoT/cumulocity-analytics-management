@@ -1,0 +1,62 @@
+<c8y-title translate>Analytics Builder community samples</c8y-title>
+<c8y-breadcrumb>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-atom'"
+    [label]="'Ecosystem' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-streaming-analytics'"
+    [label]="'Analytics' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'monitoring'"
+    [label]="'Monitoring' | translate"
+    [path]="'sag-ps-pkg-analytics-extension/monitoring'"
+  >
+  </c8y-breadcrumb-item>
+</c8y-breadcrumb>
+<div class="card card--fullpage">
+  <div class="card-header separator">
+    <h3>Safe Mode</h3>
+  </div>
+  <div class="inner-scroll_NOT">
+    <div class="card-block separator_NOT">
+      <p>
+        <span
+          >In case no extension is loaded after deploying your latest extension
+          please try to delete this extension and restart the Streaming
+          Analytics again.</span
+        >
+      </p>
+      <p>
+        <span>
+          When extensions can't be loaded because of errors, the Streaming
+          Analytics engine starts in
+          <a
+            href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+            target="_blank"
+            >Safe Mode</a
+          >.</span
+        >
+      </p>
+      <p>
+        <span>
+          To recover from this situation you have to delete the defective
+          extension.</span
+        >
+      </p>
+    </div>
+  </div>
+
+
+  <div class="card-header separator">
+    <h3>CEP Status </h3>
+  </div>
+  <div class="inner-scroll_NOT">
+    <div class="card-block separator_NOT">
+        <pre class="m-t-16 inner-scroll small">{{cepCtrlStatus | json}}</pre>
+    </div>
+  </div>
+
+  <!-- <div class="card-footer separator"></div> -->
+</div>

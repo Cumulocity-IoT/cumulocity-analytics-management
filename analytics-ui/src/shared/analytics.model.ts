@@ -70,6 +70,13 @@ export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/EN/block-metadata.js
 export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
 export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
+export const BACKEND_PATH_BASE = "service/analytics-ext-service";
+export const EXTENSION_ENDPOINT = "extension";
+export const CEP_ENDPOINT = "cep";
+export const REPOSITORY_ENDPOINT = "repository";
+export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
+export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";
+
 export const STATUS_MESSAGE_01 = "Recording apama-ctrl safe mode state";
 export const STATUS_MESSAGE_02 = "Deployment was changed";
 
@@ -106,10 +113,3 @@ export const REPO_SAMPLES = [
     enabled: false,
   },
 ] as Repository[];
-
-export const BASE_PATH_BACKEND = "service/analytics-ext-service";
-export const EXTENSION_ENDPOINT = "extension";
-export const CEP_ENDPOINT = "cep";
-export const REPOSITORY_ENDPOINT = "repository";
-export const APPLICATION_ANALYTICS_BUILDER_SERVICE = "analytics-ext-service";
-export const ANALYTICS_REPOSITORIES_TYPE = "c8y_CEP_repository";

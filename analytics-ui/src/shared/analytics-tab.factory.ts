@@ -63,6 +63,13 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: "monitoring",
         orientation: "horizontal",
       } as Tab);
+      tabs.push({
+        path: "sag-ps-pkg-analytics-extension/status",
+        priority: 890,
+        label: "Status",
+        icon: "info",
+        orientation: "horizontal",
+      } as Tab);
     }
     return tabs;
   }

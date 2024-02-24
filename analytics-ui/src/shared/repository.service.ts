@@ -4,7 +4,7 @@ import { Injectable } from "@angular/core";
 import { BehaviorSubject, EMPTY, Observable } from "rxjs";
 import {
   ANALYTICS_REPOSITORIES_TYPE,
-  BASE_PATH_BACKEND,
+  BACKEND_PATH_BASE,
   CEP_Block,
   REPOSITORY_ENDPOINT,
   REPO_SAMPLES,
@@ -149,7 +149,7 @@ export class RepositoryService {
     let result;
     if (backend) {
       const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BASE_PATH_BACKEND}/${REPOSITORY_ENDPOINT}/any_repository/content`,
+        `${BACKEND_PATH_BASE}/${REPOSITORY_ENDPOINT}/any_repository/content`,
         {
           headers: {
             "content-type": "text/plain",

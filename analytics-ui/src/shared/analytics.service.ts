@@ -30,7 +30,7 @@ import {
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
   STATUS_MESSAGE_01,
-  BASE_PATH_BACKEND,
+  BACKEND_PATH_BASE,
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
@@ -82,7 +82,7 @@ export class AnalyticsService {
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
     return this.fetchClient.fetch(
-      `${BASE_PATH_BACKEND}/${EXTENSION_ENDPOINT}`,
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
       {
         headers: {
           "content-type": "application/json",
@@ -214,7 +214,7 @@ export class AnalyticsService {
       if (backend) {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
-          `${BASE_PATH_BACKEND}/${CEP_ENDPOINT}/id`,
+          `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
           {
             headers: {
               "content-type": "application/json",
@@ -223,7 +223,7 @@ export class AnalyticsService {
           }
         );
         const data = await response.json();
-        return data.id;
+        cepId = data.id;
       } else {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
@@ -266,6 +266,23 @@ export class AnalyticsService {
     return this._cepId;
   }
 
+  async getCEP_Status(): Promise<any> {
+    let cepId: string;
+
+    // get name of microservice from cep endpoint
+    const response: IFetchResponse = await this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
+      {
+        headers: {
+          "content-type": "application/json",
+        },
+        method: "GET",
+      }
+    );
+    const data = await response.json();
+    return data;
+  }
+
   async subscribeMonitoringChannel(): Promise<object> {
     const cepId = await this.getCEP_Id();
     console.log("Started subscription:", cepId);
@@ -285,10 +302,13 @@ export class AnalyticsService {
         // Cleansed message: prev: Recording apama-ctrl safe mode state, current: Deployment was changed
         filter(([prev, current]) => !!current),
         tap((pair) => {
-            const [prev, current] = pair;
-            console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
-          }),
-        filter(([prev, current]) => prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02),
+          const [prev, current] = pair;
+          console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
+        }),
+        filter(
+          ([prev, current]) =>
+            prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02
+        ),
         map(([prev, current]) => [prev, current])
       )
       .subscribe((pair) => {

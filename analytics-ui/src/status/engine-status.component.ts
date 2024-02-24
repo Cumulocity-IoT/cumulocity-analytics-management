@@ -6,11 +6,11 @@ import { shareReplay, switchMap, tap } from "rxjs/operators";
 import { AnalyticsService } from "../shared";
 
 @Component({
-  selector: "engine-monitoring",
-  templateUrl: "./engine-monitoring.component.html",
+  selector: "engine-status",
+  templateUrl: "./engine-status.component.html",
   encapsulation: ViewEncapsulation.None,
 })
-export class EngineMonitoringComponent implements OnInit {
+export class EngineStatusComponent implements OnInit {
   cepId: string;
   @Output() closeSubject: Subject<void> = new Subject();
   alarms$: Observable<IResultList<IAlarm>>;

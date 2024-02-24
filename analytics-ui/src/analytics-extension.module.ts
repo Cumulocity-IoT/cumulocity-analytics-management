@@ -18,6 +18,7 @@ import { MonitoringModule } from "./monitoring/monitoring.module";
 import { ManageModule } from "./manage/manage.module";
 import { BlockModule } from "./block/block.module";
 import { ExtensionAddComponent } from "./shared";
+import { StatusModule } from "./status/status.module";
 
 @NgModule({
   imports: [
@@ -30,6 +31,7 @@ import { ExtensionAddComponent } from "./shared";
     PopoverModule,
     SampleModule,
     MonitoringModule,
+    StatusModule,
     ManageModule,
     BlockModule
   ],
