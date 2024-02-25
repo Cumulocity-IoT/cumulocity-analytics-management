@@ -3,7 +3,7 @@ import { BsModalRef } from "ngx-bootstrap/modal";
 import { AnalyticsService } from "../shared";
 import { HumanizePipe, PropertiesListItem, gettext } from "@c8y/ngx-components";
 import { IManifest } from "@c8y/client";
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Subject } from "rxjs";
 
 @Component({
   selector: "engine-status",
@@ -12,9 +12,9 @@ import { BehaviorSubject, Subject } from 'rxjs';
 })
 export class EngineStatusComponent implements OnInit {
   cepId: string;
-  cepCtrlStatus$: Subject<any> = new Subject<any> ();
-  cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> = new BehaviorSubject<PropertiesListItem[]> ([]);
-
+  cepCtrlStatus$: Subject<any> = new Subject<any>();
+  cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
+    new BehaviorSubject<PropertiesListItem[]>([]);
 
   constructor(
     private analyticsService: AnalyticsService,
@@ -28,17 +28,21 @@ export class EngineStatusComponent implements OnInit {
     this.cepId = await this.analyticsService.getCEP_Id();
     const cepCtrlStatus = await this.analyticsService.getCEP_Status();
     const cepCtrlStatusLabels = [];
-    Object.keys(cepCtrlStatus).forEach (key => {
-        cepCtrlStatusLabels.push ( {
-            label: humanize.transform(key),
-            type: 'string',
-            value: cepCtrlStatus[key]
-        })
+    Object.keys(cepCtrlStatus).forEach((key) => {
+      if (
+        ["number_extensions", "is_safe_mode", "microservice_name"].includes(key)
+      ) {
+        cepCtrlStatusLabels.push({
+          label: humanize.transform(key),
+          type: "string",
+          value: cepCtrlStatus[key],
+        });
+      }
     });
     this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
 
-    console.log("Labels:", cepCtrlStatusLabels);
-    console.log("Objects:", cepCtrlStatus);
+    // console.log("Labels:", cepCtrlStatusLabels);
+    // console.log("Objects:", cepCtrlStatus);
   }
 
   private async init() {

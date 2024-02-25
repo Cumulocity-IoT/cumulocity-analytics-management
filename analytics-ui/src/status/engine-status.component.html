@@ -53,14 +53,6 @@
   </div>
   <div class="inner-scroll">
     <div class="card-block separator">
-        <!-- <pre class="m-t-16 inner-scroll small">{{cepCtrlStatus | json}}</pre> -->
-        <!-- <c8y-properties-list
-        [title]="'Application properties'"
-        [data]="archiveManifest"
-        [emptyLabel]="'--'"
-        [properties]="packageVersionProperties"
-      >
-      </c8y-properties-list> -->
         <c8y-properties-list *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
         [title]="'CEP Engine Status'"
         [emptyLabel]="'--'"
@@ -69,6 +61,4 @@
       </c8y-properties-list>
     </div>
   </div>
-
-  <!-- <div class="card-footer separator"></div> -->
 </div>
