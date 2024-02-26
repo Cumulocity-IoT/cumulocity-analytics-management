@@ -21,7 +21,7 @@ import {
 
 import { TranslateService } from "@ngx-translate/core";
 import * as _ from "lodash";
-import { BehaviorSubject, Subscription } from "rxjs";
+import { BehaviorSubject, Subject, Subscription } from "rxjs";
 import {
   CEP_Block,
   CEP_Extension,
@@ -49,6 +49,9 @@ export class AnalyticsService {
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
   private restart$: BehaviorSubject<string> = new BehaviorSubject<string>(null);
+  private restarting$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
+    false
+  );
   private realtime: Realtime;
   private subscription: Subscription;
 
@@ -210,8 +213,8 @@ export class AnalyticsService {
   async getCEP_Id(): Promise<string> {
     let cepId: string;
     if (!this._cepId) {
-      let backend = true;
-      if (backend) {
+      let useBackend = true;
+      if (useBackend) {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
@@ -266,26 +269,40 @@ export class AnalyticsService {
     return this._cepId;
   }
 
-  async getCEP_Status(): Promise<any> {
-    let cepId: string;
+  getCEP_Restarting(): Subject<boolean> {
+    return this.restarting$;
+  }
 
-    // get name of microservice from cep endpoint
-    const response: IFetchResponse = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-      {
+  async getCEP_Status(): Promise<any> {
+    let response: IFetchResponse;
+    let useBackend = false;
+    if (useBackend) {
+      // get name of microservice from cep endpoint
+      response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
+        {
+          headers: {
+            "content-type": "application/json",
+          },
+          method: "GET",
+        }
+      );
+    } else {
+      // get name of microservice from cep endpoint
+      response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
         headers: {
           "content-type": "application/json",
         },
         method: "GET",
-      }
-    );
+      });
+    }
     const data = await response.json();
     return data;
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
     const cepId = await this.getCEP_Id();
-    console.log("Started subscription:", cepId);
+    console.log("Started subscription on :", cepId);
 
     const sub = this.realtime.subscribe(
       `/events/${cepId}`,
@@ -318,6 +335,7 @@ export class AnalyticsService {
         // );
         if (current == STATUS_MESSAGE_02)
           this.alertService.success(`Deployment successful`);
+        this.restarting$.next(false);
       });
     return sub;
   }
@@ -346,6 +364,7 @@ export class AnalyticsService {
   }
 
   async restartCEP(): Promise<any> {
+    this.restarting$.next(true);
     const formData = new FormData();
     const fetchOptions: IFetchOptions = {
       method: "PUT",
@@ -355,7 +374,7 @@ export class AnalyticsService {
     };
     const url = "/service/cep/restart";
     const res = await this.fetchClient.fetch(url, fetchOptions);
-    this.alertService.success(gettext("Deployment (restart) submitted ..."));
+    // this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
   }
 

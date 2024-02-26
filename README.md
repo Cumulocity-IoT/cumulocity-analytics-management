@@ -8,6 +8,7 @@
   - [Options for custom extension](#options-for-custom-extension)
 - [Samples repositories and building custom extensions](#samples-repositories-and-building-custom-extensions)
 - [Monitoring](#monitoring)
+- [Status](#status)
 - [Installation](#installation-of-plugin-as-community-plugin)
 - [Build Instructions](#build-instructions)
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
@@ -84,9 +85,17 @@ The modal dialog provides the option:
 
 On the monitoring tab you can view the latest alarms and events for the Streaming Analytics Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
 
-This is an indication that the engine was started in **Safe Mode**, i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
 
 ![Monitoring](resources/images/monitoring.png)
+
+
+## Status
+
+On the status tab you can check the status of the Analytics Streaming Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
+
+The property `is_safe_mode` is an indication if the engine was started in [Safe Mode](https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup), i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
+
+![Monitoring](resources/images/status.png)
 
 
 ## Installation of plugin as community plugin

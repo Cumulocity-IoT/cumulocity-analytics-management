@@ -1,4 +1,4 @@
-<c8y-title translate>Analytics Builder community samples</c8y-title>
+<c8y-title translate>Status Streaming Analytics</c8y-title>
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
     [icon]="'c8y-atom'"
@@ -9,21 +9,19 @@
     [label]="'Analytics' | translate"
   ></c8y-breadcrumb-item>
   <c8y-breadcrumb-item
-    [icon]="'monitoring'"
-    [label]="'Monitoring' | translate"
-    [path]="'sag-ps-pkg-analytics-extension/monitoring'"
+    [icon]="'info'"
+    [label]="'Status' | translate"
+    [path]="'sag-ps-pkg-analytics-extension/status'"
   >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
-<div class="card card--fullpage">
-  <div class="card-header separator">
-    <h3>Safe Mode</h3>
-  </div>
-  <div class="inner-scroll_NOT">
-    <div class="card-block separator_NOT">
+<div class="card card--grid content-fullpage grid__col--6-6--md">
+  <div class="inner-scroll bg-level-0">
+    <div class="card-header separator sticky-top large-padding"><h4>Safe Mode</h4></div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
       <p>
         <span
-          >In case no extension is loaded after deploying your latest extension
+          >If no extension is loaded after deploying your latest extension
           please try to delete this extension and restart the Streaming
           Analytics again.</span
         >
@@ -48,12 +46,13 @@
     </div>
   </div>
 
-
-  <div class="card-header separator">
-  </div>
-  <div class="inner-scroll">
-    <div class="card-block separator">
-        <c8y-properties-list *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
+  <div class="inner-scroll bg-level-0">
+    <div class="card-header separator sticky-top large-padding">
+      <h4>CEP Engine Status</h4>
+    </div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <c8y-properties-list
+        *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
         [title]="'CEP Engine Status'"
         [emptyLabel]="'--'"
         [properties]="cepCtrlStatusLabels$ | async"

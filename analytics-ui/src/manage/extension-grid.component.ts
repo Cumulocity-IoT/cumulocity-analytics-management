@@ -2,7 +2,7 @@ import { Component, OnInit } from "@angular/core";
 import { IManagedObject } from "@c8y/client";
 import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
 import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable, of } from "rxjs";
+import { BehaviorSubject, Observable, Subject, of } from "rxjs";
 import {
     catchError,
     shareReplay,
@@ -18,6 +18,7 @@ import { AnalyticsService } from "../shared";
 })
 export class ExtensionGridComponent implements OnInit {
   loading: boolean = false;
+  restarting$: Subject<boolean>;
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
   subscription: any;
@@ -28,10 +29,10 @@ export class ExtensionGridComponent implements OnInit {
   constructor(
     private analyticsService: AnalyticsService,
     private wizardModalService: WizardModalService,
-    private bsModalService: BsModalService
   ) {}
 
   ngOnInit() {
+    this.restarting$ = this.analyticsService.getCEP_Restarting();
     this.extensions$ = this.reload$.pipe(
       tap((clearCache) => {
         if (clearCache) {

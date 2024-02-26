@@ -41,6 +41,7 @@ import { AnalyticsService, BooleanRendererComponent, CEP_Block } from "../shared
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;
+  
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
   blocks: CEP_Block[] = [];

@@ -214,7 +214,7 @@ export class RepositoryService {
               };
               tb.id = await this.resolveFullyQualified_CEP_Block_name(tb, rep);
               blocks.push(tb);
-              console.log(`FQN:`, tb);
+              // console.log(`FQN:`, tb);
             }
           }
           return blocks;
