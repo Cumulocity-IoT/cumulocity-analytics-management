@@ -18,30 +18,30 @@
  *
  * @authors Christof Strack
  */
-import { Component, Input, OnInit, ViewChild } from "@angular/core";
+import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
   ConfirmModalComponent,
   gettext,
   ModalLabels,
   Status,
-  StatusType,
-} from "@c8y/ngx-components";
-import { TranslateService } from "@ngx-translate/core";
-import { Subject } from "rxjs";
+  StatusType
+} from '@c8y/ngx-components';
+import { TranslateService } from '@ngx-translate/core';
+import { Subject } from 'rxjs';
 
 @Component({
-  selector: "confirmation-modal",
-  templateUrl: "./confirmation-modal.component.html",
+  selector: 'a17t-confirmation-modal',
+  templateUrl: './confirmation-modal.component.html'
 })
-export class ConfirmationModalComponent implements OnInit {
+export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   @Input() title: string;
   @Input() message: string;
-  @ViewChild("modalRef", { static: false }) modalRef: ConfirmModalComponent;
+  @ViewChild('modalRef', { static: false }) modalRef: ConfirmModalComponent;
   messageTranslated: string;
   closeSubject: Subject<boolean> = new Subject();
   @Input() labels: ModalLabels = {
-    ok: gettext("Ok"),
-    cancel: gettext("Cancel"),
+    ok: gettext('Ok'),
+    cancel: gettext('Cancel')
   };
   status: StatusType = Status.WARNING;
 

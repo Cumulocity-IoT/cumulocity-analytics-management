@@ -1,12 +1,16 @@
 import { Component, Input, ViewChild } from '@angular/core';
 import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
-import { AlertService, DropAreaComponent, WizardComponent } from '@c8y/ngx-components';
+import {
+  AlertService,
+  DropAreaComponent,
+  WizardComponent
+} from '@c8y/ngx-components';
 import { BehaviorSubject } from 'rxjs';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 
 @Component({
-  selector: 'extension-add',
+  selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html'
 })
 export class ExtensionAddComponent {
@@ -39,7 +43,7 @@ export class ExtensionAddComponent {
 
   onFileDroppedEvent(event) {
     if (event && event.length > 0) {
-      const file = event[0].file;
+      const [file] = event;
       this.onFile(file);
     }
   }
@@ -48,14 +52,14 @@ export class ExtensionAddComponent {
     this.isLoading = true;
     this.errorMessage = null;
     this.progress.next(0);
-    const n = file.name.split('.').slice(0, -1).join('.')
+    const n = file.name.split('.').slice(0, -1).join('.');
     try {
       this.createdApp = {
         pas_extension: n,
-        name : n
-      }
+        name: n
+      };
       await this.uploadExtensionHandler(file, this.createdApp, this.restart);
-      this.alertService.warning("Deploy new Extension!");
+      this.alertService.warning('Deploy new Extension!');
       this.isAppCreated = true;
     } catch (ex) {
       this.analyticsService.cancelExtensionCreation(this.createdApp);

@@ -78,7 +78,7 @@
           </div>
         </div>
         <c8y-ui-empty-state
-          *ngIf="(alarms$ | async)?.data.length == 0"
+          *ngIf="(alarms$ | async)?.data.length === 0"
           [icon]="'alarm'"
           [title]="'No alarms found.' | translate"
           [horizontal]="true"
@@ -134,7 +134,7 @@
           </div>
         </div>
         <c8y-ui-empty-state
-          *ngIf="(events$ | async)?.data.length == 0"
+          *ngIf="(events$ | async)?.data.length === 0"
           [icon]="'event'"
           [title]="'No events found.' | translate"
           [horizontal]="true"

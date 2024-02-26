@@ -1,22 +1,17 @@
-import { Component, OnInit } from "@angular/core";
-import { IManagedObject } from "@c8y/client";
-import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
-import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable, Subject, of } from "rxjs";
-import {
-    catchError,
-    shareReplay,
-    switchMap,
-    tap,
-} from "rxjs/operators";
-import { AnalyticsService } from "../shared";
+import { Component, OnDestroy, OnInit } from '@angular/core';
+import { IManagedObject } from '@c8y/client';
+import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { ModalOptions } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
+import { catchError, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { AnalyticsService } from '../shared';
 
 @Component({
-  selector: "extension",
-  templateUrl: "./extension-grid.component.html",
-  styleUrls: ["./extension-grid.component.css"],
+  selector: 'a17t-extension',
+  templateUrl: './extension-grid.component.html',
+  styleUrls: ['./extension-grid.component.css']
 })
-export class ExtensionGridComponent implements OnInit {
+export class ExtensionGridComponent implements OnInit, OnDestroy {
   loading: boolean = false;
   restarting$: Subject<boolean>;
   loadingError: boolean = false;
@@ -28,7 +23,7 @@ export class ExtensionGridComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
-    private wizardModalService: WizardModalService,
+    private wizardModalService: WizardModalService
   ) {}
 
   ngOnInit() {
@@ -65,13 +60,13 @@ export class ExtensionGridComponent implements OnInit {
 
   addExtension() {
     const wizardConfig: WizardConfig = {
-      headerText: "Add extension",
-      headerIcon: "c8y-atom",
+      headerText: 'Add extension',
+      headerIcon: 'c8y-atom'
     };
 
     const initialState: any = {
       wizardConfig,
-      id: "uploadAnalyticsExtension",
+      id: 'uploadAnalyticsExtension'
     };
 
     const modalOptions: ModalOptions = { initialState };
@@ -88,7 +83,7 @@ export class ExtensionGridComponent implements OnInit {
   }
 
   ngOnDestroy(): void {
-    console.log("Stop subscription");
+    console.log('Stop subscription');
     this.analyticsService.unsubscribeFromMonitoringChannel(this.subscription);
   }
 }

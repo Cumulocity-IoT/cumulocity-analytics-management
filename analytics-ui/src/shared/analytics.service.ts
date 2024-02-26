@@ -1,4 +1,4 @@
-import { EventEmitter, Injectable } from "@angular/core";
+import { EventEmitter, Injectable } from '@angular/core';
 import {
   ApplicationService,
   FetchClient,
@@ -9,19 +9,18 @@ import {
   InventoryBinaryService,
   InventoryService,
   IResultList,
-  Realtime,
-} from "@c8y/client";
+  Realtime
+} from '@c8y/client';
 
 import {
   AlertService,
   gettext,
   ModalService,
-  Status,
-} from "@c8y/ngx-components";
+  Status
+} from '@c8y/ngx-components';
 
-import { TranslateService } from "@ngx-translate/core";
-import * as _ from "lodash";
-import { BehaviorSubject, Subject, Subscription } from "rxjs";
+import { TranslateService } from '@ngx-translate/core';
+import { BehaviorSubject, Subject } from 'rxjs';
 import {
   CEP_Block,
   CEP_Extension,
@@ -33,11 +32,11 @@ import {
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
-  CEP_ENDPOINT,
-} from "./analytics.model";
-import { isCustomCEP_Block, removeFileExtension } from "./utils";
+  CEP_ENDPOINT
+} from './analytics.model';
+import { isCustomCEP_Block, removeFileExtension } from './utils';
 
-@Injectable({ providedIn: "root" })
+@Injectable({ providedIn: 'root' })
 export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
@@ -66,9 +65,9 @@ export class AnalyticsService {
     const filter: object = {
       pageSize: 100,
       withTotalPages: true,
-      fragmentType: "pas_extension",
+      fragmentType: 'pas_extension'
     };
-    let result = this.inventoryService.list(filter);
+    const result = this.inventoryService.list(filter);
     return result;
   }
 
@@ -83,16 +82,16 @@ export class AnalyticsService {
       `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
       {
         headers: {
-          "content-type": "application/json",
+          'content-type': 'application/json'
         },
         body: JSON.stringify({
           extension_name: name,
           upload: upload,
           deploy: deploy,
-          monitors: monitors,
+          monitors: monitors
         }),
-        method: "POST",
-        responseType: "blob",
+        method: 'POST',
+        responseType: 'blob'
       }
     );
   }
@@ -110,7 +109,7 @@ export class AnalyticsService {
           key.includes(le)
         );
         if (extensions[index].loaded) {
-          let extensionDetails = await this.getCEP_Extension(
+          const extensionDetails = await this.getCEP_Extension(
             extensions[index].name
           );
           extensions[index].blocksCount = extensionDetails?.analytics.length;
@@ -123,20 +122,20 @@ export class AnalyticsService {
   }
 
   async deleteExtension(app: IManagedObject): Promise<void> {
-    let name = app.name;
+    const {name} = app;
     await this.modal.confirm(
-      gettext("Delete extension"),
+      gettext('Delete extension'),
       this.translateService.instant(
         gettext(
-          `You are about to delete extension "{{name}}". Do you want to proceed?`
+          'You are about to delete extension "{{name}}". Do you want to proceed?'
         ),
         { name }
       ),
       Status.DANGER,
-      { ok: gettext("Delete"), cancel: gettext("Cancel") }
+      { ok: gettext('Delete'), cancel: gettext('Cancel') }
     );
     await this.inventoryBinaryService.delete(app.id);
-    this.alertService.success(gettext("Extension deleted."));
+    this.alertService.success(gettext('Extension deleted.'));
     this.appDeleted.emit(app);
   }
 
@@ -163,7 +162,7 @@ export class AnalyticsService {
             const cepBlock = block as CEP_Block;
             cepBlock.custom = isCustomCEP_Block(cepBlock);
             cepBlock.extension = extensionNameAbbreviated;
-            //console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
+            // console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
             blocks.push(cepBlock);
           });
         }
@@ -178,9 +177,9 @@ export class AnalyticsService {
       `/${CEP_PATH_METADATA_EN}`,
       {
         headers: {
-          "content-type": "application/json",
+          'content-type': 'application/json'
         },
-        method: "GET",
+        method: 'GET'
       }
     );
     const data = await response.json();
@@ -192,9 +191,9 @@ export class AnalyticsService {
       `${CEP_PATH_EN}/${name}.json`,
       {
         headers: {
-          "content-type": "application/json",
+          'content-type': 'application/json'
         },
-        method: "GET",
+        method: 'GET'
       }
     );
     let data;
@@ -208,16 +207,16 @@ export class AnalyticsService {
   async getCEP_Id(): Promise<string> {
     let cepId: string;
     if (!this._cepId) {
-      let useBackend = true;
+      const useBackend = true;
       if (useBackend) {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
           {
             headers: {
-              "content-type": "application/json",
+              'content-type': 'application/json'
             },
-            method: "GET",
+            method: 'GET'
           }
         );
         const data = await response.json();
@@ -228,28 +227,28 @@ export class AnalyticsService {
           `${CEP_PATH_STATUS}`,
           {
             headers: {
-              "content-type": "application/json",
+              'content-type': 'application/json'
             },
-            method: "GET",
+            method: 'GET'
           }
         );
         if (response.status < 400) {
           const data1 = await response.json();
           const cepMicroservice = data1.microservice_name;
-          const microservice_application_id = data1.microservice_application_id;
+          const {microservice_application_id} = data1;
 
           // get source id of microservice representation in inventory
           const filter: object = {
             pageSize: 100,
-            withTotalPages: true,
+            withTotalPages: true
           };
           const query: object = {
             name: cepMicroservice,
-            applicationId: microservice_application_id,
+            applicationId: microservice_application_id
           };
-          let { data, res }: IResultList<IManagedObject> =
+          const { data }: IResultList<IManagedObject> =
             await this.inventoryService.listQuery(query, filter);
-          console.log("Found ctrl-microservice:", data1, data);
+          console.log('Found ctrl-microservice:', data1, data);
           if (!data || data.length > 1) {
             this.alertService.warning(
               "Can't find ctrl-microservice for Streaming Analytics! Please report this issue."
@@ -270,25 +269,25 @@ export class AnalyticsService {
 
   async getCEP_Status(): Promise<any> {
     let response: IFetchResponse;
-    let useBackend = false;
+    const useBackend = false;
     if (useBackend) {
       // get name of microservice from cep endpoint
       response = await this.fetchClient.fetch(
         `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
         {
           headers: {
-            "content-type": "application/json",
+            'content-type': 'application/json'
           },
-          method: "GET",
+          method: 'GET'
         }
       );
     } else {
       // get name of microservice from cep endpoint
       response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
         headers: {
-          "content-type": "application/json",
+          'content-type': 'application/json'
         },
-        method: "GET",
+        method: 'GET'
       });
     }
     const data = await response.json();
@@ -297,7 +296,7 @@ export class AnalyticsService {
 
   async subscribeMonitoringChannel(): Promise<object> {
     const cepId = await this.getCEP_Id();
-    console.log("Started subscription on :", cepId);
+    console.log('Started subscription on :', cepId);
     const subMO = this.realtime.subscribe(
       `/managedobjects/${cepId}`,
       this.updateStatusFromMO.bind(this)
@@ -310,8 +309,8 @@ export class AnalyticsService {
   }
 
   private updateStatusFromMO(p: object): void {
-    let payload = p["data"]["data"];
-    this.restarting$.next(payload?.c8y_Status.status == "Down");
+    const payload = p['data']['data'];
+    this.restarting$.next(payload?.c8y_Status.status == 'Down');
     // console.log("New updateStatusFromMO for cep:", payload);
   }
 
@@ -327,12 +326,12 @@ export class AnalyticsService {
   async restartCEP(): Promise<any> {
     const formData = new FormData();
     const fetchOptions: IFetchOptions = {
-      method: "PUT",
+      method: 'PUT',
       body: formData,
-      //headers: { 'content-type': 'multipart/form-data', accept: 'application/json' },
-      headers: { accept: "application/json" },
+      // headers: { 'content-type': 'multipart/form-data', accept: 'application/json' },
+      headers: { accept: 'application/json' }
     };
-    const url = "/service/cep/restart";
+    const url = '/service/cep/restart';
     const res = await this.fetchClient.fetch(url, fetchOptions);
     // this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
@@ -355,10 +354,9 @@ export class AnalyticsService {
   }
 
   async downloadExtension(app: IManagedObject): Promise<ArrayBuffer> {
-    let response: IFetchResponse = await this.inventoryBinaryService.download(
-      app
-    );
-    console.log("Downloading Extension", app);
+    const response: IFetchResponse =
+      await this.inventoryBinaryService.download(app);
+    console.log('Downloading Extension', app);
     return response.arrayBuffer();
   }
 

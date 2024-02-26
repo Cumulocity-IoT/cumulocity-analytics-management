@@ -15,9 +15,9 @@
     class="card-block p-0 no-min-height card--d-col card-column-20 flex-grow"
   >
     <div class="c8y-realtime text-center">
-      <span [class]="extension.loaded == true ? 'label label-primary': 'label label-warning'">
+      <span [class]="extension.loaded === true ? 'label label-primary': 'label label-warning'">
         {{
-          extension.loaded == true ? "Loaded" : ("Not Loaded" | translate)
+          extension.loaded === true ? "Loaded" : ("Not Loaded" | translate)
         }}</span
       >
     </div>
@@ -28,7 +28,7 @@
     <div class="text-center" *ngIf="extension.loaded">
       <span
         >{{ extension.blocksCount }}&nbsp;{{
-          extension.blocksCount == 1 ? "Block" : "Blocks"
+          extension.blocksCount === 1 ? "Block" : "Blocks"
         }}</span
       >
     </div>

@@ -12,7 +12,9 @@
     "start:ab": "npm start -- --shell streaminganalytics -u https://ck2.eu-latest.cumulocity.com",
     "start:cockpit": "npm start -- --shell cockpit",
     "build": "ng build",
-    "deploy": "ng deploy"
+    "deploy": "ng deploy",
+    "format": "prettier --write 'src/**/*.ts'",
+    "lint": "eslint --ext .ts,.html . --fix"
   },
   "keywords": [
     "c8y"
@@ -32,11 +34,11 @@
     "@angular/upgrade": "^16.2.0",
     "@c8y/client": "1019.5.3",
     "@c8y/ngx-components": "1019.5.3",
-    "@ngx-translate/core": "14.0.0",
     "@c8y/style": "1019.5.3",
+    "@c8y/websdk": "^1019.0.7",
+    "@ngx-translate/core": "14.0.0",
     "@types/ws": "<8.5.5",
     "angular": "1.6.9",
-    "@c8y/websdk": "^1019.0.7",
     "ngx-bootstrap": "11.0.2",
     "rxjs": "^7.4.0",
     "tslib": "^2.3.0",
@@ -44,6 +46,9 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^16.2.12",
+    "@angular-eslint/eslint-plugin": "^17.2.1",
+    "@angular-eslint/eslint-plugin-template": "^17.2.1",
+    "@angular-eslint/template-parser": "^17.2.1",
     "@angular/cli": "^16.2.12",
     "@angular/compiler-cli": "^16.2.0",
     "@angular/language-service": "^16.2.0",
@@ -51,7 +56,10 @@
     "@semantic-release/changelog": "^6.0.2",
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.2",
+    "eslint-plugin-import": "^2.29.1",
     "file-loader": "^6.2.0",
+    "prettier": "^3.2.5",
     "typescript": "~5.1.3"
   },
   "browserslist": [

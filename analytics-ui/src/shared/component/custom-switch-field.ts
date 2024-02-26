@@ -19,30 +19,35 @@
  * @authors Christof Strack
  */
 
-import { ChangeDetectionStrategy, Component } from "@angular/core";
-import { FieldType } from "@ngx-formly/core";
+import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { FieldType } from '@ngx-formly/core';
 
 @Component({
-  selector: "custom-formly-switch",
+  selector: 'a17t-custom-switch',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-<label
-  [class.c8y-checkbox]="!to.switchMode"
-  [class.c8y-switch]="to.switchMode"
-  [class.has-error]="showError"
->
-  <input
-    type="checkbox"
-    [formControl]="formControl"
-    [formlyAttributes]="field"
-    [attr.data-cy]="'c8y-field-checkbox--' + (field.templateOptions?.optionDataCy || to.label)"
-  />
-  <span></span>
-  <span class="text-truncate" title="{{ to.label | humanize }}">{{ to.label | humanize }}</span>
-  <span *ngIf="to.required && to.hideRequiredMarker !== true">
-    <em class="m-l-4" translate>(required)</em>
-  </span>
-  <!-- <button
+    <label
+      [class.c8y-checkbox]="!to.switchMode"
+      [class.c8y-switch]="to.switchMode"
+      [class.has-error]="showError"
+    >
+      <input
+        type="checkbox"
+        [formControl]="formControl"
+        [formlyAttributes]="field"
+        [attr.data-cy]="
+          'c8y-field-checkbox--' +
+          (field.templateOptions?.optionDataCy || to.label)
+        "
+      />
+      <span></span>
+      <span class="text-truncate" title="{{ to.label | humanize }}">{{
+        to.label | humanize
+      }}</span>
+      <span *ngIf="to.required && to.hideRequiredMarker !== true">
+        <em class="m-l-4" translate>(required)</em>
+      </span>
+      <!-- <button
     class="btn-help btn-help--sm m-t-auto m-b-auto"
     type="button"
     [attr.aria-label]="'Help' | translate"
@@ -51,10 +56,7 @@ import { FieldType } from "@ngx-formly/core";
     placement="right"
     *ngIf="!!to.description"
   ></button> -->
-</label>
-
-  `,
+    </label>
+  `
 })
-export class C8YSwitchField extends FieldType {
-
-}
+export class CustomSwitchField extends FieldType {}

@@ -18,9 +18,9 @@
  *
  * @authors Christof Strack
  */
-import { Injectable } from "@angular/core";
-import { TabFactory, Tab } from "@c8y/ngx-components";
-import { Router } from "@angular/router";
+import { Injectable } from '@angular/core';
+import { TabFactory, Tab } from '@c8y/ngx-components';
+import { Router } from '@angular/router';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
   constructor(public router: Router) {}
@@ -29,39 +29,39 @@ export class AnalyticsTabFactory implements TabFactory {
     const tabs: Tab[] = [];
     if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
       tabs.push({
-        path: "sag-ps-pkg-analytics-extension/manage",
+        path: 'sag-ps-pkg-analytics-extension/manage',
         priority: 960,
-        label: "Manage extensions",
-        icon: "extension",
-        orientation: "horizontal",
+        label: 'Manage extensions',
+        icon: 'extension',
+        orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: "sag-ps-pkg-analytics-extension/list",
+        path: 'sag-ps-pkg-analytics-extension/list',
         priority: 940,
-        label: "Blocks installed",
-        icon: "flow-chart",
-        orientation: "horizontal",
+        label: 'Blocks installed',
+        icon: 'flow-chart',
+        orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: "sag-ps-pkg-analytics-extension/sample",
+        path: 'sag-ps-pkg-analytics-extension/sample',
         priority: 920,
-        label: "Sample repositories",
-        icon: "test",
-        orientation: "horizontal",
+        label: 'Sample repositories',
+        icon: 'test',
+        orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: "sag-ps-pkg-analytics-extension/monitoring",
+        path: 'sag-ps-pkg-analytics-extension/monitoring',
         priority: 900,
-        label: "Monitoring",
-        icon: "monitoring",
-        orientation: "horizontal",
+        label: 'Monitoring',
+        icon: 'monitoring',
+        orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: "sag-ps-pkg-analytics-extension/status",
+        path: 'sag-ps-pkg-analytics-extension/status',
         priority: 890,
-        label: "Status",
-        icon: "info",
-        orientation: "horizontal",
+        label: 'Status',
+        icon: 'info',
+        orientation: 'horizontal'
       } as Tab);
     }
     return tabs;

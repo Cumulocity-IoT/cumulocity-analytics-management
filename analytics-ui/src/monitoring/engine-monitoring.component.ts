@@ -1,14 +1,21 @@
-import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
-import { AlarmService, AlarmStatus, EventService, IAlarm, IEvent, IResultList } from "@c8y/client";
-import { BsModalRef } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable, Subject } from "rxjs";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
-import { AnalyticsService } from "../shared";
+import { Component, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import {
+  AlarmService,
+  AlarmStatus,
+  EventService,
+  IAlarm,
+  IEvent,
+  IResultList
+} from '@c8y/client';
+import { BsModalRef } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { shareReplay, switchMap, tap } from 'rxjs/operators';
+import { AnalyticsService } from '../shared';
 
 @Component({
-  selector: "engine-monitoring",
-  templateUrl: "./engine-monitoring.component.html",
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-engine-monitoring',
+  templateUrl: './engine-monitoring.component.html',
+  encapsulation: ViewEncapsulation.None
 })
 export class EngineMonitoringComponent implements OnInit {
   cepId: string;
@@ -37,27 +44,27 @@ export class EngineMonitoringComponent implements OnInit {
     this.init();
     this.cepId = await this.analyticsService.getCEP_Id();
     this.cepCtrlStatus = await this.analyticsService.getCEP_Status();
-    let filterAlarm: object = {
+    const filterAlarm: object = {
       pageSize: 5,
       source: this.cepId,
       currentPage: 1,
-      withTotalPages: true,
+      withTotalPages: true
     };
-    let filterEvent: object = {
+    const filterEvent: object = {
       pageSize: 5,
       source: this.cepId,
       currentPage: 1,
-      withTotalPages: true,
+      withTotalPages: true
     };
     this.alarms$ = this.nextPageAlarm$.pipe(
       tap((options) => {
         if (options.direction) {
           this.currentPageAlarm = this.currentPageAlarm + options.direction;
           if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
-          filterAlarm["currentPage"] = this.currentPageAlarm;
+          filterAlarm['currentPage'] = this.currentPageAlarm;
         }
         if (options.status) {
-          filterAlarm["status"] = options.status;
+          filterAlarm['status'] = options.status;
         }
       }),
       switchMap(() => this.alarmService.list(filterAlarm)),
@@ -68,7 +75,7 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageEvent = this.currentPageEvent + options.direction;
           if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterEvent["currentPage"] = this.currentPageEvent;
+          filterEvent['currentPage'] = this.currentPageEvent;
         }
       }),
       switchMap(() => this.eventService.list(filterEvent)),
@@ -91,6 +98,6 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   search() {
-    this.nextPageAlarm$.next({ status:this.status });
+    this.nextPageAlarm$.next({ status: this.status });
   }
 }

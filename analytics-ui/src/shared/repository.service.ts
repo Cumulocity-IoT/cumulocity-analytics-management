@@ -1,30 +1,30 @@
 // repository.service.ts
 
-import { Injectable } from "@angular/core";
-import { BehaviorSubject, EMPTY, Observable } from "rxjs";
+import { Injectable } from '@angular/core';
+import { BehaviorSubject, EMPTY, Observable } from 'rxjs';
 import {
   ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
   CEP_Block,
   REPOSITORY_ENDPOINT,
   REPO_SAMPLES,
-  Repository,
-} from "./analytics.model";
+  Repository
+} from './analytics.model';
 import {
   FetchClient,
   IFetchResponse,
   IManagedObject,
-  InventoryService,
-} from "@c8y/client";
-import { AlertService, gettext } from "@c8y/ngx-components";
-import { HttpClient, HttpErrorResponse } from "@angular/common/http";
-import { catchError, map } from "rxjs/operators";
-import * as _ from "lodash";
-import { AnalyticsService } from "./analytics.service";
-import { getFileExtension, removeFileExtension } from "./utils";
+  InventoryService
+} from '@c8y/client';
+import { AlertService, gettext } from '@c8y/ngx-components';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { catchError, map } from 'rxjs/operators';
+import * as _ from 'lodash';
+import { AnalyticsService } from './analytics.service';
+import { getFileExtension, removeFileExtension } from './utils';
 
 @Injectable({
-  providedIn: "root",
+  providedIn: 'root'
 })
 export class RepositoryService {
   private repositories: Repository[] = [];
@@ -83,16 +83,16 @@ export class RepositoryService {
       let repositories = [] as Repository[];
       const filter: object = {
         pageSize: 100,
-        withTotalPages: true,
+        withTotalPages: true
       };
       const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE,
+        type: ANALYTICS_REPOSITORIES_TYPE
       };
-      let { data } = await this.inventoryService.listQuery(query, filter);
+      const { data } = await this.inventoryService.listQuery(query, filter);
       if (!data || data.length == 0) {
         const reposMO: Partial<IManagedObject> = {
-          name: "AnalyticsRepositories",
-          type: ANALYTICS_REPOSITORIES_TYPE,
+          name: 'AnalyticsRepositories',
+          type: ANALYTICS_REPOSITORIES_TYPE
         };
         reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
         this.inventoryService.create(reposMO);
@@ -109,16 +109,16 @@ export class RepositoryService {
     if (this._isDirty) {
       const filter: object = {
         pageSize: 100,
-        withTotalPages: true,
+        withTotalPages: true
       };
       const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE,
+        type: ANALYTICS_REPOSITORIES_TYPE
       };
-      let { data } = await this.inventoryService.listQuery(query, filter);
+      const { data } = await this.inventoryService.listQuery(query, filter);
       if (!data || data.length == 0) {
         const reposMO: Partial<IManagedObject> = {
-          name: "AnalyticsRepositories",
-          type: ANALYTICS_REPOSITORIES_TYPE,
+          name: 'AnalyticsRepositories',
+          type: ANALYTICS_REPOSITORIES_TYPE
         };
         reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
         this.inventoryService.create(reposMO);
@@ -129,7 +129,7 @@ export class RepositoryService {
       this._repositories = repositories;
       this._isDirty = false;
 
-      this.alertService.success(gettext(`Updated repositories successfully‚`));
+      this.alertService.success(gettext('Updated repositories successfully‚'));
     }
   }
 
@@ -137,7 +137,7 @@ export class RepositoryService {
     block: CEP_Block,
     rep: Repository
   ): Promise<string> {
-    let fqn = await this.getCEP_BlockContent(block, true, true);
+    const fqn = await this.getCEP_BlockContent(block, true, true);
     return fqn;
   }
 
@@ -152,14 +152,14 @@ export class RepositoryService {
         `${BACKEND_PATH_BASE}/${REPOSITORY_ENDPOINT}/any_repository/content`,
         {
           headers: {
-            "content-type": "text/plain",
+            'content-type': 'text/plain'
           },
           params: {
             url: encodeURIComponent(block.downloadUrl),
             extract_fqn_cep_block: extractFQN_CEP_Block,
-            cep_block_name: block.name,
+            cep_block_name: block.name
           },
-          method: "GET",
+          method: 'GET'
         }
       );
       result = response.text();
@@ -168,16 +168,16 @@ export class RepositoryService {
         .get(block.downloadUrl, {
           headers: {
             // "content-type": "application/json",
-            "Content-type": "application/text",
-            Accept: "application/vnd.github.raw",
+            'Content-type': 'application/text',
+            Accept: 'application/vnd.github.raw'
           },
-          responseType: "text",
+          responseType: 'text'
         })
         .toPromise();
       if (extractFQN_CEP_Block) {
         const regex = /(?<=^package\s)(.*?)(?=;)/gm;
         const match = result.match(regex);
-        let fqn = match[0].trim() + "." + block.name.slice(0, -4);
+        const fqn = `${match[0].trim() }.${ block.name.slice(0, -4)}`;
         result = fqn;
       }
     }
@@ -196,21 +196,21 @@ export class RepositoryService {
     const result: any = this.githubFetchClient
       .get(rep.url, {
         headers: {
-          "content-type": "application/json",
-        },
+          'content-type': 'application/json'
+        }
       })
       .pipe(
         map(async (data) => {
-          let dataArray = _.values(data);
+          const dataArray = _.values(data);
           const blocks = [];
           for (let index = 0; index < dataArray.length; index++) {
-            if (getFileExtension(dataArray[index].name) != ".json") {
+            if (getFileExtension(dataArray[index].name) != '.json') {
               const tb: any = {
                 repositoryName: rep.name,
                 name: removeFileExtension(dataArray[index].name),
                 custom: true,
                 downloadUrl: dataArray[index].download_url,
-                url: dataArray[index].url,
+                url: dataArray[index].url
               };
               tb.id = await this.resolveFullyQualified_CEP_Block_name(tb, rep);
               blocks.push(tb);
@@ -228,7 +228,7 @@ export class RepositoryService {
   private handleError(error: HttpErrorResponse) {
     if (error.status === 0) {
       // A client-side or network error occurred. Handle it accordingly.
-      console.error("An error occurred. Ignoring repository:", error.error);
+      console.error('An error occurred. Ignoring repository:', error.error);
     } else {
       // The backend returned an unsuccessful response code.
       // The response body may contain clues as to what went wrong.
@@ -254,7 +254,7 @@ export class RepositoryService {
     }
     const combinedPromise = Promise.all(promises);
     let result;
-    let resultUnfiltered = await combinedPromise.then((data) => {
+    const resultUnfiltered = await combinedPromise.then((data) => {
       const flattened = data.reduce(
         (accumulator, value) => accumulator.concat(value),
         []

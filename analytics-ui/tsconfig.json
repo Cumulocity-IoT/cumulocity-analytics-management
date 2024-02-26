@@ -23,5 +23,13 @@
     "strictInjectionParameters": true,
     "strictInputAccessModifiers": true,
     "strictTemplates": false
-  }
+  },
+  "lint": [
+    {
+        "exclude": [
+            "dist/**/*.ts", 
+            "dist/**/*.html", 
+        ]
+    }
+]
 }

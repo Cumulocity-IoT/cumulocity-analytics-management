@@ -18,11 +18,11 @@
  *
  * @authors Christof Strack
  */
-import { Component } from "@angular/core";
-import { CellRendererContext } from "@c8y/ngx-components";
+import { Component } from '@angular/core';
+import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-  template: ` <i [c8yIcon]="context.value ? 'check' : ''"></i> `,
+  template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> '
 })
 export class BooleanRendererComponent {
   constructor(public context: CellRendererContext) {

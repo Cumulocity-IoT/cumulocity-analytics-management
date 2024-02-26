@@ -87,7 +87,7 @@
 <div
   [ngClass]="listClass"
   class="card-group"
-  *ngIf="!loading && !(restarting$ | async)"
+  *ngIf="!loading && (restarting$ | async) === false"
 >
   <div
     class="page-sticky-header hidden-xs d-flex"
@@ -108,11 +108,11 @@
     *ngFor="let extension of extensions$ | async"
     class="col-xs-12 col-sm-4 col-md-3"
   >
-    <extension-card
+    <a17t-extension-card
       (onAppDeleted)="loadExtensions()"
       [extension]="extension"
       class="d-contents"
-    ></extension-card>
+    ></a17t-extension-card>
   </div>
 </div>
 
