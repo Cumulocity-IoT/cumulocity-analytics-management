@@ -29,15 +29,12 @@ import {
   CEP_PATH_EN,
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
-  STATUS_MESSAGE_01,
   BACKEND_PATH_BASE,
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
   CEP_ENDPOINT,
-  STATUS_MESSAGE_02,
 } from "./analytics.model";
-import { filter, map, pairwise, tap } from "rxjs/operators";
 import { isCustomCEP_Block, removeFileExtension } from "./utils";
 
 @Injectable({ providedIn: "root" })
@@ -48,12 +45,10 @@ export class AnalyticsService {
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private restart$: BehaviorSubject<string> = new BehaviorSubject<string>(null);
   private restarting$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
     false
   );
   private realtime: Realtime;
-  private subscription: Subscription;
 
   constructor(
     private modal: ModalService,
@@ -303,55 +298,21 @@ export class AnalyticsService {
   async subscribeMonitoringChannel(): Promise<object> {
     const cepId = await this.getCEP_Id();
     console.log("Started subscription on :", cepId);
-
-    const sub = this.realtime.subscribe(
-      `/events/${cepId}`,
-      this.updateStatus.bind(this)
+    const subMO = this.realtime.subscribe(
+      `/managedobjects/${cepId}`,
+      this.updateStatusFromMO.bind(this)
     );
-    this.subscription = this.restart$
-      .pipe(
-        pairwise(),
-        tap((pair) => {
-          const [prev, current] = pair;
-          console.log(`Message: prev: ${prev}, current: ${current}`);
-        }),
-        // filter(([prev, current]) => prev === STATUS_MESSAGE_01),
-        // Cleansed message: prev: Recording apama-ctrl safe mode state, current: Deployment was changed
-        filter(([prev, current]) => !!current),
-        tap((pair) => {
-          const [prev, current] = pair;
-          console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
-        }),
-        filter(
-          ([prev, current]) =>
-            prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02
-        ),
-        map(([prev, current]) => [prev, current])
-      )
-      .subscribe((pair) => {
-        const [prev, current] = pair;
-        // this.alertService.warning(
-        //   `Message: prev: ${prev}, current: ${current}`
-        // );
-        if (current == STATUS_MESSAGE_02)
-          this.alertService.success(`Deployment successful`);
-        this.restarting$.next(false);
-      });
-    return sub;
+    return subMO;
   }
 
   unsubscribeFromMonitoringChannel(subscription: any) {
     this.realtime.unsubscribe(subscription);
-    this.subscription.unsubscribe();
   }
 
-  private updateStatus(p: object): void {
+  private updateStatusFromMO(p: object): void {
     let payload = p["data"]["data"];
-    this.restart$.next(payload.text);
-    if (payload.text == STATUS_MESSAGE_01) {
-      this.alertService.success("Deployment pending ...");
-    }
-    // console.log("New status for cep:", payload);
+    this.restarting$.next(payload?.c8y_Status.status == "Down");
+    // console.log("New updateStatusFromMO for cep:", payload);
   }
 
   updateUploadProgress(event): void {
@@ -364,7 +325,6 @@ export class AnalyticsService {
   }
 
   async restartCEP(): Promise<any> {
-    this.restarting$.next(true);
     const formData = new FormData();
     const fetchOptions: IFetchOptions = {
       method: "PUT",
