@@ -30,7 +30,7 @@ import { ExtensionCreateComponent } from './component/extension-create-modal.com
       provide: FORMLY_CONFIG,
       multi: true,
       useValue: {
-        types: [{ name: 'custom-switch', component: CustomSwitchField }]
+        types: [{ name: 'a17t-custom-switch', component: CustomSwitchField }]
       }
     }
   ]

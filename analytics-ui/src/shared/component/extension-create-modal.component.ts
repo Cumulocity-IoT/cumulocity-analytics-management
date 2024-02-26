@@ -6,6 +6,7 @@ import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../analytics.service';
 import { saveAs } from 'file-saver';
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from '../analytics.model';
+import { CustomSwitchField } from './custom-switch-field';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -82,7 +83,7 @@ export class ExtensionCreateComponent implements OnInit {
           {
             className: 'col-lg-6',
             key: 'upload',
-            type: 'custom-switch',
+            type: CustomSwitchField,
             defaultValue: false,
             wrappers: ['c8y-form-field'],
             templateOptions: {
@@ -95,7 +96,7 @@ export class ExtensionCreateComponent implements OnInit {
           {
             className: 'col-lg-6',
             key: 'deploy',
-            type: 'custom-switch',
+            type: CustomSwitchField,
             defaultValue: false,
             wrappers: ['c8y-form-field'],
             templateOptions: {

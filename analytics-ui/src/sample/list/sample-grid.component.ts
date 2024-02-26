@@ -39,7 +39,7 @@ import {
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
-import { RepositoriesModalComponent } from './repositories-modal.component';
+import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 
 @Component({
   selector: 'a17t-sample-grid',

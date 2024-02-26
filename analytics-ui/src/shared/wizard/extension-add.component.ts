@@ -44,7 +44,7 @@ export class ExtensionAddComponent {
   onFileDroppedEvent(event) {
     if (event && event.length > 0) {
       const [file] = event;
-      this.onFile(file);
+      this.onFile(file.file);
     }
   }
 
@@ -59,7 +59,7 @@ export class ExtensionAddComponent {
         name: n
       };
       await this.uploadExtensionHandler(file, this.createdApp, this.restart);
-      this.alertService.warning('Deploy new Extension!');
+      this.alertService.success('Uploaded new extension.');
       this.isAppCreated = true;
     } catch (ex) {
       this.analyticsService.cancelExtensionCreation(this.createdApp);
