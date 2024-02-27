@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { IManagedObject } from '@c8y/client';
 import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { ModalOptions } from 'ngx-bootstrap/modal';
@@ -11,12 +11,11 @@ import { AnalyticsService } from '../shared';
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css']
 })
-export class ExtensionGridComponent implements OnInit, OnDestroy {
+export class ExtensionGridComponent implements OnInit {
   loading: boolean = false;
   restarting$: Subject<boolean>;
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
-  subscription: any;
   extensions$: Observable<IManagedObject[]>;
   listClass: string;
   rescue: boolean = false;
@@ -47,7 +46,6 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     );
 
     this.reload$.next(false);
-    this.initializeMonitoringService();
   }
 
   loadExtensions() {
@@ -77,13 +75,4 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     });
   }
 
-  private async initializeMonitoringService(): Promise<void> {
-    this.subscription =
-      await this.analyticsService.subscribeMonitoringChannel();
-  }
-
-  ngOnDestroy(): void {
-    console.log('Stop subscription');
-    this.analyticsService.unsubscribeFromMonitoringChannel(this.subscription);
-  }
 }

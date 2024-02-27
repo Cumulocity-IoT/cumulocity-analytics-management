@@ -60,6 +60,7 @@ export class AnalyticsService {
     private applicationService: ApplicationService
   ) {
     this.realtime = new Realtime(this.fetchClient);
+    this.subscribeMonitoringChannel();
   }
 
   getExtensions(): Promise<IResultList<IManagedObject>> {
