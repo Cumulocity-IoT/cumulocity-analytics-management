@@ -53,7 +53,7 @@
           *ngFor="let alarm of (alarms$ | async)?.data"
         >
           <small class="timeline-item-date">
-            {{ alarm.lastUpdated | date : "short" }}
+            {{ alarm.lastUpdated | c8yDate: 'c8yDate' }}
           </small>
           <div class="timeline-item-content d-flex flex-wrap">
             <div class="list-item-icon">
@@ -160,7 +160,7 @@
       </div>
     </div>
   </div>
-  <div class="inner-scroll bg-level-0 p-r-8">
+  <!-- <div class="inner-scroll bg-level-0 p-r-8">
     <div class="card-header separator sticky-top large-padding"><h4>Safe Mode</h4></div>
     <div class="card-block large-padding bg-inherit overflow-visible">
       <p>
@@ -188,8 +188,8 @@
         >
       </p>
     </div>
-  </div>
-  <div class="inner-scroll bg-level-0 p-l-8">
+  </div> -->
+  <div class="inner-scroll bg-level-0 p-r-8">
     <div class="card-header separator sticky-top large-padding">
       <h4>CEP Engine Status</h4>
     </div>

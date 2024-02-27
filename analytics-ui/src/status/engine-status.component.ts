@@ -24,8 +24,8 @@ export class EngineStatusComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
-    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
-    const cepCtrlStatus = await this.analyticsService.getCEP_Status();
+    this.cepOperationObjectId = await this.analyticsService.getCepOperationObjectId();
+    const cepCtrlStatus = await this.analyticsService.getCepCtrlStatus();
     const cepCtrlStatusLabels = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
       if (
@@ -45,6 +45,6 @@ export class EngineStatusComponent implements OnInit {
   }
 
   private async init() {
-    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
+    this.cepOperationObjectId = await this.analyticsService.getCepOperationObjectId();
   }
 }

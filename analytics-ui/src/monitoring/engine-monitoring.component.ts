@@ -21,7 +21,7 @@ import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 export class EngineMonitoringComponent implements OnInit {
   cepOperationObjectId: string;
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
-  new BehaviorSubject<PropertiesListItem[]>([]);
+    new BehaviorSubject<PropertiesListItem[]>([]);
   @Output() closeSubject: Subject<void> = new Subject();
   alarms$: Observable<IResultList<IAlarm>>;
   events$: Observable<IResultList<IEvent>>;
@@ -47,22 +47,37 @@ export class EngineMonitoringComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
-    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
-    const cepCtrlStatus = await this.analyticsService.getCEP_Status();
+    this.cepOperationObjectId =
+      await this.analyticsService.getCepOperationObjectId();
+    const cepCtrlStatus = await this.analyticsService.getCepCtrlStatus();
     const cepCtrlStatusLabels = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
       if (
         ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
       ) {
-        cepCtrlStatusLabels.push({
-          label: humanize.transform(key),
-          type: 'string',
-          value: cepCtrlStatus[key]
-        });
+        if ('is_safe_mode' === key) {
+          cepCtrlStatusLabels.push({
+            label: humanize.transform(key),
+            type: 'link',
+            value: cepCtrlStatus[key].toString(),
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            action:  (e, link: string) =>
+              window.open(
+                'https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup',
+                '_blank',
+                'noopener,noreferrer'
+              )
+          });
+        } else {
+          cepCtrlStatusLabels.push({
+            label: humanize.transform(key),
+            type: 'string',
+            value: cepCtrlStatus[key]
+          });
+        }
       }
     });
     this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
-
 
     const filterAlarm: object = {
       pageSize: 5,
@@ -106,7 +121,8 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   private async init() {
-    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
+    this.cepOperationObjectId =
+      await this.analyticsService.getCepOperationObjectId();
   }
 
   nextPageAlarm(direction: number) {

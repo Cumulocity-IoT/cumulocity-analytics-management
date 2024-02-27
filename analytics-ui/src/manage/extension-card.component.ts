@@ -12,7 +12,7 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 })
 export class ExtensionCardComponent {
   @Input() extension: IManagedObject;
-  @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
+  @Output() appDeleted: EventEmitter<void> = new EventEmitter();
 
   constructor(
     private analyticsService: AnalyticsService,
@@ -54,7 +54,7 @@ export class ExtensionCardComponent {
         if (result) {
           try {
             await this.analyticsService.deleteExtension(this.extension);
-            this.onAppDeleted.emit();
+            this.appDeleted.emit();
           } catch (ex) {
             if (ex) {
               this.alertService.addServerFailure(ex);
