@@ -27,5 +27,5 @@ settings.json
 setEnv.sh
 **/dist
 .env
-attic/
+attic
 .angular
