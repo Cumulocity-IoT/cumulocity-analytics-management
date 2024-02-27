@@ -41,6 +41,7 @@ export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
   private _cepId: Promise<string>;
+  private _cepStatus: Promise<any>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
@@ -122,7 +123,7 @@ export class AnalyticsService {
   }
 
   async deleteExtension(app: IManagedObject): Promise<void> {
-    const {name} = app;
+    const { name } = app;
     await this.modal.confirm(
       gettext('Delete extension'),
       this.translateService.instant(
@@ -235,7 +236,7 @@ export class AnalyticsService {
         if (response.status < 400) {
           const data1 = await response.json();
           const cepMicroservice = data1.microservice_name;
-          const {microservice_application_id} = data1;
+          const { microservice_application_id } = data1;
 
           // get source id of microservice representation in inventory
           const filter: object = {
@@ -269,29 +270,31 @@ export class AnalyticsService {
 
   async getCEP_Status(): Promise<any> {
     let response: IFetchResponse;
-    const useBackend = false;
-    if (useBackend) {
-      // get name of microservice from cep endpoint
-      response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-        {
+    if (!this._cepStatus) {
+      const useBackend = false;
+      if (useBackend) {
+        // get name of microservice from cep endpoint
+        response = await this.fetchClient.fetch(
+          `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
+          {
+            headers: {
+              'content-type': 'application/json'
+            },
+            method: 'GET'
+          }
+        );
+      } else {
+        // get name of microservice from cep endpoint
+        response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
           headers: {
             'content-type': 'application/json'
           },
           method: 'GET'
-        }
-      );
-    } else {
-      // get name of microservice from cep endpoint
-      response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
-        headers: {
-          'content-type': 'application/json'
-        },
-        method: 'GET'
-      });
+        });
+      }
+      this._cepStatus = response.json();
     }
-    const data = await response.json();
-    return data;
+    return this._cepStatus;
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
@@ -302,6 +305,41 @@ export class AnalyticsService {
       this.updateStatusFromMO.bind(this)
     );
     return subMO;
+
+    // const sub = this.realtime.subscribe(
+    //     `/events/${cepId}`,
+    //     this.updateStatus.bind(this)
+    //   );
+    //   this.subscription = this.restart$
+    //     .pipe(
+    //       pairwise(),
+    //       tap((pair) => {
+    //         const [prev, current] = pair;
+    //         console.log(`Message: prev: ${prev}, current: ${current}`);
+    //       }),
+    //       // filter(([prev, current]) => prev === STATUS_MESSAGE_01),
+    //       // Cleansed message: prev: Recording apama-ctrl safe mode state, current: Deployment was changed
+    //       filter(([prev, current]) => !!current),
+    //       tap((pair) => {
+    //         const [prev, current] = pair;
+    //         console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
+    //       }),
+    //       filter(
+    //         ([prev, current]) =>
+    //           prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02
+    //       ),
+    //       map(([prev, current]) => [prev, current])
+    //     )
+    //     .subscribe((pair) => {
+    //       const [prev, current] = pair;
+    //       // this.alertService.warning(
+    //       //   `Message: prev: ${prev}, current: ${current}`
+    //       // );
+    //       if (current == STATUS_MESSAGE_02)
+    //         this.alertService.success(`Deployment successful`);
+    //       this.restarting$.next(false);
+    //     });
+    //   return sub;
   }
 
   unsubscribeFromMonitoringChannel(subscription: any) {
@@ -311,6 +349,11 @@ export class AnalyticsService {
   private updateStatusFromMO(p: object): void {
     const payload = p['data']['data'];
     this.restarting$.next(payload?.c8y_Status.status == 'Down');
+    if (payload?.c8y_Status.status == 'Up') {
+      this._cepStatus = undefined;
+      // cache new cep status
+      this.getCEP_Status();
+    }
     // console.log("New updateStatusFromMO for cep:", payload);
   }
 
@@ -332,7 +375,7 @@ export class AnalyticsService {
       headers: { accept: 'application/json' }
     };
     const url = '/service/cep/restart';
-    const res = await this.fetchClient.fetch(url, fetchOptions);
+    await this.fetchClient.fetch(url, fetchOptions);
     // this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
   }
@@ -340,7 +383,8 @@ export class AnalyticsService {
   async uploadExtension(
     archive: File,
     app: Partial<IManagedObject>,
-    restart: boolean
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    restart: boolean = false
   ): Promise<IManagedObjectBinary> {
     const result = (await this.inventoryBinaryService.create(archive, app))
       .data;
