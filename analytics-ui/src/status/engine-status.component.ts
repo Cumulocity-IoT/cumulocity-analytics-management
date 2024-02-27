@@ -10,7 +10,7 @@ import { BehaviorSubject, Subject } from 'rxjs';
   encapsulation: ViewEncapsulation.None
 })
 export class EngineStatusComponent implements OnInit {
-  cepId: string;
+  cepOperationObjectId: string;
   cepCtrlStatus$: Subject<any> = new Subject<any>();
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
     new BehaviorSubject<PropertiesListItem[]>([]);
@@ -24,7 +24,7 @@ export class EngineStatusComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
-    this.cepId = await this.analyticsService.getCEP_Id();
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
     const cepCtrlStatus = await this.analyticsService.getCEP_Status();
     const cepCtrlStatusLabels = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
@@ -45,6 +45,6 @@ export class EngineStatusComponent implements OnInit {
   }
 
   private async init() {
-    this.cepId = await this.analyticsService.getCEP_Id();
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
   }
 }

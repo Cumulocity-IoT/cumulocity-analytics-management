@@ -212,8 +212,8 @@ def get_cep_extension_metadata():
 # returns:
 #    id
 @app.route("/cep/id", methods=["GET"])
-def get_cep_id():
-    result = agent.get_cep_id(request_headers=request.headers)
+def get_cep_operationobject_id():
+    result = agent.get_cep_operationobject_id(request_headers=request.headers)
     if (result == None):
         return f"Not found", 400
     return jsonify(result)

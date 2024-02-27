@@ -52,16 +52,16 @@ class C8YAgent:
 
         self._logger.info(f"Restarted CEP!")
 
-    def get_cep_id(self, request_headers):
+    def get_cep_operationobject_id(self, request_headers):
         try:
-            self._logger.info(f"Retrieving id of service object for CEP ...")
+            self._logger.info(f"Retrieving id of operation object for CEP ...")
             
             response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
                     resource=f"/service/cep/diagnostics/apamaCtrlStatus")
             try:
                 app_id = response["microservice_application_id"]
                 microservice_name = response["microservice_name"]
-                cep_id = None
+                cep_operationobject_id = None
                 query = f"applicationId eq '{app_id}' and name eq '{microservice_name}'"
 
                 self._logger.info(f"Build filter: {query}")
@@ -75,12 +75,12 @@ class C8YAgent:
                         f"Found managed object: {managed_object.id} for cep app: {app_id}"
                     )
                     managed_object_id = managed_object
-                    cep_id = managed_object_id.id
+                    cep_operationobject_id = managed_object_id.id
                     break
                 if managed_object_id == None:
                     self._logger.error(f"Not found !")
                     return None
-                return {"id": cep_id}
+                return {"id": cep_operationobject_id}
             except:
                 self._logger.error(
                     f"Error finding app id: {app_id}",

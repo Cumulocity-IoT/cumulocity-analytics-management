@@ -19,7 +19,7 @@ import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
   encapsulation: ViewEncapsulation.None
 })
 export class EngineMonitoringComponent implements OnInit {
-  cepId: string;
+  cepOperationObjectId: string;
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
   new BehaviorSubject<PropertiesListItem[]>([]);
   @Output() closeSubject: Subject<void> = new Subject();
@@ -47,7 +47,7 @@ export class EngineMonitoringComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
-    this.cepId = await this.analyticsService.getCEP_Id();
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
     const cepCtrlStatus = await this.analyticsService.getCEP_Status();
     const cepCtrlStatusLabels = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
@@ -66,13 +66,13 @@ export class EngineMonitoringComponent implements OnInit {
 
     const filterAlarm: object = {
       pageSize: 5,
-      source: this.cepId,
+      source: this.cepOperationObjectId,
       currentPage: 1,
       withTotalPages: true
     };
     const filterEvent: object = {
       pageSize: 5,
-      source: this.cepId,
+      source: this.cepOperationObjectId,
       currentPage: 1,
       withTotalPages: true
     };
@@ -106,7 +106,7 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   private async init() {
-    this.cepId = await this.analyticsService.getCEP_Id();
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
   }
 
   nextPageAlarm(direction: number) {

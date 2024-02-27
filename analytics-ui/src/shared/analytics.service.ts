@@ -40,7 +40,7 @@ import { isCustomCEP_Block, removeFileExtension } from './utils';
 export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
-  private _cepId: Promise<string>;
+  private _cepOperationObjectId: Promise<string>;
   private _cepStatus: Promise<any>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
@@ -143,7 +143,7 @@ export class AnalyticsService {
   async clearCaches() {
     this._blocksDeployed = undefined;
     this._extensionsDeployed = undefined;
-    this._cepId = undefined;
+    this._cepOperationObjectId = undefined;
   }
 
   async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
@@ -205,9 +205,9 @@ export class AnalyticsService {
     return data;
   }
 
-  async getCEP_Id(): Promise<string> {
-    let cepId: string;
-    if (!this._cepId) {
+  async getCEP_OperationObject(): Promise<string> {
+    let cepOperationObjectId: string;
+    if (!this._cepOperationObjectId) {
       const useBackend = true;
       if (useBackend) {
         // get name of microservice from cep endpoint
@@ -221,7 +221,7 @@ export class AnalyticsService {
           }
         );
         const data = await response.json();
-        cepId = data.id;
+        cepOperationObjectId = data.id;
       } else {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
@@ -256,12 +256,12 @@ export class AnalyticsService {
             );
             return;
           }
-          cepId = data[0].id;
+          cepOperationObjectId = data[0].id;
         }
       }
-      this._cepId = Promise.resolve(cepId);
+      this._cepOperationObjectId = Promise.resolve(cepOperationObjectId);
     }
-    return this._cepId;
+    return this._cepOperationObjectId;
   }
 
   getCEP_Restarting(): Subject<boolean> {
@@ -298,16 +298,16 @@ export class AnalyticsService {
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
-    const cepId = await this.getCEP_Id();
-    console.log('Started subscription on :', cepId);
+    const cepOperationObjectId = await this.getCEP_OperationObject();
+    console.log('Started subscription on CEP operationObject:', cepOperationObjectId);
     const subMO = this.realtime.subscribe(
-      `/managedobjects/${cepId}`,
+      `/managedobjects/${cepOperationObjectId}`,
       this.updateStatusFromMO.bind(this)
     );
     return subMO;
 
     // const sub = this.realtime.subscribe(
-    //     `/events/${cepId}`,
+    //     `/events/${cepOperationObjectId}`,
     //     this.updateStatus.bind(this)
     //   );
     //   this.subscription = this.restart$
