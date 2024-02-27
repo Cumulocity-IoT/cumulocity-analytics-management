@@ -123,7 +123,7 @@
             </div>
             <div class="list-item-body">
               <div class="row">
-                <div class="col-sm-9">
+                <div class="col-sm-12">
                   <label class="small" translate>&nbsp;&nbsp;Type&nbsp;</label>
                   <span>{{ event.type }}</span>
                   <br />
@@ -158,6 +158,49 @@
           {{ "Next events" | translate }}
         </button>
       </div>
+    </div>
+  </div>
+  <div class="inner-scroll bg-level-0">
+    <div class="card-header separator sticky-top large-padding"><h4>Safe Mode</h4></div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <p>
+        <span
+          >If no extension is loaded after deploying your latest extension
+          please try to delete this extension and restart the Streaming
+          Analytics again.</span
+        >
+      </p>
+      <p>
+        <span>
+          When extensions can't be loaded because of errors, the Streaming
+          Analytics engine starts in
+          <a
+            href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+            target="_blank"
+            >Safe Mode</a
+          >.</span
+        >
+      </p>
+      <p>
+        <span>
+          To recover from this situation you have to delete the defective
+          extension.</span
+        >
+      </p>
+    </div>
+  </div>
+  <div class="inner-scroll bg-level-0">
+    <div class="card-header separator sticky-top large-padding">
+      <h4>CEP Engine Status</h4>
+    </div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <c8y-properties-list
+        *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
+        [title]="'CEP Engine Status'"
+        [emptyLabel]="'--'"
+        [properties]="cepCtrlStatusLabels$ | async"
+      >
+      </c8y-properties-list>
     </div>
   </div>
 </div>

@@ -11,6 +11,7 @@ import { BsModalRef } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
 import { AnalyticsService } from '../shared';
+import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 
 @Component({
   selector: 'a17t-engine-monitoring',
@@ -19,6 +20,8 @@ import { AnalyticsService } from '../shared';
 })
 export class EngineMonitoringComponent implements OnInit {
   cepId: string;
+  cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
+  new BehaviorSubject<PropertiesListItem[]>([]);
   @Output() closeSubject: Subject<void> = new Subject();
   alarms$: Observable<IResultList<IAlarm>>;
   events$: Observable<IResultList<IEvent>>;
@@ -41,9 +44,26 @@ export class EngineMonitoringComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    const humanize = new HumanizePipe();
+
     this.init();
     this.cepId = await this.analyticsService.getCEP_Id();
-    this.cepCtrlStatus = await this.analyticsService.getCEP_Status();
+    const cepCtrlStatus = await this.analyticsService.getCEP_Status();
+    const cepCtrlStatusLabels = [];
+    Object.keys(cepCtrlStatus).forEach((key) => {
+      if (
+        ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
+      ) {
+        cepCtrlStatusLabels.push({
+          label: humanize.transform(key),
+          type: 'string',
+          value: cepCtrlStatus[key]
+        });
+      }
+    });
+    this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
+
+
     const filterAlarm: object = {
       pageSize: 5,
       source: this.cepId,
