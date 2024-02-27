@@ -1,22 +1,27 @@
-import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
-import { FormBuilder, FormGroup, Validators } from "@angular/forms";
-import { AlertService, ModalLabels } from "@c8y/ngx-components";
-import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { Subject } from "rxjs";
-import { ConfirmationModalComponent, Repository, RepositoryService, uuidCustom } from "../../shared";
+import { Component, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AlertService, ModalLabels } from '@c8y/ngx-components';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { Subject } from 'rxjs';
+import {
+  ConfirmationModalComponent,
+  Repository,
+  RepositoryService,
+  uuidCustom
+} from '../../shared';
 
 @Component({
-  selector: "name-repositories-modal",
-  styleUrls: ["../editor/editor-stepper.component.css"],
-  templateUrl: "./repositories-modal.component.html",
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-name-repositories-modal',
+  styleUrls: ['../editor/editor-stepper.component.css'],
+  templateUrl: './repositories-modal.component.html',
+  encapsulation: ViewEncapsulation.None
 })
 export class RepositoriesModalComponent implements OnInit {
   repositories: Repository[];
   @Output() closeSubject: Subject<Repository[]> = new Subject();
   repositoryForm: FormGroup;
 
-  labels: ModalLabels = { ok: "Save", cancel: "Cancel" };
+  labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
 
   constructor(
     private repositoryService: RepositoryService,
@@ -26,8 +31,8 @@ export class RepositoriesModalComponent implements OnInit {
   ) {
     this.repositoryForm = this.fb.group({
       id: [null],
-      name: ["", Validators.required],
-      url: ["", Validators.required],
+      name: ['', Validators.required],
+      url: ['', Validators.required]
     });
   }
 
@@ -66,12 +71,12 @@ export class RepositoriesModalComponent implements OnInit {
 
   deleteRepository(repositoryId: string): void {
     const initialState = {
-      title: "Delete repository",
-      message: "You are about to delete a repository. Do you want to proceed?",
+      title: 'Delete repository',
+      message: 'You are about to delete a repository. Do you want to proceed?',
       labels: {
-        ok: "Delete",
-        cancel: "Cancel",
-      },
+        ok: 'Delete',
+        cancel: 'Cancel'
+      }
     };
     const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
       ConfirmationModalComponent,
@@ -79,8 +84,8 @@ export class RepositoriesModalComponent implements OnInit {
     );
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        console.log("Confirmation delete result:", result);
-        if (!!result) {
+        console.log('Confirmation delete result:', result);
+        if (result) {
           try {
             this.repositoryService.deleteRepository(repositoryId);
           } catch (ex) {
@@ -94,11 +99,11 @@ export class RepositoriesModalComponent implements OnInit {
     );
   }
 
-  onSave(event) {
+  onSave() {
     this.closeSubject.next(this.repositories);
   }
 
-  onCancel(event) {
+  onCancel() {
     this.closeSubject.next([]);
   }
 }

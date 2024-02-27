@@ -9,9 +9,15 @@ export const ERROR_MESSAGES = {
     'Could not subscribe to the microservice because another application with the same context path is already subscribed.'
   ),
   [ERROR_TYPE.NO_MANIFEST_FILE]: gettext('Could not find a manifest.'),
-  [ERROR_TYPE.INVALID_PACKAGE]: gettext('You have not uploaded a valid package.'),
-  [ERROR_TYPE.INVALID_APPLICATION]: gettext('You have not uploaded a valid application.'),
-  [ERROR_TYPE.INTERNAL_ERROR]: gettext('An internal error occurred, try to upload again.')
+  [ERROR_TYPE.INVALID_PACKAGE]: gettext(
+    'You have not uploaded a valid package.'
+  ),
+  [ERROR_TYPE.INVALID_APPLICATION]: gettext(
+    'You have not uploaded a valid application.'
+  ),
+  [ERROR_TYPE.INTERNAL_ERROR]: gettext(
+    'An internal error occurred, try to upload again.'
+  )
 };
 
 export const APP_STATE = {
@@ -57,15 +63,18 @@ export const packageProperties: PropertiesListItem[] = [
   {
     label: gettext('Source'),
     key: 'repository',
-    transform: (repository: any) => (repository?.url ? repository.url : repository),
+    transform: (repository: any) =>
+      repository?.url ? repository.url : repository,
     type: 'link',
-    action: (e, link) => window.open(link as string, '_blank', 'noopener,noreferrer')
+    action: (e, link) =>
+      window.open(link as string, '_blank', 'noopener,noreferrer')
   },
   {
     label: gettext('Homepage'),
     key: 'homepage',
     type: 'link',
-    action: (e, link) => window.open(link as string, '_blank', 'noopener,noreferrer')
+    action: (e, link) =>
+      window.open(link as string, '_blank', 'noopener,noreferrer')
   },
   {
     label: gettext('Required platform version'),

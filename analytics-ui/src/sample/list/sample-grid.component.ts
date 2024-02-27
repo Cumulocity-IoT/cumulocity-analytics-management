@@ -18,7 +18,7 @@
  *
  * @authors Christof Strack
  */
-import { Component, OnInit, ViewChild, ViewEncapsulation } from "@angular/core";
+import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
 import {
   ActionControl,
   AlertService,
@@ -26,30 +26,29 @@ import {
   Column,
   ColumnDataType,
   DataGridComponent,
-  Pagination,
-} from "@c8y/ngx-components";
-import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable } from "rxjs";
-import { switchMap, tap } from "rxjs/operators";
+  Pagination
+} from '@c8y/ngx-components';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { switchMap, tap } from 'rxjs/operators';
 import {
   AnalyticsService,
   BooleanRendererComponent,
   CEP_Block,
-  ConfirmationModalComponent,
   ExtensionCreateComponent,
-  RepositoryService,
-} from "../../shared";
-import { EditorModalComponent } from "../editor/editor-modal.component";
-import { RepositoriesModalComponent } from "./repositories-modal.component";
+  RepositoryService
+} from '../../shared';
+import { EditorModalComponent } from '../editor/editor-modal.component';
+import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 
 @Component({
-  selector: "c8y-sample-grid",
-  templateUrl: "sample-grid.component.html",
-  styleUrls: ["./sample-grid.component.css"],
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-sample-grid',
+  templateUrl: 'sample-grid.component.html',
+  styleUrls: ['./sample-grid.component.css'],
+  encapsulation: ViewEncapsulation.None
 })
 export class SampleGridComponent implements OnInit {
-  @ViewChild("dataGrid", { static: false })
+  @ViewChild('dataGrid', { static: false })
   dataGrid: DataGridComponent;
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
@@ -61,50 +60,50 @@ export class SampleGridComponent implements OnInit {
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
-  titleSample: string = "Analytics Builder community samples";
+  titleSample: string = 'Analytics Builder community samples';
 
   columnsSamples: Column[] = [
     {
-      name: "name",
-      header: "Name",
-      path: "name",
+      name: 'name',
+      header: 'Name',
+      path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: "10%",
-      visible: true,
+      gridTrackSize: '10%',
+      visible: true
     },
     {
-      name: "repositoryName",
-      header: "Repository Name",
-      path: "repositoryName",
+      name: 'repositoryName',
+      header: 'Repository Name',
+      path: 'repositoryName',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: "15%",
-      visible: true,
+      gridTrackSize: '15%',
+      visible: true
     },
     {
-      name: "installed",
-      header: "Installed",
-      path: "installed",
+      name: 'installed',
+      header: 'Installed',
+      path: 'installed',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: "7.5%",
+      gridTrackSize: '7.5%',
       visible: true,
-      cellRendererComponent: BooleanRendererComponent,
+      cellRendererComponent: BooleanRendererComponent
     },
     {
-      name: "url",
-      header: "URL",
-      path: "url",
+      name: 'url',
+      header: 'URL',
+      path: 'url',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true,
-    },
+      visible: true
+    }
   ];
 
   pagination: Pagination = {
     pageSize: 3,
-    currentPage: 1,
+    currentPage: 1
   };
 
   constructor(
@@ -124,17 +123,17 @@ export class SampleGridComponent implements OnInit {
     );
     this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
-      type: "CREATE",
-      text: "Create extension",
-      icon: "export",
-      callback: this.createExtension.bind(this),
+      type: 'CREATE',
+      text: 'Create extension',
+      icon: 'export',
+      callback: this.createExtension.bind(this)
     });
 
     this.actionControls.push({
-      text: "View Source",
-      type: "VIEW",
-      icon: "document-with-code",
-      callback: this.viewMonitor.bind(this),
+      text: 'View Source',
+      type: 'VIEW',
+      icon: 'document-with-code',
+      callback: this.viewMonitor.bind(this)
     });
   }
 
@@ -147,31 +146,31 @@ export class SampleGridComponent implements OnInit {
         false
       );
     } catch (error) {
-      console.log("Something happened:", error);
+      console.log('Something happened:', error);
     }
     const initialState = {
       source: source,
-      monitor: block.name,
+      monitor: block.name
     };
     this.bsModalService.show(EditorModalComponent, {
-      class: "modal-lg",
+      class: 'modal-lg',
       initialState,
-      ariaDescribedby: "modal-body",
-      ariaLabelledBy: "modal-title",
-      ignoreBackdropClick: true,
+      ariaDescribedby: 'modal-body',
+      ariaLabelledBy: 'modal-title',
+      ignoreBackdropClick: true
     }).content as EditorModalComponent;
   }
 
   async updateRepositories() {
     const initialState = {};
     const modalRef = this.bsModalService.show(RepositoriesModalComponent, {
-      class: "modal-lg",
+      class: 'modal-lg',
       initialState,
-      ignoreBackdropClick: true,
+      ignoreBackdropClick: true
     });
 
     modalRef.content.closeSubject.subscribe(async (repositories) => {
-      console.log("Repositories after edit:", repositories);
+      console.log('Repositories after edit:', repositories);
       if (repositories) {
         await this.repositoryService.saveRepositories(repositories);
       }
@@ -185,8 +184,8 @@ export class SampleGridComponent implements OnInit {
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
         );
         // does not work and results in loops
-        //this.dataGrid.setItemsSelected([], true);
-        //this.dataGrid.setAllItemsSelected(false)
+        // this.dataGrid.setItemsSelected([], true);
+        // this.dataGrid.setAllItemsSelected(false)
       }
     });
   }
@@ -199,12 +198,12 @@ export class SampleGridComponent implements OnInit {
       }
     });
     const initialState = {
-      monitors,
+      monitors
     };
 
     const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-      class: "modal-lg",
-      initialState,
+      class: 'modal-lg',
+      initialState
     });
 
     modalRef.content.closeSubject.subscribe(() => modalRef.hide());
@@ -213,5 +212,4 @@ export class SampleGridComponent implements OnInit {
   async loadSamples() {
     this.reload$.next();
   }
-
 }

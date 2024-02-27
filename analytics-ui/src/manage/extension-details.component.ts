@@ -18,16 +18,16 @@
  *
  * @authors Christof Strack
  */
-import { Component, OnInit } from "@angular/core";
-import { ActivatedRoute } from "@angular/router";
-import { gettext } from "@c8y/ngx-components";
-import { AnalyticsService, CEP_Extension } from "../shared";
+import { Component } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { gettext } from '@c8y/ngx-components';
+import { AnalyticsService, CEP_Extension } from '../shared';
 
 @Component({
-  selector: "analytics-extension-details",
-  templateUrl: "./extension-details.component.html",
+  selector: 'a17t-extension-details',
+  templateUrl: './extension-details.component.html'
 })
-export class ExtensionDetailsComponent implements OnInit {
+export class ExtensionDetailsComponent {
   extension: CEP_Extension;
   breadcrumbConfig: { icon: string; label: string; path: string };
 
@@ -36,10 +36,6 @@ export class ExtensionDetailsComponent implements OnInit {
     private analyticsService: AnalyticsService
   ) {
     this.refresh();
-  }
-
-  async ngOnInit() {
-    //await this.refresh();
   }
 
   async refresh() {
@@ -58,9 +54,9 @@ export class ExtensionDetailsComponent implements OnInit {
 
   private setBreadcrumbConfig() {
     this.breadcrumbConfig = {
-      icon: "c8y-modules",
-      label: gettext("Extensions"),
-      path: "sag-ps-pkg-analytics-extension/manage",
+      icon: 'c8y-modules',
+      label: gettext('Extensions'),
+      path: 'sag-ps-pkg-analytics-extension/manage'
     };
   }
 }

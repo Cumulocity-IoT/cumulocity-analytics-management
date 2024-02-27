@@ -1,17 +1,27 @@
-import { Component, OnInit, Output, ViewEncapsulation } from "@angular/core";
-import { AlarmService, AlarmStatus, EventService, IAlarm, IEvent, IResultList } from "@c8y/client";
-import { BsModalRef } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable, Subject } from "rxjs";
-import { shareReplay, switchMap, tap } from "rxjs/operators";
-import { AnalyticsService } from "../shared";
+import { Component, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import {
+  AlarmService,
+  AlarmStatus,
+  EventService,
+  IAlarm,
+  IEvent,
+  IResultList
+} from '@c8y/client';
+import { BsModalRef } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { shareReplay, switchMap, tap } from 'rxjs/operators';
+import { AnalyticsService } from '../shared';
+import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 
 @Component({
-  selector: "engine-monitoring",
-  templateUrl: "./engine-monitoring.component.html",
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-engine-monitoring',
+  templateUrl: './engine-monitoring.component.html',
+  encapsulation: ViewEncapsulation.None
 })
 export class EngineMonitoringComponent implements OnInit {
-  cepId: string;
+  cepOperationObjectId: string;
+  cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
+  new BehaviorSubject<PropertiesListItem[]>([]);
   @Output() closeSubject: Subject<void> = new Subject();
   alarms$: Observable<IResultList<IAlarm>>;
   events$: Observable<IResultList<IEvent>>;
@@ -24,6 +34,7 @@ export class EngineMonitoringComponent implements OnInit {
   AlarmStatus = AlarmStatus;
   isAlarmExpanded: boolean = true;
   isEventExpanded: boolean = false;
+  cepCtrlStatus: any = {};
 
   constructor(
     private alarmService: AlarmService,
@@ -33,29 +44,47 @@ export class EngineMonitoringComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
+    const humanize = new HumanizePipe();
+
     this.init();
-    this.cepId = await this.analyticsService.getCEP_Id();
-    let filterAlarm: object = {
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
+    const cepCtrlStatus = await this.analyticsService.getCEP_Status();
+    const cepCtrlStatusLabels = [];
+    Object.keys(cepCtrlStatus).forEach((key) => {
+      if (
+        ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
+      ) {
+        cepCtrlStatusLabels.push({
+          label: humanize.transform(key),
+          type: 'string',
+          value: cepCtrlStatus[key]
+        });
+      }
+    });
+    this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
+
+
+    const filterAlarm: object = {
       pageSize: 5,
-      source: this.cepId,
+      source: this.cepOperationObjectId,
       currentPage: 1,
-      withTotalPages: true,
+      withTotalPages: true
     };
-    let filterEvent: object = {
+    const filterEvent: object = {
       pageSize: 5,
-      source: this.cepId,
+      source: this.cepOperationObjectId,
       currentPage: 1,
-      withTotalPages: true,
+      withTotalPages: true
     };
     this.alarms$ = this.nextPageAlarm$.pipe(
       tap((options) => {
         if (options.direction) {
           this.currentPageAlarm = this.currentPageAlarm + options.direction;
           if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
-          filterAlarm["currentPage"] = this.currentPageAlarm;
+          filterAlarm['currentPage'] = this.currentPageAlarm;
         }
         if (options.status) {
-          filterAlarm["status"] = options.status;
+          filterAlarm['status'] = options.status;
         }
       }),
       switchMap(() => this.alarmService.list(filterAlarm)),
@@ -66,7 +95,7 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageEvent = this.currentPageEvent + options.direction;
           if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterEvent["currentPage"] = this.currentPageEvent;
+          filterEvent['currentPage'] = this.currentPageEvent;
         }
       }),
       switchMap(() => this.eventService.list(filterEvent)),
@@ -77,7 +106,7 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   private async init() {
-    this.cepId = await this.analyticsService.getCEP_Id();
+    this.cepOperationObjectId = await this.analyticsService.getCEP_OperationObject();
   }
 
   nextPageAlarm(direction: number) {
@@ -89,6 +118,6 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   search() {
-    this.nextPageAlarm$.next({ status:this.status });
+    this.nextPageAlarm$.next({ status: this.status });
   }
 }

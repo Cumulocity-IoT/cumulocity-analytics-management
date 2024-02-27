@@ -1,16 +1,16 @@
-import { Component, EventEmitter, Input, OnInit, Output } from "@angular/core";
-import { ActivatedRoute, Router } from "@angular/router";
-import { IManagedObject } from "@c8y/client";
-import { AlertService } from "@c8y/ngx-components";
-import { saveAs } from "file-saver";
-import { BsModalRef, BsModalService } from "ngx-bootstrap/modal";
-import { AnalyticsService, ConfirmationModalComponent } from "../shared";
+import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { IManagedObject } from '@c8y/client';
+import { AlertService } from '@c8y/ngx-components';
+import { saveAs } from 'file-saver';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 
 @Component({
-  selector: "extension-card",
-  templateUrl: "./extension-card.component.html",
+  selector: 'a17t-extension-card',
+  templateUrl: './extension-card.component.html'
 })
-export class ExtensionCardComponent implements OnInit {
+export class ExtensionCardComponent {
   @Input() extension: IManagedObject;
   @Output() onAppDeleted: EventEmitter<void> = new EventEmitter();
 
@@ -22,16 +22,14 @@ export class ExtensionCardComponent implements OnInit {
     private bsModalService: BsModalService
   ) {}
 
-  async ngOnInit() {}
-
   async detail() {
     if (this.extension.loaded) {
-      this.router.navigate(["properties/", this.extension.name], {
-        relativeTo: this.activatedRoute,
+      this.router.navigate(['properties/', this.extension.name], {
+        relativeTo: this.activatedRoute
       });
     }
     console.log(
-      "Details for extension:",
+      'Details for extension:',
       this.extension.name,
       this.activatedRoute
     );
@@ -39,12 +37,12 @@ export class ExtensionCardComponent implements OnInit {
 
   async delete() {
     const initialState = {
-      title: "Delete extension",
-      message: "You are about to delete an extension. Do you want to proceed?",
+      title: 'Delete extension',
+      message: 'You are about to delete an extension. Do you want to proceed?',
       labels: {
-        ok: "Delete",
-        cancel: "Cancel",
-      },
+        ok: 'Delete',
+        cancel: 'Cancel'
+      }
     };
     const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
       ConfirmationModalComponent,
@@ -52,8 +50,8 @@ export class ExtensionCardComponent implements OnInit {
     );
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        //console.log("Confirmation delete result:", result);
-        if (!!result) {
+        // console.log("Confirmation delete result:", result);
+        if (result) {
           try {
             await this.analyticsService.deleteExtension(this.extension);
             this.onAppDeleted.emit();
@@ -70,7 +68,7 @@ export class ExtensionCardComponent implements OnInit {
 
   async download() {
     try {
-      let bin: ArrayBuffer = await this.analyticsService.downloadExtension(
+      const bin: ArrayBuffer = await this.analyticsService.downloadExtension(
         this.extension
       );
       const blob = new Blob([bin]);

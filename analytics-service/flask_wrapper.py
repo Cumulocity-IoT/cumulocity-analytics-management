@@ -211,18 +211,25 @@ def get_cep_extension_metadata():
 # return the managedObject that represents the cep ctrl microservice
 # returns:
 #    id
-# @app.route("/cep/diagnostic", methods=["GET"])
-# def get_cep_id():
-#     cep_id = {}
-#     return cep_id, 200
-
-
 @app.route("/cep/id", methods=["GET"])
-def get_cep_id():
-    result = agent.get_cep_id(request_headers=request.headers)
+def get_cep_operationobject_id():
+    result = agent.get_cep_operationobject_id(request_headers=request.headers)
     if (result == None):
         return f"Not found", 400
     return jsonify(result)
+
+
+# return status of cep ctrl microservice
+# returns:
+#    status
+# @app.route("/cep/status", methods=["GET"])
+@app.route("/cep/status", methods=["GET"])
+def get_get_cep_ctrl_status():
+    result = agent.get_cep_ctrl_status(request_headers=request.headers)
+    if (result == None):
+        return f"Not found", 400
+    return jsonify(result)
+
 
 
 # this endpoint was only exposed for test purposes
@@ -230,8 +237,6 @@ def get_cep_id():
 # def restart():
 #     agent.restart_cep(request_headers=request.headers)
 #     return f"OK", 200
-
-
 def extract_path(path):
     # Extract information from the API URL
     delimiters = r"[/?]"

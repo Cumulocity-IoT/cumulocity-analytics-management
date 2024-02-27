@@ -1,38 +1,32 @@
-import { Component, OnInit } from "@angular/core";
-import { IManagedObject } from "@c8y/client";
-import { WizardConfig, WizardModalService } from "@c8y/ngx-components";
-import { BsModalService, ModalOptions } from "ngx-bootstrap/modal";
-import { BehaviorSubject, Observable, of } from "rxjs";
-import {
-    catchError,
-    shareReplay,
-    switchMap,
-    tap,
-} from "rxjs/operators";
-import { AnalyticsService } from "../shared";
-import { RescueModalComponent } from "./rescue/rescue-modal.component";
+import { Component, OnInit } from '@angular/core';
+import { IManagedObject } from '@c8y/client';
+import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { ModalOptions } from 'ngx-bootstrap/modal';
+import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
+import { catchError, shareReplay, switchMap, tap } from 'rxjs/operators';
+import { AnalyticsService } from '../shared';
 
 @Component({
-  selector: "extension",
-  templateUrl: "./extension-grid.component.html",
-  styleUrls: ["./extension-grid.component.css"],
+  selector: 'a17t-extension',
+  templateUrl: './extension-grid.component.html',
+  styleUrls: ['./extension-grid.component.css']
 })
 export class ExtensionGridComponent implements OnInit {
   loading: boolean = false;
+  restarting$: Subject<boolean>;
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
-  subscription: any;
   extensions$: Observable<IManagedObject[]>;
   listClass: string;
   rescue: boolean = false;
 
   constructor(
     private analyticsService: AnalyticsService,
-    private wizardModalService: WizardModalService,
-    private bsModalService: BsModalService
+    private wizardModalService: WizardModalService
   ) {}
 
   ngOnInit() {
+    this.restarting$ = this.analyticsService.getCEP_Restarting();
     this.extensions$ = this.reload$.pipe(
       tap((clearCache) => {
         if (clearCache) {
@@ -52,7 +46,6 @@ export class ExtensionGridComponent implements OnInit {
     );
 
     this.reload$.next(false);
-    this.initializeMonitoringService();
   }
 
   loadExtensions() {
@@ -65,13 +58,13 @@ export class ExtensionGridComponent implements OnInit {
 
   addExtension() {
     const wizardConfig: WizardConfig = {
-      headerText: "Add extension",
-      headerIcon: "c8y-atom",
+      headerText: 'Add extension',
+      headerIcon: 'c8y-atom'
     };
 
     const initialState: any = {
       wizardConfig,
-      id: "uploadAnalyticsExtension",
+      id: 'uploadAnalyticsExtension'
     };
 
     const modalOptions: ModalOptions = { initialState };
@@ -82,26 +75,4 @@ export class ExtensionGridComponent implements OnInit {
     });
   }
 
-  async troubleshoot() {
-    const initialState = {
-      cepId: await this.analyticsService.getCEP_Id(),
-    };
-    this.bsModalService.show(RescueModalComponent, {
-      class: "modal-lg",
-      initialState,
-      ariaDescribedby: "modal-body",
-      ariaLabelledBy: "modal-title",
-      ignoreBackdropClick: true,
-    }).content as RescueModalComponent;
-  }
-
-  private async initializeMonitoringService(): Promise<void> {
-    this.subscription =
-      await this.analyticsService.subscribeMonitoringChannel();
-  }
-
-  ngOnDestroy(): void {
-    console.log("Stop subscription");
-    this.analyticsService.unsubscribeFromMonitoringChannel(this.subscription);
-  }
 }

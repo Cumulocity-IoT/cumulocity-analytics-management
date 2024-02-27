@@ -57,29 +57,38 @@
   ></c8y-list-display-switch>
 </c8y-action-bar-item>
 
-<div
-  *ngIf="(!loadingError && (extensions$ | async)?.length === 0)"
-  class="row"
->
-    <div class="col-lg-4 col-lg-offset-5  text-center">
-      <c8y-ui-empty-state
-        [icon]="'plugin'"
-        [title]="'No extensions loaded.' | translate"
-        [subtitle]="'Add your first extension by clicking below.' | translate"
-        [horizontal]="true"
+<div *ngIf="!loadingError && (extensions$ | async)?.length === 0" class="row">
+  <div class="col-lg-4 col-lg-offset-5 text-center">
+    <c8y-ui-empty-state
+      [icon]="'plugin'"
+      [title]="'No extensions loaded.' | translate"
+      [subtitle]="'Add your first extension by clicking below.' | translate"
+      [horizontal]="true"
+    >
+      <button
+        (click)="addExtension()"
+        class="btn btn-default btn-sm m-t-8"
+        title="{{ 'Add extension' | translate }}"
       >
-        <button
-          (click)="addExtension()"
-          class="btn btn-default btn-sm m-t-8"
-          title="{{ 'Add extension' | translate }}"
-        >
-          {{ "Add extension" | translate }}
-        </button></c8y-ui-empty-state
-      >
-    </div>
+        {{ "Add extension" | translate }}
+      </button></c8y-ui-empty-state
+    >
+  </div>
 </div>
 
-<div [ngClass]="listClass" class="card-group" *ngIf="!loading">
+<p class="text-center">
+  <c8y-progress-bar
+    message="Streaming Analytics Engine is restarting ..."
+    *ngIf="(restarting$ | async)"
+  >
+  </c8y-progress-bar>
+</p>
+
+<div
+  [ngClass]="listClass"
+  class="card-group"
+  *ngIf="!loading && (restarting$ | async) === false"
+>
   <div
     class="page-sticky-header hidden-xs d-flex"
     *ngIf="(extensions$ | async)?.length > 0"
@@ -99,11 +108,11 @@
     *ngFor="let extension of extensions$ | async"
     class="col-xs-12 col-sm-4 col-md-3"
   >
-    <extension-card
+    <a17t-extension-card
       (onAppDeleted)="loadExtensions()"
       [extension]="extension"
       class="d-contents"
-    ></extension-card>
+    ></a17t-extension-card>
   </div>
 </div>
 

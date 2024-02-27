@@ -3,11 +3,10 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CoreModule, hookRoute } from '@c8y/ngx-components';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { ExtensionCardComponent } from './extension-card.component';
-import { ExtensionDetailsComponent } from './extension-details.component';
-import { ExtensionGridComponent } from './extension-grid.component';
+import { EngineStatusComponent } from './engine-status.component';
 import { SharedModule } from '../shared/shared.module';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+import { CollapseModule } from 'ngx-bootstrap/collapse';
 
 @NgModule({
   imports: [
@@ -16,31 +15,18 @@ import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
     ReactiveFormsModule,
     DefaultSubscriptionsModule,
     PopoverModule,
+    SharedModule,
     BsDropdownModule.forRoot(),
-    SharedModule
+    CollapseModule.forRoot()
   ],
-  declarations: [
-    ExtensionGridComponent,
-    ExtensionCardComponent,
-    ExtensionDetailsComponent
-  ],
+  declarations: [EngineStatusComponent],
   providers: [
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/manage',
-      children: [
-        {
-          path: '',
-          pathMatch: 'full',
-          component: ExtensionGridComponent
-        },
-        {
-          path: 'properties/:name',
-          component: ExtensionDetailsComponent
-        }
-      ]
+      path: 'sag-ps-pkg-analytics-extension/status',
+      component: EngineStatusComponent
     })
   ]
 })
-export class ManageModule {
+export class StatusModule {
   constructor() {}
 }

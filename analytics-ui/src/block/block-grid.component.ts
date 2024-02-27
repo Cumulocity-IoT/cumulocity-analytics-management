@@ -19,85 +19,90 @@
  * @authors Christof Strack
  */
 import {
-    Component,
-    EventEmitter,
-    OnInit,
-    ViewEncapsulation,
-} from "@angular/core";
+  Component,
+  EventEmitter,
+  OnInit,
+  ViewEncapsulation
+} from '@angular/core';
 import {
-    ActionControl,
-    AlertService,
-    Column,
-    ColumnDataType,
-    Pagination,
-} from "@c8y/ngx-components";
-import { AnalyticsService, BooleanRendererComponent, CEP_Block } from "../shared";
+  ActionControl,
+  AlertService,
+  Column,
+  ColumnDataType,
+  Pagination
+} from '@c8y/ngx-components';
+import {
+  AnalyticsService,
+  BooleanRendererComponent,
+  CEP_Block
+} from '../shared';
 
 @Component({
-  selector: "c8y-block-grid",
-  templateUrl: "block-grid.component.html",
-  styleUrls:['./block-grid.component.css'],
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-block-grid',
+  templateUrl: 'block-grid.component.html',
+  styleUrls: ['./block-grid.component.css'],
+  encapsulation: ViewEncapsulation.None
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;
+
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
   blocks: CEP_Block[] = [];
   actionControls: ActionControl[] = [];
 
-  titleBlock: string = "Analytics Builder blocks";
+  titleBlock: string = 'Analytics Builder blocks';
 
   columnsBlocks: Column[] = [
     {
-      name: "name",
-      header: "Name",
-      path: "name",
+      name: 'name',
+      header: 'Name',
+      path: 'name',
       filterable: false,
       dataType: ColumnDataType.TextShort,
-      gridTrackSize: "10%",
-      visible: true,
+      gridTrackSize: '10%',
+      visible: true
     },
     {
-      header: "Category",
-      name: "category",
-      path: "category",
-      gridTrackSize: "10%",
+      header: 'Category',
+      name: 'category',
+      path: 'category',
+      gridTrackSize: '10%',
       dataType: ColumnDataType.TextShort,
-      filterable: true,
+      filterable: true
     },
     {
-      header: "Custom Block",
-      name: "custom",
-      path: "custom",
-      gridTrackSize: "10%",
+      header: 'Custom Block',
+      name: 'custom',
+      path: 'custom',
+      gridTrackSize: '10%',
       filterable: true,
       dataType: ColumnDataType.TextShort,
       sortable: true,
-      //cellCSSClassName: 'text-center',
+      // cellCSSClassName: 'text-center',
       cellRendererComponent: BooleanRendererComponent
     },
     {
-      header: "Description",
-      name: "description",
-      path: "description",
+      header: 'Description',
+      name: 'description',
+      path: 'description',
       filterable: true,
-      sortable: true,
+      sortable: true
     },
     {
-      header: "Extension Name",
-      name: "extension",
-      path: "extension",
-      gridTrackSize: "15%",
+      header: 'Extension Name',
+      name: 'extension',
+      path: 'extension',
+      gridTrackSize: '15%',
 
       filterable: true,
-      sortable: true,
-    },
+      sortable: true
+    }
   ];
 
   pagination: Pagination = {
     pageSize: 3,
-    currentPage: 1,
+    currentPage: 1
   };
 
   constructor(
@@ -118,5 +123,4 @@ export class BlockGridComponent implements OnInit {
     this.loading = false;
   }
 
-  ngOnDestroy() {}
 }

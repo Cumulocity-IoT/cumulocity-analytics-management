@@ -21,8 +21,6 @@ import json
 
 
 class C8YAgent:
-    APAMA_CTRL_APPLICATION_NAME = "apama-ctrl-1c-4g"
-
     def __init__(self):
         self._logger = logging.getLogger("C8YAgent")
         self._logger.setLevel(logging.DEBUG)
@@ -48,50 +46,59 @@ class C8YAgent:
                 resource="/service/cep/restart", json={}
             )
         except Exception as e:
-            self._logger.error(f"Ignoring exception!", exc_info=True)
+            self._logger.error(f"Exception:", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
 
         self._logger.info(f"Restarted CEP!")
 
-    def get_cep_id(self, request_headers):
+    def get_cep_operationobject_id(self, request_headers):
         try:
-            self._logger.info(f"Retrieving CEP id ...")
-            apps = self.c8yapp.get_tenant_instance(
-                headers=request_headers
-            ).applications.select(name=self.APAMA_CTRL_APPLICATION_NAME)
+            self._logger.info(f"Retrieving id of operation object for CEP ...")
+            
+            response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"/service/cep/diagnostics/apamaCtrlStatus")
             try:
-                app_id = None
-                cep_id = None
-                for app in apps:
-                    app_id = app.id
-                    self._logger.info(f"Found app id: {app_id}")
-                    # break
-                query = f"$filter=applicationId eq '{app_id}' and name eq '{self.APAMA_CTRL_APPLICATION_NAME}'"
+                app_id = response["microservice_application_id"]
+                microservice_name = response["microservice_name"]
+                cep_operationobject_id = None
+                query = f"applicationId eq '{app_id}' and name eq '{microservice_name}'"
 
                 self._logger.info(f"Build filter: {query}")
                 
                 managed_objects_app = self.c8yapp.get_tenant_instance(
                     headers=request_headers
-                ).inventory.select(query)
+                ).inventory.select(query=query)
                 managed_object_id = None
                 for managed_object in managed_objects_app:
                     self._logger.info(
                         f"Found managed object: {managed_object.id} for cep app: {app_id}"
                     )
                     managed_object_id = managed_object
-                    cep_id = managed_object_id.id
+                    cep_operationobject_id = managed_object_id.id
                     break
                 if managed_object_id == None:
                     self._logger.error(f"Not found !")
                     return None
-                return {"id": cep_id}
+                return {"id": cep_operationobject_id}
             except:
                 self._logger.error(
                     f"Error finding app id: {app_id}",
                     exc_info=True,
                 )
         except Exception as e:
-            self._logger.error(f"Ignoring exception!", exc_info=True)
+            self._logger.error(f"Exception:", exc_info=True)
+            # for keys,values in request_headers.items():
+            #     self._logger.info(f"Headers: {keys} {values}")
+
+    def get_cep_ctrl_status(self, request_headers):
+        try:
+            self._logger.info(f"Retrieving CEP control status ...")
+            
+            response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"/service/cep/diagnostics/apamaCtrlStatus")
+            return response
+        except Exception as e:
+            self._logger.error(f"Exception:", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")

@@ -1,4 +1,4 @@
-<c8y-title translate>Analytics Builder community samples</c8y-title>
+<c8y-title translate>Monitoring Streaming Analytics</c8y-title>
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
     [icon]="'c8y-atom'"
@@ -15,15 +15,157 @@
   >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
-<div class="card card--fullpage">
-  <div class="card-header separator">
-    <h3>Safe Mode</h3>
+<div class="card card--grid content-fullpage grid__col--6-6--md">
+  <div class="inner-scroll bg-level-0 p-r-8">
+    <div class="card-header separator sticky-top large-padding">
+      <h4>Latest alarms</h4>
+    </div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <c8y-form-group>
+        <form class="form-inline">
+          <label
+            *ngFor="let stat of AlarmStatus | keyvalue"
+            class="c8y-radio radio-inline"
+            title="{{ stat.value }}"
+          >
+            <input
+              type="radio"
+              checked="checked"
+              name="c8y-group"
+              value="{{ stat.value }}"
+              [(ngModel)]="status"
+            />
+            <span></span>
+            <span>{{ stat.value }}</span>
+          </label>
+          <button
+            type="submit"
+            (click)="search()"
+            class="btn btn-default btn-sm m-b-8"
+          >
+            Search
+          </button>
+        </form>
+      </c8y-form-group>
+      <div class="timeline-list list-condensed">
+        <div
+          class="timeline-list-item d-flex"
+          *ngFor="let alarm of (alarms$ | async)?.data"
+        >
+          <small class="timeline-item-date">
+            {{ alarm.lastUpdated | date : "short" }}
+          </small>
+          <div class="timeline-item-content d-flex flex-wrap">
+            <div class="list-item-icon">
+              <i c8yIcon="alarm"></i>
+            </div>
+            <div class="list-item-body">
+              <div class="row">
+                <div class="col-sm-9">
+                  <label class="small" translate>Severity&nbsp;</label>
+                  <span>{{ alarm.severity }}</span>
+                  <label class="small" translate>&nbsp;&nbsp;Type&nbsp;</label>
+                  <span>{{ alarm.type }}</span>
+                  <br />
+                  <span>{{ alarm.text }}</span>
+                </div>
+                <div class="col-sm-3">
+                  <label class="small" translate>Status&nbsp;</label>
+                  <span>{{ alarm.status }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <c8y-ui-empty-state
+          *ngIf="(alarms$ | async)?.data.length === 0"
+          [icon]="'alarm'"
+          [title]="'No alarms found.' | translate"
+          [horizontal]="true"
+        ></c8y-ui-empty-state>
+      </div>
+      <div class="p-t-16">
+        <button
+          class="btn btn-default"
+          title="{{ 'Previous page' | translate }}"
+          (click)="nextPageAlarm(-1)"
+        >
+          <i c8yIcon="arrow-left"></i>
+          {{ "Previous alarms" | translate }}
+        </button>
+        <button
+          class="btn btn-default"
+          title="{{ 'Next page' | translate }}"
+          (click)="nextPageAlarm(1)"
+        >
+          <i c8yIcon="arrow-right"></i>
+          {{ "Next alarms" | translate }}
+        </button>
+      </div>
+    </div>
   </div>
-  <div class="inner-scroll">
-    <div class="card-block separator">
+  <div class="inner-scroll bg-level-0 p-l-8">
+    <div class="card-header separator sticky-top large-padding">
+      <h4>Latest events</h4>
+    </div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <div class="timeline-list list-condensed">
+        <div
+          class="timeline-list-item d-flex"
+          *ngFor="let event of (events$ | async)?.data"
+        >
+          <small class="timeline-item-date">
+            {{ event.lastUpdated | date : "short" }}
+          </small>
+          <div class="timeline-item-content d-flex flex-wrap">
+            <div class="list-item-icon">
+              <i c8yIcon="c8y-events"></i>
+            </div>
+            <div class="list-item-body">
+              <div class="row">
+                <div class="col-sm-12">
+                  <label class="small" translate>&nbsp;&nbsp;Type&nbsp;</label>
+                  <span>{{ event.type }}</span>
+                  <br />
+                  <span>{{ event.text }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <c8y-ui-empty-state
+          *ngIf="(events$ | async)?.data.length === 0"
+          [icon]="'event'"
+          [title]="'No events found.' | translate"
+          [horizontal]="true"
+        ></c8y-ui-empty-state>
+      </div>
+      <div class="p-t-16">
+        <button
+          class="btn btn-default"
+          title="{{ 'Previous page' | translate }}"
+          (click)="nextPageEvent(-1)"
+        >
+          <i c8yIcon="arrow-left"></i>
+          {{ "Previous events" | translate }}
+        </button>
+        <button
+          class="btn btn-default"
+          title="{{ 'Next page' | translate }}"
+          (click)="nextPageEvent(1)"
+        >
+          <i c8yIcon="arrow-right"></i>
+          {{ "Next events" | translate }}
+        </button>
+      </div>
+    </div>
+  </div>
+  <div class="inner-scroll bg-level-0 p-r-8">
+    <div class="card-header separator sticky-top large-padding"><h4>Safe Mode</h4></div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
       <p>
         <span
-          >In case no extension is loaded after deploying your latest extension
+          >If no extension is loaded after deploying your latest extension
           please try to delete this extension and restart the Streaming
           Analytics again.</span
         >
@@ -47,221 +189,18 @@
       </p>
     </div>
   </div>
-  <div class="card-header separator">
-    <h3>Latest alarms & events for Streaming Analytics</h3>
-  </div>
-  <div>
-    <div class="card-block xlist-group-item collapsible card-inner-scroll">
-      <div
-        class="xlist-item-actions d-flex"
-        style="background: var(--c8y-navigator-background-selected); margin:4px"
+  <div class="inner-scroll bg-level-0 p-l-8">
+    <div class="card-header separator sticky-top large-padding">
+      <h4>CEP Engine Status</h4>
+    </div>
+    <div class="card-block large-padding bg-inherit overflow-visible">
+      <c8y-properties-list
+        *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
+        [title]="'CEP Engine Status'"
+        [emptyLabel]="'--'"
+        [properties]="cepCtrlStatusLabels$ | async"
       >
-        <button
-          type="button"
-          title="Show alarms"
-          class="collapse-btn"
-          (click)="
-            isAlarmExpanded = !isAlarmExpanded;
-            isEventExpanded = !isEventExpanded
-          "
-          [attr.aria-expanded]="isAlarmExpanded"
-          aria-controls="collapseBasic"
-        >
-          <i
-            [class]="
-              isAlarmExpanded
-                ? 'dlt-c8y-icon-chevron-right'
-                : 'dlt-c8y-icon-chevron-down'
-            "
-          ></i>
-        </button>
-        <span class="p-t-8">Alarms</span>
-      </div>
-      <div
-        id="collapseAlarm"
-        class="collapse"
-        [collapse]="!isAlarmExpanded"
-        [isAnimated]="true"
-      >
-        <div class="card-block">
-          <c8y-form-group>
-            <form class="form-inline">
-              <label
-                *ngFor="let stat of AlarmStatus | keyvalue"
-                class="c8y-radio radio-inline"
-                title="{{ stat.value }}"
-              >
-                <input
-                  type="radio"
-                  checked="checked"
-                  name="c8y-group"
-                  value="{{ stat.value }}"
-                  [(ngModel)]="status"
-                />
-                <span></span>
-                <span>{{ stat.value }}</span>
-              </label>
-              <button
-                type="submit"
-                (click)="search()"
-                class="btn btn-default btn-sm m-b-8"
-              >
-                Search
-              </button>
-            </form>
-          </c8y-form-group>
-          <div style="height: 430px; overflow: auto">
-            <div class="timeline-list list-condensed">
-              <div
-                class="timeline-list-item d-flex"
-                *ngFor="let alarm of (alarms$ | async)?.data"
-              >
-                <small class="timeline-item-date">
-                  {{ alarm.lastUpdated | date : "short" }}
-                </small>
-                <div class="timeline-item-content d-flex flex-wrap">
-                  <div class="list-item-icon">
-                    <i c8yIcon="alarm"></i>
-                  </div>
-                  <div class="list-item-body">
-                    <div class="row">
-                      <div class="col-sm-9">
-                        <label class="small" translate>Severity&nbsp;</label>
-                        <span>{{ alarm.severity }}</span>
-                        <label class="small" translate
-                          >&nbsp;&nbsp;Type&nbsp;</label
-                        >
-                        <span>{{ alarm.type }}</span>
-                        <br />
-                        <span>{{ alarm.text }}</span>
-                      </div>
-                      <div class="col-sm-3">
-                        <label class="small" translate>Status&nbsp;</label>
-                        <span>{{ alarm.status }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <c8y-ui-empty-state
-                *ngIf="(alarms$ | async)?.data.length == 0"
-                [icon]="'alarm'"
-                [title]="'No alarms found.' | translate"
-                [horizontal]="true"
-              ></c8y-ui-empty-state>
-            </div>
-            <div class="p-t-48">
-              <button
-                class="btn btn-default"
-                title="{{ 'Previous page' | translate }}"
-                (click)="nextPageAlarm(-1)"
-              >
-                <i c8yIcon="arrow-left"></i>
-                {{ "Previous alarms" | translate }}
-              </button>
-              <button
-                class="btn btn-default"
-                title="{{ 'Next page' | translate }}"
-                (click)="nextPageAlarm(1)"
-              >
-                <i c8yIcon="arrow-right"></i>
-                {{ "Next alarms" | translate }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="card-block xlist-group-item collapsible card-inner-scroll">
-        <div
-          class="xlist-item-actions d-flex"
-          style="background: var(--c8y-navigator-background-selected); margin: 4px;"
-        >
-          <button
-            type="button"
-            title="Show events"
-            class="collapse-btn"
-            (click)="
-              isAlarmExpanded = !isAlarmExpanded;
-              isEventExpanded = !isEventExpanded
-            "
-            [attr.aria-expanded]="isEventExpanded"
-            aria-controls="collapseBasic"
-          >
-            <i
-              [class]="
-                isEventExpanded
-                  ? 'dlt-c8y-icon-chevron-right'
-                  : 'dlt-c8y-icon-chevron-down'
-              "
-            ></i>
-          </button>
-          <span class="p-t-8">Events</span>
-        </div>
-        <div
-          id="collapseEvent"
-          class="collapse"
-          [collapse]="!isEventExpanded"
-          [isAnimated]="true"
-        >
-          <div class="card-block">
-            <div style="height: 430px; overflow: auto">
-              <div class="timeline-list list-condensed">
-                <div
-                  class="timeline-list-item d-flex"
-                  *ngFor="let event of (events$ | async)?.data"
-                >
-                  <small class="timeline-item-date">
-                    {{ event.lastUpdated | date : "short" }}
-                  </small>
-                  <div class="timeline-item-content d-flex flex-wrap">
-                    <div class="list-item-icon">
-                      <i c8yIcon="c8y-events"></i>
-                    </div>
-                    <div class="list-item-body">
-                      <div class="row">
-                        <div class="col-sm-9">
-                          <label class="small" translate
-                            >&nbsp;&nbsp;Type&nbsp;</label
-                          >
-                          <span>{{ event.type }}</span>
-                          <br />
-                          <span>{{ event.text }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <c8y-ui-empty-state
-                  *ngIf="(events$ | async)?.data.length == 0"
-                  [icon]="'event'"
-                  [title]="'No events found.' | translate"
-                  [horizontal]="true"
-                ></c8y-ui-empty-state>
-              </div>
-              <div class="p-t-48">
-                <button
-                  class="btn btn-default"
-                  title="{{ 'Previous page' | translate }}"
-                  (click)="nextPageEvent(-1)"
-                >
-                  <i c8yIcon="arrow-left"></i>
-                  {{ "Previous events" | translate }}
-                </button>
-                <button
-                  class="btn btn-default"
-                  title="{{ 'Next page' | translate }}"
-                  (click)="nextPageEvent(1)"
-                >
-                  <i c8yIcon="arrow-right"></i>
-                  {{ "Next events" | translate }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      </c8y-properties-list>
     </div>
   </div>
-
-  <!-- <div class="card-footer separator"></div> -->
 </div>

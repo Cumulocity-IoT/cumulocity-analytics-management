@@ -18,40 +18,40 @@
  *
  * @authors Christof Strack
  */
-import { CdkStep } from "@angular/cdk/stepper";
+import { CdkStep } from '@angular/cdk/stepper';
 import {
-    AfterViewInit,
-    Component,
-    ElementRef,
-    EventEmitter,
-    Input,
-    OnInit,
-    Output,
-    ViewChild,
-    ViewEncapsulation,
-} from "@angular/core";
-import { C8yStepper } from "@c8y/ngx-components";
-import { BsModalService } from "ngx-bootstrap/modal";
-import { AnalyticsService } from "../../shared";
+  AfterViewInit,
+  Component,
+  ElementRef,
+  EventEmitter,
+  Input,
+  OnInit,
+  Output,
+  ViewChild,
+  ViewEncapsulation
+} from '@angular/core';
+import { C8yStepper } from '@c8y/ngx-components';
+import { BsModalService } from 'ngx-bootstrap/modal';
+import { AnalyticsService } from '../../shared';
 
 @Component({
-  selector: "c8y-editor-stepper",
-  templateUrl: "editor-stepper.component.html",
-  styleUrls: ["./editor-stepper.component.css"],
-  encapsulation: ViewEncapsulation.None,
+  selector: 'a17t-editor-stepper',
+  templateUrl: 'editor-stepper.component.html',
+  styleUrls: ['./editor-stepper.component.css'],
+  encapsulation: ViewEncapsulation.None
 })
-export class EditorStepperComponent implements OnInit, AfterViewInit{
+export class EditorStepperComponent implements OnInit, AfterViewInit {
   @Input() source: string;
   @Output() onCommit = new EventEmitter<boolean>();
   @Output() onCancel = new EventEmitter<boolean>();
-  @ViewChild("sourceEditor", { static: false })
+  @ViewChild('sourceEditor', { static: false })
   sourceEditor: ElementRef;
 
   step: any;
 
   constructor(
     public bsModalService: BsModalService,
-    public analyticsService: AnalyticsService,
+    public analyticsService: AnalyticsService
   ) {}
 
   ngAfterViewInit(): void {
@@ -59,7 +59,7 @@ export class EditorStepperComponent implements OnInit, AfterViewInit{
   }
 
   ngOnInit() {
-    console.log("Monitor to view.:", this.source);
+    console.log('Monitor to view.:', this.source);
   }
 
   async onCommitButton() {
@@ -71,7 +71,7 @@ export class EditorStepperComponent implements OnInit, AfterViewInit{
   }
 
   public async onStepChange(event): Promise<void> {
-    console.log("OnStepChange", event);
+    console.log('OnStepChange', event);
   }
 
   public async onNextStep(event: {
@@ -83,16 +83,16 @@ export class EditorStepperComponent implements OnInit, AfterViewInit{
 
   public addLineClass() {
     const ne = this.sourceEditor.nativeElement;
-    const lines = ne.innerText.split("\n"); // can use innerHTML also
+    const lines = ne.innerText.split('\n'); // can use innerHTML also
     while (ne.childNodes.length > 0) {
       this.sourceEditor.nativeElement.removeChild(ne.childNodes[0]);
     }
-    for (var i = 0; i < lines.length; i++) {
-      var span = document.createElement("span");
-      span.className = "line";
+    for (let i = 0; i < lines.length; i++) {
+      const span = document.createElement('span');
+      span.className = 'line';
       span.innerText = lines[i]; // can use innerHTML also
       ne.appendChild(span);
-      ne.appendChild(document.createTextNode("\n"));
+      ne.appendChild(document.createTextNode('\n'));
     }
   }
 }
