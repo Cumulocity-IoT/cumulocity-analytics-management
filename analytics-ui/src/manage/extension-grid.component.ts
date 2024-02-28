@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { IManagedObject } from '@c8y/client';
-import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { AlertService, WizardConfig, WizardModalService, gettext } from '@c8y/ngx-components';
 import { ModalOptions } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
 import { catchError, shareReplay, switchMap, tap } from 'rxjs/operators';
@@ -24,6 +24,7 @@ export class ExtensionGridComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
+    private alertService: AlertService,
     private wizardModalService: WizardModalService
   ) {}
 
@@ -63,6 +64,7 @@ export class ExtensionGridComponent implements OnInit {
   }
 
   restartCEP() {
+    this.alertService.success(gettext('Deployment (restart) submitted ...'));
     this.analyticsService.restartCEP();
   }
 

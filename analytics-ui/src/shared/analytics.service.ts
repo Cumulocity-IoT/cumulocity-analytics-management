@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { EventEmitter, Injectable } from '@angular/core';
 import {
   ApplicationService,
@@ -334,7 +335,7 @@ export class AnalyticsService {
 
   private updateStatusFromOperationObject(p: object): void {
     const payload = p['data']['data'];
-    this.cepOperationObject$.next(payload?.c8y_Status);
+    this.cepOperationObject$.next(payload);
     if (payload?.c8y_Status.status == 'Up') {
       this._cepCtrlStatus = undefined;
       // cache new cep status
@@ -362,7 +363,6 @@ export class AnalyticsService {
     };
     const url = '/service/cep/restart';
     await this.fetchClient.fetch(url, fetchOptions);
-    // this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
   }
 

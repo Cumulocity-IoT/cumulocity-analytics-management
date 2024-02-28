@@ -16,21 +16,18 @@
 
 ## Overview
 
-This solution extends the standard Cumulocity Streaming Analytics application with a plugin to manage and add Analytics Builder extensions. Currently the standard UI does not offer the upload of custom blocks via .zip files. This extension enhances the standard Streaming-Analytics UI with these capabilities.
+This solution extends the functionality of the standard Cumulocity Streaming Analytics application by incorporating a plugin to manage and add Analytics Builder extensions. The current standard user interface lacks the capability to upload custom blocks packaged as **.zip** files. This plugin enhances the Streaming-Analytics UI by introducing these capabilities.
 
-You can mange the complete lifecycle off an extension:
-* list, upload, download and delete Analytics Builder extensions
-* list installed blocks
-* manage github repositories, which serve as a source for building new extensions on the fly
-* build new extensions from selected blocks and deploy the extensions to the Streaming Analytics engine
-* monitor alarm status and events status send from the Analytics Builder engine, to analyze failures in the deployment process
+The extension allows you to manage the complete lifecycle of an extension:
+* List, upload, download, and delete Analytics Builder extensions.
+* List installed blocks.
+* Manage GitHub repositories, which act as a source for dynamically building new extensions.
+* Build new extensions from selected blocks and deploy them in the Streaming Analytics engine.
+* Monitor alarm status and events sent from the Analytics Builder engine to analyze deployment failures.
 
-Analytics Builder blocks are build based on the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). Externally build extensions can as well be uploaded via the `Add extension` button. 
-Drop the .zip file to the modal dialog and the extension will be loaded. In order to use them you have to restart the streaming analytics engine. Click on the "Deploy extension (Restart)" button and wait for the notification that the engine was restarted.
+Analytics Builder blocks are build using the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). Additionally, externally built extensions can be uploaded in the UI. 
 
 ![Extension installation](resources/images/extension-installation-animated.gif)
-
-<!-- ![Extension installation](resources/images/extension-installation.png) -->
 
 In addition a table lists all installed analytics blocks with the following information: name, category, custom block, extension package name.
 
@@ -42,7 +39,18 @@ For a deletion or upload to take effect you need to restart the analytics stream
 
 ### Upload custom extension
 
-After the deployment (restart of streaming analytics) the Block will be available within the Steaming Analytics Application. Deleting a block will remove the block again. Keep in mind that no checking of any usage of that particular custom block is done an thus streaming flows might not work anymore.
+An externally built extensions can be uploaded via the button **Add extension**. 
+Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Deploy extension (Restart)** and wait for the notification confirming the engine restart.
+
+After the deployment (restart of streaming analytics) the block will be available within the Streaming Analytics Application.
+
+When the deployment of the extension was not successful an indicator [Safe Mode](https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup) modus appears in the action bar of the **Manage extensions** tab, as on the image below. 
+
+![Monitoring](resources/images/safe-mode.png)
+
+ This usually happen when you try to deploy a faulty extension. In this case please check the logs of the microservice **apama-ctrl-Xc-Xg**, delete the extension and restart the Streaming Analytics engine.
+
+Removing an extension will eliminate the block once more. It's important to note that when deleting an extension, there is no verification of whether the blocks within this extension are utilized in existing models. This could lead to models that are no longer deployable.
 
 ![Use Extension](resources/images/analytics-builder.png)
 
@@ -59,12 +67,8 @@ For a custom extension you have the following options:
 
 ![Build custom extension](resources/images/manage-extension.png)
 
-
 ## Samples repositories and building custom extensions
-Block samples from github repositories can selected to build custom extension online.
-In order to use this option first you have to configure your Github repository.
-The configured repositories can be updated, deleted and de-/enabled. Only enabled repositories are shown in the list of block samples.
-You can manage the github repositories using the following UI:
+Block samples from GitHub repositories can be selected to build a custom extension online. To utilize this option, you must first configure your GitHub repository. Configured repositories can be updated, deleted, and enabled/disabled. Only enabled repositories will appear in the list of block samples. You can manage GitHub repositories using the provided user interface (UI):
 
 ![Manage repositories](resources/images/samples-manage-repository.png)
 
@@ -145,7 +149,7 @@ git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
  The microservice downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. This this zip file is downloaded locally. In an additional step it needs to be uploaded through UI, see [Upload custom extension](#upload-custom-extension).
  You can specify if the extension should be uploaded automatically or it should be downloaded by the browser UI.
  
- The microservice is multi tenant ready
+ The microservice is multi tenant ready.
 
 ## Prerequisites to build/deploy the microservice
 * Docker host/client 

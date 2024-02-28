@@ -34,8 +34,8 @@
     <span
       class="c8y-pulse animated pulse animation-slow"
       [ngClass]="{
-        active: (cepOperationObject$ | async)?.c8y_Status.status === 'Up',
-        inactive: (cepOperationObject$ | async)?.c8y_Status.status === 'Down'
+        active: (cepOperationObject$ | async)?.c8y_Status?.status === 'Up',
+        inactive: (cepOperationObject$ | async)?.c8y_Status?.status === 'Down'
       }"
     ></span>
     <a
@@ -110,7 +110,7 @@
 <p class="text-center">
   <c8y-progress-bar
     message="Streaming Analytics Engine is restarting ..."
-    *ngIf="(cepOperationObject$ | async)?.c8y_Status.status === 'Down'"
+    *ngIf="(cepOperationObject$ | async)?.c8y_Status?.status === 'Down'"
   >
   </c8y-progress-bar>
 </p>
@@ -118,7 +118,7 @@
 <div
   [ngClass]="listClass"
   class="card-group"
-  *ngIf="!loading && (cepOperationObject$ | async)?.c8y_Status.status === 'Up'"
+  *ngIf="!loading && (cepOperationObject$ | async)?.c8y_Status?.status === 'Up'"
 >
   <div
     class="page-sticky-header hidden-xs d-flex"
