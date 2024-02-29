@@ -9,6 +9,7 @@ import { CustomSwitchField } from './component/custom-switch-field';
 import { ConfirmationModalComponent } from './component/confirmation-modal.component';
 import { BooleanRendererComponent } from './component/boolean-renderer.component';
 import { ExtensionCreateComponent } from './component/extension-create-modal.component';
+import { LinkRendererComponent } from './component/link-renderer.component';
 
 @NgModule({
   imports: [
@@ -22,6 +23,7 @@ import { ExtensionCreateComponent } from './component/extension-create-modal.com
   declarations: [
     ConfirmationModalComponent,
     BooleanRendererComponent,
+    LinkRendererComponent,
     ExtensionCreateComponent,
     CustomSwitchField
   ],

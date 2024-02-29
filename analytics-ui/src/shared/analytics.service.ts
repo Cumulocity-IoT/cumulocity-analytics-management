@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { EventEmitter, Injectable } from '@angular/core';
 import {
   ApplicationService,
@@ -12,14 +13,8 @@ import {
   Realtime
 } from '@c8y/client';
 
-import {
-  AlertService,
-  gettext,
-  ModalService,
-  Status
-} from '@c8y/ngx-components';
+import { AlertService, gettext } from '@c8y/ngx-components';
 
-import { TranslateService } from '@ngx-translate/core';
 import { BehaviorSubject, Subject } from 'rxjs';
 import {
   CEP_Block,
@@ -41,19 +36,17 @@ export class AnalyticsService {
   appDeleted = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
   private _cepOperationObjectId: Promise<string>;
-  private _cepStatus: Promise<any>;
+  private _cepCtrlStatus: Promise<any>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private restarting$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
+  private cepOperationObject$: BehaviorSubject<any> = new BehaviorSubject<any>(
+    {}
   );
   private realtime: Realtime;
 
   constructor(
-    private modal: ModalService,
     private alertService: AlertService,
-    private translateService: TranslateService,
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
@@ -124,18 +117,6 @@ export class AnalyticsService {
   }
 
   async deleteExtension(app: IManagedObject): Promise<void> {
-    const { name } = app;
-    await this.modal.confirm(
-      gettext('Delete extension'),
-      this.translateService.instant(
-        gettext(
-          'You are about to delete extension "{{name}}". Do you want to proceed?'
-        ),
-        { name }
-      ),
-      Status.DANGER,
-      { ok: gettext('Delete'), cancel: gettext('Cancel') }
-    );
     await this.inventoryBinaryService.delete(app.id);
     this.alertService.success(gettext('Extension deleted.'));
     this.appDeleted.emit(app);
@@ -206,7 +187,7 @@ export class AnalyticsService {
     return data;
   }
 
-  async getCEP_OperationObject(): Promise<string> {
+  async getCepOperationObjectId(): Promise<string> {
     let cepOperationObjectId: string;
     if (!this._cepOperationObjectId) {
       const useBackend = true;
@@ -265,13 +246,13 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCEP_Restarting(): Subject<boolean> {
-    return this.restarting$;
+  getCepOperationsObject(): Subject<string> {
+    return this.cepOperationObject$;
   }
 
-  async getCEP_Status(): Promise<any> {
+  async getCepCtrlStatus(): Promise<any> {
     let response: IFetchResponse;
-    if (!this._cepStatus) {
+    if (!this._cepCtrlStatus) {
       const useBackend = false;
       if (useBackend) {
         // get name of microservice from cep endpoint
@@ -293,17 +274,22 @@ export class AnalyticsService {
           method: 'GET'
         });
       }
-      this._cepStatus = response.json();
+      this._cepCtrlStatus = response.json();
     }
-    return this._cepStatus;
+    return this._cepCtrlStatus;
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
-    const cepOperationObjectId = await this.getCEP_OperationObject();
-    console.log('Started subscription on CEP operationObject:', cepOperationObjectId);
+    const cepOperationObjectId = await this.getCepOperationObjectId();
+    const { data } = await this.inventoryService.detail(cepOperationObjectId);
+    this.cepOperationObject$.next(data);
+    console.log(
+      'Started subscription on CEP operationObject:',
+      cepOperationObjectId
+    );
     const subMO = this.realtime.subscribe(
       `/managedobjects/${cepOperationObjectId}`,
-      this.updateStatusFromMO.bind(this)
+      this.updateStatusFromOperationObject.bind(this)
     );
     return subMO;
 
@@ -347,15 +333,15 @@ export class AnalyticsService {
     this.realtime.unsubscribe(subscription);
   }
 
-  private updateStatusFromMO(p: object): void {
+  private updateStatusFromOperationObject(p: object): void {
     const payload = p['data']['data'];
-    this.restarting$.next(payload?.c8y_Status.status == 'Down');
+    this.cepOperationObject$.next(payload);
     if (payload?.c8y_Status.status == 'Up') {
-      this._cepStatus = undefined;
+      this._cepCtrlStatus = undefined;
       // cache new cep status
-      this.getCEP_Status();
+      this.getCepCtrlStatus();
     }
-    // console.log("New updateStatusFromMO for cep:", payload);
+    console.log('New updateStatusFromOperationObject for cep:', payload);
   }
 
   updateUploadProgress(event): void {
@@ -377,7 +363,6 @@ export class AnalyticsService {
     };
     const url = '/service/cep/restart';
     await this.fetchClient.fetch(url, fetchOptions);
-    // this.alertService.success(gettext("Deployment (restart) submitted ..."));
     this.clearCaches();
   }
 

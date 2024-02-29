@@ -87,7 +87,7 @@ export class ExtensionCreateComponent implements OnInit {
             defaultValue: false,
             wrappers: ['c8y-form-field'],
             templateOptions: {
-              label: 'Upload Extension',
+              label: 'Upload extension',
               switchMode: true,
               description:
                 'The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.'
@@ -113,7 +113,7 @@ export class ExtensionCreateComponent implements OnInit {
   }
 
   onDismiss(event) {
-    console.log('Dismiss');
+    console.log(`Dismiss ${event}`);
     this.closeSubject.next(undefined);
   }
 

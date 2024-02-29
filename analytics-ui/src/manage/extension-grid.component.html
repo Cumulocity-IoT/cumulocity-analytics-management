@@ -1,4 +1,4 @@
-<c8y-title>{{ "All extensions" | translate }}</c8y-title>
+<c8y-title>{{ 'All extensions' | translate }}</c8y-title>
 
 <c8y-breadcrumb>
   <c8y-breadcrumb-item
@@ -17,6 +17,37 @@
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
+<c8y-action-bar-item [placement]="'left'" *ngIf="cepCtrlStatus?.is_safe_mode">
+  <a
+    href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+    target="'_blank'"
+    ><i c8yIcon="warning" class="animated fadeIn infinite" style="animation-duration: 1.5s"></i><span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' }}</span
+    ></a
+  >
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
+  <div
+    class="c8y-realtime p-r-8"
+    [title]="'Streaming Analytics ' + (cepOperationObject$ | async)"
+  >
+    <span
+      class="c8y-pulse animated pulse animation-slow"
+      [ngClass]="{
+        active: (cepOperationObject$ | async)?.c8y_Status?.status === 'Up',
+        inactive: (cepOperationObject$ | async)?.c8y_Status?.status === 'Down'
+      }"
+    ></span>
+    <a
+      href="/apps/administration/index.html#/ecosystem/microservice/microservices/{{
+        cepId
+      }}/properties"
+      target="'_blank'"
+      >{{ 'Streaming Analytics' }}</a
+    >
+  </div>
+</c8y-action-bar-item>
+
 <c8y-action-bar-item [placement]="'right'">
   <button
     (click)="addExtension()"
@@ -24,7 +55,7 @@
     title="{{ 'Add extension' | translate }}"
   >
     <i c8yIcon="plus-circle"></i>
-    {{ "Add extension" | translate }}
+    {{ 'Add extension' | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -35,7 +66,7 @@
     title="{{ 'Deploy extension (Restart)' | translate }}"
   >
     <i c8yIcon="c8y-solution-accelerator"></i>
-    {{ "Deploy extension (Restart)" | translate }}
+    {{ 'Deploy extension (Restart)' | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -46,7 +77,7 @@
     title="{{ 'Refresh' | translate }}"
   >
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
-    {{ "Refresh" | translate }}
+    {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -70,7 +101,7 @@
         class="btn btn-default btn-sm m-t-8"
         title="{{ 'Add extension' | translate }}"
       >
-        {{ "Add extension" | translate }}
+        {{ 'Add extension' | translate }}
       </button></c8y-ui-empty-state
     >
   </div>
@@ -79,7 +110,7 @@
 <p class="text-center">
   <c8y-progress-bar
     message="Streaming Analytics Engine is restarting ..."
-    *ngIf="(restarting$ | async)"
+    *ngIf="(cepOperationObject$ | async)?.c8y_Status?.status === 'Down'"
   >
   </c8y-progress-bar>
 </p>
@@ -87,21 +118,26 @@
 <div
   [ngClass]="listClass"
   class="card-group"
-  *ngIf="!loading && (restarting$ | async) === false"
+  *ngIf="!loading && (cepOperationObject$ | async)?.c8y_Status?.status === 'Up'"
 >
   <div
     class="page-sticky-header hidden-xs d-flex"
     *ngIf="(extensions$ | async)?.length > 0"
   >
-    <div class="card-block card-column-20">
-      <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"></div>
-      {{ "Extension" | translate }}
+    <div class="card-block card-column-20 p-l-0">
+      <!-- <div class="card-appicon p-l-32 p-r-16 m-r-0 m-l-4"> -->
+      <div class="card-appicon"></div>
+      {{ 'Extension' | translate }}
     </div>
-    <div class="card-block card-column-20">{{ "Loaded" | translate }}</div>
-    <div class="card-block card-column-20">
-      {{ "Number Blocks" | translate }}
+    <div class="card-block card-column-20 p-l-0">
+      {{ 'Loaded' | translate }}
     </div>
-    <div class="card-block card-column-20">{{ "Created" | translate }}</div>
+    <div class="card-block card-column-20 p-l-0">
+      {{ 'Included Blocks' | translate }}
+    </div>
+    <div class="card-block card-column-20 p-l-0">
+      {{ 'Created' | translate }}
+    </div>
     <div class="card-block card-column-10"></div>
   </div>
   <div
@@ -109,7 +145,7 @@
     class="col-xs-12 col-sm-4 col-md-3"
   >
     <a17t-extension-card
-      (onAppDeleted)="loadExtensions()"
+      (appDeleted)="loadExtensions()"
       [extension]="extension"
       class="d-contents"
     ></a17t-extension-card>

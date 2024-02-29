@@ -1,5 +1,8 @@
 <div class="card pointer card--d-col">
-  <div (click)="detail()" class="card-block text-center card-column-20 flex-grow">
+  <div
+    (click)="detail()"
+    class="card-block text-center card-column-20"
+  >
     <div class="card-appicon">
       <c8y-app-icon
         [app]="extension"
@@ -7,46 +10,60 @@
         [name]="extension.name"
       ></c8y-app-icon>
     </div>
-    <p class="e2e-appCardName text-medium" title="{{ extension.name }}">
+    <span class="e2e-appCardName text-medium" title="{{ extension.name }}">
       {{ extension.name }}
-    </p>
+    </span>
   </div>
   <div
-    class="card-block p-0 no-min-height card--d-col card-column-20 flex-grow"
+    class="card-block p-0 no-min-height card--d-col card-column-20"
   >
     <div class="c8y-realtime text-center">
-      <span [class]="extension.loaded === true ? 'label label-primary': 'label label-warning'">
+      <span
+        [class]="
+          extension.loaded === true
+            ? 'label label-primary'
+            : 'label label-warning'
+        "
+      >
         {{
-          extension.loaded === true ? "Loaded" : ("Not Loaded" | translate)
+          extension.loaded === true ? 'Loaded' : ('Not Loaded' | translate)
         }}</span
       >
     </div>
   </div>
   <div
-    class="card-block p-0 no-min-height card--d-col card-column-20 flex-grow"
+    class="card-block p-0 no-min-height card--d-col card-column-20"
   >
     <div class="text-center" *ngIf="extension.loaded">
       <span
         >{{ extension.blocksCount }}&nbsp;{{
-          extension.blocksCount === 1 ? "Block" : "Blocks"
+          extension.blocksCount === 1 ? 'Block' : 'Blocks'
         }}</span
       >
     </div>
   </div>
   <div
-    class="card-block p-0 no-min-height card--d-col card-column-20 flex-grow m-b-24"
+    class="card-block p-0 no-min-height card--d-col card-column-20"
   >
     <div class="text-center">
-      <span>{{ extension.lastUpdated | date:'short' }}</span>
+      <span>{{ extension.lastUpdated | c8yDate: 'medium' }}</span>
     </div>
   </div>
+
+  <div
+  class="card-footer"
+>
+  <div class="text-center">
+    <span></span>
+  </div>
+</div>
 
   <div class="card-actions m-t-0">
     <div class="dropdown" dropdown>
       <button
         class="dropdown-toggle c8y-dropdown"
         dropdownToggle
-        title="{{ 'Settingsx' | translate }}"
+        title="{{ 'Settings' | translate }}"
       >
         <i c8yIcon="ellipsis-v"></i>
       </button>
@@ -58,19 +75,19 @@
             [disabled]="!extension.loaded"
           >
             <i c8yIcon="info" class="m-r-4"></i>
-            {{ "Details" | translate }}
+            {{ 'Details' | translate }}
           </button>
         </li>
         <li>
           <button (click)="download()" title="{{ 'Download' }}">
             <i c8yIcon="export" class="m-r-4"></i>
-            {{ "Download" | translate }}
+            {{ 'Download' | translate }}
           </button>
         </li>
         <li>
           <button (click)="delete()" title="{{ 'Delete' }}">
             <i c8yIcon="trash" class="m-r-4"></i>
-            {{ "Delete" | translate }}
+            {{ 'Delete' | translate }}
           </button>
         </li>
       </ul>

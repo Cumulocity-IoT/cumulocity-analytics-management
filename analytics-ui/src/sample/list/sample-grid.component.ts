@@ -40,6 +40,7 @@ import {
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
+import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -69,8 +70,16 @@ export class SampleGridComponent implements OnInit {
       path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: '10%',
       visible: true
+    },
+    {
+      name: 'installed',
+      header: 'Installed',
+      path: 'installed',
+      dataType: ColumnDataType.Icon,
+      filterable: true,
+      visible: true,
+      cellRendererComponent: BooleanRendererComponent
     },
     {
       name: 'repositoryName',
@@ -78,26 +87,16 @@ export class SampleGridComponent implements OnInit {
       path: 'repositoryName',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      gridTrackSize: '15%',
       visible: true
-    },
-    {
-      name: 'installed',
-      header: 'Installed',
-      path: 'installed',
-      dataType: ColumnDataType.TextLong,
-      filterable: true,
-      gridTrackSize: '7.5%',
-      visible: true,
-      cellRendererComponent: BooleanRendererComponent
     },
     {
       name: 'url',
-      header: 'URL',
+      header: 'Link Github',
       path: 'url',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true
+      visible: true,
+      cellRendererComponent: LinkRendererComponent
     }
   ];
 

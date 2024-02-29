@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { IManagedObject } from '@c8y/client';
-import { WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { AlertService, WizardConfig, WizardModalService, gettext } from '@c8y/ngx-components';
 import { ModalOptions } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject, of } from 'rxjs';
 import { catchError, shareReplay, switchMap, tap } from 'rxjs/operators';
@@ -13,7 +13,9 @@ import { AnalyticsService } from '../shared';
 })
 export class ExtensionGridComponent implements OnInit {
   loading: boolean = false;
-  restarting$: Subject<boolean>;
+  cepOperationObject$: Subject<any>;
+  cepCtrlStatus: any;
+  cepId: string;
   loadingError: boolean = false;
   reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
   extensions$: Observable<IManagedObject[]>;
@@ -22,11 +24,20 @@ export class ExtensionGridComponent implements OnInit {
 
   constructor(
     private analyticsService: AnalyticsService,
+    private alertService: AlertService,
     private wizardModalService: WizardModalService
   ) {}
 
   ngOnInit() {
-    this.restarting$ = this.analyticsService.getCEP_Restarting();
+    this.init();
+  }
+
+  async init() {
+    const { microservice_application_id } =
+      await this.analyticsService.getCepCtrlStatus();
+    this.cepId = microservice_application_id as string;
+    this.cepCtrlStatus = await this.analyticsService.getCepCtrlStatus();
+    this.cepOperationObject$ = this.analyticsService.getCepOperationsObject();
     this.extensions$ = this.reload$.pipe(
       tap((clearCache) => {
         if (clearCache) {
@@ -53,6 +64,7 @@ export class ExtensionGridComponent implements OnInit {
   }
 
   restartCEP() {
+    this.alertService.success(gettext('Deployment (restart) submitted ...'));
     this.analyticsService.restartCEP();
   }
 
@@ -74,5 +86,4 @@ export class ExtensionGridComponent implements OnInit {
       this.loadExtensions();
     });
   }
-
 }
