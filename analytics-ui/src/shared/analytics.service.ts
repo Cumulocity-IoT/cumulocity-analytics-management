@@ -56,7 +56,7 @@ export class AnalyticsService {
     this.subscribeMonitoringChannel();
   }
 
-  getExtensions(): Promise<IResultList<IManagedObject>> {
+  getExtensionsMetadataFromInventory(): Promise<IResultList<IManagedObject>> {
     const filter: object = {
       pageSize: 100,
       withTotalPages: true,
@@ -91,12 +91,12 @@ export class AnalyticsService {
     );
   }
 
-  async getExtensionsEnriched(): Promise<IManagedObject[]> {
+  async getExtensionsMetadataEnriched(): Promise<IManagedObject[]> {
     if (!this._extensionsDeployed) {
-      const { data } = await this.getExtensions();
+      const { data } = await this.getExtensionsMetadataFromInventory();
       const extensions = data;
       const loadedExtensions: CEP_ExtensionsMetadata =
-        await this.getCEP_ExtensionsMetadata();
+        await this.getExtensionsMetadataFromCEP();
       for (let index = 0; index < extensions.length; index++) {
         extensions[index].name = removeFileExtension(extensions[index].name);
         const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
@@ -104,7 +104,7 @@ export class AnalyticsService {
           key.includes(le)
         );
         if (extensions[index].loaded) {
-          const extensionDetails = await this.getCEP_Extension(
+          const extensionDetails = await this.getExtensionDetailFromCEP(
             extensions[index].name
           );
           extensions[index].blocksCount = extensionDetails?.analytics.length;
@@ -128,17 +128,17 @@ export class AnalyticsService {
     this._cepOperationObjectId = undefined;
   }
 
-  async getLoadedCEP_Blocks(): Promise<CEP_Block[]> {
+  async getLoadedBlocksFromCEP(): Promise<CEP_Block[]> {
     if (!this._blocksDeployed) {
       const blocks: CEP_Block[] = [];
       const meta: CEP_ExtensionsMetadata =
-        await this.getCEP_ExtensionsMetadata();
+        await this.getExtensionsMetadataFromCEP();
       if (meta && meta.metadatas) {
         for (let index = 0; index < meta.metadatas.length; index++) {
           const extensionNameAbbreviated = removeFileExtension(
             meta.metadatas[index]
           );
-          const extension: CEP_Extension = await this.getCEP_Extension(
+          const extension: CEP_Extension = await this.getExtensionDetailFromCEP(
             extensionNameAbbreviated
           );
           extension.analytics.forEach((block) => {
@@ -155,7 +155,7 @@ export class AnalyticsService {
     return this._blocksDeployed;
   }
 
-  async getCEP_ExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
+  async getExtensionsMetadataFromCEP(): Promise<CEP_ExtensionsMetadata> {
     const response: IFetchResponse = await this.fetchClient.fetch(
       `/${CEP_PATH_METADATA_EN}`,
       {
@@ -169,7 +169,7 @@ export class AnalyticsService {
     return data;
   }
 
-  async getCEP_Extension(name: string): Promise<CEP_Extension> {
+  async getExtensionDetailFromCEP(name: string): Promise<CEP_Extension> {
     const response: IFetchResponse = await this.fetchClient.fetch(
       `${CEP_PATH_EN}/${name}.json`,
       {
@@ -187,7 +187,7 @@ export class AnalyticsService {
     return data;
   }
 
-  async getCepOperationObjectId(): Promise<string> {
+  async getCEP_OperationObjectId(): Promise<string> {
     let cepOperationObjectId: string;
     if (!this._cepOperationObjectId) {
       const useBackend = true;
@@ -246,11 +246,11 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCepOperationsObject(): Subject<string> {
+  getCEP_OperationsObject(): Subject<string> {
     return this.cepOperationObject$;
   }
 
-  async getCepCtrlStatus(): Promise<any> {
+  async getCEP_CtrlStatus(): Promise<any> {
     let response: IFetchResponse;
     if (!this._cepCtrlStatus) {
       const useBackend = false;
@@ -280,7 +280,7 @@ export class AnalyticsService {
   }
 
   async subscribeMonitoringChannel(): Promise<object> {
-    const cepOperationObjectId = await this.getCepOperationObjectId();
+    const cepOperationObjectId = await this.getCEP_OperationObjectId();
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);
     console.log(
@@ -339,7 +339,7 @@ export class AnalyticsService {
     if (payload?.c8y_Status.status == 'Up') {
       this._cepCtrlStatus = undefined;
       // cache new cep status
-      this.getCepCtrlStatus();
+      this.getCEP_CtrlStatus();
     }
     console.log('New updateStatusFromOperationObject for cep:', payload);
   }

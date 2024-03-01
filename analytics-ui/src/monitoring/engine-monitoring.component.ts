@@ -48,8 +48,8 @@ export class EngineMonitoringComponent implements OnInit {
 
     this.init();
     this.cepOperationObjectId =
-      await this.analyticsService.getCepOperationObjectId();
-    const cepCtrlStatus = await this.analyticsService.getCepCtrlStatus();
+      await this.analyticsService.getCEP_OperationObjectId();
+    const cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
     const cepCtrlStatusLabels = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
       if (
@@ -122,7 +122,7 @@ export class EngineMonitoringComponent implements OnInit {
 
   private async init() {
     this.cepOperationObjectId =
-      await this.analyticsService.getCepOperationObjectId();
+      await this.analyticsService.getCEP_OperationObjectId();
   }
 
   nextPageAlarm(direction: number) {

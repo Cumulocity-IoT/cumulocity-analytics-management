@@ -65,8 +65,8 @@ export interface Repository {
 
 export const CEP_PATH_BASE = 'service/cep';
 export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
-export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/EN`;
-export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/EN/block-metadata.json`;
+export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/en`;
+export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/en/block-metadata.json`;
 export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
 export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
