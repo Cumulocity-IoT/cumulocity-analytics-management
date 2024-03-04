@@ -37,7 +37,7 @@ export class ExtensionGridComponent implements OnInit {
       await this.analyticsService.getCEP_CtrlStatus();
     this.cepId = microservice_application_id as string;
     this.cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
-    this.cepOperationObject$ = this.analyticsService.getCEP_OperationsObject();
+    this.cepOperationObject$ = this.analyticsService.getCEP_OperationObject();
     this.extensions$ = this.reload$.pipe(
       tap((clearCache) => {
         if (clearCache) {

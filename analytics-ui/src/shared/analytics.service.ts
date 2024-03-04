@@ -246,7 +246,7 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCEP_OperationsObject(): Subject<string> {
+  getCEP_OperationObject(): Subject<string> {
     return this.cepOperationObject$;
   }
 
