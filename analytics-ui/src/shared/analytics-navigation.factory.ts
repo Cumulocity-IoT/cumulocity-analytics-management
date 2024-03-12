@@ -27,20 +27,5 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     });
     navs.push(extensionsNode);
     return navs;
-
-    // return this.applicationService
-    //   .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
-    //   .then((data) => {
-    //     if (!data.data ) {
-    //       this.alertService.add({
-    //         text: 'Microservice: <code>analytics-ext-service</code> not subscribed. Please subscribe this service before using the analytics plugin!',
-    //         allowHtml: true,
-    //         type: 'warning'
-    //       });
-    //       console.error('analytics-ext-service not subscribed!');
-    //       return [];
-    //     }
-    //     return navs;
-    //   });
   }
 }
