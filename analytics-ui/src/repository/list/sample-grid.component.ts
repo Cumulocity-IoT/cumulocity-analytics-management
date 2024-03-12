@@ -61,7 +61,7 @@ export class SampleGridComponent implements OnInit {
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
-  titleSample: string = 'Analytics Builder community samples';
+  titleSample: string = 'Blocks from repositories';
 
   columnsSamples: Column[] = [
     {

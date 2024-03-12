@@ -190,8 +190,7 @@ export class AnalyticsService {
   async getCEP_OperationObjectId(): Promise<string> {
     let cepOperationObjectId: string;
     if (!this._cepOperationObjectId) {
-      const useBackend = true;
-      if (useBackend) {
+      if (await this.isBackendDeployed()) {
         // get name of microservice from cep endpoint
         const response: IFetchResponse = await this.fetchClient.fetch(
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
@@ -253,8 +252,7 @@ export class AnalyticsService {
   async getCEP_CtrlStatus(): Promise<any> {
     let response: IFetchResponse;
     if (!this._cepCtrlStatus) {
-      const useBackend = false;
-      if (useBackend) {
+      if (await this.isBackendDeployed()) {
         // get name of microservice from cep endpoint
         response = await this.fetchClient.fetch(
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,

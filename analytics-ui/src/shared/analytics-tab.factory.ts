@@ -21,12 +21,19 @@
 import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
+import { ApplicationService } from '@c8y/client';
+import { Observable, from, map, merge, mergeAll, of, toArray } from 'rxjs';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from './analytics.model';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
-  constructor(public router: Router) {}
+  constructor(
+    private router: Router,
+    private applicationService: ApplicationService
+  ) {}
 
-  async get() {
+  get(): Observable<Tab[]> {
     const tabs: Tab[] = [];
+    let repositoryTab$: Observable<Tab>;
     if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
       tabs.push({
         path: 'sag-ps-pkg-analytics-extension/manage',
@@ -36,19 +43,29 @@ export class AnalyticsTabFactory implements TabFactory {
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/list',
+        path: 'sag-ps-pkg-analytics-extension/block',
         priority: 940,
         label: 'Blocks installed',
         icon: 'flow-chart',
         orientation: 'horizontal'
       } as Tab);
-      tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/sample',
-        priority: 920,
-        label: 'Repositories',
-        icon: 'test',
-        orientation: 'horizontal'
-      } as Tab);
+      repositoryTab$ = from(
+        this.applicationService.isAvailable(
+          APPLICATION_ANALYTICS_BUILDER_SERVICE
+        )
+      ).pipe(
+        map((value) => {
+          if (value.data) {
+            return {
+              path: 'sag-ps-pkg-analytics-extension/repository',
+              priority: 920,
+              label: 'Repositories',
+              icon: 'test',
+              orientation: 'horizontal'
+            } as Tab;
+          } else return {} as Tab;
+        })
+      );
       tabs.push({
         path: 'sag-ps-pkg-analytics-extension/monitoring',
         priority: 900,
@@ -56,7 +73,8 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'monitoring',
         orientation: 'horizontal'
       } as Tab);
+      return merge(of(tabs), [repositoryTab$]).pipe(mergeAll(), toArray());
     }
-    return tabs;
+    return of(tabs);
   }
 }
