@@ -21,14 +21,13 @@
 import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
-import { ApplicationService } from '@c8y/client';
 import { Observable, from, map, merge, mergeAll, of, toArray } from 'rxjs';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from './analytics.model';
+import { AnalyticsService } from './analytics.service';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
   constructor(
     private router: Router,
-    private applicationService: ApplicationService
+    private analyticsService: AnalyticsService
   ) {}
 
   get(): Observable<Tab[]> {
@@ -50,12 +49,10 @@ export class AnalyticsTabFactory implements TabFactory {
         orientation: 'horizontal'
       } as Tab);
       repositoryTab$ = from(
-        this.applicationService.isAvailable(
-          APPLICATION_ANALYTICS_BUILDER_SERVICE
-        )
+        this.analyticsService.isBackendDeployed()
       ).pipe(
-        map((value) => {
-          if (value.data) {
+        map((result) => {
+          if (result) {
             return {
               path: 'sag-ps-pkg-analytics-extension/repository',
               priority: 920,
@@ -63,7 +60,7 @@ export class AnalyticsTabFactory implements TabFactory {
               icon: 'test',
               orientation: 'horizontal'
             } as Tab;
-          } else return {} as Tab;
+          }
         })
       );
       tabs.push({

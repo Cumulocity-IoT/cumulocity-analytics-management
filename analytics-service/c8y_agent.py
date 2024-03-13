@@ -21,6 +21,8 @@ import json
 
 
 class C8YAgent:
+    PATH_CEP_DIAGNOSTICS = "/service/cep/diagnostics/apamaCtrlStatus"
+    PATH_CEP_RESTART = "/service/cep/restart"
     def __init__(self):
         self._logger = logging.getLogger("C8YAgent")
         self._logger.setLevel(logging.DEBUG)
@@ -43,7 +45,7 @@ class C8YAgent:
         try:
             self._logger.info(f"Restarting CEP ...")
             self.c8yapp.get_tenant_instance(headers=request_headers).put(
-                resource="/service/cep/restart", json={}
+                resource=self.PATH_CEP_RESTART, json={}
             )
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
@@ -57,7 +59,7 @@ class C8YAgent:
             self._logger.info(f"Retrieving id of operation object for CEP ...")
             
             response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
-                    resource=f"/service/cep/diagnostics/apamaCtrlStatus")
+                    resource=self.PATH_CEP_DIAGNOSTICS)
             try:
                 app_id = response["microservice_application_id"]
                 microservice_name = response["microservice_name"]
@@ -96,7 +98,7 @@ class C8YAgent:
             self._logger.info(f"Retrieving CEP control status ...")
             
             response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
-                    resource=f"/service/cep/diagnostics/apamaCtrlStatus")
+                    resource=self.PATH_CEP_DIAGNOSTICS)
             return response
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
