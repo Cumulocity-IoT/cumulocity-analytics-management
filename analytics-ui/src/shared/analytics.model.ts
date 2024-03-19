@@ -87,7 +87,14 @@ export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}
 export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
+export const REPO_SAMPLES_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}//cumulocity-analytics-management/contents/repository/blocks`;
 export const REPO_SAMPLES = [
+  {
+    id: uuidCustom(),
+    name: 'Block SDK Quick Start Samples',
+    url: REPO_SAMPLES_ANALYTICS_MANAGEMENT,
+    enabled: true
+  },
   {
     id: uuidCustom(),
     name: 'Block SDK Samples',
