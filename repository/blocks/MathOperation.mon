@@ -18,8 +18,8 @@ event MathOperation_$Parameters {
 	
 	/** Addition */
 	constant string operation_add := "add";
-	/** Substraction */
-	constant string operation_sub := "substraction";
+	/** Subtraction */
+	constant string operation_sub := "subtraction";
 	/** Multiplication */
 	constant string operation_mul := "multiplication";
 	/** Division */
@@ -34,7 +34,7 @@ event MathOperation_$Parameters {
  * Mathematical Operation.
  *
  * Combine two inputs using a mathematical operation.
- * Supported operations are addition, substraction, multiplication, divison, and modulo. 
+ * Supported operations are addition, subtraction, multiplication, division, and modulo. 
  *
  * @$blockCategory Calculations
  * @$derivedName $operation
