@@ -26,11 +26,11 @@ import { SharedModule } from '../shared/shared.module';
   ],
   providers: [
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/sample',
+      path: 'sag-ps-pkg-analytics-extension/repository',
       component: SampleGridComponent
     })
   ]
 })
-export class SampleModule {
+export class RepositoryModule {
   constructor() {}
 }

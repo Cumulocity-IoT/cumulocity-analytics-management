@@ -34,10 +34,10 @@ export class ExtensionGridComponent implements OnInit {
 
   async init() {
     const { microservice_application_id } =
-      await this.analyticsService.getCepCtrlStatus();
+      await this.analyticsService.getCEP_CtrlStatus();
     this.cepId = microservice_application_id as string;
-    this.cepCtrlStatus = await this.analyticsService.getCepCtrlStatus();
-    this.cepOperationObject$ = this.analyticsService.getCepOperationsObject();
+    this.cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
+    this.cepOperationObject$ = this.analyticsService.getCEP_OperationObject();
     this.extensions$ = this.reload$.pipe(
       tap((clearCache) => {
         if (clearCache) {
@@ -46,7 +46,7 @@ export class ExtensionGridComponent implements OnInit {
         this.loading = true;
         this.loadingError = false;
       }),
-      switchMap(() => this.analyticsService.getExtensionsEnriched()),
+      switchMap(() => this.analyticsService.getExtensionsMetadataEnriched()),
       catchError(() => {
         this.loadingError = true;
         this.loading = false;

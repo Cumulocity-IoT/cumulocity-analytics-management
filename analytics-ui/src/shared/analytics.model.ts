@@ -65,8 +65,8 @@ export interface Repository {
 
 export const CEP_PATH_BASE = 'service/cep';
 export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
-export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/EN`;
-export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/EN/block-metadata.json`;
+export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/en`;
+export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/en/block-metadata.json`;
 export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
 export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
@@ -87,7 +87,14 @@ export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}
 export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
+export const REPO_SAMPLES_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}//cumulocity-analytics-management/contents/repository/blocks`;
 export const REPO_SAMPLES = [
+  {
+    id: uuidCustom(),
+    name: 'Block SDK Quick Start Samples',
+    url: REPO_SAMPLES_ANALYTICS_MANAGEMENT,
+    enabled: true
+  },
   {
     id: uuidCustom(),
     name: 'Block SDK Samples',

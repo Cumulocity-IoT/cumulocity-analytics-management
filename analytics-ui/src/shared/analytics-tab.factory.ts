@@ -21,12 +21,18 @@
 import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
+import { Observable, from, map, merge, mergeAll, of, toArray } from 'rxjs';
+import { AnalyticsService } from './analytics.service';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
-  constructor(public router: Router) {}
+  constructor(
+    private router: Router,
+    private analyticsService: AnalyticsService
+  ) {}
 
-  async get() {
+  get(): Observable<Tab[]> {
     const tabs: Tab[] = [];
+    let repositoryTab$: Observable<Tab>;
     if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
       tabs.push({
         path: 'sag-ps-pkg-analytics-extension/manage',
@@ -36,19 +42,27 @@ export class AnalyticsTabFactory implements TabFactory {
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/list',
+        path: 'sag-ps-pkg-analytics-extension/block',
         priority: 940,
         label: 'Blocks installed',
         icon: 'flow-chart',
         orientation: 'horizontal'
       } as Tab);
-      tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/sample',
-        priority: 920,
-        label: 'Repositories',
-        icon: 'test',
-        orientation: 'horizontal'
-      } as Tab);
+      repositoryTab$ = from(
+        this.analyticsService.isBackendDeployed()
+      ).pipe(
+        map((result) => {
+          if (result) {
+            return {
+              path: 'sag-ps-pkg-analytics-extension/repository',
+              priority: 920,
+              label: 'Repositories',
+              icon: 'test',
+              orientation: 'horizontal'
+            } as Tab;
+          }
+        })
+      );
       tabs.push({
         path: 'sag-ps-pkg-analytics-extension/monitoring',
         priority: 900,
@@ -56,7 +70,8 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'monitoring',
         orientation: 'horizontal'
       } as Tab);
+      return merge(of(tabs), [repositoryTab$]).pipe(mergeAll(), toArray());
     }
-    return tabs;
+    return of(tabs);
   }
 }

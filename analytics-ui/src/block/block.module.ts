@@ -18,7 +18,7 @@ import { SharedModule } from '../shared/shared.module';
   declarations: [BlockGridComponent],
   providers: [
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/list',
+      path: 'sag-ps-pkg-analytics-extension/block',
       component: BlockGridComponent
     })
   ]

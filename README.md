@@ -227,10 +227,15 @@ The provided block is an example of the adding the two inputs.
 
 ## Troubleshooting
 > **Note**
-In order to check if an extension is deployed look in the log file of the analytics engine for a relevant message:
+In order to check if an extension is deployed look for a relevant message in the log file of the analytics engine:
 `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 
 The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
+
+> **Note**
+When a warning `Microservice: analytics-ext-service not subscribed. Please subscribe this service before using the analytics plugin!`appears please deploy the missing backend microservice.
+
+![Backend microservice missing](resources/images/missing-microsevice.png)
 
 ------------------------------
 

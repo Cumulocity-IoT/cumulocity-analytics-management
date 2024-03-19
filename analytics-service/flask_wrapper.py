@@ -76,7 +76,7 @@ def get_content(repository):
 
 
 @app.route("/extension", methods=["POST"])
-def create_extension():
+def create_extension_zip ():
     # sample url
     # "https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples/blocks/CreateEvent.mon?ref=rel/10.18.0.x"
 
@@ -190,7 +190,7 @@ def create_extension():
 #   category: Category;
 # }
 @app.route("/cep/extension/<name>", methods=["GET"])
-def get_cep_extension(name):
+def get_extension(name):
     cep_extension = {name}
     return cep_extension, 200
 
@@ -203,7 +203,7 @@ def get_cep_extension(name):
 #   messages: string[];
 # }
 @app.route("/cep/extension", methods=["GET"])
-def get_cep_extension_metadata():
+def get_extension_metadata():
     cep_extension_metadata = []
     return cep_extension_metadata, 200
 
@@ -224,7 +224,7 @@ def get_cep_operationobject_id():
 #    status
 # @app.route("/cep/status", methods=["GET"])
 @app.route("/cep/status", methods=["GET"])
-def get_get_cep_ctrl_status():
+def get_cep_ctrl_status():
     result = agent.get_cep_ctrl_status(request_headers=request.headers)
     if (result == None):
         return f"Not found", 400

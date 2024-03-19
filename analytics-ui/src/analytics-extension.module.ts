@@ -13,7 +13,7 @@ import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factor
 import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
 import { HttpClientModule } from '@angular/common/http';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { SampleModule } from './sample/sample.module';
+import { RepositoryModule } from './repository/repository.module';
 import { MonitoringModule } from './monitoring/monitoring.module';
 import { ManageModule } from './manage/manage.module';
 import { BlockModule } from './block/block.module';
@@ -29,7 +29,7 @@ import { StatusModule } from './status/status.module';
     DefaultSubscriptionsModule,
     HttpClientModule,
     PopoverModule,
-    SampleModule,
+    RepositoryModule,
     MonitoringModule,
     StatusModule,
     ManageModule,

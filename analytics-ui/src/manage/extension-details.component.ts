@@ -49,7 +49,7 @@ export class ExtensionDetailsComponent {
 
   async loadExtension() {
     const { name } = this.activatedRoute.snapshot.params;
-    this.extension = await this.analyticsService.getCEP_Extension(name);
+    this.extension = await this.analyticsService.getExtensionDetailFromCEP(name);
   }
 
   private setBreadcrumbConfig() {

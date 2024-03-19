@@ -243,7 +243,7 @@ export class RepositoryService {
   async getAll_CEP_BlockSamples(hideInstalled: boolean): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
     const reps: Repository[] = await this.loadRepositories();
-    const loadedBlocks = await this.analyticsService.getLoadedCEP_Blocks();
+    const loadedBlocks = await this.analyticsService.getLoadedBlocksFromCEP();
     const loadedBlocksIds: string[] = loadedBlocks.map((block) => block.id);
 
     for (let i = 0; i < reps.length; i++) {
