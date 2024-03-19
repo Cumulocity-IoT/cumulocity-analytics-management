@@ -75,8 +75,8 @@ event BasicAnomalyDetection {
 
 	/** Called once at block start up. */
 	action $init() {
-		alpha := $alpha;
-		numStdDevs := $numStdDevs;
+		alpha := $parameters.alpha;
+		numStdDevs := $parameters.numStdDevs;
 	}
 
 	/**
@@ -98,12 +98,12 @@ event BasicAnomalyDetection {
 			$blockState.n := 1;
 			$blockState.stateInitialized := true;
 		} else {
-			float prediction := alpha * $input_value + (1 - alpha) * $blockState.lastValue;
+			float prediction := alpha * $input_value + (1.0 - alpha) * $blockState.lastValue;
 			float predictionError := $input_value - prediction;
-			$blockState.variance := alpha * predictionError * predictionError + (1 - alpha) * $blockState.variance;
+			$blockState.variance := alpha * predictionError * predictionError + (1.0 - alpha) * $blockState.variance;
 			$blockState.mean := $blockState.mean + ( $input_value - $blockState.mean)/$blockState.n;
 			$blockState.lastValue := prediction;
-			$blockState.n = $blockState.n + 1;
+			$blockState.n := $blockState.n + 1;
 
 			// Flag the value as an anomaly if it is outside the threshold
 			boolean isAnomaly := (predictionError.abs() > numStdDevs * $blockState.variance.sqrt());
