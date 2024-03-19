@@ -279,6 +279,9 @@ export class AnalyticsService {
 
   async subscribeMonitoringChannel(): Promise<object> {
     const cepOperationObjectId = await this.getCEP_OperationObjectId();
+    if (!cepOperationObjectId) {
+        this.alertService.warning('Analytics Engine is currently not started. Try again later ...');
+    }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);
     console.log(
