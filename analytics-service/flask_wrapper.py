@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, request, send_file, make_response, jsonify
+from flask import Flask, request, Response, send_file, make_response, jsonify
 import logging
 
 # from github import Github
@@ -72,11 +72,15 @@ def get_content(repository):
             return response
     except Exception as e:
         logger.error(f"Exception when retrieving content extension!", exc_info=True)
-        return f"Bad request: {str(e)}", 400
+        resp = Response(
+            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+        )
+        resp.status_code = 400
+        return resp
 
 
 @app.route("/extension", methods=["POST"])
-def create_extension_zip ():
+def create_extension_zip():
     # sample url
     # "https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples/blocks/CreateEvent.mon?ref=rel/10.18.0.x"
 
@@ -159,7 +163,11 @@ def create_extension_zip ():
 
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
-                return f"Bad request: {str(e)}", 400
+                resp = Response(
+                    json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+                )
+                resp.status_code = 400
+                return resp
 
 
 # return the details for the extension
@@ -214,9 +222,19 @@ def get_extension_metadata():
 @app.route("/cep/id", methods=["GET"])
 def get_cep_operationobject_id():
     result = agent.get_cep_operationobject_id(request_headers=request.headers)
-    if (result == None):
-        return f"Not found", 400
-    return jsonify(result)
+    if result == None:
+        resp = Response(
+            json.dumps({"message": "Not found"}), mimetype="application/json"
+        )
+        resp.status_code = 400
+        return resp
+    
+    resp = Response(
+    json.dumps({"message": "Not found"}), mimetype="application/json"
+    )
+    resp.status_code = 400
+    return resp
+    # return jsonify(result)
 
 
 # return status of cep ctrl microservice
@@ -226,10 +244,13 @@ def get_cep_operationobject_id():
 @app.route("/cep/status", methods=["GET"])
 def get_cep_ctrl_status():
     result = agent.get_cep_ctrl_status(request_headers=request.headers)
-    if (result == None):
-        return f"Not found", 400
+    if result == None:
+        resp = Response(
+            json.dumps({"message": "Not found"}), mimetype="application/json"
+        )
+        resp.status_code = 400
+        return resp
     return jsonify(result)
-
 
 
 # this endpoint was only exposed for test purposes
