@@ -126,6 +126,7 @@ export class AnalyticsService {
     this._blocksDeployed = undefined;
     this._extensionsDeployed = undefined;
     this._cepOperationObjectId = undefined;
+    this.subscribeMonitoringChannel();
   }
 
   async getLoadedBlocksFromCEP(): Promise<CEP_Block[]> {
