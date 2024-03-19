@@ -1,0 +1,122 @@
+/*
+ * $Copyright (c) 2024 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA, and/or its subsidiaries and/or its affiliates and/or their licensors.$
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in your License Agreement with Software AG
+ */
+package apamax.analyticsbuilder.custom;
+
+using apama.analyticsbuilder.BlockBase;
+using apama.analyticsbuilder.Activation;
+using com.apama.json.JSONPlugin;
+using com.apama.exceptions.Exception;
+using com.apama.util.AnyExtractor;
+
+
+
+
+/** The parameters for the Anomaly Detection block. */
+event AnomalyDetection_$Parameters{
+
+	/**
+	* Alpha (smoothing factor). 
+	* 
+	* Exponential smoothing factor
+	* Determines the weight given to the most recent observation when predicting the next value.
+	*
+	* This must be a number between 0 and 1.
+	*/
+	float alpha;
+
+
+	/**
+	* Std Devs (threshold). 
+	* 
+	* The number of standard deviations away from the forecast a value has to be to be considered an anomaly
+	*
+	* This must be a finite and positive number.
+	*/
+	float numStdDevs;
+
+
+}
+
+/** State of the block.*/
+event AnomalyDetection_$State{
+	float lastValue; 
+	float variance; 
+	float mean; 
+	integer n;
+	boolean stateInitialized;
+}
+
+/**
+* Basic Anomaly Detection
+*
+* The block uses a simple exponential smoothing model to forecast the next value in a time series using a basic linear extrapolation.
+* It flags anomalies by computing a running estimate of the variance of the forecast errors. 
+* The smoothing factor alpha and the number of standard deviations for the anomaly threshold can be configured in the block settings.
+* 
+* 
+* @$blockCategory Calculations
+*/
+event BasicAnomalyDetection {
+
+	/**
+	* BlockBase object.
+	*
+	* This is initialized by the framework when the block is required for a model.
+	*/
+	BlockBase $base;
+	
+	/** Parameters, filled in by the framework. */
+	AnomalyDetection_$Parameters $parameters;
+
+	float alpha;
+	float numStdDevs;
+
+	/** Called once at block start up. */
+	action $init() {
+		alpha := $alpha;
+		numStdDevs := $numStdDevs;
+	}
+
+	/**
+	* This action receives the input values and contains the logic of the block. 
+	*
+	* It takes in 1 float which represents the signal value
+
+   	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
+   	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
+   	* @param $input_value input signal for anomaly detection.
+   	*
+   	* @$inputName value Value
+	*/
+	action $process(Activation $activation, float $input_value, AnomalyDetection_$State $blockState) {
+		if (not $blockState.stateInitialized) {
+			$blockState.lastValue := $input_value;
+			$blockState.mean := $input_value;
+			$blockState.variance := 0.0;
+			$blockState.n := 1;
+			$blockState.stateInitialized := true;
+		} else {
+			float prediction := alpha * $input_value + (1 - alpha) * $blockState.lastValue;
+			float predictionError := $input_value - prediction;
+			$blockState.variance := alpha * predictionError * predictionError + (1 - alpha) * $blockState.variance;
+			$blockState.mean := $blockState.mean + ( $input_value - $blockState.mean)/$blockState.n;
+			$blockState.lastValue := prediction;
+			$blockState.n = $blockState.n + 1;
+
+			// Flag the value as an anomaly if it is outside the threshold
+			boolean isAnomaly := (predictionError.abs() > numStdDevs * $blockState.variance.sqrt());
+			$setOutput_isAnomaly($activation, isAnomaly);
+		}
+	}
+
+
+
+	/**
+	* Anomaly
+	*
+	* true if an anomaly is detected, false if not. 
+	*/
+	action<Activation,boolean> $setOutput_isAnomaly;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
+}
