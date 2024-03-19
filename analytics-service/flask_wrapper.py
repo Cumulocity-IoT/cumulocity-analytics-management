@@ -229,12 +229,7 @@ def get_cep_operationobject_id():
         resp.status_code = 400
         return resp
     
-    resp = Response(
-    json.dumps({"message": "Not found"}), mimetype="application/json"
-    )
-    resp.status_code = 400
-    return resp
-    # return jsonify(result)
+    return jsonify(result)
 
 
 # return status of cep ctrl microservice
