@@ -101,7 +101,7 @@ event BasicAnomalyDetection {
 			float prediction := alpha * $input_value + (1.0 - alpha) * $blockState.lastValue;
 			float predictionError := $input_value - prediction;
 			$blockState.variance := alpha * predictionError * predictionError + (1.0 - alpha) * $blockState.variance;
-			$blockState.mean := $blockState.mean + ( $input_value - $blockState.mean)/$blockState.n;
+			$blockState.mean := $blockState.mean + ( $input_value - $blockState.mean)/ $blockState.n.toFloat();
 			$blockState.lastValue := prediction;
 			$blockState.n := $blockState.n + 1;
 
