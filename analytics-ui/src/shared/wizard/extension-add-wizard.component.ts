@@ -10,7 +10,7 @@ import { AnalyticsService } from '../analytics.service';
     [headerIcon]="'upload'"
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
-    [canGoBack]="true"
+    [canGoBack]="false"
   ></a17t-extension-add>`
 })
 export class ExtensionAddWizardComponent implements OnInit {
