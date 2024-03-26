@@ -70,13 +70,16 @@ export class ExtensionGridComponent implements OnInit {
 
   addExtension() {
     const wizardConfig: WizardConfig = {
-      headerText: 'Add extension',
-      headerIcon: 'c8y-atom'
+      headerIcon: 'plus'
     };
 
     const initialState: any = {
       wizardConfig,
-      id: 'uploadAnalyticsExtension'
+      id: 'uploadAnalyticsExtension',
+      componentInitialState: {
+        mode: 'add',
+        headerText: 'Add extension',
+      },
     };
 
     const modalOptions: ModalOptions = { initialState };

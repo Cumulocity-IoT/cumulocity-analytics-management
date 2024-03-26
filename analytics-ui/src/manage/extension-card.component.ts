@@ -1,9 +1,13 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
-import { AlertService } from '@c8y/ngx-components';
+import {
+  AlertService,
+  WizardConfig,
+  WizardModalService
+} from '@c8y/ngx-components';
 import { saveAs } from 'file-saver';
-import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 
 @Component({
@@ -12,14 +16,15 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 })
 export class ExtensionCardComponent {
   @Input() extension: IManagedObject;
-  @Output() appDeleted: EventEmitter<void> = new EventEmitter();
+  @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private router: Router,
     private activatedRoute: ActivatedRoute,
-    private bsModalService: BsModalService
+    private bsModalService: BsModalService,
+    private wizardModalService: WizardModalService
   ) {}
 
   async detail() {
@@ -54,7 +59,7 @@ export class ExtensionCardComponent {
         if (result) {
           try {
             await this.analyticsService.deleteExtension(this.extension);
-            this.appDeleted.emit();
+            this.extensionChanged.emit();
           } catch (ex) {
             if (ex) {
               this.alertService.addServerFailure(ex);
@@ -78,5 +83,28 @@ export class ExtensionCardComponent {
         this.alertService.addServerFailure(ex);
       }
     }
+  }
+
+  async update() {
+    const wizardConfig: WizardConfig = {
+      headerIcon: 'upload'
+    };
+
+    const initialState: any = {
+        wizardConfig,
+        id: 'uploadAnalyticsExtension',
+        componentInitialState: {
+          mode: 'update',
+          extensionToReplace: this.extension,
+          headerText: 'Update extension',
+        },
+      };
+
+    const modalOptions: ModalOptions = { initialState };
+
+    const modalRef = this.wizardModalService.show(modalOptions);
+    modalRef.content.onClose.subscribe(() => {
+      this.extensionChanged.emit();
+    });
   }
 }
