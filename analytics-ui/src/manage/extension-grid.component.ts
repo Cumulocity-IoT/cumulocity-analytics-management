@@ -7,7 +7,14 @@ import {
   gettext
 } from '@c8y/ngx-components';
 import { ModalOptions } from 'ngx-bootstrap/modal';
-import { BehaviorSubject, Observable, Subject, Subscription, of } from 'rxjs';
+import {
+  BehaviorSubject,
+  Observable,
+  Subject,
+  Subscription,
+  merge,
+  of
+} from 'rxjs';
 import { catchError, shareReplay, switchMap, take, tap } from 'rxjs/operators';
 import { AnalyticsService, CEPEngineStatus, CEPStatusObject } from '../shared';
 
@@ -54,7 +61,10 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
         // this.alertService.clearAll();
       }
     });
-    this.extensions$ = this.reload$.pipe(
+    this.extensions$ = merge(
+      this.analyticsService.getReloadThroughService(),
+      this.reload$
+    ).pipe(
       tap((clearCache) => {
         if (clearCache) {
           this.analyticsService.clearCaches();

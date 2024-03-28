@@ -4,12 +4,12 @@
 </c8y-wizard-header>
 
 <div class="modal-inner-scroll animated fadeIn">
-  <div class="modal-body" style="min-height: 250px">
+  <div class="modal-body">
     <c8y-form-group
       *ngIf="!isAppCreated; else appCreated"
       [hasError]="errorMessage"
       class="m-auto"
-      style="max-width: 400px"
+      style="max-width: 250px"
     >
       <c8y-drop-area
         (dropped)="onFileDroppedEvent($event)"
@@ -18,7 +18,7 @@
         [maxAllowedFiles]="1"
         [message]="'Upload a *.zip file' | translate"
         [progress]="progress | async"
-        class="drop-area-sm"
+        class="drop-area"
       >
       </c8y-drop-area>
       <c8y-messages class="m-t-8 m-b-8">
@@ -26,19 +26,6 @@
           {{ errorMessage | translate }}
         </c8y-message>
       </c8y-messages>
-    </c8y-form-group>
-    <c8y-form-group
-      *ngIf="showUpdateDialog$ | async"
-      class="m-auto"
-    >
-      <button
-        class="btn btn-default btn-sm"
-        title="{{ 'Update' | translate }}"
-        translate
-        (click)="uploadExtension('update')"
-      >
-        Update existing extension
-      </button>
     </c8y-form-group>
     <ng-template #appCreated>
       <div class="d-flex a-i-center j-c-center" style="min-height: 285px">

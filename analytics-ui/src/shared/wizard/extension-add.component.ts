@@ -1,9 +1,9 @@
-import { Component, Input, ViewChild } from '@angular/core';
 import {
-  ApplicationService,
-  IManagedObject,
-  IResultList
-} from '@c8y/client';
+  Component,
+  Input,
+  ViewChild
+} from '@angular/core';
+import { IManagedObject, IResultList } from '@c8y/client';
 import {
   AlertService,
   DropAreaComponent,
@@ -13,6 +13,8 @@ import { BehaviorSubject } from 'rxjs';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
+import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 
 @Component({
   selector: 'a17t-extension-add',
@@ -28,21 +30,18 @@ export class ExtensionAddComponent {
   @ViewChild(DropAreaComponent) dropAreaComponent;
 
   isLoading: boolean;
+  isUpdate: boolean = false;
   isAppCreated: boolean;
-  showUpdateDialog$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
-    false
-  );
   createdApp: Partial<IManagedObject>;
-  canOpenInBrowser: boolean = false;
   errorMessage: string;
   fileToUpload: File;
-  private uploadCanceled: boolean = false;
+  uploadCanceled: boolean = false;
 
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
-    private applicationService: ApplicationService,
-    private wizardComponent: WizardComponent
+    private wizardComponent: WizardComponent,
+    private bsModalService: BsModalService
   ) {}
 
   get progress(): BehaviorSubject<number> {
@@ -73,13 +72,15 @@ export class ExtensionAddComponent {
       for (let i = 0; i < data.length; i++) {
         const ext = data[i];
         if (ext.name == n) {
-          if (this.mode == 'add') this.errorMessage = `Extension with the same name ${ext.name} exists!`;
-          this.showUpdateDialog$.next(true);
           this.createdApp = ext;
+          this.isUpdate = true;
           break;
         }
       }
-      if (!this.errorMessage) {
+      if (this.isUpdate) {
+          this.done();
+          this.confirmUpdate();
+      } else {
         await this.uploadExtension(this.mode);
       }
     } catch (ex) {
@@ -96,16 +97,11 @@ export class ExtensionAddComponent {
   }
 
   private async uploadExtension(mode: UploadMode) {
-    await this.uploadExtensionHandler(
-      this.fileToUpload,
-      this.createdApp,
-      mode
-    );
+    await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
     this.alertService.success('Uploaded new extension.');
     this.isAppCreated = true;
     this.progress.next(100);
     this.isLoading = false;
-    this.showUpdateDialog$.next(false);
   }
 
   cancel() {
@@ -117,9 +113,39 @@ export class ExtensionAddComponent {
     this.wizardComponent.close();
   }
 
-  private cancelFileUpload() {
+  cancelFileUpload() {
     this.uploadCanceled = true;
     this.analyticsService.cancelExtensionCreation(this.createdApp);
     this.createdApp = null;
+  }
+  confirmUpdate() {
+    const initialState = {
+      title: 'Update extension',
+      message: `Extension with the same name ${this.createdApp.name} exists! Do you want to proceed?`,
+      labels: {
+        ok: 'Update',
+        cancel: 'Cancel'
+      }
+    };
+    const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
+      ConfirmationModalComponent,
+      { initialState }
+    );
+    confirmDeletionModalRef.content.closeSubject.subscribe(
+      async (result: boolean) => {
+        console.log('Confirmation delete result:', result);
+        if (result) {
+          try {
+            await this.uploadExtension('update');
+            this.analyticsService.initiateReload(true);
+          } catch (ex) {
+            if (ex) {
+              this.alertService.addServerFailure(ex);
+            }
+          }
+        }
+        confirmDeletionModalRef.hide();
+      }
+    );
   }
 }

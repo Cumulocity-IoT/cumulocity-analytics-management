@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, Output } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from '../analytics.service';
@@ -18,6 +18,7 @@ export class ExtensionAddWizardComponent implements OnInit {
   @Input() mode: UploadMode;
   @Input() extensionToReplace: IManagedObject;
   @Input() headerText: string;
+  @Output() refresh;
   successText: string = gettext('Extension created');
 
   constructor(private analyticsService: AnalyticsService) {}
@@ -37,11 +38,7 @@ export class ExtensionAddWizardComponent implements OnInit {
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
     // eslint-disable-next-line no-param-reassign
-    if(!extension) extension = this.extensionToReplace;
-    return this.analyticsService.uploadExtension(
-      file,
-      extension,
-      mode
-    );
+    if (!extension) extension = this.extensionToReplace;
+    return this.analyticsService.uploadExtension(file, extension, mode);
   }
 }

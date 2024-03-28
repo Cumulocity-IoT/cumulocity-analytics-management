@@ -45,6 +45,7 @@ export class AnalyticsService {
   private cepOperationObject$: Subject<IManagedObject> =
     new Subject<IManagedObject>();
   private realtime: Realtime;
+  private reloadThroughService$: Subject<boolean> = new Subject<boolean>();
 
   constructor(
     private alertService: AlertService,
@@ -55,6 +56,14 @@ export class AnalyticsService {
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.subscribeMonitoringChannel(true);
+  }
+
+  initiateReload(resetCache: boolean) {
+    this.reloadThroughService$.next(resetCache);
+  }
+
+  getReloadThroughService() {
+    return this.reloadThroughService$;
   }
 
   getExtensionsMetadataFromInventory(): Promise<IResultList<IManagedObject>> {
