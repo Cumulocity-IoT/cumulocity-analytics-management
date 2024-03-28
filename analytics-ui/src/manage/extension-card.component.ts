@@ -58,7 +58,7 @@ export class ExtensionCardComponent {
         // console.log("Confirmation delete result:", result);
         if (result) {
           try {
-            await this.analyticsService.deleteExtension(this.extension);
+            await this.analyticsService.deleteExtension(this.extension, true);
             this.extensionChanged.emit();
           } catch (ex) {
             if (ex) {

@@ -27,7 +27,9 @@ import {
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
-  CEP_ENDPOINT
+  CEP_ENDPOINT,
+  CEPStatusObject,
+  UploadMode
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 
@@ -36,13 +38,12 @@ export class AnalyticsService {
   extensionChanged = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
   private _cepOperationObjectId: Promise<string>;
-  private _cepCtrlStatus: Promise<any>;
+  private _cepCtrlStatus: Promise<CEPStatusObject>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private cepOperationObject$: BehaviorSubject<any> = new BehaviorSubject<any>(
-    {}
-  );
+  private cepOperationObject$: Subject<IManagedObject> =
+    new Subject<IManagedObject>();
   private realtime: Realtime;
 
   constructor(
@@ -117,9 +118,13 @@ export class AnalyticsService {
     return this._extensionsDeployed;
   }
 
-  async deleteExtension(app: IManagedObject): Promise<void> {
+  async deleteExtension(
+    app: IManagedObject,
+    showSuccessMessage
+  ): Promise<void> {
     await this.inventoryBinaryService.delete(app.id);
-    this.alertService.success(gettext('Extension deleted.'));
+    if (showSuccessMessage)
+      this.alertService.success(gettext('Extension deleted.'));
     this.extensionChanged.emit(app);
   }
 
@@ -251,11 +256,11 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCEP_OperationObject(): Subject<string> {
+  getCEP_OperationObject(): Subject<IManagedObject> {
     return this.cepOperationObject$;
   }
 
-  async getCEP_CtrlStatus(): Promise<any> {
+  async getCEP_CtrlStatus(): Promise<CEPStatusObject> {
     let response: IFetchResponse;
     if (!this._cepCtrlStatus) {
       if (await this.isBackendDeployed()) {
@@ -342,28 +347,31 @@ export class AnalyticsService {
     const url = '/service/cep/restart';
 
     try {
-        await this.fetchClient.fetch(url, fetchOptions);
+      await this.fetchClient.fetch(url, fetchOptions);
     } catch (e) {
-        console.error(e);
+      console.error(e);
     } finally {
-        console.log('We do cleanup here');
+      console.log('We do cleanup here');
     }
     this.clearCaches();
   }
 
   async uploadExtension(
-    archive: File,
-    newExtension: Partial<IManagedObject>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    restart: boolean = false,
-    mode : string,
-    extensionToReplace: IManagedObject
+    file: File,
+    extension: IManagedObject,
+    mode: UploadMode
   ): Promise<IManagedObjectBinary> {
+    let extensionToCreate: Partial<IManagedObject> = extension;
     if (mode === 'update') {
-        await this.deleteExtension(extensionToReplace);
+      await this.deleteExtension(extension, false);
+      extensionToCreate = {
+        name: extension.name,
+        pas_extension: extension.name
+      };
     }
-    const result2 = (await this.inventoryBinaryService.create(archive, newExtension))
-      .data;
+    const result2 = (
+      await this.inventoryBinaryService.create(file, extensionToCreate)
+    ).data;
     return result2;
   }
 

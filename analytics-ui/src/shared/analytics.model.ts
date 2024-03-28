@@ -120,3 +120,10 @@ export const REPO_SAMPLES = [
     enabled: false
   }
 ] as Repository[];
+
+
+export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' |'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+
+export type CEPStatusObject = any;
+
+export type UploadMode = 'add' | 'update';

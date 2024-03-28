@@ -4,12 +4,12 @@
 </c8y-wizard-header>
 
 <div class="modal-inner-scroll animated fadeIn">
-  <div class="modal-body">
+  <div class="modal-body" style="min-height: 250px">
     <c8y-form-group
       *ngIf="!isAppCreated; else appCreated"
       [hasError]="errorMessage"
       class="m-auto"
-      style="max-width: 285px"
+      style="max-width: 400px"
     >
       <c8y-drop-area
         (dropped)="onFileDroppedEvent($event)"
@@ -18,14 +18,27 @@
         [maxAllowedFiles]="1"
         [message]="'Upload a *.zip file' | translate"
         [progress]="progress | async"
-        class="drop-area"
+        class="drop-area-sm"
       >
       </c8y-drop-area>
-      <c8y-messages>
-        <c8y-message *ngIf="errorMessage">
+      <c8y-messages class="m-t-8 m-b-8">
+        <c8y-message>
           {{ errorMessage | translate }}
         </c8y-message>
       </c8y-messages>
+    </c8y-form-group>
+    <c8y-form-group
+      *ngIf="showUpdateDialog$ | async"
+      class="m-auto"
+    >
+      <button
+        class="btn btn-default btn-sm"
+        title="{{ 'Update' | translate }}"
+        translate
+        (click)="uploadExtension('update')"
+      >
+        Update existing extension
+      </button>
     </c8y-form-group>
     <ng-template #appCreated>
       <div class="d-flex a-i-center j-c-center" style="min-height: 285px">
@@ -42,16 +55,6 @@
   </div>
 </div>
 <c8y-wizard-footer>
-  <button
-    (click)="back()"
-    *ngIf="!isAppCreated && canGoBack"
-    class="btn btn-default"
-    title="{{ 'Back' | translate }}"
-    translate
-    type="button"
-  >
-    Back
-  </button>
   <button
     (click)="cancel()"
     *ngIf="!isAppCreated"

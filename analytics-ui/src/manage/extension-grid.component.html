@@ -21,8 +21,12 @@
   <a
     href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
     target="'_blank'"
-    ><i c8yIcon="warning" class="animated fadeIn infinite" style="animation-duration: 1.5s"></i><span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' }}</span
-    ></a
+    ><i
+      c8yIcon="warning"
+      class="animated fadeIn infinite"
+      style="animation-duration: 1.5s"
+    ></i
+    ><span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' }}</span></a
   >
 </c8y-action-bar-item>
 
@@ -76,7 +80,7 @@
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
   >
-    <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
+    <i [ngClass]="{ 'icon-spin': (cepEngineStatus$ | async) === 'loading' }" c8yIcon="refresh"></i>
     {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
@@ -88,7 +92,7 @@
   ></c8y-list-display-switch>
 </c8y-action-bar-item>
 
-<div *ngIf="!loadingError && (extensions$ | async)?.length === 0" class="row">
+<div *ngIf="(cepEngineStatus$ | async) === 'empty'" class="row">
   <div class="col-lg-4 col-lg-offset-5 text-center">
     <c8y-ui-empty-state
       [icon]="'plugin'"
@@ -107,18 +111,10 @@
   </div>
 </div>
 
-<p class="text-center">
-  <c8y-progress-bar
-    message="Streaming Analytics Engine is restarting ..."
-    *ngIf="(cepOperationObject$ | async)?.c8y_Status?.status === 'Down'"
-  >
-  </c8y-progress-bar>
-</p>
-
 <div
   [ngClass]="listClass"
   class="card-group"
-  *ngIf="!loading && (cepOperationObject$ | async)?.c8y_Status?.status === 'Up'"
+  *ngIf="(cepEngineStatus$ | async) === 'up' || (cepEngineStatus$ | async) === 'loaded'"
 >
   <div
     class="page-sticky-header hidden-xs d-flex"
@@ -155,7 +151,7 @@
 <div
   class="col-lg-8 col-lg-offset-2 m-b-48 text-center"
   style="padding-top: 48px"
-  *ngIf="loadingError"
+  *ngIf="(cepEngineStatus$ | async) === 'loadingError'"
 >
   <h2>
     <span class="label label-primary text-14">
@@ -168,11 +164,24 @@
 <div
   class="col-lg-8 col-lg-offset-2 m-b-48 text-center"
   style="padding-top: 48px"
-  *ngIf="loading"
+  *ngIf="(cepEngineStatus$ | async) === 'loading'"
 >
   <h2 class="p-b-24">
     <span class="label label-primary text-14">
       Please stand by until the information about the extension is loaded.
+    </span>
+  </h2>
+  <c8y-loading></c8y-loading>
+</div>
+
+<div
+  class="col-lg-8 col-lg-offset-2 m-b-48 text-center"
+  style="padding-top: 48px"
+  *ngIf="(cepEngineStatus$ | async) === 'down'"
+>
+  <h2 class="p-b-24">
+    <span class="label label-primary text-14">
+      Streaming Analytics Engine is restarting ...
     </span>
   </h2>
   <c8y-loading></c8y-loading>

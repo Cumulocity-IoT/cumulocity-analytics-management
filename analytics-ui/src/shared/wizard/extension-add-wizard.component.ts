@@ -2,6 +2,7 @@ import { Component, Input, OnInit } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from '../analytics.service';
+import { UploadMode } from '../analytics.model';
 
 @Component({
   selector: 'a17t-extension-add-wizard',
@@ -10,11 +11,11 @@ import { AnalyticsService } from '../analytics.service';
     [headerIcon]="'upload'"
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
-    [canGoBack]="false"
+    [mode]="mode"
   ></a17t-extension-add>`
 })
 export class ExtensionAddWizardComponent implements OnInit {
-  @Input() mode: string;
+  @Input() mode: UploadMode;
   @Input() extensionToReplace: IManagedObject;
   @Input() headerText: string;
   successText: string = gettext('Extension created');
@@ -26,15 +27,21 @@ export class ExtensionAddWizardComponent implements OnInit {
 
   uploadExtensionHandler = (
     file: File,
-    newExtension: IManagedObject,
-    restart: boolean
-  ) => this.uploadExtension(file, newExtension, restart);
+    extension: IManagedObject,
+    mode: UploadMode
+  ) => this.uploadExtension(file, extension, mode);
 
   async uploadExtension(
     file: File,
-    newExtension: IManagedObject,
-    restart: boolean
+    extension: IManagedObject,
+    mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    return this.analyticsService.uploadExtension(file, newExtension, restart, this.mode, this.extensionToReplace);
+    // eslint-disable-next-line no-param-reassign
+    if(!extension) extension = this.extensionToReplace;
+    return this.analyticsService.uploadExtension(
+      file,
+      extension,
+      mode
+    );
   }
 }
