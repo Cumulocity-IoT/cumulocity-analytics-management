@@ -19,7 +19,7 @@
 This solution extends the functionality of the standard Cumulocity Streaming Analytics application by incorporating a plugin to manage and add Analytics Builder extensions. The current standard user interface lacks the capability to upload custom blocks packaged as **.zip** files. This plugin enhances the Streaming-Analytics UI by introducing these capabilities.
 
 The extension allows you to manage the complete lifecycle of an extension:
-* List, upload, download, and delete Analytics Builder extensions.
+* List, upload, download, update and delete Analytics Builder extensions.
 * List installed blocks.
 * Manage GitHub repositories, which act as a source for dynamically building new extensions.
 * Build new extensions from selected blocks and deploy them in the Streaming Analytics engine.
@@ -41,6 +41,9 @@ For a deletion or upload to take effect you need to restart the analytics stream
 
 An externally built extensions can be uploaded via the button **Add extension**. 
 Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Deploy extension (Restart)** and wait for the notification confirming the engine restart.
+When you try to add an extension with a name that already exists, you have the choice to confirm that the version of the existing extension is replaces with the new one you are about to upload. You can as well cancel the process if this is not what you intend.
+
+![Build custom extension](resources/images/manage-extension-modal.png)
 
 After the deployment (restart of streaming analytics) the block will be available within the Streaming Analytics Application.
 
@@ -61,9 +64,11 @@ You can build and uploads a custom extension by following the screen flow below:
 
 ### Options for custom extension
 For a custom extension you have the following options:
-* Delete: deletes the custom extension permanently. To take effect you need to restart the streaming analytics engine
+* Delete: deletes the custom extension permanently. To take effect you need to restart the streaming analytics engine.
+* Update: updates the custom extension with a new version of the extension. To take effect you need to restart the streaming analytics engine.
 * Details: lists the included blocks of the custom extension on a detail page.
 * Download: downloads the custom extension as a zip file.
+
 
 ![Build custom extension](resources/images/manage-extension.png)
 
