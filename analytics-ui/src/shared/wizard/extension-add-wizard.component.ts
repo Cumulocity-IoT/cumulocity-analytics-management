@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, Input, OnInit, Output } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService } from '../analytics.service';
+import { UploadMode } from '../analytics.model';
 
 @Component({
   selector: 'a17t-extension-add-wizard',
@@ -10,26 +11,34 @@ import { AnalyticsService } from '../analytics.service';
     [headerIcon]="'upload'"
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
-    [canGoBack]="true"
+    [mode]="mode"
   ></a17t-extension-add>`
 })
-export class ExtensionAddWizardComponent {
-  headerText: string = gettext('Upload analytics extension');
+export class ExtensionAddWizardComponent implements OnInit {
+  @Input() mode: UploadMode;
+  @Input() extensionToReplace: IManagedObject;
+  @Input() headerText: string;
+  @Output() refresh;
   successText: string = gettext('Extension created');
 
   constructor(private analyticsService: AnalyticsService) {}
+  ngOnInit(): void {
+    console.log('Mode', this.mode);
+  }
 
   uploadExtensionHandler = (
     file: File,
-    app: IManagedObject,
-    restart: boolean
-  ) => this.uploadExtension(file, app, restart);
+    extension: IManagedObject,
+    mode: UploadMode
+  ) => this.uploadExtension(file, extension, mode);
 
   async uploadExtension(
     file: File,
-    app: IManagedObject,
-    restart: boolean
+    extension: IManagedObject,
+    mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    return this.analyticsService.uploadExtension(file, app, restart);
+    // eslint-disable-next-line no-param-reassign
+    if (!extension) extension = this.extensionToReplace;
+    return this.analyticsService.uploadExtension(file, extension, mode);
   }
 }

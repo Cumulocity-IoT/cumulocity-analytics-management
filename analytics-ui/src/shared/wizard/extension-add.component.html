@@ -9,7 +9,7 @@
       *ngIf="!isAppCreated; else appCreated"
       [hasError]="errorMessage"
       class="m-auto"
-      style="max-width: 285px"
+      style="max-width: 250px"
     >
       <c8y-drop-area
         (dropped)="onFileDroppedEvent($event)"
@@ -21,8 +21,8 @@
         class="drop-area"
       >
       </c8y-drop-area>
-      <c8y-messages>
-        <c8y-message *ngIf="errorMessage">
+      <c8y-messages class="m-t-8 m-b-8">
+        <c8y-message>
           {{ errorMessage | translate }}
         </c8y-message>
       </c8y-messages>
@@ -42,16 +42,6 @@
   </div>
 </div>
 <c8y-wizard-footer>
-  <button
-    (click)="back()"
-    *ngIf="!isAppCreated && canGoBack"
-    class="btn btn-default"
-    title="{{ 'Back' | translate }}"
-    translate
-    type="button"
-  >
-    Back
-  </button>
   <button
     (click)="cancel()"
     *ngIf="!isAppCreated"

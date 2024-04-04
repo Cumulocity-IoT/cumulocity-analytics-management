@@ -27,23 +27,25 @@ import {
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION,
-  CEP_ENDPOINT
+  CEP_ENDPOINT,
+  CEPStatusObject,
+  UploadMode
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService {
-  appDeleted = new EventEmitter<IManagedObject>();
+  extensionChanged = new EventEmitter<IManagedObject>();
   progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
   private _cepOperationObjectId: Promise<string>;
-  private _cepCtrlStatus: Promise<any>;
+  private _cepCtrlStatus: Promise<CEPStatusObject>;
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private cepOperationObject$: BehaviorSubject<any> = new BehaviorSubject<any>(
-    {}
-  );
+  private cepOperationObject$: Subject<IManagedObject> =
+    new Subject<IManagedObject>();
   private realtime: Realtime;
+  private reloadThroughService$: Subject<boolean> = new Subject<boolean>();
 
   constructor(
     private alertService: AlertService,
@@ -53,7 +55,15 @@ export class AnalyticsService {
     private applicationService: ApplicationService
   ) {
     this.realtime = new Realtime(this.fetchClient);
-    this.subscribeMonitoringChannel();
+    this.subscribeMonitoringChannel(true);
+  }
+
+  initiateReload(resetCache: boolean) {
+    this.reloadThroughService$.next(resetCache);
+  }
+
+  getReloadThroughService() {
+    return this.reloadThroughService$;
   }
 
   getExtensionsMetadataFromInventory(): Promise<IResultList<IManagedObject>> {
@@ -77,6 +87,7 @@ export class AnalyticsService {
       `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
       {
         headers: {
+          accept: 'application/json',
           'content-type': 'application/json'
         },
         body: JSON.stringify({
@@ -116,17 +127,21 @@ export class AnalyticsService {
     return this._extensionsDeployed;
   }
 
-  async deleteExtension(app: IManagedObject): Promise<void> {
+  async deleteExtension(
+    app: IManagedObject,
+    showSuccessMessage
+  ): Promise<void> {
     await this.inventoryBinaryService.delete(app.id);
-    this.alertService.success(gettext('Extension deleted.'));
-    this.appDeleted.emit(app);
+    if (showSuccessMessage)
+      this.alertService.success(gettext('Extension deleted.'));
+    this.extensionChanged.emit(app);
   }
 
   async clearCaches() {
     this._blocksDeployed = undefined;
     this._extensionsDeployed = undefined;
     this._cepOperationObjectId = undefined;
-    this.subscribeMonitoringChannel();
+    this.subscribeMonitoringChannel(true);
   }
 
   async getLoadedBlocksFromCEP(): Promise<CEP_Block[]> {
@@ -161,6 +176,7 @@ export class AnalyticsService {
       `/${CEP_PATH_METADATA_EN}`,
       {
         headers: {
+          accept: 'application/json',
           'content-type': 'application/json'
         },
         method: 'GET'
@@ -175,6 +191,7 @@ export class AnalyticsService {
       `${CEP_PATH_EN}/${name}.json`,
       {
         headers: {
+          accept: 'application/json',
           'content-type': 'application/json'
         },
         method: 'GET'
@@ -197,6 +214,7 @@ export class AnalyticsService {
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
           {
             headers: {
+              accept: 'application/json',
               'content-type': 'application/json'
             },
             method: 'GET'
@@ -210,6 +228,7 @@ export class AnalyticsService {
           `${CEP_PATH_STATUS}`,
           {
             headers: {
+              accept: 'application/json',
               'content-type': 'application/json'
             },
             method: 'GET'
@@ -246,11 +265,11 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCEP_OperationObject(): Subject<string> {
+  getCEP_OperationObject(): Subject<IManagedObject> {
     return this.cepOperationObject$;
   }
 
-  async getCEP_CtrlStatus(): Promise<any> {
+  async getCEP_CtrlStatus(): Promise<CEPStatusObject> {
     let response: IFetchResponse;
     if (!this._cepCtrlStatus) {
       if (await this.isBackendDeployed()) {
@@ -259,6 +278,7 @@ export class AnalyticsService {
           `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
           {
             headers: {
+              accept: 'application/json',
               'content-type': 'application/json'
             },
             method: 'GET'
@@ -268,6 +288,7 @@ export class AnalyticsService {
         // get name of microservice from cep endpoint
         response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
           headers: {
+            accept: 'application/json',
             'content-type': 'application/json'
           },
           method: 'GET'
@@ -278,10 +299,12 @@ export class AnalyticsService {
     return this._cepCtrlStatus;
   }
 
-  async subscribeMonitoringChannel(): Promise<object> {
+  async subscribeMonitoringChannel(showWarning: boolean): Promise<object> {
     const cepOperationObjectId = await this.getCEP_OperationObjectId();
-    if (!cepOperationObjectId) {
-        this.alertService.warning('Analytics Engine is currently not started. Try again later ...');
+    if (!cepOperationObjectId && showWarning) {
+      this.alertService.warning(
+        'Analytics Engine is currently not started. Try again later ...'
+      );
     }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);
@@ -294,41 +317,6 @@ export class AnalyticsService {
       this.updateStatusFromOperationObject.bind(this)
     );
     return subMO;
-
-    // const sub = this.realtime.subscribe(
-    //     `/events/${cepOperationObjectId}`,
-    //     this.updateStatus.bind(this)
-    //   );
-    //   this.subscription = this.restart$
-    //     .pipe(
-    //       pairwise(),
-    //       tap((pair) => {
-    //         const [prev, current] = pair;
-    //         console.log(`Message: prev: ${prev}, current: ${current}`);
-    //       }),
-    //       // filter(([prev, current]) => prev === STATUS_MESSAGE_01),
-    //       // Cleansed message: prev: Recording apama-ctrl safe mode state, current: Deployment was changed
-    //       filter(([prev, current]) => !!current),
-    //       tap((pair) => {
-    //         const [prev, current] = pair;
-    //         console.log(`Cleansed message: prev: ${prev}, current: ${current}`);
-    //       }),
-    //       filter(
-    //         ([prev, current]) =>
-    //           prev === STATUS_MESSAGE_01 && current === STATUS_MESSAGE_02
-    //       ),
-    //       map(([prev, current]) => [prev, current])
-    //     )
-    //     .subscribe((pair) => {
-    //       const [prev, current] = pair;
-    //       // this.alertService.warning(
-    //       //   `Message: prev: ${prev}, current: ${current}`
-    //       // );
-    //       if (current == STATUS_MESSAGE_02)
-    //         this.alertService.success(`Deployment successful`);
-    //       this.restarting$.next(false);
-    //     });
-    //   return sub;
   }
 
   unsubscribeFromMonitoringChannel(subscription: any) {
@@ -356,27 +344,44 @@ export class AnalyticsService {
   }
 
   async restartCEP(): Promise<any> {
-    const formData = new FormData();
     const fetchOptions: IFetchOptions = {
       method: 'PUT',
-      body: formData,
+      body: '{}',
       // headers: { 'content-type': 'multipart/form-data', accept: 'application/json' },
-      headers: { accept: 'application/json' }
+      headers: {
+        accept: 'application/json',
+        'Content-Type': 'application/json'
+      }
     };
     const url = '/service/cep/restart';
-    await this.fetchClient.fetch(url, fetchOptions);
+
+    try {
+      await this.fetchClient.fetch(url, fetchOptions);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      console.log('We do cleanup here');
+    }
     this.clearCaches();
   }
 
   async uploadExtension(
-    archive: File,
-    app: Partial<IManagedObject>,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    restart: boolean = false
+    file: File,
+    extension: IManagedObject,
+    mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    const result = (await this.inventoryBinaryService.create(archive, app))
-      .data;
-    return result;
+    let extensionToCreate: Partial<IManagedObject> = extension;
+    if (mode === 'update') {
+      await this.deleteExtension(extension, false);
+      extensionToCreate = {
+        name: extension.name,
+        pas_extension: extension.name
+      };
+    }
+    const result2 = (
+      await this.inventoryBinaryService.create(file, extensionToCreate)
+    ).data;
+    return result2;
   }
 
   cancelExtensionCreation(app: Partial<IManagedObject>): void {

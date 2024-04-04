@@ -1,5 +1,9 @@
-import { Component, Input, ViewChild } from '@angular/core';
-import { ApplicationService, IApplication, IManagedObject } from '@c8y/client';
+import {
+  Component,
+  Input,
+  ViewChild
+} from '@angular/core';
+import { IManagedObject, IResultList } from '@c8y/client';
 import {
   AlertService,
   DropAreaComponent,
@@ -8,6 +12,9 @@ import {
 import { BehaviorSubject } from 'rxjs';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
+import { UploadMode } from '../analytics.model';
+import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
+import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 
 @Component({
   selector: 'a17t-extension-add',
@@ -18,23 +25,23 @@ export class ExtensionAddComponent {
   @Input() headerIcon: string;
   @Input() successText: string;
   @Input() uploadExtensionHandler: any;
-  @Input() canGoBack: boolean = false;
+  @Input() mode: UploadMode;
 
   @ViewChild(DropAreaComponent) dropAreaComponent;
 
   isLoading: boolean;
+  isUpdate: boolean = false;
   isAppCreated: boolean;
   createdApp: Partial<IManagedObject>;
-  canOpenInBrowser: boolean = false;
   errorMessage: string;
-  restart: boolean = false;
-  private uploadCanceled: boolean = false;
+  fileToUpload: File;
+  uploadCanceled: boolean = false;
 
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
-    private applicationService: ApplicationService,
-    private wizardComponent: WizardComponent
+    private wizardComponent: WizardComponent,
+    private bsModalService: BsModalService
   ) {}
 
   get progress(): BehaviorSubject<number> {
@@ -49,6 +56,7 @@ export class ExtensionAddComponent {
   }
 
   async onFile(file: File) {
+    this.fileToUpload = file;
     this.isLoading = true;
     this.errorMessage = null;
     this.progress.next(0);
@@ -58,9 +66,23 @@ export class ExtensionAddComponent {
         pas_extension: n,
         name: n
       };
-      await this.uploadExtensionHandler(file, this.createdApp, this.restart);
-      this.alertService.success('Uploaded new extension.');
-      this.isAppCreated = true;
+      const result: IResultList<IManagedObject> =
+        await this.analyticsService.getExtensionsMetadataFromInventory();
+      const { data } = result;
+      for (let i = 0; i < data.length; i++) {
+        const ext = data[i];
+        if (ext.name == n) {
+          this.createdApp = ext;
+          this.isUpdate = true;
+          break;
+        }
+      }
+      if (this.isUpdate) {
+          this.done();
+          this.confirmUpdate();
+      } else {
+        await this.uploadExtension(this.mode);
+      }
     } catch (ex) {
       this.analyticsService.cancelExtensionCreation(this.createdApp);
       this.createdApp = null;
@@ -74,8 +96,12 @@ export class ExtensionAddComponent {
     this.isLoading = false;
   }
 
-  getHref(app: IApplication): string {
-    return this.applicationService.getHref(app);
+  private async uploadExtension(mode: UploadMode) {
+    await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
+    this.alertService.success('Uploaded new extension.');
+    this.isAppCreated = true;
+    this.progress.next(100);
+    this.isLoading = false;
   }
 
   cancel() {
@@ -87,13 +113,39 @@ export class ExtensionAddComponent {
     this.wizardComponent.close();
   }
 
-  back() {
-    this.wizardComponent.reset();
-  }
-
-  private cancelFileUpload() {
+  cancelFileUpload() {
     this.uploadCanceled = true;
     this.analyticsService.cancelExtensionCreation(this.createdApp);
     this.createdApp = null;
+  }
+  confirmUpdate() {
+    const initialState = {
+      title: 'Update extension',
+      message: `Extension with the same name ${this.createdApp.name} exists! Do you want to proceed?`,
+      labels: {
+        ok: 'Update',
+        cancel: 'Cancel'
+      }
+    };
+    const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
+      ConfirmationModalComponent,
+      { initialState }
+    );
+    confirmDeletionModalRef.content.closeSubject.subscribe(
+      async (result: boolean) => {
+        console.log('Confirmation delete result:', result);
+        if (result) {
+          try {
+            await this.uploadExtension('update');
+            this.analyticsService.initiateReload(true);
+          } catch (ex) {
+            if (ex) {
+              this.alertService.addServerFailure(ex);
+            }
+          }
+        }
+        confirmDeletionModalRef.hide();
+      }
+    );
   }
 }
