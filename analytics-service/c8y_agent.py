@@ -34,7 +34,7 @@ class C8YAgent:
         b = Binary(
             c8y=self.c8yapp.get_tenant_instance(headers=request_headers),
             type="application/zip",
-            name=f"{extension_name}.zip",
+            name=f"{extension_name}",
             file=ext_file,
             pas_extension=extension_name,
         ).create()
