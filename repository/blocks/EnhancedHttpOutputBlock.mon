@@ -80,7 +80,7 @@ event EnhancedHTTPOutput_$Parameters {
 }
 
 /**
- * EnhancedHTTPOutput
+ * Enhanced HTTPOutput
  *
  * Invokes a REST endpoint using POST
  *
@@ -154,7 +154,7 @@ event EnhancedHTTPOutput {
         if $parameters.wrapBody {
             data := {"modelName":<any>modelName, "value":$input_value }; // $input_value is a Value object with fields value, timestamp, properties - this will be output as a JSON object.
 		} else {
-            data := $input_value.properties;
+            data := $input_value.value;
         }
 
 		
