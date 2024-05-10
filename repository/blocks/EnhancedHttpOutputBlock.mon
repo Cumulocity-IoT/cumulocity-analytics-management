@@ -189,6 +189,7 @@ event EnhancedHTTPOutput {
 		Response response := <Response> $payload;
 		dictionary<string, any> propertyValues := {};
 		any k;
+        log "Response: " +response.payload.data.toString() at INFO;
 		for k in response.payload.data.getKeys() {
 			propertyValues[k.valueToString()] := response.payload.data.getEntry(k);
 		}
