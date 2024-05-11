@@ -70,6 +70,15 @@ event EnhancedHTTPOutput_$Parameters {
     /**Default value for wrapBody.*/
 	constant boolean $DEFAULT_wrapBody := true;
 
+    /**
+	* Timeout.
+	*
+	* The timeout in ms for the call.
+	*/
+	integer timeout;
+    /**Default value for timeout.*/
+	constant integer $DEFAULT_timeout := 1;  // 1ms
+
 	/** Validate that the values for all the parameters have been provided. */
 	action $validate() {
 		BlockBase.throwsOnEmpty(host, "host", self);
@@ -173,7 +182,7 @@ event EnhancedHTTPOutput {
 	
 	/** Handle the HTTP response.*/
 	action handleResponse(Response res) {
-		$base.createTimer(0.01, res);		// Creates a timer with the specified duration.
+		$base.createTimer(($parameters.timeout/1000), res);		// Creates a timer with the specified duration.
 		
 		if not res.isSuccess() {
 			log "Unable to connect " +$parameters.host+". Error code: " + res.statusMessage at WARN;
@@ -189,10 +198,12 @@ event EnhancedHTTPOutput {
 		Response response := <Response> $payload;
 		dictionary<string, any> propertyValues := {};
 		any k;
-        log "Response: " +response.payload.data.toString() at INFO;
+        log "Response raw: " +response.payload.data.toString() at INFO;
 		for k in response.payload.data.getKeys() {
 			propertyValues[k.valueToString()] := response.payload.data.getEntry(k);
 		}
+        log "Response parsed: " +propertyValues.toString() at INFO;
+
 		$setOutput_responseBody($activation, Value(true, $activation.timestamp, propertyValues));
 		$setOutput_statusCode($activation, response.statusCode.toFloat());
 	}
