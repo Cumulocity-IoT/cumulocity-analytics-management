@@ -182,7 +182,7 @@ event EnhancedHTTPOutput {
 	
 	/** Handle the HTTP response.*/
 	action handleResponse(Response res) {
-		$base.createTimer(($parameters.timeout/1000), res);		// Creates a timer with the specified duration.
+		$base.createTimer(($parameters.timeout.toFloat() / 1000.0), res);		// Creates a timer with the specified duration.
 		
 		if not res.isSuccess() {
 			log "Unable to connect " +$parameters.host+". Error code: " + res.statusMessage at WARN;
