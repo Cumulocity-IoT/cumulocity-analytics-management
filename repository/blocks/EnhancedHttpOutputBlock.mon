@@ -27,15 +27,16 @@ using com.softwareag.connectivity.httpclient.Response;
 event HTTPHandler
 	{
 		string deviceId;
+		float timeout;
+		string host;
 		/** Handle the HTTP response.*/
 		action handleResponse(Response res) {
 			// $base.createTimer(($parameters.timeout.toFloat() / 1000.0), res);		// Creates a timer with the specified duration.
-			TimerParams tp := TimerParams.relative($parameters.timeout.toFloat() / 1000.0).withPayload(res)
-										.withPartition(deviceId));
+			TimerParams tp := TimerParams.relative(timeout).withPayload(res).withPartition(deviceId);
 
 			log "Called handleResponse: " + res.payload.data.toString() at INFO;
 			if not res.isSuccess() {
-				log "Unable to connect " +$parameters.host+". Error code: " + res.statusMessage at WARN;
+				log "Unable to connect " +host+". Error code: " + res.statusMessage at WARN;
 			}
 		}
 	}
@@ -195,7 +196,7 @@ event EnhancedHTTPOutput {
 		// Execute the request and pass the callback action.
 		string deviceId := $activation.partition.toString();
 		log "Processing for partition: " + deviceId at INFO;
-		req.execute(HTTPHandler(deviceId).handleResponse);
+		req.execute(HTTPHandler(deviceId, $parameters.timeout.toFloat() / 1000.0, $parameters.host).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
 	
