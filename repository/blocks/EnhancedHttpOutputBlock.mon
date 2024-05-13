@@ -16,12 +16,29 @@ using apama.analyticsbuilder.Activation;
 using apama.analyticsbuilder.ABConstants;
 using apama.analyticsbuilder.L10N;
 using apama.analyticsbuilder.Value;
+using apama.analyticsbuilder.TimerParams;
 
 using com.softwareag.connectivity.httpclient.HttpTransport;
 using com.softwareag.connectivity.httpclient.RequestType;
 using com.softwareag.connectivity.httpclient.Request;
 using com.softwareag.connectivity.httpclient.Response;
 
+
+event HTTPHandler
+	{
+		string deviceId;
+		/** Handle the HTTP response.*/
+		action handleResponse(Response res) {
+			// $base.createTimer(($parameters.timeout.toFloat() / 1000.0), res);		// Creates a timer with the specified duration.
+			TimerParams tp := TimerParams.relative($parameters.timeout.toFloat() / 1000.0).withPayload(res)
+										.withPartition(deviceId));
+
+			log "Called handleResponse: " + res.payload.data.toString() at INFO;
+			if not res.isSuccess() {
+				log "Unable to connect " +$parameters.host+". Error code: " + res.statusMessage at WARN;
+			}
+		}
+	}
 
 /**
  * Event definition of the parameters for the HTTP Output block.
@@ -176,19 +193,12 @@ event EnhancedHTTPOutput {
 		Request req := transport.createPOSTRequest($parameters.path, data);
 
 		// Execute the request and pass the callback action.
-		req.execute(handleResponse);
+		string deviceId := $activation.partition.toString();
+		log "Processing for partition: " + deviceId at INFO;
+		req.execute(HTTPHandler(deviceId).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
 	
-	/** Handle the HTTP response.*/
-	action handleResponse(Response res) {
-		$base.createTimer(($parameters.timeout.toFloat() / 1000.0), res);		// Creates a timer with the specified duration.
-
-		log "Called handleResponse: " + res.payload.data.toString() at INFO;
-		if not res.isSuccess() {
-			log "Unable to connect " +$parameters.host+". Error code: " + res.statusMessage at WARN;
-		}
-	}
 	
 	/**
 	 * This action is called by the framework when the timer is triggered. The framework provides the value of the payload which was passed while creating the timer.
@@ -206,7 +216,7 @@ event EnhancedHTTPOutput {
 		}
 		
 		log "Response parsed: " + propertyValues.toString() at INFO;
-
+		
 		$setOutput_responseBody($activation, Value(true, $activation.timestamp, propertyValues));
 		$setOutput_statusCode($activation, response.statusCode.toFloat());
 	}
