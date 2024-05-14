@@ -36,7 +36,7 @@ event HTTPHandler
 			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
 			base.createTimerWith(tp);
 
-			log "Called handleResponse: " deviceId + "/" + res.payload.data.toString() at INFO;
+			log "Called handleResponse: " + deviceId + "/" + res.payload.data.toString() at INFO;
 			if not res.isSuccess() {
 				log "Unable to connect " +host+". Error code: " + res.statusMessage at WARN;
 			}
