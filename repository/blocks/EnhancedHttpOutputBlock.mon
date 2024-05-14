@@ -32,8 +32,8 @@ event HTTPHandler
 		/** Handle the HTTP response.*/
 		action handleResponse(Response res) {
 			// $base.createTimer(0.01, res);		// Creates a timer with the specified duration.
-			// TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
-			base.relative(0.01).withPayload(res).withPartition(deviceId);
+			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
+			base.createTimerWith(tp);
 
 			log "Called handleResponse: " + res.payload.data.toString() at INFO;
 			if not res.isSuccess() {
