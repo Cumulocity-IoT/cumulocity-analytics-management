@@ -14,7 +14,7 @@ using com.apama.util.AnyExtractor;
 
 
 /** The parameters for the Anomaly Detection block. */
-event AnomalyDetection_$Parameters{
+event BasicAnomalyDetection_$Parameters{
 
 	/**
 	* Alpha (smoothing factor). 
@@ -40,7 +40,7 @@ event AnomalyDetection_$Parameters{
 }
 
 /** State of the block.*/
-event AnomalyDetection_$State{
+event BasicAnomalyDetection_$State{
 	float lastValue; 
 	float variance; 
 	float mean; 
@@ -68,7 +68,7 @@ event BasicAnomalyDetection {
 	BlockBase $base;
 	
 	/** Parameters, filled in by the framework. */
-	AnomalyDetection_$Parameters $parameters;
+	BasicAnomalyDetection_$Parameters $parameters;
 
 	float alpha;
 	float numStdDevs;
@@ -83,7 +83,7 @@ event BasicAnomalyDetection {
 	* This action receives the input values and contains the logic of the block. 
 	*
 	* It takes in 1 float which represents the signal value
-
+   	*
    	* @param $activation The current activation, contextual information required when generating a block output. Blocks should only use the
    	* <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
    	* @param $input_value input signal for anomaly detection.
