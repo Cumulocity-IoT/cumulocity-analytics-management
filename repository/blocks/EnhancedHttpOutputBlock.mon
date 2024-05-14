@@ -28,10 +28,12 @@ event HTTPHandler
 	{
 		string deviceId;
 		string host;
+		BlockBase base;
 		/** Handle the HTTP response.*/
 		action handleResponse(Response res) {
 			// $base.createTimer(0.01, res);		// Creates a timer with the specified duration.
-			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
+			// TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
+			base.relative(0.01).withPayload(res).withPartition(deviceId);
 
 			log "Called handleResponse: " + res.payload.data.toString() at INFO;
 			if not res.isSuccess() {
@@ -186,7 +188,7 @@ event EnhancedHTTPOutput {
 		// Execute the request and pass the callback action.
 		string deviceId := $activation.partition.toString();
 		log "Processing for partition: " + deviceId at INFO;
-		req.execute(HTTPHandler(deviceId, $parameters.host).handleResponse);
+		req.execute(HTTPHandler(deviceId, $parameters.host, $base).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
 	
