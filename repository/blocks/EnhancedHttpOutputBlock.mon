@@ -27,12 +27,11 @@ using com.softwareag.connectivity.httpclient.Response;
 event HTTPHandler
 	{
 		string deviceId;
-		float timeout;
 		string host;
 		/** Handle the HTTP response.*/
 		action handleResponse(Response res) {
-			// $base.createTimer(($parameters.timeout.toFloat() / 1000.0), res);		// Creates a timer with the specified duration.
-			TimerParams tp := TimerParams.relative(timeout).withPayload(res).withPartition(deviceId);
+			// $base.createTimer(0.01, res);		// Creates a timer with the specified duration.
+			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
 
 			log "Called handleResponse: " + res.payload.data.toString() at INFO;
 			if not res.isSuccess() {
@@ -87,15 +86,6 @@ event EnhancedHTTPOutput_$Parameters {
 
     /**Default value for wrapBody.*/
 	constant boolean $DEFAULT_wrapBody := true;
-
-    /**
-	* Timeout.
-	*
-	* The timeout in ms for the call.
-	*/
-	integer timeout;
-    /**Default value for timeout.*/
-	constant integer $DEFAULT_timeout := 1;  // 1ms
 
 	/** Validate that the values for all the parameters have been provided. */
 	action $validate() {
@@ -196,7 +186,7 @@ event EnhancedHTTPOutput {
 		// Execute the request and pass the callback action.
 		string deviceId := $activation.partition.toString();
 		log "Processing for partition: " + deviceId at INFO;
-		req.execute(HTTPHandler(deviceId, $parameters.timeout.toFloat() / 1000.0, $parameters.host).handleResponse);
+		req.execute(HTTPHandler(deviceId, $parameters.host).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
 	
