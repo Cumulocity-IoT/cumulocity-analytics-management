@@ -90,7 +90,7 @@ event BasicAnomalyDetection {
    	*
    	* @$inputName value Value
 	*/
-	action $process(Activation $activation, float $input_value, AnomalyDetection_$State $blockState) {
+	action $process(Activation $activation, float $input_value, BasicAnomalyDetection_$State $blockState) {
 		if (not $blockState.stateInitialized) {
 			$blockState.lastValue := $input_value;
 			$blockState.mean := $input_value;
