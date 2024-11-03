@@ -30,7 +30,7 @@ export class EngineMonitoringComponent implements OnInit {
   currentPageAlarm: number = 1;
   currentPageEvent: number = 1;
   searchString: string;
-  status: AlarmStatus;
+  status: typeof AlarmStatus;
   AlarmStatus = AlarmStatus;
   isAlarmExpanded: boolean = true;
   isEventExpanded: boolean = false;

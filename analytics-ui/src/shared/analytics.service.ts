@@ -5,15 +5,19 @@ import {
   FetchClient,
   IFetchOptions,
   IFetchResponse,
+  IIdentified,
   IManagedObject,
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
   IResultList,
-  Realtime
+  IRoleReference,
+  IUserRoleReference,
+  Realtime,
+  UserService
 } from '@c8y/client';
 
-import { AlertService, gettext } from '@c8y/ngx-components';
+import { AlertService, AppStateService, gettext } from '@c8y/ngx-components';
 
 import { BehaviorSubject, Subject } from 'rxjs';
 import {
@@ -52,7 +56,8 @@ export class AnalyticsService {
     private inventoryService: InventoryService,
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
-    private applicationService: ApplicationService
+    private applicationService: ApplicationService,
+    private userService: UserService
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.subscribeMonitoringChannel(true);
