@@ -36,7 +36,7 @@ event HTTPHandler
 			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
 			base.createTimerWith(tp);
 
-			log "Called handleResponse: " + deviceId + "/" + res.payload.data.toString() at INFO;
+			log "Called handleResponse: " + deviceId + "/" + res.payload.data.toString() at DEBUG;
 			if not res.isSuccess() {
 				log "Unable to connect " +host+". Error code: " + res.statusMessage at WARN;
 			}
@@ -107,9 +107,9 @@ event EnhancedHTTPOutput_$Parameters {
  *  An example of HTTP request from the block:
  * <code>
     Content-Type: application/json
-  	
     {
   	    "modelName":"model_0",
+  	    "deviceId":"84588865186",
   	    "value": {  
   	        "value":true,  
   	        "timestamp":"1563466239",
@@ -170,9 +170,10 @@ event EnhancedHTTPOutput {
 		string modelName := $modelScopeParameters.getOrDefault(ABConstants.MODEL_NAME_IDENTIFIER).valueToString();
 		
 		any data;
+		string deviceId := AnyExtractor($activation.partition).getString("");
         
         if $parameters.wrapBody {
-            data := {"modelName":<any>modelName, "value":$input_value }; // $input_value is a Value object with fields value, timestamp, properties - this will be output as a JSON object.
+            data := {"modelName":<any>modelName, "value":$input_value, "deviceId": deviceId }; // $input_value is a Value object with fields value, timestamp, properties - this will be output as a JSON object.
 		} else {
             if $input_value.properties.size() = 0 {
                 // if properties are empty the use the input value
@@ -187,8 +188,7 @@ event EnhancedHTTPOutput {
 		Request req := transport.createPOSTRequest($parameters.path, data);
 
 		// Execute the request and pass the callback action.
-		string deviceId := AnyExtractor($activation.partition).getString("");
-		log "Processing for partition: " + deviceId at INFO;
+		log "Processing for partition: " + deviceId at DEBUG;
 		req.execute(HTTPHandler(deviceId, $parameters.host, $base).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
@@ -204,7 +204,7 @@ event EnhancedHTTPOutput {
 		dictionary<string, any> propertyValues := {};
 		any k;
 
-		log "Response raw: " + response.payload.data.toString() at INFO;
+		log "Response raw: " + response.payload.data.toString() at DEBUG;
 		for k in response.payload.data.getKeys() {
 			propertyValues[k.valueToString()] := response.payload.data.getEntry(k);
 		}
