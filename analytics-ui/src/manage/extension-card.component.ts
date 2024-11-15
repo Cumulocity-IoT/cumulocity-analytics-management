@@ -43,7 +43,7 @@ export class ExtensionCardComponent {
   async delete() {
     const initialState = {
       title: 'Delete extension',
-      message: 'You are about to delete an extension. Do you want to proceed?',
+      message: `You are about to delete the extension ${this.extension.name}. Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'

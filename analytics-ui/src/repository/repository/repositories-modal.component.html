@@ -5,119 +5,120 @@
   [headerClasses]="'modal-header dialog-header'"
 >
   <div class="viewport-modal">
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Url</th>
-          <th>Enabled</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let repository of repositories; let i = index">
-          <td style="padding-top: 4px" width="5%">
-            {{ i }}
-          </td>
-          <td style="padding-top: 4px" width="15%">
-            {{ repository.name }}
-          </td>
-          <td style="padding-top: 4px" width="65%">
-            {{ repository.url }}
-          </td>
-          <td style="padding-top: 8px" width="5%">
-            <!-- <i
-                style="text-align: center; width: 100%"
-                [c8yIcon]="!repository?.enabled ? 'circle-o' : 'plus-circle-o'"
-                class="m-r-5"
-              ></i> -->
-            <button
-              title="{{ 'Toggle activation' | translate }}"
-              class="btn btn-icon btn-clean"
-              (click)="toggleActivation(repository)"
-            >
-              <i
-                [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
-                class="m-r-5"
-                c8yIcon="toggle-on"
-                class="text-danger"
-              ></i>
-              <span class="sr-only" translate>Toggle activation</span>
-            </button>
-          </td>
-          <!-- <td width="10%" style="padding-top: 0px; padding-bottom: 0px"> -->
-          <td width="10%" style="padding-top: 8px">
-            <button
-              title="{{ 'Update' | translate }}"
-              class="btn btn-icon btn-clean p-r-4"
-              (click)="editRepository(repository)"
-            >
-              <i c8yIcon="pencil" class="text-danger"></i>
-              <span class="sr-only" translate>Update</span>
-            </button>
-            <button
-              title="{{ 'Delete' | translate }}"
-              class="btn btn-icon btn-clean"
-              (click)="deleteRepository(repository.id)"
-            >
-              <i c8yIcon="trash-o" class="text-danger"></i>
-              <span class="sr-only" translate>Delete</span>
-            </button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-
-    <fieldset class="c8y-fieldset p-16">
-      <legend>Update repository</legend>
-      <form [formGroup]="repositoryForm">
-        <input type="hidden" formControlName="id" />
-        <c8y-form-group>
-          <label for="name">Name</label>
-          <input
-            type="text"
-            id="name"
-            formControlName="name"
-            class="form-control"
-          />
-        </c8y-form-group>
-        <c8y-form-group>
-          <label for="name"
-            ><span>{{'Repository Url  '}}</span>
-            <ng-template #popTemplateRepositoryUrl>
-              {{
-                " Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-              }}
-            </ng-template>
-            <button
-              class="btn-clean text-primary"
-              [popover]="popTemplateRepositoryUrl"
-              popoverTitle="Repository Url"
-              placement="right"
-              triggers="focus"
-              type="button"
-            >
-              <i c8yIcon="question-circle-o"></i>
-            </button>
-          </label>
-          <input
-            type="text"
-            title="Repository Url"
-            id="url"
-            formControlName="url"
-            placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-            class="form-control"
-          />
-        </c8y-form-group>
-        <!-- Add any other form controls based on your repository model -->
-        <button (click)="addRepository()" class="btn btn-default">
-          Add repository
-        </button>
-        <button (click)="updateRepository()" class="btn btn-default">
-          Update repository
-        </button>
-      </form>
-    </fieldset>
+    <div class="p-24">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Url</th>
+            <th>Enabled</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let repository of repositories; let i = index">
+            <td style="padding-top: 4px" width="5%">
+              {{ i }}
+            </td>
+            <td style="padding-top: 4px" width="15%">
+              {{ repository.name }}
+            </td>
+            <td style="padding-top: 4px" width="65%">
+              {{ repository.url }}
+            </td>
+            <td style="padding-top: 8px" width="5%">
+              <!-- <i
+                  style="text-align: center; width: 100%"
+                  [c8yIcon]="!repository?.enabled ? 'circle-o' : 'plus-circle-o'"
+                  class="m-r-5"
+                ></i> -->
+              <button
+                title="{{ 'Toggle activation' | translate }}"
+                class="btn btn-icon btn-clean"
+                (click)="toggleActivation(repository)"
+              >
+                <i
+                  [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'"
+                  class="m-r-5"
+                  c8yIcon="toggle-on"
+                  class="text-danger"
+                ></i>
+                <span class="sr-only" translate>Toggle activation</span>
+              </button>
+            </td>
+            <!-- <td width="10%" style="padding-top: 0px; padding-bottom: 0px"> -->
+            <td width="10%" style="padding-top: 8px">
+              <button
+                title="{{ 'Update' | translate }}"
+                class="btn btn-icon btn-clean p-r-4"
+                (click)="editRepository(repository)"
+              >
+                <i c8yIcon="pencil" class="text-danger"></i>
+                <span class="sr-only" translate>Update</span>
+              </button>
+              <button
+                title="{{ 'Delete' | translate }}"
+                class="btn btn-icon btn-clean"
+                (click)="deleteRepository(repository.id)"
+              >
+                <i c8yIcon="trash-o" class="text-danger"></i>
+                <span class="sr-only" translate>Delete</span>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <fieldset>
+        <div class="legend form-block">Update repository</div>
+        <form [formGroup]="repositoryForm">
+          <input type="hidden" formControlName="id" />
+          <c8y-form-group>
+            <label for="name">Name</label>
+            <input
+              type="text"
+              id="name"
+              formControlName="name"
+              class="form-control"
+            />
+          </c8y-form-group>
+          <c8y-form-group>
+            <label for="name"
+              ><span>{{'Repository Url  '}}</span>
+              <ng-template #popTemplateRepositoryUrl>
+                {{
+                  " Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+                }}
+              </ng-template>
+              <button
+                class="btn-clean text-primary"
+                [popover]="popTemplateRepositoryUrl"
+                popoverTitle="Repository Url"
+                placement="right"
+                triggers="focus"
+                type="button"
+              >
+                <i c8yIcon="question-circle-o"></i>
+              </button>
+            </label>
+            <input
+              type="text"
+              title="Repository Url"
+              id="url"
+              formControlName="url"
+              placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+              class="form-control"
+            />
+          </c8y-form-group>
+          <!-- Add any other form controls based on your repository model -->
+          <button (click)="addRepository()" class="btn btn-default">
+            Add repository
+          </button>
+          <button (click)="updateRepository()" class="btn btn-default">
+            Update repository
+          </button>
+        </form>
+      </fieldset>
+    </div>
   </div>
 </c8y-modal>

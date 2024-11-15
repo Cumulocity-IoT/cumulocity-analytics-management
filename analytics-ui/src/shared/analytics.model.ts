@@ -82,7 +82,7 @@ export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
 export const CEP_METADATA_FILE_EXTENSION = '.json';
 export const GITHUB_BASE = 'https://api.github.com';
-export const REPO_SAMPLES_OWNER = 'SoftwareAG';
+export const REPO_SAMPLES_OWNER = 'Cumulocity-IoT';
 export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
 export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;

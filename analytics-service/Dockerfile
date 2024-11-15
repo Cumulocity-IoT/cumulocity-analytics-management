@@ -11,9 +11,9 @@ RUN microdnf install git tar
 
 # USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
-RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
+RUN git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git
 # alternatively
-# RUN wget https://github.com/SoftwareAG/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
+# RUN wget https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
 # RUN unzip apama-analytics-builder-block-sdk-rel-10.18.0.x.zip
 
 COPY requirements.txt /apama_work

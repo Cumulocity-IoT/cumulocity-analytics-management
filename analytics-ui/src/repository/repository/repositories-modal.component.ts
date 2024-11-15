@@ -72,7 +72,7 @@ export class RepositoriesModalComponent implements OnInit {
   deleteRepository(repositoryId: string): void {
     const initialState = {
       title: 'Delete repository',
-      message: 'You are about to delete a repository. Do you want to proceed?',
+      message: `You are about to delete the repository ${repositoryId}. Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'

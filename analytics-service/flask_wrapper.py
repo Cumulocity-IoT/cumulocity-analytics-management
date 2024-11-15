@@ -42,10 +42,9 @@ def get_content(repository):
     try:
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
-        extract_fqn_cep_block_raw = request.args.get(
+        extract_fqn_cep_block = parse_boolean(request.args.get(
             "extract_fqn_cep_block", default=False
-        )
-        extract_fqn_cep_block = json.loads(extract_fqn_cep_block_raw.lower())
+        ))
         logger.info(
             f"Get content encoded_url: {repository} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}"
         )
@@ -57,13 +56,13 @@ def get_content(repository):
             regex = "(package\s)(.*?);"
             package = re.findall(regex, monitor_code.text)
             try:
-                fqn = package[0][1] + "." + cep_block_name
+                fqn = str(package[0][1]) + "." + str(cep_block_name)
                 logger.info(f"Return only fqn of block: {fqn}")
                 response = make_response(fqn, 200)
                 response.mimetype = "text/plain"
                 return response
             except Exception as e:
-                logger.error(f"Exception when retrieving fqn !", exc_info=True)
+                logger.error(f"Exception when retrieving fqn of monitor file!", exc_info=True)
                 return f"Bad request: {str(e)}", 400
         else:
             logger.info(f"Response: {monitor_code}")
@@ -82,7 +81,7 @@ def get_content(repository):
 @app.route("/extension", methods=["POST"])
 def create_extension_zip():
     # sample url
-    # "https://api.github.com/repos/SoftwareAG/apama-analytics-builder-block-sdk/contents/samples/blocks/CreateEvent.mon?ref=rel/10.18.0.x"
+    # "https://api.github.com/repos/Cumulocity-IoT/apama-analytics-builder-block-sdk/contents/samples/blocks/CreateEvent.mon?ref=rel/10.18.0.x"
 
     # extract parameter
     data = request.get_json()
@@ -267,6 +266,14 @@ def extract_path(path):
 def extract_raw_path(path):
     # Extract information from the raw API URL
     return path.rsplit("/", 1)[-1]
+
+
+def parse_boolean(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() == 'true'
+    return False
 
 
 if __name__ == "__main__":

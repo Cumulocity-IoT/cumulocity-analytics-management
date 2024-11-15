@@ -25,7 +25,7 @@ The extension allows you to manage the complete lifecycle of an extension:
 * Build new extensions from selected blocks and deploy them in the Streaming Analytics engine.
 * Monitor alarm status and events sent from the Analytics Builder engine to analyze deployment failures.
 
-Analytics Builder blocks are build using the [Analytics Builder Block SDK](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). Additionally, externally built extensions can be uploaded in the UI. 
+Analytics Builder blocks are build using the [Analytics Builder Block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk). Additionally, externally built extensions can be uploaded in the UI. 
 
 ![Extension installation](resources/images/extension-installation-animated.gif)
 
@@ -102,7 +102,7 @@ The property `is_safe_mode` is an indication if the engine was started in [Safe 
 > **NOTE**
 This solution consists of two parts:
 * the backend as a microservice, which can be found in the release section of the github project: [analytics-ext-service.zip
-](https://github.com/SoftwareAG/cumulocity-analytics-management/releases)
+](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases)
 
   If the microservice is not deployed you **can't** build customs extensions.
 * the web plugin that is installed using the Cumulocity Administration UI (Administration -> Extensions -> Analytics Extensions), see installation below:
@@ -114,7 +114,7 @@ The plugin is available as a community plugin and can be installed from the Admi
 ## Build Instructions
 
 This guide will teach you how to add the modified Cumulocity standard application, e.g. DeviceManagement, Cockpit, ... to your tenant.
-* to upload the latest plugin release into your tenant, just go to the [Releases](https://github.com/SoftwareAG/cumulocity-analytics-management/releases) and download the analytics-extension.zip package.
+* to upload the latest plugin release into your tenant, just go to the [Releases](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases) and download the analytics-extension.zip package.
 * login to your Cumulocity IoT Tenant, open Administration--Ecosystem--Extensions -> Add extension package
 * upload analytics-extension.zip
 * login to your Cumulocity IoT Tenant and clone Cumulocity standard application in  Administration--Applications--CHOOSE_STANDARD_APPLICATION_TO_CONE -> Clone.
@@ -136,7 +136,7 @@ Make sure you set the environments url, username, password before starting.
 
 1. Clone the repository:
 ```
-git clone https://github.com/SoftwareAG/cumulocity-analytics-management.git
+git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
 ```
 2. Change directory:
   ```cd cumulocity-analytics-management```
@@ -191,7 +191,7 @@ curl --location 'http://127.0.0.1:<container host port>/extension' \
 --data '{
     "extension_name": "Test",
     "upload": true,
-    "monitors": ["https://raw.githubusercontent.com/SoftwareAG/apama-analytics-builder-block-sdk/rel/10.18.0.x/samples/blocks/CreateEvent.mon"]
+    "monitors": ["https://raw.githubusercontent.com/Cumulocity-IoT/apama-analytics-builder-block-sdk/rel/10.18.0.x/samples/blocks/CreateEvent.mon"]
 }'
 ```
 
@@ -215,7 +215,7 @@ For the first deployment you have to use:
 
 ## Analytics Builder block SDK
 
-Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/SoftwareAG/apama-analytics-builder-block-sdk). 
+Custom blocks can be generated via the [Analytics Builder block sdk](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk). 
 Find additional information on how blocks can be developed. However in the release section is one example block included that can be used for test purposes.
 
 The provided block is an example of the adding the two inputs.
