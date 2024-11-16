@@ -201,7 +201,7 @@ export class SampleGridComponent implements OnInit {
     const monitors = [];
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
-        monitors.push(sample.downloadUrl);
+        monitors.push(sample);
       }
     });
     const initialState = {

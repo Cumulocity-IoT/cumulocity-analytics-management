@@ -75,8 +75,8 @@ export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 export const BACKEND_PATH_BASE = 'service/analytics-ext-service';
 export const EXTENSION_ENDPOINT = 'extension';
 export const CEP_ENDPOINT = 'cep';
-export const REPOSITORY_ENDPOINT = 'repository';
-export const REPOSITORYIES_CONFIGURATION_ENDPOINT = 'repositories';
+export const REPOSITORY_CONTENT_ENDPOINT = 'repository/content';
+export const REPOSITORY_CONFIGURATION_ENDPOINT = 'repository/configuration';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
 export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 

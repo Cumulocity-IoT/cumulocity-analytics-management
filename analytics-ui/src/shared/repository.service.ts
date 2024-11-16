@@ -6,8 +6,8 @@ import {
   ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
   CEP_Block,
-  REPOSITORYIES_CONFIGURATION_ENDPOINT,
-  REPOSITORY_ENDPOINT,
+  REPOSITORY_CONFIGURATION_ENDPOINT,
+  REPOSITORY_CONTENT_ENDPOINT,
   REPO_SAMPLES,
   Repository
 } from './analytics.model';
@@ -83,7 +83,7 @@ export class RepositoryService {
     if (!this._repositories) {
       let repositories = [] as Repository[];
       const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORYIES_CONFIGURATION_ENDPOINT}`,
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
         {
           headers: {
             'content-type': 'application/json'
@@ -111,7 +111,7 @@ export class RepositoryService {
   async saveRepositories(repositories: Repository[]): Promise<void> {
     if (this._isDirty) {
       this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORYIES_CONFIGURATION_ENDPOINT}`,
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
         {
           headers: {
             accept: 'application/json',
@@ -144,13 +144,13 @@ export class RepositoryService {
     let result;
     if (backend) {
       const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_ENDPOINT}/any_repository/content`,
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
         {
           headers: {
             'content-type': 'text/plain'
           },
           params: {
-            url: encodeURIComponent(block.downloadUrl),
+            url: encodeURIComponent(block.url),
             extract_fqn_cep_block: extractFQN_CEP_Block,
             repository_id: block.repositoryId,
             cep_block_name: block.name
@@ -239,13 +239,13 @@ export class RepositoryService {
 
   async getAll_CEP_BlockSamples(hideInstalled: boolean): Promise<CEP_Block[]> {
     const promises: Promise<CEP_Block[]>[] = [];
-    const reps: Repository[] = await this.loadRepositories();
+    const repositories: Repository[] = await this.loadRepositories();
     const loadedBlocks = await this.analyticsService.getLoadedBlocksFromCEP();
     const loadedBlocksIds: string[] = loadedBlocks.map((block) => block.id);
 
-    for (let i = 0; i < reps.length; i++) {
-      if (reps[i].enabled) {
-        const promise: Promise<CEP_Block[]> = this.getCEP_BlockSamples(reps[i]);
+    for (let i = 0; i < repositories.length; i++) {
+      if (repositories[i].enabled) {
+        const promise: Promise<CEP_Block[]> = this.getCEP_BlockSamples(repositories[i]);
         promises.push(promise);
       }
     }

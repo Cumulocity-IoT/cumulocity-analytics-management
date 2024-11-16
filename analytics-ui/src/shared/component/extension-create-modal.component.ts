@@ -5,7 +5,7 @@ import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../analytics.service';
 import { saveAs } from 'file-saver';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from '../analytics.model';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../analytics.model';
 import { CustomSwitchField } from './custom-switch-field';
 
 @Component({
@@ -43,7 +43,7 @@ import { CustomSwitchField } from './custom-switch-field';
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
-  @Input() monitors: string[];
+  @Input() monitors: CEP_Block[];
   configuration: any = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
