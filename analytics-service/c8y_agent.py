@@ -136,6 +136,33 @@ class C8YAgent:
             return repositories
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
+            
+    def load_repository(self, request_headers, repository_id):
+        try:
+            self._logger.info(f"Retrieving repository {repository_id} ...")
+            
+            # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
+            
+            response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}")
+            tenant_option = response
+            # List comprehension to convert TenantOptions to array
+            repository = {}
+            # Assuming option.value is a JSON string containing repository details
+            self._logger.info(f"Found repository: {repository_id}")
+            value_dict = json.loads(tenant_option['value'])
+            
+            repository = {
+                'id': repository_id,
+                'name': value_dict.get('name'),
+                'url': value_dict.get('url'),
+                'accessToken': value_dict.get('accessToken'),
+                'enabled': value_dict.get('enabled', False)  # Default to False if not present
+            }
+            self._logger.info(f"Found repository: {repository}")
+            return repository
+        except Exception as e:
+            self._logger.error(f"Exception:", exc_info=True)
 
     def save_repositories(self, request_headers, repositories):
         try:

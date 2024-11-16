@@ -42,6 +42,9 @@ def get_content(repository):
     try:
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
+        repository_id = request.args.get("repository_id")
+        if repository_id:
+            repository = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
         extract_fqn_cep_block = parse_boolean(request.args.get(
             "extract_fqn_cep_block", default=False
         ))
