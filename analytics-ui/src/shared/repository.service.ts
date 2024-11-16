@@ -80,30 +80,6 @@ export class RepositoryService {
   }
 
   async loadRepositories(): Promise<Repository[]> {
-    // if (!this._repositories) {
-    //   let repositories = [] as Repository[];
-    //   const filter: object = {
-    //     pageSize: 100,
-    //     withTotalPages: true
-    //   };
-    //   const query: object = {
-    //     type: ANALYTICS_REPOSITORIES_TYPE
-    //   };
-    //   const { data } = await this.inventoryService.listQuery(query, filter);
-    //   if (!data || data.length == 0) {
-    //     const reposMO: Partial<IManagedObject> = {
-    //       name: 'AnalyticsRepositories',
-    //       type: ANALYTICS_REPOSITORIES_TYPE
-    //     };
-    //     reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
-    //     this.inventoryService.create(reposMO);
-    //     repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-    //   } else if (data.length > 0) {
-    //     repositories = data[0][ANALYTICS_REPOSITORIES_TYPE];
-    //   }
-    //   this._repositories = Promise.resolve(repositories);
-    // }
-
     if (!this._repositories) {
       let repositories = [] as Repository[];
       const response: IFetchResponse = await this.fetchClient.fetch(
@@ -124,7 +100,7 @@ export class RepositoryService {
         reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
         this.inventoryService.create(reposMO);
         repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-      } else if (result.length  > 0) {
+      } else if (result.length > 0) {
         repositories = result;
       }
       this._repositories = Promise.resolve(repositories);
@@ -134,25 +110,17 @@ export class RepositoryService {
 
   async saveRepositories(repositories: Repository[]): Promise<void> {
     if (this._isDirty) {
-      const filter: object = {
-        pageSize: 100,
-        withTotalPages: true
-      };
-      const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE
-      };
-      const { data } = await this.inventoryService.listQuery(query, filter);
-      if (!data || data.length == 0) {
-        const reposMO: Partial<IManagedObject> = {
-          name: 'AnalyticsRepositories',
-          type: ANALYTICS_REPOSITORIES_TYPE
-        };
-        reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
-        this.inventoryService.create(reposMO);
-      } else if (data.length > 0) {
-        data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
-        this.inventoryService.update(data[0]);
-      }
+      this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORYIES_CONFIGURATION_ENDPOINT}`,
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(repositories),
+          method: 'POST',
+        }
+      )
       this._repositories = repositories;
       this._isDirty = false;
 
@@ -205,7 +173,7 @@ export class RepositoryService {
       if (extractFQN_CEP_Block) {
         const regex = /(?<=^package\s)(.*?)(?=;)/gm;
         const match = result.match(regex);
-        const fqn = `${match[0].trim() }.${ block.name.slice(0, -4)}`;
+        const fqn = `${match[0].trim()}.${block.name.slice(0, -4)}`;
         result = fqn;
       }
     }
