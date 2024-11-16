@@ -6,6 +6,7 @@ import {
   ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
   CEP_Block,
+  REPOSITORYIES_CONFIGURATION_ENDPOINT,
   REPOSITORY_ENDPOINT,
   REPO_SAMPLES,
   Repository
@@ -79,17 +80,43 @@ export class RepositoryService {
   }
 
   async loadRepositories(): Promise<Repository[]> {
+    // if (!this._repositories) {
+    //   let repositories = [] as Repository[];
+    //   const filter: object = {
+    //     pageSize: 100,
+    //     withTotalPages: true
+    //   };
+    //   const query: object = {
+    //     type: ANALYTICS_REPOSITORIES_TYPE
+    //   };
+    //   const { data } = await this.inventoryService.listQuery(query, filter);
+    //   if (!data || data.length == 0) {
+    //     const reposMO: Partial<IManagedObject> = {
+    //       name: 'AnalyticsRepositories',
+    //       type: ANALYTICS_REPOSITORIES_TYPE
+    //     };
+    //     reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
+    //     this.inventoryService.create(reposMO);
+    //     repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
+    //   } else if (data.length > 0) {
+    //     repositories = data[0][ANALYTICS_REPOSITORIES_TYPE];
+    //   }
+    //   this._repositories = Promise.resolve(repositories);
+    // }
+
     if (!this._repositories) {
       let repositories = [] as Repository[];
-      const filter: object = {
-        pageSize: 100,
-        withTotalPages: true
-      };
-      const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE
-      };
-      const { data } = await this.inventoryService.listQuery(query, filter);
-      if (!data || data.length == 0) {
+      const response: IFetchResponse = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORYIES_CONFIGURATION_ENDPOINT}`,
+        {
+          headers: {
+            'content-type': 'application/json'
+          },
+          method: 'GET'
+        }
+      );
+      const result = await response.json();
+      if (!result || result.length == 0) {
         const reposMO: Partial<IManagedObject> = {
           name: 'AnalyticsRepositories',
           type: ANALYTICS_REPOSITORIES_TYPE
@@ -97,8 +124,8 @@ export class RepositoryService {
         reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
         this.inventoryService.create(reposMO);
         repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-      } else if (data.length > 0) {
-        repositories = data[0][ANALYTICS_REPOSITORIES_TYPE];
+      } else if (result.length  > 0) {
+        repositories = result;
       }
       this._repositories = Promise.resolve(repositories);
     }

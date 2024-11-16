@@ -31,12 +31,12 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     const result =
       this.permissions.hasRole('ROLE_CEP_MANAGEMENT_READ') &&
       this.permissions.hasRole('ROLE_CEP_MANAGEMENT_ADMIN');
-    console.log(
-      'User permissions:',
-      result,
-      this.permissions.hasRole('ROLE_CEP_MANAGEMENT_READ'),
-      this.permissions.hasRole('ROLE_CEP_MANAGEMENT_ADMIN')
-    );
+    // console.log(
+    //   'User permissions:',
+    //   result,
+    //   this.permissions.hasRole('ROLE_CEP_MANAGEMENT_READ'),
+    //   this.permissions.hasRole('ROLE_CEP_MANAGEMENT_ADMIN')
+    // );
     return result;
   }
 }

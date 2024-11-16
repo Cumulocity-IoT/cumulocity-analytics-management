@@ -76,6 +76,7 @@ export const BACKEND_PATH_BASE = 'service/analytics-ext-service';
 export const EXTENSION_ENDPOINT = 'extension';
 export const CEP_ENDPOINT = 'cep';
 export const REPOSITORY_ENDPOINT = 'repository';
+export const REPOSITORYIES_CONFIGURATION_ENDPOINT = 'repositories';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
 export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 
