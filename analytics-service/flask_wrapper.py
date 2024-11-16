@@ -52,9 +52,12 @@ def get_content(repository):
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
         monitor_code = requests.get(decoded_url, allow_redirects=True)
+        monitor_code.raise_for_status() 
         if extract_fqn_cep_block:
             regex = "(package\s)(.*?);"
             package = re.findall(regex, monitor_code.text)
+            logger.info(f"Result looking for fqn of monitor packae: {package}")
+
             try:
                 fqn = str(package[0][1]) + "." + str(cep_block_name)
                 logger.info(f"Return only fqn of block: {fqn}")
@@ -76,6 +79,44 @@ def get_content(repository):
         )
         resp.status_code = 400
         return resp
+
+# load the configured repositores
+# params:
+@app.route("/repositories", methods=["GET"])
+def load_repositories():
+    result = agent.load_repositories(request_headers=request.headers)
+    if result == None:
+        resp = Response(
+            json.dumps({"message": "No repositories found"}), mimetype="application/json"
+        )
+        resp.status_code = 400
+        return resp
+    
+    return jsonify(result)
+
+# save the configured repositores
+# params:
+@app.route('/repositories', methods=['POST'])
+def save_repositories():
+    try:
+        # Get repositories from request body
+        repositories = request.get_json()
+        if not isinstance(repositories, list):
+            return {"error": "Request body must be an array of repositories"}, 400
+
+        # Validate repository format
+        for repo in repositories:
+            if not all(key in repo for key in ['id', 'name', 'url']):
+                return {"error": "Each repository must have id, name, and url"}, 400
+
+        # Get headers from request
+        request_headers = dict(request.headers)
+
+        # Call save method
+        return agent.save_repositories(request_headers, repositories)
+
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 
 @app.route("/extension", methods=["POST"])

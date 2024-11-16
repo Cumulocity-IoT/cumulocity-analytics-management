@@ -6,15 +6,22 @@
 
 NAME="$1"
 VERSION="$2"
-IMG_NAME="$3"
+IMG_ARCH="$3"
+IMG_NAME="$4"
 if ! [[ $IMG_NAME ]]; then
   IMG_NAME=`echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '[:punct:]' '-'`
+fi
+
+if ! [[ $IMG_ARCH ]]; then
+  ARCH="linux/amd64"
+else
+  ARCH="linux/$IMG_ARCH"
 fi
 BUILD_DIR="./build"
 DIST_DIR="./dist"
 TARGET="$DIST_DIR/$IMG_NAME.zip"
 
-echo "Name: $NAME, Image Name: $IMG_NAME, Version: $VERSION"
+echo "Name: $NAME, Image Name: $IMG_NAME, Version: $VERSION", Arch: "$ARCH"
 echo "Build directory: $BUILD_DIR"
 echo "Dist directory:  $DIST_DIR"
 echo "Target location: $TARGET"
@@ -44,7 +51,7 @@ fi
 # build image
 echo "Building image ..."
 # docker buildx create --use --name multi-builder --platform linux/amd64 -t "$NAME" "$BUILD_DIR"
-docker buildx build --platform linux/amd64 --load -t "$NAME" "$BUILD_DIR"
+docker buildx build --platform $ARCH --load -t "$NAME" "$BUILD_DIR"
 
 docker save -o "$DIST_DIR/image.tar" "$NAME"
 zip -j "$DIST_DIR/$IMG_NAME.zip" "$BUILD_DIR/cumulocity.json" "$DIST_DIR/image.tar"
