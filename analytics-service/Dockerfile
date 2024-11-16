@@ -26,4 +26,10 @@ RUN mkdir -p /tmp/builder
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
 
+# RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
+# RUN mkdir -p /etc/docker && \
+#     echo "nameserver 8.8.8.8" > /etc/docker/resolv.conf
+# # COPY resolv.conf /etc/docker/resolv.conf
+# ENV RESOLV_CONF=/etc/docker/resolv.conf
+
 CMD ["python3", "flask_wrapper.py"]

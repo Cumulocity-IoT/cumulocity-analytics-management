@@ -121,7 +121,6 @@ class C8YAgent:
             repositories = []
             for repository_id in tenant_options:
                 # Assuming option.value is a JSON string containing repository details
-                self._logger.info(f"Found repository: {repository_id}")
                 value_dict = json.loads(tenant_options[repository_id])
                 
                 repository = {
@@ -132,7 +131,7 @@ class C8YAgent:
                     'enabled': value_dict.get('enabled', False)  # Default to False if not present
                 }
                 repositories.append(repository)
-                self._logger.info(f"Found repository: {repository}")
+            self._logger.info(f"Found repositories: {repositories}")
             return repositories
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
@@ -149,7 +148,6 @@ class C8YAgent:
             # List comprehension to convert TenantOptions to array
             repository = {}
             # Assuming option.value is a JSON string containing repository details
-            self._logger.info(f"Found repository: {repository_id}")
             value_dict = json.loads(tenant_option['value'])
             
             repository = {
