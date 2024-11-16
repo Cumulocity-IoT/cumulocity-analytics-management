@@ -43,8 +43,10 @@ def get_content(repository):
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
         repository_id = request.args.get("repository_id")
+        headers = {}
         if repository_id:
             repository = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
+            headers['Authorization'] = f'token {repository.accessToken}'
         extract_fqn_cep_block = parse_boolean(request.args.get(
             "extract_fqn_cep_block", default=False
         ))
@@ -54,7 +56,7 @@ def get_content(repository):
 
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
-        monitor_code = requests.get(decoded_url, allow_redirects=True)
+        monitor_code = requests.get(decoded_url, headers=headers, allow_redirects=True)
         monitor_code.raise_for_status() 
         if extract_fqn_cep_block:
             regex = "(package\s)(.*?);"
