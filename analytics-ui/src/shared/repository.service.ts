@@ -157,6 +157,7 @@ export class RepositoryService {
           params: {
             url: encodeURIComponent(block.downloadUrl),
             extract_fqn_cep_block: extractFQN_CEP_Block,
+            repository_id: block.repositoryId,
             cep_block_name: block.name
           },
           method: 'GET'
@@ -207,6 +208,7 @@ export class RepositoryService {
             if (getFileExtension(dataArray[index].name) != '.json') {
               const tb: any = {
                 repositoryName: rep.name,
+                repositoryId: rep.id,
                 name: removeFileExtension(dataArray[index].name),
                 custom: true,
                 downloadUrl: dataArray[index].download_url,

@@ -8,9 +8,9 @@
   },
   "scripts": {
     "start": "ng serve",
-    "start:admin": "npm start -- --shell administration",
-    "start:ab": "npm start -- --shell streaminganalytics",
-    "start:cockpit": "npm start -- --shell cockpit",
+    "start:admin": "ng serve --shell administration -u https://ck4.eu-latest.cumulocity.com/",
+    "start:ab": "ng serve --shell streaminganalytics",
+    "start:cockpit": "ng serve --shell cockpit",
     "build": "ng build",
     "deploy": "ng deploy",
     "format": "prettier --write 'src/**/*.ts'",
@@ -34,12 +34,14 @@
     "@angular/router": "^18.2.0",
     "@angular/upgrade": "^18.2.0",
     "@c8y/client": "^1021.0.11",
+    "@c8y/devkit": "^1021.0.11",
     "@c8y/ngx-components": "^1021.0.11",
     "@c8y/style": "^1021.0.11",
     "@ngx-translate/core": "15.0.0",
     "ngx-bootstrap": "^18.0.0",
     "rxjs": "~7.8.1",
-    "zone.js": "~0.14.3"
+    "zone.js": "~0.14.3",
+    "webpack": "5.90.3"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^18.2.11",

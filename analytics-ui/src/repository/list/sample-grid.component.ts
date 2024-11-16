@@ -90,6 +90,14 @@ export class SampleGridComponent implements OnInit {
       visible: true
     },
     {
+      name: 'repositoryId',
+      header: 'Repository Id',
+      path: 'repositoryId',
+      dataType: ColumnDataType.TextLong,
+      filterable: true,
+      visible: true
+    },
+    {
       name: 'url',
       header: 'Link Github',
       path: 'url',

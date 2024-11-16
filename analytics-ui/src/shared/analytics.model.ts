@@ -53,6 +53,7 @@ export interface CEP_Block {
   custom: boolean;
   extension: string;
   repositoryName: string;
+  repositoryId: string;
   category: Category;
 }
 
@@ -60,6 +61,7 @@ export interface Repository {
   id: string;
   name: string;
   url: string;
+  accessToken: string;
   enabled: boolean;
 }
 

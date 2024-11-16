@@ -110,6 +110,34 @@
               class="form-control"
             />
           </c8y-form-group>
+          <c8y-form-group>
+            <label for="name"
+              ><span>{{'Personal Access Token'}}</span>
+              <ng-template #popTemplateAccessToken>
+                {{
+                  "Enter Personal Access Token created here: https://github.com/settings/tokens/new/"
+                }}
+              </ng-template>
+              <button
+                class="btn-clean text-primary"
+                [popover]="popTemplateAccessToken"
+                popoverTitle="Access Token"
+                placement="right"
+                triggers="focus"
+                type="button"
+              >
+                <i c8yIcon="question-circle-o"></i>
+              </button>
+            </label>
+            <input
+              type="text"
+              title="Access Token"
+              id="accessToken"
+              formControlName="accessToken"
+              placeholder="e.g.: your github Personal Access Token"
+              class="form-control"
+            />
+          </c8y-form-group>
           <!-- Add any other form controls based on your repository model -->
           <button (click)="addRepository()" class="btn btn-default">
             Add repository

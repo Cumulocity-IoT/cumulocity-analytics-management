@@ -32,7 +32,8 @@ export class RepositoriesModalComponent implements OnInit {
     this.repositoryForm = this.fb.group({
       id: [null],
       name: ['', Validators.required],
-      url: ['', Validators.required]
+      url: ['', Validators.required],
+      accessToken: [''],
     });
   }
 
