@@ -29,8 +29,7 @@ import {
   Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { switchMap, tap } from 'rxjs/operators';
+import { switchMap } from 'rxjs/operators';
 import {
   AnalyticsService,
   BooleanRendererComponent,
@@ -41,6 +40,7 @@ import {
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -53,7 +53,6 @@ export class SampleGridComponent implements OnInit {
   dataGrid: DataGridComponent;
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
-  reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   loading: boolean = false;
   showMonitorEditor: boolean = false;
   samples$: Observable<CEP_Block[]>;
@@ -95,7 +94,7 @@ export class SampleGridComponent implements OnInit {
       path: 'repositoryId',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true
+      visible: false
     },
     {
       name: 'url',
@@ -121,18 +120,8 @@ export class SampleGridComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    // this.samples$ = this.reload$.pipe(
-    //   tap(() => (this.loading = true)),
-    //   switchMap(() =>
-    //     this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
-    //   ),
-    //   tap(() => (this.loading = false))
-    // );
-    this.samples$ = this.reload$.pipe(
-      switchMap(() => 
-        this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
-      )
-    );
+    this.samples$ =
+      this.repositoryService.getAll_CEP_BlockSamples();
     this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
@@ -179,6 +168,7 @@ export class SampleGridComponent implements OnInit {
       console.log('Repositories after edit:', repositories);
       if (repositories) {
         await this.repositoryService.saveRepositories(repositories);
+        this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
       }
     });
   }
@@ -216,6 +206,6 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
-    this.reload$.next();
+    this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
   }
 }

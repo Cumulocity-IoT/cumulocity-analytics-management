@@ -1,7 +1,7 @@
 // repository.service.ts
 
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, EMPTY, forkJoin, from, lastValueFrom, Observable, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, forkJoin, from, lastValueFrom, merge, Observable, of, throwError } from 'rxjs';
 import {
   ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
@@ -19,7 +19,7 @@ import {
 } from '@c8y/client';
 import { AlertService, gettext, IRealtimeDeviceBootstrap } from '@c8y/ngx-components';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, filter, map, switchMap, combineLatestWith, tap, mergeMap } from 'rxjs/operators';
+import { catchError, filter, map, switchMap, combineLatestWith, tap, mergeMap, shareReplay } from 'rxjs/operators';
 import * as _ from 'lodash';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
@@ -28,12 +28,16 @@ import { getFileExtension, removeFileExtension } from './utils';
   providedIn: 'root'
 })
 export class RepositoryService {
+
   private repositories: Repository[] = [];
   private repositoriesSubject: BehaviorSubject<Repository[]> =
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
   private _cep_block_cache: Map<string, Observable<CEP_Block[]>> = new Map();
   private _isDirty: boolean = false;
+  private _hideInstalled = false;
+  private _reloadCEPBlockSamples$: BehaviorSubject<any> = new BehaviorSubject(null);
+  cepBlockSamples$: Observable<CEP_Block[]>;
 
   constructor(
     private inventoryService: InventoryService,
@@ -48,6 +52,32 @@ export class RepositoryService {
   async init() {
     this.repositories = await this.loadRepositories();
     this.repositoriesSubject.next([...this.repositories]);
+    this.cepBlockSamples$ = merge(
+      of(null), // initial load
+      this._reloadCEPBlockSamples$ // reload trigger
+    ).pipe(
+      switchMap(() => from(this.loadRepositories()).pipe(
+        combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
+        switchMap(([repos, loaded]) => {
+          const filteredRepos = repos.filter(rep => rep.enabled);
+          return forkJoin(
+            filteredRepos.map(repo => this.getCEP_BlockSamples(repo))
+          ).pipe(
+            map(blocksArrays => blocksArrays.flat()),
+            map(allBlocks => {
+              const loadedIds = loaded.map(block => block.id);
+              if (this._hideInstalled) {
+                return allBlocks.filter(block => !loadedIds.includes(block.id));
+              } else {
+                allBlocks.map(block => block.installed = loadedIds.includes(block.id))
+              }
+              return allBlocks;
+            })
+          );
+        })
+      )),
+      shareReplay()
+    );
   }
 
   getRepositories(): Observable<Repository[]> {
@@ -235,26 +265,12 @@ export class RepositoryService {
     return EMPTY;
   }
 
-  getAll_CEP_BlockSamples(hideInstalled: boolean): Observable<CEP_Block[]> {
-    return from(this.loadRepositories()).pipe(
-      combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
-      switchMap(([repos, loaded]) => {
-        const filteredRepos = repos.filter(rep => rep.enabled);
-        return forkJoin(
-          filteredRepos.map(repo => this.getCEP_BlockSamples(repo))
-        ).pipe(
-          map(blocksArrays => blocksArrays.flat()),
-          map(allBlocks => {
-            const loadedIds = loaded.map(block => block.id);
-            if (hideInstalled) {
-              return allBlocks.filter(block => !loadedIds.includes(block.id));
-            } else {
-              allBlocks.map(block => block.installed = loadedIds.includes(block.id))
-            }
-            return allBlocks;
-          })
-        );
-      })
-    )
+  getAll_CEP_BlockSamples(): Observable<CEP_Block[]> {
+    return this.cepBlockSamples$;
+  }
+
+  updateCEP_BlockSamples(hideInstalled: boolean) {
+    this._hideInstalled = hideInstalled;
+    this._reloadCEPBlockSamples$.next(null);
   }
 }
