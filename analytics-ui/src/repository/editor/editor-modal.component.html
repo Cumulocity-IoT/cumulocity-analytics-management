@@ -1,0 +1,9 @@
+<c8y-modal title="Source code {{ monitorName }}" (onClose)="onClose($event)" [labels]="labels"
+  [headerClasses]="'modal-header dialog-header'">
+  <!-- <pre id="sourceEditor" #sourceEditor>
+    {{ source$ | async }}
+  </pre> -->
+
+  <c8y-editor class="flex-grow"  style ="height:500px" [editorOptions]="editorOptions" [ngModel]="source$ | async"
+    monacoEditorMarkerValidator></c8y-editor>
+</c8y-modal>

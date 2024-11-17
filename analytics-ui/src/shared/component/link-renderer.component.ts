@@ -23,7 +23,7 @@ import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
   template: `<a [href]="context.value" target="'_blank'"
-    ><span>{{ 'Link ' + context.item.name }}</span></a
+    ><span>{{ context.item.name }}</span></a
   >`
 })
 export class LinkRendererComponent {

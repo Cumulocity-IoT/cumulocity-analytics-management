@@ -5,19 +5,16 @@ import {
   FetchClient,
   IFetchOptions,
   IFetchResponse,
-  IIdentified,
   IManagedObject,
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
   IResultList,
-  IRoleReference,
-  IUserRoleReference,
   Realtime,
   UserService
 } from '@c8y/client';
 
-import { AlertService, AppStateService, gettext } from '@c8y/ngx-components';
+import { AlertService, gettext } from '@c8y/ngx-components';
 
 import { BehaviorSubject, Subject } from 'rxjs';
 import {

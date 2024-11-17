@@ -118,15 +118,20 @@ export class SampleGridComponent implements OnInit {
     public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService
-  ) {}
+  ) { }
 
-  async ngOnInit() {
+  ngOnInit() {
+    // this.samples$ = this.reload$.pipe(
+    //   tap(() => (this.loading = true)),
+    //   switchMap(() =>
+    //     this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
+    //   ),
+    //   tap(() => (this.loading = false))
+    // );
     this.samples$ = this.reload$.pipe(
-      tap(() => (this.loading = true)),
-      switchMap(() =>
+      switchMap(() => 
         this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
-      ),
-      tap(() => (this.loading = false))
+      )
     );
     this.samples$.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
@@ -144,20 +149,14 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
-  async viewMonitor(block: CEP_Block) {
-    let source;
-    try {
-      source = await this.repositoryService.getCEP_BlockContent(
+  viewMonitor(block: CEP_Block) {
+    const initialState = {
+      source$: this.repositoryService.getCEP_BlockContent(
         block,
         true,
         false
-      );
-    } catch (error) {
-      console.log('Something happened:', error);
-    }
-    const initialState = {
-      source: source,
-      monitor: block.name
+      ),
+      monitorName: block.name
     };
     this.bsModalService.show(EditorModalComponent, {
       class: 'modal-lg',

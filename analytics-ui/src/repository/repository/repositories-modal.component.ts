@@ -12,7 +12,7 @@ import {
 
 @Component({
   selector: 'a17t-name-repositories-modal',
-  styleUrls: ['../editor/editor-stepper.component.css'],
+  styleUrls: ['../editor/editor-modal.component.css'],
   templateUrl: './repositories-modal.component.html',
   encapsulation: ViewEncapsulation.None
 })
