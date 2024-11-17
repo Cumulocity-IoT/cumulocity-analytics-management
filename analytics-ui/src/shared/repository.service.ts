@@ -53,31 +53,43 @@ export class RepositoryService {
     this.repositories = await this.loadRepositories();
     this.repositoriesSubject.next([...this.repositories]);
     this.cepBlockSamples$ = merge(
-      of(null), // initial load
-      this._reloadCEPBlockSamples$ // reload trigger
+      of(null),
+      this._reloadCEPBlockSamples$
     ).pipe(
-      switchMap(() => from(this.loadRepositories()).pipe(
-        combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
-        switchMap(([repos, loaded]) => {
-          const filteredRepos = repos.filter(rep => rep.enabled);
-          return forkJoin(
-            filteredRepos.map(repo => this.getCEP_BlockSamples(repo))
-          ).pipe(
-            map(blocksArrays => blocksArrays.flat()),
-            map(allBlocks => {
-              const loadedIds = loaded.map(block => block.id);
-              if (this._hideInstalled) {
-                return allBlocks.filter(block => !loadedIds.includes(block.id));
-              } else {
-                allBlocks.map(block => block.installed = loadedIds.includes(block.id))
-              }
-              return allBlocks;
-            })
-          );
-        })
-      )),
-      shareReplay()
+      switchMap(() => this.loadBlocksWithStatus()),
+      shareReplay(1)
     );
+  }
+
+  // Helper methods to break down the logic
+  private loadBlocksWithStatus() {
+    return from(this.loadRepositories()).pipe(
+      combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
+      switchMap(([repos, loaded]) => this.processBlocks(repos, loaded))
+    );
+  }
+
+  private processBlocks(repos: any[], loaded: any[]) {
+    const enabledRepos = repos.filter(rep => rep.enabled);
+    return forkJoin(
+      enabledRepos.map(repo => this.getCEP_BlockSamples(repo))
+    ).pipe(
+      map(blocks => blocks.flat()),
+      map(blocks => this.filterAndMarkBlocks(blocks, loaded))
+    );
+  }
+
+  private filterAndMarkBlocks(blocks: any[], loaded: any[]) {
+    const loadedIds = loaded.map(block => block.id);
+
+    if (this._hideInstalled) {
+      return blocks.filter(block => !loadedIds.includes(block.id));
+    }
+
+    return blocks.map(block => ({
+      ...block,
+      installed: loadedIds.includes(block.id)
+    }));
   }
 
   getRepositories(): Observable<Repository[]> {
@@ -178,7 +190,7 @@ export class RepositoryService {
           },
           method: 'GET'
         }
-      ).then (
+      ).then(
         resp => resp.text()
       ))
     } else {
