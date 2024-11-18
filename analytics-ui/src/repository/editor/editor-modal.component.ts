@@ -24,14 +24,9 @@ export class EditorModalComponent implements OnInit {
   @Input() monitorName: string;
   @Output() closeSubject: Subject<any> = new Subject();
   labels: ModalLabels = { ok: 'Close' };
-  @ViewChild('sourceEditor', { static: false })
   editorOptions: EditorComponent['editorOptions'] = {
-    // minimap: { enabled: false },
-    // semanticValidation: false,
-    // diagnostics: {
-    //   noSemanticValidation: true,
-    //   noSyntaxValidation: true
-    // }
+    minimap: { enabled: false },
+    renderValidationDecorations: "off"
   };
   sourceEditor: ElementRef;
   source: string;
