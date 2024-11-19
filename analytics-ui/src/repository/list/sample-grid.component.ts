@@ -122,7 +122,7 @@ export class SampleGridComponent implements OnInit {
   ngOnInit() {
     this.samples$ =
       this.repositoryService.getAll_CEP_BlockSamples();
-    this.samples$.subscribe((samples) => (this.samples = samples));
+    this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',

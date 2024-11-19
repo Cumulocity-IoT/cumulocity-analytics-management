@@ -4,13 +4,14 @@ import {
   Input,
   OnInit,
   Output,
-  ViewChild,
   ViewEncapsulation
 } from '@angular/core';
 import { ModalLabels } from '@c8y/ngx-components';
 import { Observable, Subject } from 'rxjs';
-import { EditorComponent } from '@c8y/ngx-components/editor';
+import { EditorComponent, loadMonacoEditor } from '@c8y/ngx-components/editor';
+import { EplConfigService } from './epl-config.service';
 
+let initalizedMonaco = false;
 
 @Component({
   selector: 'a17t-name-extension-modal',
@@ -26,16 +27,36 @@ export class EditorModalComponent implements OnInit {
   labels: ModalLabels = { ok: 'Close' };
   editorOptions: EditorComponent['editorOptions'] = {
     minimap: { enabled: false },
-    renderValidationDecorations: "off"
+    renderValidationDecorations: "off",
+    language: this.configService.getLanguageName(),
+    theme: this.configService.getThemeName()
   };
   sourceEditor: ElementRef;
   source: string;
+
+  constructor(private configService: EplConfigService) {
+
+  }
 
   onClose(event) {
     console.log('Save');
     this.closeSubject.next(true);
   }
-  ngOnInit(): void {
-    this.source$.subscribe(cont => this.source = cont)
+
+  async ngAfterViewInit(): Promise<void> {
+    if (!initalizedMonaco) {
+      const monaco = await loadMonacoEditor();
+      if (monaco) {
+        initalizedMonaco = true;
+        monaco.languages.register(this.configService.getCustomLangExtensionPoint());
+        monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders());
+        monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
+        monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
+      }
+    }
+  }
+
+  async ngOnInit(): Promise<void> {
+    this.source$?.subscribe(cont => this.source = cont)
   }
 }

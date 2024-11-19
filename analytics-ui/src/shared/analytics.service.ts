@@ -310,10 +310,10 @@ export class AnalyticsService {
     }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);
-    console.log(
-      'Started subscription on CEP operationObject:',
-      cepOperationObjectId
-    );
+    // console.log(
+    //   'Started subscription on CEP operationObject:',
+    //   cepOperationObjectId
+    // );
     const subMO = this.realtime.subscribe(
       `/managedobjects/${cepOperationObjectId}`,
       this.updateStatusFromOperationObject.bind(this)

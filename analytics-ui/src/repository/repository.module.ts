@@ -8,7 +8,7 @@ import { SampleGridComponent } from './list/sample-grid.component';
 import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
 import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-components/editor';
-
+import { EplConfigService } from './editor/epl-config.service';
 @NgModule({
   imports: [
     CoreModule,
@@ -26,6 +26,7 @@ import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-
     EditorModalComponent
   ],
   providers: [
+    EplConfigService,
     hookRoute({
       path: 'sag-ps-pkg-analytics-extension/repository',
       component: SampleGridComponent
