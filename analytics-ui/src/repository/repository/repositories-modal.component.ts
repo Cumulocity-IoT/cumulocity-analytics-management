@@ -1,8 +1,8 @@
-import { Component, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, Output, ViewEncapsulation } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { AlertService, ModalLabels } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import {
   ConfirmationModalComponent,
   Repository,
@@ -16,10 +16,11 @@ import {
   templateUrl: './repositories-modal.component.html',
   encapsulation: ViewEncapsulation.None
 })
-export class RepositoriesModalComponent implements OnInit {
-  repositories: Repository[];
-  @Output() closeSubject: Subject<Repository[]> = new Subject();
+export class RepositoriesModalComponent implements OnInit{
+  repositories$: Observable<Repository[]>;
+  @Output() closeSubject: Subject<boolean> = new Subject();
   repositoryForm: FormGroup;
+  subscription: any;
 
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
 
@@ -38,9 +39,7 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.repositoryService.getRepositories().subscribe((repositories) => {
-      this.repositories = repositories;
-    });
+    this.repositories$ = this.repositoryService.getRepositories();
   }
 
   addRepository(): void {
@@ -101,10 +100,11 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onSave() {
-    this.closeSubject.next(this.repositories);
+    this.closeSubject.next(true);
   }
 
   onCancel() {
-    this.closeSubject.next([]);
+    this.closeSubject.next(false);
   }
+
 }

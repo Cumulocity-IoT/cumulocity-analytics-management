@@ -17,9 +17,9 @@ import {
   IManagedObject,
   InventoryService
 } from '@c8y/client';
-import { AlertService, gettext, IRealtimeDeviceBootstrap } from '@c8y/ngx-components';
+import { AlertService, gettext } from '@c8y/ngx-components';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, filter, map, switchMap, combineLatestWith, tap, mergeMap, shareReplay } from 'rxjs/operators';
+import { catchError, map, switchMap, combineLatestWith, tap, mergeMap, shareReplay, take } from 'rxjs/operators';
 import * as _ from 'lodash';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
@@ -30,7 +30,7 @@ import { getFileExtension, removeFileExtension } from './utils';
 export class RepositoryService {
 
   private repositories: Repository[] = [];
-  private repositoriesSubject: BehaviorSubject<Repository[]> =
+  private repositoriesSubject$: BehaviorSubject<Repository[]> =
     new BehaviorSubject<Repository[]>([]);
   private _repositories: Promise<Repository[]> | Repository[];
   private _cep_block_cache: Map<string, Observable<CEP_Block[]>> = new Map();
@@ -49,9 +49,12 @@ export class RepositoryService {
     this.init();
   }
 
-  async init() {
-    this.repositories = await this.loadRepositories();
-    this.repositoriesSubject.next([...this.repositories]);
+  init() {
+    from(this.loadRepositories()).pipe(
+      map(rep => this.repositories = rep),
+      tap( () => this.repositoriesSubject$.next([...this.repositories])),
+      take(1)  // Will automatically unsubscribe after first emission,
+    ).subscribe();
     this.cepBlockSamples$ = merge(
       of(null),
       this._reloadCEPBlockSamples$
@@ -93,12 +96,12 @@ export class RepositoryService {
   }
 
   getRepositories(): Observable<Repository[]> {
-    return this.repositoriesSubject.asObservable();
+    return this.repositoriesSubject$.asObservable();
   }
 
   addRepository(repository: Repository): void {
     this.repositories.push(repository);
-    this.repositoriesSubject.next([...this.repositories]);
+    this.repositoriesSubject$.next([...this.repositories]);
     this._isDirty = true;
   }
 
@@ -108,7 +111,7 @@ export class RepositoryService {
     );
     if (index !== -1) {
       this.repositories[index] = updatedRepository;
-      this.repositoriesSubject.next([...this.repositories]);
+      this.repositoriesSubject$.next([...this.repositories]);
       this._isDirty = true;
     }
   }
@@ -117,7 +120,7 @@ export class RepositoryService {
     this.repositories = this.repositories.filter(
       (repo) => repo.id !== repositoryId
     );
-    this.repositoriesSubject.next([...this.repositories]);
+    this.repositoriesSubject$.next([...this.repositories]);
     this._isDirty = true;
   }
 
@@ -150,7 +153,7 @@ export class RepositoryService {
     return this._repositories;
   }
 
-  async saveRepositories(repositories: Repository[]): Promise<void> {
+  async saveRepositories(): Promise<void> {
     if (this._isDirty) {
       this.fetchClient.fetch(
         `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
@@ -159,11 +162,11 @@ export class RepositoryService {
             accept: 'application/json',
             'content-type': 'application/json'
           },
-          body: JSON.stringify(repositories),
+          body: JSON.stringify(this.repositories),
           method: 'POST',
         }
       )
-      this._repositories = repositories;
+      this._repositories = Promise.resolve(this.repositories);
       this._isDirty = false;
 
       this.alertService.success(gettext('Updated repositories successfully‚'));

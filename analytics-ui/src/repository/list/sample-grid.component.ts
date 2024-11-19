@@ -29,7 +29,6 @@ import {
   Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { switchMap } from 'rxjs/operators';
 import {
   AnalyticsService,
   BooleanRendererComponent,
@@ -164,10 +163,10 @@ export class SampleGridComponent implements OnInit {
       ignoreBackdropClick: true
     });
 
-    modalRef.content.closeSubject.subscribe(async (repositories) => {
-      console.log('Repositories after edit:', repositories);
-      if (repositories) {
-        await this.repositoryService.saveRepositories(repositories);
+    modalRef.content.closeSubject.subscribe(async (response) => {
+      console.log('Repositories response after edit:', response);
+      if (response) {
+        await this.repositoryService.saveRepositories();
         this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
       }
     });

@@ -13,7 +13,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let repository of repositories; let i = index">
+          <tr *ngFor="let repository of (repositories$| async); let i = index">
             <td style="padding-top: 4px">
               {{ i }}
             </td>

@@ -53,7 +53,7 @@
           *ngFor="let alarm of (alarms$ | async)?.data"
         >
           <small class="timeline-item-date">
-            {{ alarm.lastUpdated | c8yDate: 'c8yDate' }}
+            {{ alarm.lastUpdated | c8yDate: 'short' }}
           </small>
           <div class="timeline-item-content d-flex flex-wrap">
             <div class="list-item-icon">
