@@ -30,7 +30,6 @@ import {
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
-  AnalyticsService,
   BooleanRendererComponent,
   CEP_Block,
   ExtensionCreateComponent,
@@ -112,7 +111,6 @@ export class SampleGridComponent implements OnInit {
   };
 
   constructor(
-    public analyticsService: AnalyticsService,
     public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService

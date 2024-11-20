@@ -16,6 +16,9 @@ import { CustomSwitchField } from './custom-switch-field';
     [labels]="labels"
     [headerClasses]="'modal-header dialog-header'"
   >
+    <ng-container c8y-modal-title>
+       <span [c8yIcon]="'plugin'"></span>
+    </ng-container>
     <div class="card-block">
       <div [formGroup]="configFormly">
         <formly-form
@@ -57,7 +60,7 @@ export class ExtensionCreateComponent implements OnInit {
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.isDeployed();
