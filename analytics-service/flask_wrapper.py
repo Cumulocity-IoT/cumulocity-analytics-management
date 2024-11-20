@@ -38,11 +38,52 @@ def health():
 #    url                     url of monitor to download
 #    extract_fqn_cep_block   extract the fqn name from the monitor file
 #    cep_block_name          block name, required to return the fqn name, including the Apama package
-@app.route("/repository/content", methods=["GET"])
-def get_content():
+@app.route("/repository/contentList", methods=["GET"])
+def get_content_list():
     try:
         encoded_url = request.args.get("url")
-        cep_block_name = request.args.get("cep_block_name")
+        repository_id = request.args.get("id")
+        headers = {
+        'Accept': 'application/json'
+        }
+        if repository_id:
+            repository_configuration = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
+            if "accessToken" in repository_configuration:
+                headers["Authorization"] = f"token {repository_configuration['accessToken']}"
+                logger.info(f"Found accessToken: {headers['Authorization']}")
+                
+
+        logger.info(
+            f"Get content list encoded_url: {repository_configuration} {encoded_url}"
+        )
+
+        decoded_url = urllib.parse.unquote(encoded_url)
+        logger.info(f"Get content list from decoded_url: {decoded_url}")
+        response_repository = requests.get(decoded_url, headers=headers, allow_redirects=True)
+        response_repository.raise_for_status() 
+
+        logger.info(f"Response: {response_repository}")
+        response = make_response(response_repository.content, 200)
+        response.mimetype = "application/json"
+        return response
+    except Exception as e:
+        logger.error(f"Exception when retrieving content list!", exc_info=True)
+        resp = Response(
+            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+        )
+        resp.status_code = 400
+        return resp
+
+# download the content from github
+# params:
+#    url                     url of monitor to download
+#    extract_fqn_cep_block   extract the fqn name from the monitor file
+#    cep_block_name          block name, required to return the fqn name, including the Apama package
+@app.route("/repository/contentList", methods=["GET"])
+def get_content():
+    try:
+        repository_url = request.args.get("url")
+        repository_ = request.args.get("url")
         repository_id = request.args.get("repository_id")
         headers = {
         'Accept': 'application/vnd.github.v3.raw'
@@ -86,12 +127,15 @@ def get_content():
             response.mimetype = "text/plain"
             return response
     except Exception as e:
-        logger.error(f"Exception when retrieving content extension!", exc_info=True)
+        logger.error(f"Exception when retrieving content from github!", exc_info=True)
         resp = Response(
             json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
         )
         resp.status_code = 400
         return resp
+
+
+
 
 # load the configured repositores
 # params:
