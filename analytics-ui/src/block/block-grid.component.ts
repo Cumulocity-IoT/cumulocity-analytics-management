@@ -36,6 +36,7 @@ import {
   BooleanRendererComponent,
   CEP_Block
 } from '../shared';
+import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
 
 @Component({
   selector: 'a17t-block-grid',
@@ -69,6 +70,7 @@ export class BlockGridComponent implements OnInit {
       path: 'category',
       gridTrackSize: '10%',
       dataType: ColumnDataType.TextShort,
+      cellRendererComponent: LabelRendererComponent,
       filterable: true
     },
     {
@@ -94,7 +96,7 @@ export class BlockGridComponent implements OnInit {
       name: 'extension',
       path: 'extension',
       gridTrackSize: '15%',
-
+      cellRendererComponent: LabelRendererComponent,
       filterable: true,
       sortable: true
     }
