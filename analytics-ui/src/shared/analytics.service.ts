@@ -11,7 +11,6 @@ import {
   InventoryService,
   IResultList,
   Realtime,
-  UserService
 } from '@c8y/client';
 
 import { AlertService, gettext } from '@c8y/ngx-components';
@@ -54,7 +53,6 @@ export class AnalyticsService {
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
     private applicationService: ApplicationService,
-    private userService: UserService
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.subscribeMonitoringChannel(true);

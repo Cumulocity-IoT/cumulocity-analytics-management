@@ -1,13 +1,14 @@
 // repository.service.ts
 
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, EMPTY, forkJoin, from, lastValueFrom, merge, Observable, of, throwError } from 'rxjs';
+import { BehaviorSubject, EMPTY, forkJoin, from, merge, Observable, of } from 'rxjs';
 import {
   ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
   CEP_Block,
   REPOSITORY_CONFIGURATION_ENDPOINT,
   REPOSITORY_CONTENT_ENDPOINT,
+  REPOSITORY_CONTENT_LIST_ENDPOINT,
   REPO_SAMPLES,
   Repository
 } from './analytics.model';
@@ -19,7 +20,7 @@ import {
 } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, map, switchMap, combineLatestWith, tap, mergeMap, shareReplay, take } from 'rxjs/operators';
+import { catchError, map, switchMap, combineLatestWith, tap, shareReplay, take } from 'rxjs/operators';
 import * as _ from 'lodash';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
@@ -52,7 +53,7 @@ export class RepositoryService {
   init() {
     from(this.loadRepositories()).pipe(
       map(rep => this.repositories = rep),
-      tap( () => this.repositoriesSubject$.next([...this.repositories])),
+      tap(() => this.repositoriesSubject$.next([...this.repositories])),
       take(1)  // Will automatically unsubscribe after first emission,
     ).subscribe();
     this.cepBlockSamples$ = merge(
@@ -188,7 +189,7 @@ export class RepositoryService {
           params: {
             url: encodeURIComponent(block.url),
             extract_fqn_cep_block: extractFQN_CEP_Block,
-            repository_id: block.repositoryId,
+            id: block.repositoryId,
             cep_block_name: block.name
           },
           method: 'GET'
@@ -226,14 +227,32 @@ export class RepositoryService {
     }
     return this._cep_block_cache.get(rep.id);
   }
-
-  getCEP_BlockSamplesUncached(rep: Repository): Observable<CEP_Block[]> {
-    return this.githubFetchClient
-      .get(rep.url, {
+  getGitHubContentThroughBackendProxy(rep: Repository): Promise<any> {
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
+      {
         headers: {
           'content-type': 'application/json'
-        }
-      })
+        },
+        params: {
+          url: encodeURIComponent(rep.url),
+          id: rep.id,
+        },
+        method: 'GET'
+      }
+    ).then(
+      resp => resp.json()
+    )
+  }
+
+  getCEP_BlockSamplesUncached(rep: Repository): Observable<CEP_Block[]> {
+    return from(this.getGitHubContentThroughBackendProxy(rep))
+      //  this.githubFetchClient
+      //   .get(rep.url, {
+      //     headers: {
+      //       'content-type': 'application/json'
+      //     }
+      //   })
       .pipe(
         switchMap((data) => {
           const dataArray = _.values(data);
