@@ -52,7 +52,6 @@ def get_content_list():
                 headers["Authorization"] = f"token {repository_configuration['accessToken']}"
                 logger.info(f"Found accessToken: {headers['Authorization']}")
                 
-
         logger.info(
             f"Get content list encoded_url: {repository_configuration} {encoded_url}"
         )
@@ -79,27 +78,31 @@ def get_content_list():
 #    url                     url of monitor to download
 #    extract_fqn_cep_block   extract the fqn name from the monitor file
 #    cep_block_name          block name, required to return the fqn name, including the Apama package
-@app.route("/repository/contentList", methods=["GET"])
+@app.route("/repository/content", methods=["GET"])
 def get_content():
     try:
-        repository_url = request.args.get("url")
-        repository_ = request.args.get("url")
+        encoded_url = request.args.get("url")
+        cep_block_name = request.args.get("cep_block_name")
         repository_id = request.args.get("repository_id")
+        extract_fqn_cep_block = parse_boolean(request.args.get(
+            "extract_fqn_cep_block", default=False
+        ))
         headers = {
         'Accept': 'application/vnd.github.v3.raw'
         }
+        
         if repository_id:
             repository_configuration = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
             if "accessToken" in repository_configuration:
                 headers["Authorization"] = f"token {repository_configuration['accessToken']}"
                 logger.info(f"Found accessToken: {headers['Authorization']}")
-                
-        extract_fqn_cep_block = parse_boolean(request.args.get(
-            "extract_fqn_cep_block", default=False
-        ))
-        logger.info(
-            f"Get content encoded_url: {repository_configuration} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}"
-        )
+                logger.info(
+                    f"Get content encoded_url: {repository_configuration} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}"
+                )
+        else:
+            logger.info(
+                f"Get content, no repository found, encoded_url: {extract_fqn_cep_block} {cep_block_name} {encoded_url}"
+            )
 
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
