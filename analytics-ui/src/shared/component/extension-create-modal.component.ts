@@ -128,6 +128,6 @@ export class ExtensionCreateComponent implements OnInit {
   }
 
   onClose(){
-    this.closeSubject.next(true);
+    this.closeSubject.next(false);
   }
 }
