@@ -1,12 +1,12 @@
 # Use the base image
-FROM softwareag/apama-cumulocity-builder:10.15
+FROM public.ecr.aws/apama/apama-builder:10.15-ubi9
 
 # Set the working directory
 WORKDIR /apama_work
 
 USER root
 
-RUN microdnf install git tar
+RUN microdnf install -y git tar
 # RUN microdnf install unzip
 
 # USER sagadmin

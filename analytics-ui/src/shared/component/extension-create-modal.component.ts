@@ -10,39 +10,7 @@ import { CustomSwitchField } from './custom-switch-field';
 
 @Component({
   selector: 'a17t-extension-create-modal',
-  template: `<c8y-modal
-    title="Edit properties extension"
-    (onDismiss)="onDismiss($event)"
-    [labels]="labels"
-    [headerClasses]="'modal-header dialog-header'"
-  >
-    <ng-container c8y-modal-title>
-       <span [c8yIcon]="'plugin'"></span>
-    </ng-container>
-    <div class="card-block">
-      <div [formGroup]="configFormly">
-        <formly-form
-          [form]="configFormly"
-          [fields]="configFormlyFields"
-          [model]="configuration"
-        ></formly-form>
-        <div class="col-lg-8">
-          <button
-            class="btn btn-default"
-            title="{{ 'Create extension' | translate }}"
-            (click)="createExtension()"
-            [disabled]="
-              (backendDeployed$ | async) === false || !configFormly.valid
-            "
-          >
-            <i c8yIcon="plugin"></i>
-            {{ 'Create extension' | translate }}
-          </button>
-        </div>
-      </div>
-    </div>
-    <div *ngIf="loading"><c8y-loading></c8y-loading></div>
-  </c8y-modal>`
+  templateUrl: './extension-create-modal.component.html'
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
@@ -156,6 +124,10 @@ export class ExtensionCreateComponent implements OnInit {
         `Uploaded extension ${this.configuration.name}.zip.`
       );
     }
+    this.closeSubject.next(true);
+  }
+
+  onClose(){
     this.closeSubject.next(true);
   }
 }

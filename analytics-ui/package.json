@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "ng serve",
-    "start:admin": "ng serve --shell administration",
+    "start:admin": "ng serve --shell administration -u https://ck4.eu-latest.cumulocity.com/",
     "start:ab": "ng serve --shell streaminganalytics",
     "start:cockpit": "ng serve --shell cockpit",
     "build": "ng build",

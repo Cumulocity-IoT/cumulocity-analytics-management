@@ -1,0 +1,25 @@
+<c8y-modal title="Edit properties extension" (onDismiss)="onDismiss($event)" [labels]="labels"
+  [headerClasses]="'modal-header dialog-header'" [customFooter]="true">
+  <ng-container c8y-modal-title>
+    <span [c8yIcon]="'plugin'"></span>
+  </ng-container>
+  <div class="p-24">
+    <div>
+      <div [formGroup]="configFormly">
+        <formly-form [form]="configFormly" [fields]="configFormlyFields" [model]="configuration"></formly-form>
+      </div>
+    </div>
+    <div *ngIf="loading"><c8y-loading></c8y-loading></div>
+    <div class="modal-footer">
+      <button class="btn btn-default" title="{{ 'Create extension' | translate }}" (click)="createExtension()" [disabled]="
+                (backendDeployed$ | async) === false || !configFormly.valid
+              ">
+        <i c8yIcon="plugin"></i>
+        {{ 'Create extension' | translate }}
+      </button>
+      <button class="btn btn-default" title="{{ 'Close' | translate }}" type="button" (click)="onClose()">
+        {{ 'Close' | translate }}
+      </button>
+    </div>
+  </div>
+</c8y-modal>
