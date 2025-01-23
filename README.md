@@ -40,7 +40,7 @@ For a deletion or upload to take effect you need to restart the analytics stream
 ### Upload custom extension
 
 An externally built extensions can be uploaded via the button **Add extension**. 
-Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Deploy extension (Restart)** and wait for the notification confirming the engine restart.
+Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Restart to deploy extension** and wait for the notification confirming the engine restart.
 When you try to add an extension with a name that already exists, you have the choice to confirm that the version of the existing extension is replaces with the new one you are about to upload. You can as well cancel the process if this is not what you intend.
 
 ![Build custom extension](resources/images/manage-extension-modal.png)
