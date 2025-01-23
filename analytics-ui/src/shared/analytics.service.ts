@@ -303,7 +303,7 @@ export class AnalyticsService {
     const cepOperationObjectId = await this.getCEP_OperationObjectId();
     if (!cepOperationObjectId && showWarning) {
       this.alertService.warning(
-        'Analytics Engine is currently not started. Try again later ...'
+        'The supporting microservice for the Analytics Managment is currently not deployed. Not all feature are available ...'
       );
     }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);

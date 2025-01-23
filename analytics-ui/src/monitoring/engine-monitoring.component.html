@@ -195,12 +195,19 @@
     </div>
     <div class="card-block large-padding bg-inherit overflow-visible">
       <c8y-properties-list
-        *ngIf="(cepCtrlStatusLabels$ | async).length > 0"
+        *ngIf="cepOperationObjectId && (cepCtrlStatusLabels$ | async).length > 0"
         [title]="'CEP Engine Status'"
         [emptyLabel]="'--'"
         [properties]="cepCtrlStatusLabels$ | async"
       >
       </c8y-properties-list>
+      <div class="c8y-empty-state" *ngIf="!cepOperationObjectId">
+        <h1 [c8yIcon]="'monitoring'"></h1>
+        <p>
+          <strong>This information is not available, since the support microservice is not deployed.</strong><br />
+          <small translate>Deploy microservice <code>analytics-ext-service</code>.</small><br />
+        </p>
+      </div>
     </div>
   </div>
 </div>

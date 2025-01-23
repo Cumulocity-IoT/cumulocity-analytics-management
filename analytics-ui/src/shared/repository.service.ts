@@ -3,7 +3,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, EMPTY, forkJoin, from, merge, Observable, of } from 'rxjs';
 import {
-  ANALYTICS_REPOSITORIES_TYPE,
   BACKEND_PATH_BASE,
   CEP_Block,
   REPOSITORY_CONFIGURATION_ENDPOINT,
@@ -15,7 +14,6 @@ import {
 import {
   FetchClient,
   IFetchResponse,
-  IManagedObject,
   InventoryService
 } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
@@ -138,17 +136,18 @@ export class RepositoryService {
         }
       );
       const result = await response.json();
-      if (!result || result.length == 0) {
-        const reposMO: Partial<IManagedObject> = {
-          name: 'AnalyticsRepositories',
-          type: ANALYTICS_REPOSITORIES_TYPE
-        };
-        reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
-        this.inventoryService.create(reposMO);
-        repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-      } else if (result.length > 0) {
-        repositories = result;
-      }
+      repositories = result;
+      // if (!result || result.length == 0) {
+      //   const reposMO: Partial<IManagedObject> = {
+      //     name: 'AnalyticsRepositories',
+      //     type: ANALYTICS_REPOSITORIES_TYPE
+      //   };
+      //   reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
+      //   this.inventoryService.create(reposMO);
+      //   repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
+      // } else if (result.length > 0) {
+      //   repositories = result;
+      // }
       this._repositories = Promise.resolve(repositories);
     }
     return this._repositories;
