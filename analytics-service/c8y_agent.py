@@ -34,9 +34,10 @@ class C8YAgent:
         self.c8yapp = MultiTenantCumulocityApp()
         dir(self.c8yapp)
 
-    def upload_extension(self, request_headers, request_cookies, extension_name, ext_file):
+    def upload_extension(self, request, extension_name, ext_file):
+        headers={**request.headers, **request.cookies}
         b = Binary(
-            c8y=self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies),
+            c8y=self.c8yapp.get_tenant_instance(headers=headers),
             type="application/zip",
             name=f"{extension_name}",
             file=ext_file,
@@ -45,10 +46,11 @@ class C8YAgent:
 
         return b.id
 
-    def restart_cep(self, request_headers, request_cookies):
+    def restart_cep(self, request):
         try:
+            headers={**request.headers, **request.cookies}
             self._logger.info(f"Restarting CEP ...")
-            self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies).put(
+            self.c8yapp.get_tenant_instance(headers=headers).put(
                 resource=self.PATH_CEP_RESTART, json={}
             )
         except Exception as e:
@@ -58,11 +60,12 @@ class C8YAgent:
 
         self._logger.info(f"Restarted CEP!")
 
-    def get_cep_operationobject_id(self, request_headers, request_cookies):
+    def get_cep_operationobject_id(self, request):
         try:
             self._logger.info(f"Retrieving id of operation object for CEP ...")
             
-            response = self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies ).get(
+            headers={**request.headers, **request.cookies}
+            response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=self.PATH_CEP_DIAGNOSTICS)
             try:
                 app_id = response["microservice_application_id"]
@@ -73,7 +76,7 @@ class C8YAgent:
                 self._logger.info(f"Build filter: {query}")
                 
                 managed_objects_app = self.c8yapp.get_tenant_instance(
-                    headers=request_headers, cookies=request_cookies 
+                    headers=headers 
                 ).inventory.select(query=query)
                 managed_object_id = None
                 for managed_object in managed_objects_app:
@@ -97,11 +100,12 @@ class C8YAgent:
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
 
-    def get_cep_ctrl_status(self, request_headers, request_cookies):
+    def get_cep_ctrl_status(self, request):
         try:
             self._logger.info(f"Retrieving CEP control status ...")
             
-            response = self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies).get(
+            headers={**request.headers, **request.cookies}
+            response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=self.PATH_CEP_DIAGNOSTICS)
             return response
         except Exception as e:
@@ -109,13 +113,14 @@ class C8YAgent:
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
 
-    def load_repositories(self, request_headers, request_cookies):
+    def load_repositories(self, request):
         try:
             self._logger.info(f"Retrieving repositories ...")
             
             # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
             
-            response = self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies).get(
+            headers={**request.headers, **request.cookies}
+            response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}")
             tenant_options = response
             # List comprehension to convert TenantOptions to array
@@ -137,13 +142,14 @@ class C8YAgent:
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
             
-    def load_repository(self, request_headers, request_cookies, repository_id):
+    def load_repository(self, request, repository_id):
         try:
             self._logger.info(f"Retrieving repository {repository_id} ...")
             
             # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
             
-            response = self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies).get(
+            headers={**request.headers, **request.cookies}
+            response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}")
             tenant_option = response
             # List comprehension to convert TenantOptions to array
@@ -163,10 +169,11 @@ class C8YAgent:
         except Exception as e:
             self._logger.error(f"Exception:", exc_info=True)
 
-    def save_repositories(self, request_headers, request_cookies, repositories):
+    def save_repositories(self, request, repositories):
         try:
             self._logger.info(f"Saving repositories...")
-            tenant = self.c8yapp.get_tenant_instance(headers=request_headers, cookies=request_cookies)
+            headers={**request.headers, **request.cookies}
+            tenant = self.c8yapp.get_tenant_instance(headers=headers)
 
             for repository in repositories:
                 repository_id = repository.get('id')

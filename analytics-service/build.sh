@@ -17,7 +17,7 @@ fi
 if ! [ $IMG_ARCH ]; then
   ARCH="linux/amd64"
 else
-  ARCH="linux/$IMG_ARCH"
+  ARCH="$IMG_ARCH"
 fi
 BUILD_DIR="./build"
 DIST_DIR="./dist"
