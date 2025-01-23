@@ -1,19 +1,19 @@
 # Use the base image
-FROM softwareag/apama-cumulocity-builder:10.15
+FROM public.ecr.aws/apama/apama-builder:10.15-ubi9
 
 # Set the working directory
 WORKDIR /apama_work
 
 USER root
 
-RUN microdnf install git tar
+RUN microdnf install -y git tar
 # RUN microdnf install unzip
 
 # USER sagadmin
 # Clone the apama-analytics-builder-block-sdk repository
-RUN git clone https://github.com/SoftwareAG/apama-analytics-builder-block-sdk.git
+RUN git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git
 # alternatively
-# RUN wget https://github.com/SoftwareAG/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
+# RUN wget https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
 # RUN unzip apama-analytics-builder-block-sdk-rel-10.18.0.x.zip
 
 COPY requirements.txt /apama_work
@@ -25,5 +25,11 @@ RUN mkdir -p /tmp/builder
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
+
+# RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
+# RUN mkdir -p /etc/docker && \
+#     echo "nameserver 8.8.8.8" > /etc/docker/resolv.conf
+# # COPY resolv.conf /etc/docker/resolv.conf
+# ENV RESOLV_CONF=/etc/docker/resolv.conf
 
 CMD ["python3", "flask_wrapper.py"]

@@ -5,19 +5,15 @@ import {
   FetchClient,
   IFetchOptions,
   IFetchResponse,
-  IIdentified,
   IManagedObject,
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
   IResultList,
-  IRoleReference,
-  IUserRoleReference,
   Realtime,
-  UserService
 } from '@c8y/client';
 
-import { AlertService, AppStateService, gettext } from '@c8y/ngx-components';
+import { AlertService, gettext } from '@c8y/ngx-components';
 
 import { BehaviorSubject, Subject } from 'rxjs';
 import {
@@ -57,7 +53,6 @@ export class AnalyticsService {
     private inventoryBinaryService: InventoryBinaryService,
     private fetchClient: FetchClient,
     private applicationService: ApplicationService,
-    private userService: UserService
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.subscribeMonitoringChannel(true);
@@ -85,7 +80,7 @@ export class AnalyticsService {
     name: string,
     upload: boolean,
     deploy: boolean,
-    monitors: string[]
+    monitors: CEP_Block[]
   ): Promise<IFetchResponse> {
     console.log(`Create extensions for : ${name},  ${monitors},`);
     return this.fetchClient.fetch(
@@ -308,15 +303,15 @@ export class AnalyticsService {
     const cepOperationObjectId = await this.getCEP_OperationObjectId();
     if (!cepOperationObjectId && showWarning) {
       this.alertService.warning(
-        'Analytics Engine is currently not started. Try again later ...'
+        'The supporting microservice for the Analytics Managment is currently not deployed. Not all feature are available ...'
       );
     }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);
-    console.log(
-      'Started subscription on CEP operationObject:',
-      cepOperationObjectId
-    );
+    // console.log(
+    //   'Started subscription on CEP operationObject:',
+    //   cepOperationObjectId
+    // );
     const subMO = this.realtime.subscribe(
       `/managedobjects/${cepOperationObjectId}`,
       this.updateStatusFromOperationObject.bind(this)

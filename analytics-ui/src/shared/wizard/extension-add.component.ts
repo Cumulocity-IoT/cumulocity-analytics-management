@@ -121,7 +121,7 @@ export class ExtensionAddComponent {
   confirmUpdate() {
     const initialState = {
       title: 'Update extension',
-      message: `Extension with the same name ${this.createdApp.name} exists! Do you want to proceed?`,
+      message: `Extension with the same name ${this.createdApp.name} already exists! Do you want to proceed?`,
       labels: {
         ok: 'Update',
         cancel: 'Cancel'

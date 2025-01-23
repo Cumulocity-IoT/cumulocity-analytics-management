@@ -22,12 +22,15 @@ import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-  template: `<a [href]="context.value" target="'_blank'"
-    ><span>{{ context.item.name }}</span></a
-  >`
+    selector: 'a17t-label-renderer-api',
+    template: `
+	<div>
+        <span class="text-11 label label-primary">{{context.value}}</span
+        >
+    </div>
+  `
 })
-export class LinkRendererComponent {
-  constructor(public context: CellRendererContext) {
-    // console.log("Renderer context:", context.value);
-  }
+export class LabelRendererComponent {
+    constructor(public context: CellRendererContext) {
+    }
 }

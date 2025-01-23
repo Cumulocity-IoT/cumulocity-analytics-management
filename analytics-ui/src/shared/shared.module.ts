@@ -10,6 +10,7 @@ import { ConfirmationModalComponent } from './component/confirmation-modal.compo
 import { BooleanRendererComponent } from './component/boolean-renderer.component';
 import { ExtensionCreateComponent } from './component/extension-create-modal.component';
 import { LinkRendererComponent } from './component/link-renderer.component';
+import { LabelRendererComponent } from './renderer/label.renderer';
 
 @NgModule({
   imports: [
@@ -25,7 +26,8 @@ import { LinkRendererComponent } from './component/link-renderer.component';
     BooleanRendererComponent,
     LinkRendererComponent,
     ExtensionCreateComponent,
-    CustomSwitchField
+    CustomSwitchField,
+    LabelRendererComponent
   ],
   providers: [
     {

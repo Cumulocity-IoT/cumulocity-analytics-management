@@ -1,8 +1,9 @@
 import logging
+from sre_constants import CATEGORY
 import requests
 from dotenv import load_dotenv
 from c8y_api.app import MultiTenantCumulocityApp
-from c8y_api.model import Binary
+from c8y_api.model import Binary, TenantOption
 import json
 
 
@@ -22,7 +23,9 @@ import json
 
 class C8YAgent:
     PATH_CEP_DIAGNOSTICS = "/service/cep/diagnostics/apamaCtrlStatus"
+    PATH_TENANT_OPTIONS = "/tenant/options"
     PATH_CEP_RESTART = "/service/cep/restart"
+    ANALYTICS_MANAGEMENT_REPOSITORIES = "analytics-management.repository"
     def __init__(self):
         self._logger = logging.getLogger("C8YAgent")
         self._logger.setLevel(logging.DEBUG)
@@ -104,3 +107,92 @@ class C8YAgent:
             self._logger.error(f"Exception:", exc_info=True)
             # for keys,values in request_headers.items():
             #     self._logger.info(f"Headers: {keys} {values}")
+
+    def load_repositories(self, request_headers):
+        try:
+            self._logger.info(f"Retrieving repositories ...")
+            
+            # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
+            
+            response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}")
+            tenant_options = response
+            # List comprehension to convert TenantOptions to array
+            repositories = []
+            for repository_id in tenant_options:
+                # Assuming option.value is a JSON string containing repository details
+                value_dict = json.loads(tenant_options[repository_id])
+                
+                repository = {
+                    'id': repository_id,
+                    'name': value_dict.get('name'),
+                    'url': value_dict.get('url'),
+                    'accessToken': value_dict.get('accessToken'),
+                    'enabled': value_dict.get('enabled', False)  # Default to False if not present
+                }
+                repositories.append(repository)
+            self._logger.info(f"Found repositories: {repositories}")
+            return repositories
+        except Exception as e:
+            self._logger.error(f"Exception:", exc_info=True)
+            
+    def load_repository(self, request_headers, repository_id):
+        try:
+            self._logger.info(f"Retrieving repository {repository_id} ...")
+            
+            # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
+            
+            response = self.c8yapp.get_tenant_instance(headers=request_headers).get(
+                    resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}")
+            tenant_option = response
+            # List comprehension to convert TenantOptions to array
+            repository = {}
+            # Assuming option.value is a JSON string containing repository details
+            value_dict = json.loads(tenant_option['value'])
+            
+            repository = {
+                'id': repository_id,
+                'name': value_dict.get('name'),
+                'url': value_dict.get('url'),
+                'accessToken': value_dict.get('accessToken'),
+                'enabled': value_dict.get('enabled', False)  # Default to False if not present
+            }
+            self._logger.info(f"Found repository: {repository}")
+            return repository
+        except Exception as e:
+            self._logger.error(f"Exception:", exc_info=True)
+
+    def save_repositories(self, request_headers, repositories):
+        try:
+            self._logger.info(f"Saving repositories...")
+            tenant = self.c8yapp.get_tenant_instance(headers=request_headers)
+
+            for repository in repositories:
+                repository_id = repository.get('id')
+                # Create value dictionary excluding the id field
+                value_dict = {
+                    'name': repository.get('name'),
+                    'url': repository.get('url'),
+                    'enabled': bool(repository.get('enabled', False))
+                }
+
+                # Only add accessToken if it exists and is not empty
+                if repository.get('accessToken'):
+                    value_dict['accessToken'] = repository['accessToken']
+                
+                # Convert to JSON string
+                value_json = json.dumps(value_dict)
+                # self._logger.info(f"Updating repository: {repository_id} {value_dict} {value_json}")
+
+                option = TenantOption(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
+                        key=repository_id,
+                        value=value_json)
+                # Try to update existing repository
+                tenant.tenant_options.create(option)
+                self._logger.info(f"Updated/created repository: {repository_id}")
+
+            return {"message": "Repositories saved successfully"}, 200
+
+        except Exception as e:
+            self._logger.error(f"Exception while saving repositories:", exc_info=True)
+            return {"error": str(e)}, 500

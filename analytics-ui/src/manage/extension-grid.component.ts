@@ -38,7 +38,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private wizardModalService: WizardModalService
-  ) {}
+  ) { }
   ngOnDestroy(): void {
     this.sub1.unsubscribe();
   }
@@ -54,39 +54,32 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     this.cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
     this.cepOperationObject$ = this.analyticsService.getCEP_OperationObject();
     this.sub1 = this.cepOperationObject$.subscribe((mo) => {
-      if (mo.c8y_Status?.status === 'Down') {
-        this.cepEngineStatus$.next('down');
-      } else if (mo.c8y_Status?.status === 'Up') {
-        this.cepEngineStatus$.next('up');
-        // this.alertService.clearAll();
-      }
+      this.cepEngineStatus$.next((mo.c8y_Status ? mo.c8y_Status.status : 'Down').toLowerCase());
     });
     this.extensions$ = merge(
       this.analyticsService.getReloadThroughService(),
       this.reload$
     ).pipe(
       tap((clearCache) => {
-        if (clearCache) {
-          this.analyticsService.clearCaches();
-        }
-        this.cepEngineStatus$.next('loading');
+        clearCache && this.analyticsService.clearCaches();
+        this.updateCepStatus('loading');
       }),
       switchMap(() => this.analyticsService.getExtensionsMetadataEnriched()),
       catchError(() => {
-        this.cepEngineStatus$.next('loadingError');
+        this.updateCepStatus('loadingError');
         return of([]);
       }),
       tap((res) => {
-        if (res && res.length > 0) {
-          this.cepEngineStatus$.next('loaded');
-        } else {
-          this.cepEngineStatus$.next('empty');
-        }
+        this.updateCepStatus(res?.length ? 'loaded' : 'empty');
       }),
       shareReplay()
     );
 
     this.reload$.next(false);
+  }
+
+  private updateCepStatus(status: CEPEngineStatus) {
+    this.cepEngineStatus$.next(status);
   }
 
   loadExtensions() {
