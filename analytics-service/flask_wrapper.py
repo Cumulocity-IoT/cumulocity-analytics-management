@@ -47,7 +47,7 @@ def get_content_list():
         'Accept': 'application/json'
         }
         if repository_id:
-            repository_configuration = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
+            repository_configuration = agent.load_repository(request_headers=request.headers, request_cookies=request.cookies, repository_id=repository_id)
             if "accessToken" in repository_configuration:
                 headers["Authorization"] = f"token {repository_configuration['accessToken']}"
                 logger.info(f"Found accessToken: {headers['Authorization']}")
@@ -92,7 +92,7 @@ def get_content():
         }
         
         if repository_id:
-            repository_configuration = agent.load_repository(request_headers=request.headers, repository_id=repository_id)
+            repository_configuration = agent.load_repository(request_headers=request.headers, request_cookies=request.cookies, repository_id=repository_id)
             if "accessToken" in repository_configuration:
                 headers["Authorization"] = f"token {repository_configuration['accessToken']}"
                 logger.info(f"Found accessToken: {headers['Authorization']}")
@@ -144,7 +144,7 @@ def get_content():
 # params:
 @app.route("/repository/configuration", methods=["GET"])
 def load_repositories():
-    result = agent.load_repositories(request_headers=request.headers)
+    result = agent.load_repositories(request_headers=request.headers,request_cookies=request.cookies)
     if result == None:
         resp = Response(
             json.dumps({"message": "No repositories found"}), mimetype="application/json"
@@ -173,7 +173,7 @@ def save_repositories():
         request_headers = dict(request.headers)
 
         # Call save method
-        return agent.save_repositories(request_headers, repositories)
+        return agent.save_repositories(request_headers , request.cookies, repositories)
 
     except Exception as e:
         return {"error": str(e)}, 500
@@ -203,7 +203,7 @@ def create_extension_zip():
                     # get the contents of the file
                     try:
                         file_name = extract_raw_path(monitor["downloadUrl"])
-                        repository_configuration = agent.load_repository(request_headers=request.headers, repository_id=monitor["repositoryId"])
+                        repository_configuration = agent.load_repository(request_headers=request.headers, request_cookies=request.cookies, repository_id=monitor["repositoryId"])
                         headers = {
                         'Accept': 'application/vnd.github.v3.raw'
                         }
@@ -262,15 +262,16 @@ def create_extension_zip():
                         )
                     else:
                         id = agent.upload_extension(
+                            request.headers,
+                            request.cookies,
                             extension_name,
                             extension_zip,
-                            request_headers=request.headers,
                         )
                         logger.info(
                             f"Uploaded extension {extension_name} as {id} and restart: {deploy}"
                         )
                         if deploy:
-                            agent.restart_cep(request_headers=request.headers)
+                            agent.restart_cep(request_headers=request.headers, request_cookies= request.cookies)
                         return "", 201
 
             except Exception as e:
@@ -333,7 +334,7 @@ def get_extension_metadata():
 #    id
 @app.route("/cep/id", methods=["GET"])
 def get_cep_operationobject_id():
-    result = agent.get_cep_operationobject_id(request_headers=request.headers)
+    result = agent.get_cep_operationobject_id(request_headers=request.headers, request_cookies= request.cookies)
     if result == None:
         resp = Response(
             json.dumps({"message": "Not found"}), mimetype="application/json"
@@ -350,7 +351,7 @@ def get_cep_operationobject_id():
 # @app.route("/cep/status", methods=["GET"])
 @app.route("/cep/status", methods=["GET"])
 def get_cep_ctrl_status():
-    result = agent.get_cep_ctrl_status(request_headers=request.headers)
+    result = agent.get_cep_ctrl_status(request_headers=request.headers, request_cookies= request.cookies)
     if result == None:
         resp = Response(
             json.dumps({"message": "Not found"}), mimetype="application/json"

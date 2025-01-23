@@ -25,6 +25,7 @@ RUN mkdir -p /tmp/builder
 
 RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
+RUN pip3 show c8y-api
 
 # RUN echo "nameserver 8.8.8.8" > /etc/resolv.conf
 # RUN mkdir -p /etc/docker && \
