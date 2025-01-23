@@ -32,10 +32,10 @@ class C8YAgent:
         load_dotenv()
         # c8y
         self.c8yapp = MultiTenantCumulocityApp()
-        dir(self.c8yapp)
+        # dir(self.c8yapp)
 
     def upload_extension(self, request, extension_name, ext_file):
-        headers={**request.headers, **request.cookies}
+        headers = self.prepare_header(request)
         b = Binary(
             c8y=self.c8yapp.get_tenant_instance(headers=headers),
             type="application/zip",
@@ -48,7 +48,7 @@ class C8YAgent:
 
     def restart_cep(self, request):
         try:
-            headers={**request.headers, **request.cookies}
+            headers = self.prepare_header(request)
             self._logger.info(f"Restarting CEP ...")
             self.c8yapp.get_tenant_instance(headers=headers).put(
                 resource=self.PATH_CEP_RESTART, json={}
@@ -60,11 +60,18 @@ class C8YAgent:
 
         self._logger.info(f"Restarted CEP!")
 
+    def prepare_header(self, request):
+        headers = dict(request.headers)
+        if 'authorization' in request.cookies:
+            headers['Authorization'] = f"Bearer {request.cookies['authorization']}"
+        return headers
+
     def get_cep_operationobject_id(self, request):
         try:
             self._logger.info(f"Retrieving id of operation object for CEP ...")
             
-            headers={**request.headers, **request.cookies}
+            headers = self.prepare_header(request)
+            self._logger.info(headers)
             response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=self.PATH_CEP_DIAGNOSTICS)
             try:
@@ -104,7 +111,7 @@ class C8YAgent:
         try:
             self._logger.info(f"Retrieving CEP control status ...")
             
-            headers={**request.headers, **request.cookies}
+            headers = self.prepare_header(request)
             response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=self.PATH_CEP_DIAGNOSTICS)
             return response
@@ -119,7 +126,7 @@ class C8YAgent:
             
             # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
             
-            headers={**request.headers, **request.cookies}
+            headers = self.prepare_header(request)
             response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}")
             tenant_options = response
@@ -148,7 +155,7 @@ class C8YAgent:
             
             # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
             
-            headers={**request.headers, **request.cookies}
+            headers = self.prepare_header(request)
             response = self.c8yapp.get_tenant_instance(headers=headers).get(
                     resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}")
             tenant_option = response
@@ -172,7 +179,8 @@ class C8YAgent:
     def save_repositories(self, request, repositories):
         try:
             self._logger.info(f"Saving repositories...")
-            headers={**request.headers, **request.cookies}
+            
+            headers = self.prepare_header(request)
             tenant = self.c8yapp.get_tenant_instance(headers=headers)
 
             for repository in repositories:

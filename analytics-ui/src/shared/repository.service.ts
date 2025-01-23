@@ -240,7 +240,15 @@ export class RepositoryService {
         method: 'GET'
       }
     ).then(
-      resp => resp.json()
+      resp => {
+        if (!resp.ok) {  // This checks if status is not in the 200-299 range
+          if (resp.status === 401) {
+            throw new Error('Unauthorized: Authentication required');
+          }
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+        return resp.json();
+      }
     )
   }
 
@@ -279,20 +287,20 @@ export class RepositoryService {
           // Wait for all FQN resolutions to complete
           return forkJoin(fqnObservables);
         }),
-        catchError(this.handleError)
+        catchError((error) => this.handleError(error))
       );
   }
 
   private handleError(error: HttpErrorResponse) {
-    if (error.status === 0) {
+    if (!error.status) {
       // A client-side or network error occurred. Handle it accordingly.
-      console.error('An error occurred. Ignoring repository:', error.error);
+      this.alertService.warning(`Ignoring repository: ${error.message}`);
     } else {
       // The backend returned an unsuccessful response code.
       // The response body may contain clues as to what went wrong.
-      console.error(
-        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `,
-        error.error
+      this.alertService.warning(
+        `Backend returned code ${error.status}. Ignoring repository. Error body was: `,
+        error.message
       );
     }
     return EMPTY;

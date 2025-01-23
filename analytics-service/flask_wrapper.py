@@ -10,6 +10,7 @@ import io
 import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
+from requests.exceptions import HTTPError
 import json
 
 # from github import Auth
@@ -65,12 +66,20 @@ def get_content_list():
         response = make_response(response_repository.content, 200)
         response.mimetype = "application/json"
         return response
+    except HTTPError as e:
+        status_code = e.response.status_code  # This will give you the HTTP status code
+        logger.error(f"Exception when retrieving content list! Status code: {status_code}", exc_info=True)
+        resp = Response(
+            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+        )
+        resp.status_code = status_code  # Set the response status code to match the error
+        return resp
     except Exception as e:
         logger.error(f"Exception when retrieving content list!", exc_info=True)
         resp = Response(
             json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
         )
-        resp.status_code = 400
+        resp.status_code = 500  # Generic server error
         return resp
 
 # download the content from github
