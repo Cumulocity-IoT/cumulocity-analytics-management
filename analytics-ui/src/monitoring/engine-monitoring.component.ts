@@ -63,7 +63,7 @@ export class EngineMonitoringComponent implements OnInit {
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             action:  (e, link: string) =>
               window.open(
-                'https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup',
+                'https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode',
                 '_blank',
                 'noopener,noreferrer'
               )

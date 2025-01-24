@@ -4,6 +4,6 @@
     <span [c8yIcon]="'source-code'"></span>
   </ng-container>
 
-  <c8y-editor class="flex-grow"  style ="height:500px" [editorOptions]="editorOptions" [ngModel]="source$ | async"
+  <c8y-editor [editorOptions]="editorOptions" style="height: 50% !important" [ngModel]="source$ | async"
     monacoEditorMarkerValidator></c8y-editor>
 </c8y-modal>

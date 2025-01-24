@@ -55,7 +55,7 @@ export class AnalyticsService {
     private applicationService: ApplicationService,
   ) {
     this.realtime = new Realtime(this.fetchClient);
-    this.subscribeMonitoringChannel(true);
+    this.subscribeMonitoringChannel();
   }
 
   initiateReload(resetCache: boolean) {
@@ -141,7 +141,7 @@ export class AnalyticsService {
     this._blocksDeployed = undefined;
     this._extensionsDeployed = undefined;
     this._cepOperationObjectId = undefined;
-    this.subscribeMonitoringChannel(true);
+    this.subscribeMonitoringChannel();
   }
 
   async getLoadedBlocksFromCEP(): Promise<CEP_Block[]> {
@@ -260,7 +260,11 @@ export class AnalyticsService {
           cepOperationObjectId = data[0].id;
         }
       }
-      this._cepOperationObjectId = Promise.resolve(cepOperationObjectId);
+      if (cepOperationObjectId) {
+        this._cepOperationObjectId = Promise.resolve(cepOperationObjectId);
+      } else {
+        this._cepOperationObjectId = undefined;
+      }
     }
     return this._cepOperationObjectId;
   }
@@ -294,17 +298,23 @@ export class AnalyticsService {
           method: 'GET'
         });
       }
-      this._cepCtrlStatus = response.json();
+      this._cepCtrlStatus = await response.json();
     }
     return this._cepCtrlStatus;
   }
 
-  async subscribeMonitoringChannel(showWarning: boolean): Promise<object> {
+  async subscribeMonitoringChannel(): Promise<object> {
     const cepOperationObjectId = await this.getCEP_OperationObjectId();
-    if (!cepOperationObjectId && showWarning) {
-      this.alertService.warning(
-        'The supporting microservice for the Analytics Managment is currently not deployed. Not all feature are available ...'
-      );
+    if (!cepOperationObjectId) {
+      if (!this._isBackendDeployed) {
+        this.alertService.warning(
+          'The supporting microservice for the Analytics Management is currently not deployed. Not all feature are available ...'
+        );
+      } else {
+        this.alertService.warning(
+          'Streaming Analytics is restarting. Please retry later ...'
+        );
+      }
     }
     const { data } = await this.inventoryService.detail(cepOperationObjectId);
     this.cepOperationObject$.next(data);

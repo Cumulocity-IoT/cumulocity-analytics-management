@@ -44,23 +44,27 @@ def get_content_list():
     try:
         encoded_url = request.args.get("url")
         repository_id = request.args.get("id")
-        headers = {
-        'Accept': 'application/json'
-        }
+        headers = {"Accept": "application/json"}
         if repository_id:
-            repository_configuration = agent.load_repository(request=request, repository_id=repository_id)
+            repository_configuration = agent.load_repository(
+                request=request, repository_id=repository_id
+            )
             if "accessToken" in repository_configuration:
-                headers["Authorization"] = f"token {repository_configuration['accessToken']}"
+                headers["Authorization"] = (
+                    f"token {repository_configuration['accessToken']}"
+                )
                 logger.info(f"Found accessToken: {headers['Authorization']}")
-                
+
         logger.info(
             f"Get content list encoded_url: {repository_configuration} {encoded_url}"
         )
 
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content list from decoded_url: {decoded_url}")
-        response_repository = requests.get(decoded_url, headers=headers, allow_redirects=True)
-        response_repository.raise_for_status() 
+        response_repository = requests.get(
+            decoded_url, headers=headers, allow_redirects=True
+        )
+        response_repository.raise_for_status()
 
         logger.info(f"Response: {response_repository}")
         response = make_response(response_repository.content, 200)
@@ -68,19 +72,27 @@ def get_content_list():
         return response
     except HTTPError as e:
         status_code = e.response.status_code  # This will give you the HTTP status code
-        logger.error(f"Exception when retrieving content list! Status code: {status_code}", exc_info=True)
-        resp = Response(
-            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+        logger.error(
+            f"Exception when retrieving content list! Status code: {status_code}",
+            exc_info=True,
         )
-        resp.status_code = status_code  # Set the response status code to match the error
+        resp = Response(
+            json.dumps({"message": f"Bad request: {str(e)}"}),
+            mimetype="application/json",
+        )
+        resp.status_code = (
+            status_code  # Set the response status code to match the error
+        )
         return resp
     except Exception as e:
         logger.error(f"Exception when retrieving content list!", exc_info=True)
         resp = Response(
-            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+            json.dumps({"message": f"Bad request: {str(e)}"}),
+            mimetype="application/json",
         )
         resp.status_code = 500  # Generic server error
         return resp
+
 
 # download the content from github
 # params:
@@ -93,17 +105,19 @@ def get_content():
         encoded_url = request.args.get("url")
         cep_block_name = request.args.get("cep_block_name")
         repository_id = request.args.get("repository_id")
-        extract_fqn_cep_block = parse_boolean(request.args.get(
-            "extract_fqn_cep_block", default=False
-        ))
-        headers = {
-        'Accept': 'application/vnd.github.v3.raw'
-        }
-        
+        extract_fqn_cep_block = parse_boolean(
+            request.args.get("extract_fqn_cep_block", default=False)
+        )
+        headers = {"Accept": "application/vnd.github.v3.raw"}
+
         if repository_id:
-            repository_configuration = agent.load_repository(request=request, repository_id=repository_id)
+            repository_configuration = agent.load_repository(
+                request=request, repository_id=repository_id
+            )
             if "accessToken" in repository_configuration:
-                headers["Authorization"] = f"token {repository_configuration['accessToken']}"
+                headers["Authorization"] = (
+                    f"token {repository_configuration['accessToken']}"
+                )
                 logger.info(f"Found accessToken: {headers['Authorization']}")
                 logger.info(
                     f"Get content encoded_url: {repository_configuration} {extract_fqn_cep_block}  {cep_block_name} {encoded_url}"
@@ -115,10 +129,12 @@ def get_content():
 
         decoded_url = urllib.parse.unquote(encoded_url)
         logger.info(f"Get content decoded_url: {decoded_url}")
-        response_repository = requests.get(decoded_url, headers=headers, allow_redirects=True)
+        response_repository = requests.get(
+            decoded_url, headers=headers, allow_redirects=True
+        )
         # logger.info(f"Response headers: {dict(response_repository.headers)}")
         # logger.info(f"Request headers: {dict(response_repository.request.headers)}")
-        response_repository.raise_for_status() 
+        response_repository.raise_for_status()
         if extract_fqn_cep_block:
             regex = "(package\s)(.*?);"
             package = re.findall(regex, response_repository.text)
@@ -131,7 +147,9 @@ def get_content():
                 response.mimetype = "text/plain"
                 return response
             except Exception as e:
-                logger.error(f"Exception when retrieving fqn of monitor file!", exc_info=True)
+                logger.error(
+                    f"Exception when retrieving fqn of monitor file!", exc_info=True
+                )
                 return f"Bad request: {str(e)}", 400
         else:
             logger.info(f"Response: {response_repository}")
@@ -141,12 +159,11 @@ def get_content():
     except Exception as e:
         logger.error(f"Exception when retrieving content from github!", exc_info=True)
         resp = Response(
-            json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+            json.dumps({"message": f"Bad request: {str(e)}"}),
+            mimetype="application/json",
         )
         resp.status_code = 400
         return resp
-
-
 
 
 # load the configured repositores
@@ -156,16 +173,18 @@ def load_repositories():
     result = agent.load_repositories(request)
     if result == None:
         resp = Response(
-            json.dumps({"message": "No repositories found"}), mimetype="application/json"
+            json.dumps({"message": "No repositories found"}),
+            mimetype="application/json",
         )
         resp.status_code = 400
         return resp
-    
+
     return jsonify(result)
+
 
 # save the configured repositores
 # params:
-@app.route('/repository/configuration', methods=['POST'])
+@app.route("/repository/configuration", methods=["POST"])
 def save_repositories():
     try:
         # Get repositories from request body
@@ -175,7 +194,7 @@ def save_repositories():
 
         # Validate repository format
         for repo in repositories:
-            if not all(key in repo for key in ['id', 'name', 'url']):
+            if not all(key in repo for key in ["id", "name", "url"]):
                 return {"error": "Each repository must have id, name, and url"}, 400
 
         # Call save method
@@ -209,15 +228,21 @@ def create_extension_zip():
                     # get the contents of the file
                     try:
                         file_name = extract_raw_path(monitor["downloadUrl"])
-                        repository_configuration = agent.load_repository(request=request, repository_id=monitor["repositoryId"])
-                        headers = {
-                        'Accept': 'application/vnd.github.v3.raw'
-                        }
+                        repository_configuration = agent.load_repository(
+                            request=request, repository_id=monitor["repositoryId"]
+                        )
+                        headers = {"Accept": "application/vnd.github.v3.raw"}
                         if "accessToken" in repository_configuration:
-                            headers["Authorization"] = f"token {repository_configuration['accessToken']}"
-                            logger.info(f"Found accessToken: {headers['Authorization']}")
-          
-                        response_monitor_code = requests.get(monitor["url"], headers=headers, allow_redirects=True)
+                            headers["Authorization"] = (
+                                f"token {repository_configuration['accessToken']}"
+                            )
+                            logger.info(
+                                f"Found accessToken: {headers['Authorization']}"
+                            )
+
+                        response_monitor_code = requests.get(
+                            monitor["url"], headers=headers, allow_redirects=True
+                        )
 
                         # Combine output directory and filename
                         logger.info(f"File downloaded and saved to: {file_name}")
@@ -227,8 +252,12 @@ def create_extension_zip():
                         named_file.close()
 
                     except Exception as e:
-                        logger.error(f"Error downloading file:  {monitor}", exc_info=True)
-                        resp = Response(json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+                        logger.error(
+                            f"Error downloading file:  {monitor}", exc_info=True
+                        )
+                        resp = Response(
+                            json.dumps({"message": f"Bad request: {str(e)}"}),
+                            mimetype="application/json",
                         )
                         resp.status_code = 400
                         return resp
@@ -283,7 +312,8 @@ def create_extension_zip():
             except Exception as e:
                 logger.error(f"Exception when creating extension!", exc_info=True)
                 resp = Response(
-                    json.dumps({"message": f"Bad request: {str(e)}"}), mimetype="application/json"
+                    json.dumps({"message": f"Bad request: {str(e)}"}),
+                    mimetype="application/json",
                 )
                 resp.status_code = 400
                 return resp
@@ -347,7 +377,7 @@ def get_cep_operationobject_id():
         )
         resp.status_code = 400
         return resp
-    
+
     return jsonify(result)
 
 
@@ -392,7 +422,7 @@ def parse_boolean(value):
     if isinstance(value, bool):
         return value
     if isinstance(value, str):
-        return value.lower() == 'true'
+        return value.lower() == "true"
     return False
 
 

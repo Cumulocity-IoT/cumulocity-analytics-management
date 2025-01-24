@@ -93,7 +93,7 @@ The modal dialog provides the option:
 
 On the monitoring tab you can view the latest alarms and events for the Streaming Analytics Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
 
-The property `is_safe_mode` is an indication if the engine was started in [Safe Mode](https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup), i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
+The property `is_safe_mode` is an indication if the engine was started in [Safe Mode](https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode), i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
 
 ![Monitoring](resources/images/monitoring.png)
 
