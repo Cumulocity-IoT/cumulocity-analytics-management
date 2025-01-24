@@ -105,7 +105,7 @@ export class EplConfigService {
 	}
 
 	/**
-	 * Get monaco.languages.ILanguageExtensionPoint object for 'epl' Lanaguage
+	 * Get monaco.languages.ILanguageExtensionPoint object for 'epl' Language
 	 */
 	public getCustomLangExtensionPoint(): monaco.languages.ILanguageExtensionPoint {
 		const newLanguage: monaco.languages.ILanguageExtensionPoint = {

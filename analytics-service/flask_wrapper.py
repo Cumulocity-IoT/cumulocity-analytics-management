@@ -138,7 +138,7 @@ def get_content():
         if extract_fqn_cep_block:
             regex = "(package\s)(.*?);"
             package = re.findall(regex, response_repository.text)
-            logger.info(f"Result looking for fqn of monitor packaege: {package}")
+            logger.info(f"Result looking for fqn of monitor package: {package}")
 
             try:
                 fqn = str(package[0][1]) + "." + str(cep_block_name)
