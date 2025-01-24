@@ -11,7 +11,7 @@ import { Observable, Subject } from 'rxjs';
 import { EditorComponent, loadMonacoEditor } from '@c8y/ngx-components/editor';
 import { EplConfigService } from './epl-config.service';
 
-let initialized Monaco = false;
+let initializedMonaco = false;
 
 @Component({
   selector: 'a17t-name-extension-modal',
@@ -44,10 +44,10 @@ export class EditorModalComponent implements OnInit {
   }
 
   async ngAfterViewInit(): Promise<void> {
-    if (!initialized Monaco) {
+    if (!initializedMonaco) {
       const monaco = await loadMonacoEditor();
       if (monaco) {
-        initialized Monaco = true;
+        initializedMonaco = true;
         monaco.languages.register(this.configService.getCustomLangExtensionPoint());
         monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders());
         monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
