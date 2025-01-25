@@ -6,29 +6,33 @@
   </ng-container>
   <div class="p-48 modal-inner-scroll animated fadeIn">
     <div class="modal-body">
-      <div class="p-24 m-b-24 elevation-sm">
-        <table class="table table-striped">
+      <div class="p-24 elevation-sm">
+        <table class="table table-head-fixed">
           <thead>
             <tr>
-              <th width="5%">#</th>
+              <th width="5%"></th>
               <th width="15%">Name</th>
-              <th width="60%">Url</th>
+              <th width="70%">Url</th>
               <th width="5%">Enabled</th>
-              <th width="15%">Action</th>
+              <th width="10%">Action</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let repository of (repositories$| async); let i = index">
-              <td style="padding-top: 4px">
-                {{ i }}
+              <td>
+                <label class="c8y-radio" style="margin-top: 8px;" title="Checkbox">
+                  <input type="radio" (click)="editRepository(repository, i)"
+                    [checked]="selectedRepositoryIndex == i" />
+                  <span></span>
+                </label>
               </td>
-              <td style="padding-top: 4px">
+              <td>
                 {{ repository.name }}
               </td>
-              <td style="padding-top: 4px">
+              <td>
                 {{ repository.url }}
               </td>
-              <td style="padding-top: 8px">
+              <td class="j-c-center_">
                 <button title="{{ 'Toggle activation' | translate }}" class="btn btn-icon btn-clean"
                   (click)="toggleActivation(repository)">
                   <i [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'" class="m-r-5" c8yIcon="toggle-on"
@@ -36,12 +40,12 @@
                   <span class="sr-only" translate>Toggle activation</span>
                 </button>
               </td>
-              <td width="10%" style="padding-top: 8px">
-                <button title="{{ 'Update' | translate }}" class="btn btn-icon btn-clean p-r-4"
+              <td width="10%" class="j-c-center_">
+                <!-- <button title="{{ 'Update' | translate }}" class="btn btn-icon btn-clean p-r-4"
                   (click)="editRepository(repository)">
                   <i c8yIcon="pencil" class="text-danger"></i>
                   <span class="sr-only" translate>Update</span>
-                </button>
+                </button> -->
                 <button title="{{ 'Delete' | translate }}" class="btn btn-icon btn-clean"
                   (click)="deleteRepository(repository.id)">
                   <i c8yIcon="trash-o" class="text-danger"></i>
@@ -51,11 +55,11 @@
             </tr>
           </tbody>
         </table>
-      </div>
-      <div class="p-24 elevation-sm">
-        <fieldset>
-          <div class="legend form-block">Update repository</div>
-          <form [formGroup]="repositoryForm">
+        <!-- </div>
+      <div class="p-24 elevation-sm"> -->
+        <div class="legend form-block">Selected repository</div>
+        <form [formGroup]="repositoryForm">
+          <fieldset>
             <input type="hidden" formControlName="id" />
             <c8y-form-group>
               <label for="name">Name</label>
@@ -63,16 +67,9 @@
             </c8y-form-group>
             <c8y-form-group>
               <label for="name"><span>{{'Repository Url '}}</span>
-                <ng-template #popTemplateRepositoryUrl>
-                  {{
-                  " Enter the Url to a github repository in the form:
+                <button type="button" placement="right" popover="Enter the Url to a github repository in the form:
                   https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-                  }}
-                </ng-template>
-                <button class="btn-clean text-primary" [popover]="popTemplateRepositoryUrl"
-                  popoverTitle="Repository Url" placement="right" triggers="focus" type="button">
-                  <i c8yIcon="question-circle-o"></i>
-                </button>
+                  triggers="focus" class="btn-help" aria-label="Help content"></button>
               </label>
               <input type="text" title="Repository Url" id="url" formControlName="url"
                 placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
@@ -80,18 +77,12 @@
             </c8y-form-group>
             <c8y-form-group>
               <label for="name"><span>{{'Personal Access Token'}}</span>
-                <ng-template #popTemplateAccessToken>
-                  {{
-                  "Enter Personal Access Token created here: https://github.com/settings/tokens/new/"
-                  }}
-                </ng-template>
-                <button class="btn-clean text-primary" [popover]="popTemplateAccessToken" popoverTitle="Access Token"
-                  placement="right" triggers="focus" type="button">
-                  <i c8yIcon="question-circle-o"></i>
-                </button>
+                <button type="button" placement="right"
+                  popover="Enter Personal Access Token (PAT) created here: https://github.com/settings/tokens/new/"
+                  triggers="focus" class="btn-help" aria-label="Help content"></button>
               </label>
               <input type="password" title="Access Token" id="accessToken" formControlName="accessToken"
-                placeholder="e.g.: your github Personal Access Token" class="form-control" />
+                placeholder="e.g.: your github Personal Access Token (PAT)" class="form-control" />
             </c8y-form-group>
             <!-- Add any other form controls based on your repository model -->
             <button (click)="addRepository()" class="btn btn-default">
@@ -100,8 +91,8 @@
             <button (click)="updateRepository()" class="btn btn-default">
               Update repository
             </button>
-          </form>
-        </fieldset>
+          </fieldset>
+        </form>
       </div>
     </div>
   </div>

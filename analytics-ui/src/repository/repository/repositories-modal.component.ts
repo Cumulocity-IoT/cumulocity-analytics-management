@@ -21,6 +21,7 @@ export class RepositoriesModalComponent implements OnInit{
   @Output() closeSubject: Subject<boolean> = new Subject();
   repositoryForm: FormGroup;
   subscription: any;
+  selectedRepositoryIndex: number;
 
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
 
@@ -52,7 +53,8 @@ export class RepositoriesModalComponent implements OnInit{
     }
   }
 
-  editRepository(repository: Repository): void {
+  editRepository(repository: Repository, index: number): void {
+    this.selectedRepositoryIndex = index;
     this.repositoryForm.patchValue(repository);
   }
 
