@@ -1,4 +1,4 @@
-<c8y-modal title="Repositories for blocks" (onClose)="onSave($event)" [labels]="labels"
+<c8y-modal title="Repositories for blocks" (onClose)="onSave()" [labels]="labels"
   [headerClasses]="'modal-header dialog-header'">
 
   <ng-container c8y-modal-title>
@@ -41,11 +41,6 @@
                 </button>
               </td>
               <td width="10%" class="j-c-center_">
-                <!-- <button title="{{ 'Update' | translate }}" class="btn btn-icon btn-clean p-r-4"
-                  (click)="editRepository(repository)">
-                  <i c8yIcon="pencil" class="text-danger"></i>
-                  <span class="sr-only" translate>Update</span>
-                </button> -->
                 <button title="{{ 'Delete' | translate }}" class="btn btn-icon btn-clean"
                   (click)="deleteRepository(repository.id)">
                   <i c8yIcon="trash-o" class="text-danger"></i>
@@ -55,8 +50,6 @@
             </tr>
           </tbody>
         </table>
-        <!-- </div>
-      <div class="p-24 elevation-sm"> -->
         <div class="legend form-block">Selected repository</div>
         <form [formGroup]="repositoryForm">
           <fieldset>
@@ -85,11 +78,14 @@
                 placeholder="e.g.: your github Personal Access Token (PAT)" class="form-control" />
             </c8y-form-group>
             <!-- Add any other form controls based on your repository model -->
-            <button (click)="addRepository()" class="btn btn-default">
-              Add repository
+            <button (click)="addRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex != -1 || !repositoryForm.valid" style="min-width:110px">
+              Add
             </button>
-            <button (click)="updateRepository()" class="btn btn-default">
-              Update repository
+            <button (click)="updateRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex == -1" style="min-width:110px">
+              Update
+            </button>
+            <button (click)="resetForm()" class="btn btn-default" style="min-width:110px" >
+              Reset form
             </button>
           </fieldset>
         </form>

@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, Output, ViewEncapsulation } from '@angular/core';
-import { FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertService, ModalLabels } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable, Subject } from 'rxjs';
@@ -16,12 +16,12 @@ import {
   templateUrl: './repositories-modal.component.html',
   encapsulation: ViewEncapsulation.None
 })
-export class RepositoriesModalComponent implements OnInit{
+export class RepositoriesModalComponent implements OnInit {
   repositories$: Observable<Repository[]>;
   @Output() closeSubject: Subject<boolean> = new Subject();
   repositoryForm: FormGroup;
   subscription: any;
-  selectedRepositoryIndex: number;
+  selectedRepositoryIndex: number = -1;
 
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
 
@@ -34,9 +34,19 @@ export class RepositoriesModalComponent implements OnInit{
     this.repositoryForm = this.fb.group({
       id: [null],
       name: ['', Validators.required],
-      url: ['', Validators.required],
+      url: ['', [Validators.required, this.urlValidator]],
       accessToken: [''],
     });
+  }
+
+  // Custom validator function
+  urlValidator(control: AbstractControl): ValidationErrors | null {
+    try {
+      new URL(control.value);
+      return null;
+    } catch {
+      return { invalidUrl: true };
+    }
   }
 
   ngOnInit(): void {
@@ -107,6 +117,11 @@ export class RepositoriesModalComponent implements OnInit{
 
   onCancel() {
     this.closeSubject.next(false);
+  }
+
+  resetForm() {
+    this.repositoryForm.reset();
+    this.selectedRepositoryIndex = -1;
   }
 
 }
