@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 
 import {
+  AppStateService,
   gettext,
   NavigatorNode,
   NavigatorNodeFactory,
@@ -18,10 +19,19 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     preventDuplicates: true
   });
 
-  constructor(private permissions: Permissions) {}
+  constructor(private permissions: Permissions,
+    private as: AppStateService,
+  ) {}
 
   get(): NavigatorNode {
+    console.log('AppState', this.as);
     if (this.canActivate()) {
+      // id running in 
+      if (this.as['options'].contextPath == 'streaminganalytics'){
+        // console.log('AppState contextPath', this.as['options'].contextPath);
+        delete this.extensionsNode['parent'];
+        this.extensionsNode['label'] = gettext('Extensions');
+      }
       return this.extensionsNode;
     }
     return;

@@ -108,26 +108,32 @@ export class ExtensionCreateComponent implements OnInit {
       this.configuration.deploy,
       this.monitors
     );
-    const binary = await await response.arrayBuffer();
-    this.loading = false;
-    const blob = new Blob([binary], {
-      type: 'application/x-zip-compressed'
-    });
+    if (response.status < 400) {
+      const binary = await await response.arrayBuffer();
+      this.loading = false;
+      const blob = new Blob([binary], {
+        type: 'application/x-zip-compressed'
+      });
 
-    if (!this.configuration.upload) {
-      saveAs(blob, `${this.configuration.name}.zip`);
-      this.alertService.success(
-        `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
-      );
+      if (!this.configuration.upload) {
+        saveAs(blob, `${this.configuration.name}.zip`);
+        this.alertService.success(
+          `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
+        );
+      } else {
+        this.alertService.success(
+          `Uploaded extension ${this.configuration.name}.zip.`
+        );
+      }
     } else {
-      this.alertService.success(
-        `Uploaded extension ${this.configuration.name}.zip.`
+      this.alertService.warning(
+        `Uploaded extension ${this.configuration.name}.zip was not successful`
       );
     }
     this.closeSubject.next(true);
   }
 
-  onClose(){
+  onClose() {
     this.closeSubject.next(false);
   }
 }

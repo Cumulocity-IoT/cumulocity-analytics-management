@@ -297,8 +297,7 @@ def create_extension_zip():
                         )
                     else:
                         id = agent.upload_extension(
-                            request.headers,
-                            request.cookies,
+                            request,
                             extension_name,
                             extension_zip,
                         )
