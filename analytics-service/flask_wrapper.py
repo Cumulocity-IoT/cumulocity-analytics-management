@@ -424,6 +424,11 @@ def parse_boolean(value):
         return value.lower() == "true"
     return False
 
-
+def prepare_header(request):
+    headers = dict(request.headers)
+    if "authorization" in request.cookies:
+        headers["Authorization"] = f"Bearer {request.cookies['authorization']}"
+    return headers
+    
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)

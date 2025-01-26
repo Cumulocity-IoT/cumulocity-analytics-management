@@ -1,6 +1,5 @@
 import logging
 from sre_constants import CATEGORY
-import requests
 from dotenv import load_dotenv
 from c8y_api.app import MultiTenantCumulocityApp
 from c8y_api.model import Binary, TenantOption

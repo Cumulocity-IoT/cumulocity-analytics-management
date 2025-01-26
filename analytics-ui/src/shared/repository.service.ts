@@ -121,7 +121,7 @@ export class RepositoryService {
       throw error;
     }
   }
-  
+
   private loadRepositories(): Observable<Repository[]> {
     return from(this.fetchRepositoriesFromBackend()).pipe(
       catchError(error => {
@@ -204,8 +204,18 @@ export class RepositoryService {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      // Try to get the error message from the response body
+      try {
+        const errorData = await response.json();
+        const errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+        throw new Error(errorMessage);
+      } catch (parseError) {
+        // If we can't parse the JSON, fall back to text
+        const errorText = parseError.message;
+        throw new Error(errorText);
+      }
     }
+
     return response.json();
   }
 
@@ -295,7 +305,7 @@ export class RepositoryService {
   private handleError(error: HttpErrorResponse): void {
     const message = error.status
       ? `Backend returned code ${error.status}: ${error.message}`
-      : `Network error: ${error.message}`;
-    this.alertService.danger('Repository error', message);
+      : error.message;
+    this.alertService.danger(message);
   }
 }
