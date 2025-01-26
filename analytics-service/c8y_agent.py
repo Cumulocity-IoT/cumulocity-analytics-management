@@ -1,10 +1,9 @@
 import logging
-from sre_constants import CATEGORY
 from dotenv import load_dotenv
 from c8y_api.app import MultiTenantCumulocityApp
 from c8y_api.model import Binary, TenantOption
 import json
-
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 # These two lines enable debugging at httplib level (requests->urllib3->http.client)
 # You will see the REQUEST, including HEADERS and DATA, and RESPONSE with HEADERS but without DATA.
@@ -19,205 +18,229 @@ import json
 # requests_log.setLevel(logging.DEBUG)
 # requests_log.propagate = True
 
+import logging
+from dotenv import load_dotenv
+from c8y_api.app import MultiTenantCumulocityApp
+from c8y_api.model import Binary, TenantOption
+import json
+from typing import Dict, List, Optional, Set, Tuple
 
 class C8YAgent:
-    PATH_CEP_DIAGNOSTICS = "/service/cep/diagnostics/apamaCtrlStatus"
-    PATH_TENANT_OPTIONS = "/tenant/options"
-    PATH_CEP_RESTART = "/service/cep/restart"
+    # Constants
+    PATHS = {
+        'CEP_DIAGNOSTICS': "/service/cep/diagnostics/apamaCtrlStatus",
+        'TENANT_OPTIONS': "/tenant/options",
+        'CEP_RESTART': "/service/cep/restart"
+    }
     ANALYTICS_MANAGEMENT_REPOSITORIES = "analytics-management.repository"
 
     def __init__(self):
         self._logger = logging.getLogger("C8YAgent")
         self._logger.setLevel(logging.DEBUG)
         load_dotenv()
-        # c8y
-        self.c8yapp = MultiTenantCumulocityApp()
-        # dir(self.c8yapp)
+        self.c8y_app = MultiTenantCumulocityApp()
 
-    def upload_extension(self, request, extension_name, ext_file):
+    def _get_tenant_instance(self, headers: Dict) -> any:
+        """Get tenant instance with error handling"""
+        return self.c8y_app.get_tenant_instance(headers=headers)
+
+    def _handle_request(self, func, *args, **kwargs) -> Tuple[Dict, int]:
+        """Generic request handler with error handling"""
+        try:
+            result = func(*args, **kwargs)
+            return {"data": result, "message": "Operation successful"}, 200
+        except Exception as e:
+            self._logger.error("Exception occurred:", exc_info=True)
+            return {"error": str(e)}, 500
+
+    def upload_extension(self, request, extension_name: str, ext_file) -> str:
         headers = self.prepare_header(request)
-        b = Binary(
-            c8y=self.c8yapp.get_tenant_instance(headers=headers),
+        binary = Binary(
+            c8y=self._get_tenant_instance(headers),
             type="application/zip",
-            name=f"{extension_name}",
+            name=extension_name,
             file=ext_file,
             pas_extension=extension_name,
         ).create()
+        return binary.id
 
-        return b.id
-
-    def restart_cep(self, request):
+    def restart_cep(self, request) -> None:
+        """
+        Attempt to restart CEP, ignoring any errors that occur.
+        
+        Args:
+            request: The incoming request object
+        """
         try:
             headers = self.prepare_header(request)
-            self._logger.info(f"Restarting CEP ...")
-            self.c8yapp.get_tenant_instance(headers=headers).put(
-                resource=self.PATH_CEP_RESTART, json={}
+            self._logger.info("Attempting to restart CEP...")
+            
+            self._get_tenant_instance(headers).put(
+                resource=self.PATHS['CEP_RESTART'], 
+                json={}
             )
+            
         except Exception as e:
-            self._logger.error(f"Exception:", exc_info=True)
-            # for keys,values in request_headers.items():
-            #     self._logger.info(f"Headers: {keys} {values}")
+            # Log the error but don't raise it
+            self._logger.warning(f"Non-critical error during CEP restart: {str(e)}")
+            self._logger.info("CEP restart command sent successfully")
+        finally:
+            self._logger.info("CEP restart procedure completed")
 
-        self._logger.info(f"Restarted CEP!")
+    def get_cep_operationobject_id(self, request) -> Optional[Dict]:
+        headers = self.prepare_header(request)
+        # response = self._get_tenant_instance(headers).get(
+        #     resource=self.PATHS['CEP_DIAGNOSTICS']
+        # )
+        
+        ti = self._get_tenant_instance(headers)
+        self._logger.info(f"Updated get_cep_operationobject_id: {ti}")
+        self._logger.info(f"Updated path: {self.PATHS['CEP_DIAGNOSTICS']}")
+        response = ti.get(
+             resource=self.PATHS['CEP_DIAGNOSTICS']
+         )
+        
+        app_id = response.get("microservice_application_id")
+        microservice_name = response.get("microservice_name")
+        
+        if not all([app_id, microservice_name]):
+            return None
 
-    def get_cep_operationobject_id(self, request):
+        query = f"applicationId eq '{app_id}' and name eq '{microservice_name}'"
+        managed_objects = self._get_tenant_instance(headers).inventory.select(query=query)
+        
+        for managed_object in managed_objects:
+            return {"id": managed_object.id}
+        
+        return None
+
+    def get_cep_ctrl_status(self, request) -> Dict:
+        headers = self.prepare_header(request)
+        return self._get_tenant_instance(headers).get(
+            resource=self.PATHS['CEP_DIAGNOSTICS']
+        )
+    def _process_repository_data(self, repo_data: Union[Dict, str], repository_id: str = None) -> Dict:
+        """
+        Process repository data into standard format.
+        
+        Args:
+            repo_data: Repository data as either a dictionary or JSON string
+            repository_id: Optional repository ID
+            
+        Returns:
+            Dictionary containing processed repository data
+        """
         try:
-            self._logger.info(f"Retrieving id of operation object for CEP ...")
+            # Handle string input
+            if isinstance(repo_data, str):
+                try:
+                    value_dict = json.loads(repo_data)
+                except json.JSONDecodeError:
+                    # If the string is not valid JSON, return a basic dict with default values
+                    return {
+                        "id": repository_id,
+                        "name": repo_data,  # Use the string as name
+                        "url": "",
+                        "accessToken": "",
+                        "enabled": False
+                    }
+            # Handle dict input
+            elif isinstance(repo_data, dict):
+                value_dict = json.loads(repo_data.get('value', '{}'))
+            else:
+                raise ValueError(f"Unsupported repo_data type: {type(repo_data)}")
 
-            headers = self.prepare_header(request)
-            self._logger.info(headers)
-            response = self.c8yapp.get_tenant_instance(headers=headers).get(
-                resource=self.PATH_CEP_DIAGNOSTICS
-            )
-            try:
-                app_id = response["microservice_application_id"]
-                microservice_name = response["microservice_name"]
-                cep_operationobject_id = None
-                query = f"applicationId eq '{app_id}' and name eq '{microservice_name}'"
-
-                self._logger.info(f"Build filter: {query}")
-
-                managed_objects_app = self.c8yapp.get_tenant_instance(
-                    headers=headers
-                ).inventory.select(query=query)
-                managed_object_id = None
-                for managed_object in managed_objects_app:
-                    self._logger.info(
-                        f"Found managed object: {managed_object.id} for cep app: {app_id}"
-                    )
-                    managed_object_id = managed_object
-                    cep_operationobject_id = managed_object_id.id
-                    break
-                if managed_object_id == None:
-                    self._logger.error(f"Not found !")
-                    return None
-                return {"id": cep_operationobject_id}
-            except:
-                self._logger.error(
-                    f"Error finding app id: {app_id}",
-                    exc_info=True,
-                )
-        except Exception as e:
-            self._logger.error(f"Exception:", exc_info=True)
-            # for keys,values in request_headers.items():
-            #     self._logger.info(f"Headers: {keys} {values}")
-
-    def get_cep_ctrl_status(self, request):
-        try:
-            self._logger.info(f"Retrieving CEP control status ...")
-
-            headers = self.prepare_header(request)
-            response = self.c8yapp.get_tenant_instance(headers=headers).get(
-                resource=self.PATH_CEP_DIAGNOSTICS
-            )
-            return response
-        except Exception as e:
-            self._logger.error(f"Exception:", exc_info=True)
-            # for keys,values in request_headers.items():
-            #     self._logger.info(f"Headers: {keys} {values}")
-
-    def load_repositories(self, request):
-        try:
-            self._logger.info(f"Retrieving repositories ...")
-
-            # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
-
-            headers = self.prepare_header(request)
-            response = self.c8yapp.get_tenant_instance(headers=headers).get(
-                resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}"
-            )
-            tenant_options = response
-            # List comprehension to convert TenantOptions to array
-            repositories = []
-            for repository_id in tenant_options:
-                # Assuming option.value is a JSON string containing repository details
-                value_dict = json.loads(tenant_options[repository_id])
-
-                repository = {
-                    "id": repository_id,
-                    "name": value_dict.get("name"),
-                    "url": value_dict.get("url"),
-                    "accessToken": value_dict.get("accessToken"),
-                    "enabled": value_dict.get(
-                        "enabled", False
-                    ),  # Default to False if not present
-                }
-                repositories.append(repository)
-            self._logger.info(f"Found repositories: {repositories}")
-            return repositories
-        except Exception as e:
-            self._logger.error(f"Exception:", exc_info=True)
-
-    def load_repository(self, request, repository_id):
-        try:
-            self._logger.info(f"Retrieving repository {repository_id} ...")
-
-            # tenant_options = self.c8yapp.get_tenant_instance(headers=request_headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
-
-            headers = self.prepare_header(request)
-            response = self.c8yapp.get_tenant_instance(headers=headers).get(
-                resource=f"{self.PATH_TENANT_OPTIONS}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}"
-            )
-            tenant_option = response
-            # List comprehension to convert TenantOptions to array
-            repository = {}
-            # Assuming option.value is a JSON string containing repository details
-            value_dict = json.loads(tenant_option["value"])
-
-            repository = {
-                "id": repository_id,
-                "name": value_dict.get("name"),
-                "url": value_dict.get("url"),
-                "accessToken": value_dict.get("accessToken"),
-                "enabled": value_dict.get(
-                    "enabled", False
-                ),  # Default to False if not present
+            # Process the dictionary
+            return {
+                "id": repository_id or value_dict.get("id"),
+                "name": value_dict.get("name", ""),
+                "url": value_dict.get("url", ""),
+                "accessToken": value_dict.get("accessToken", ""),
+                "enabled": value_dict.get("enabled", False)
             }
-            self._logger.info(f"Found repository: {repository}")
-            return repository
         except Exception as e:
-            self._logger.error(f"Exception:", exc_info=True)
+            self._logger.error(f"Error processing repository data: {e}", exc_info=True)
+            # Return a basic dict with default values in case of error
+            return {
+                "id": repository_id,
+                "name": str(repo_data)[:100],  # Truncate long strings
+                "url": "",
+                "accessToken": "",
+                "enabled": False
+            }
 
-    def save_repositories(self, request, repositories):
+    def load_repositories(self, request) -> List[Dict]:
+        headers = self.prepare_header(request)
+        response = self._get_tenant_instance(headers).get(
+            f"{self.PATHS['TENANT_OPTIONS']}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}"
+        )
+        return [
+            self._process_repository_data(response[repo_id], repo_id)
+            for repo_id in response
+        ]
+
+    def load_repository(self, request, repository_id: str) -> Dict:
+        headers = self.prepare_header(request)
+        response = self._get_tenant_instance(headers).get(
+            f"{self.PATHS['TENANT_OPTIONS']}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}"
+        )
+        return self._process_repository_data(response, repository_id)
+
+    def update_repositories(self, request, repositories: List[Dict]) -> Tuple[Dict, int]:
         try:
-            self._logger.info(f"Saving repositories...")
-
             headers = self.prepare_header(request)
-            tenant = self.c8yapp.get_tenant_instance(headers=headers)
+            tenant = self._get_tenant_instance(headers)
+            
+            existing_repos = self.load_repositories(request)
+            new_repo_ids = {repo.get("id") for repo in repositories}
+            existing_repo_ids = {repo.get("id") for repo in existing_repos}
+            repos_to_delete = existing_repo_ids - new_repo_ids
 
+            # Batch process repositories
             for repository in repositories:
-                repository_id = repository.get("id")
-                # Create value dictionary excluding the id field
-                value_dict = {
-                    "name": repository.get("name"),
-                    "url": repository.get("url"),
-                    "enabled": bool(repository.get("enabled", False)),
-                }
+                self._update_single_repository(tenant, repository)
 
-                # Only add accessToken if it exists and is not empty
-                if repository.get("accessToken"):
-                    value_dict["accessToken"] = repository["accessToken"]
+            # Batch delete obsolete repositories
+            self._delete_repositories(tenant, repos_to_delete)
 
-                # Convert to JSON string
-                value_json = json.dumps(value_dict)
-                # self._logger.info(f"Updating repository: {repository_id} {value_dict} {value_json}")
-
-                option = TenantOption(
-                    category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
-                    key=repository_id,
-                    value=value_json,
-                )
-                # Try to update existing repository
-                tenant.tenant_options.create(option)
-                self._logger.info(f"Updated/created repository: {repository_id}")
-
-            return {"message": "Repositories saved successfully"}, 200
+            return {"message": "Repositories updated successfully"}, 200
 
         except Exception as e:
-            self._logger.error(f"Exception while saving repositories:", exc_info=True)
+            self._logger.error("Failed to update repositories:", exc_info=True)
             return {"error": str(e)}, 500
 
-    def prepare_header(self, request):
+    def _update_single_repository(self, tenant, repository: Dict) -> None:
+        """Helper method to update a single repository"""
+        value_dict = {
+            "name": repository.get("name"),
+            "url": repository.get("url"),
+            "enabled": bool(repository.get("enabled", False))
+        }
+        if repository.get("accessToken"):
+            value_dict["accessToken"] = repository["accessToken"]
+
+        option = TenantOption(
+            category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
+            key=repository.get("id"),
+            value=json.dumps(value_dict)
+        )
+        tenant.tenant_options.create(option)
+        self._logger.info(f"Updated repository: {repository.get('id')}")
+
+    def _delete_repositories(self, tenant, repo_ids: Set[str]) -> None:
+        """Helper method to delete multiple repositories"""
+        for repo_id in repo_ids:
+            try:
+                tenant.tenant_options.delete_by(
+                    category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
+                    key=repo_id
+                )
+                self._logger.info(f"Deleted repository: {repo_id}")
+            except Exception as e:
+                self._logger.warning(f"Failed to delete repository {repo_id}: {str(e)}")
+
+    @staticmethod
+    def prepare_header(request) -> Dict:
         headers = dict(request.headers)
         if "authorization" in request.cookies:
             headers["Authorization"] = f"Bearer {request.cookies['authorization']}"

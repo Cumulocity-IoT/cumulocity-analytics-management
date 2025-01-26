@@ -164,7 +164,7 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (response) => {
       console.log('Repositories response after edit:', response);
       if (response) {
-        await this.repositoryService.saveRepositories();
+        await this.repositoryService.updateRepositories();
         this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
       } else {
         this.repositoryService.cancelChanges();

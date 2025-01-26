@@ -95,7 +95,7 @@ export class RepositoryService {
     return !_.isEqual(this.originalRepositories, this.currentRepositories$.value);
   }
 
-  async saveRepositories(): Promise<void> {
+  async updateRepositories(): Promise<void> {
     try {
       const response = await this.fetchClient.fetch(
         `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
