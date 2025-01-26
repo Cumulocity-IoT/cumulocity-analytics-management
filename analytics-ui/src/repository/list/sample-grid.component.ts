@@ -118,7 +118,7 @@ export class SampleGridComponent implements OnInit {
 
   ngOnInit() {
     this.samples$ =
-      this.repositoryService.getAll_CEP_BlockSamples();
+      this.repositoryService.getCEP_BlockSamples();
     this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
@@ -166,6 +166,8 @@ export class SampleGridComponent implements OnInit {
       if (response) {
         await this.repositoryService.saveRepositories();
         this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+      } else {
+        this.repositoryService.cancelChanges();
       }
     });
   }

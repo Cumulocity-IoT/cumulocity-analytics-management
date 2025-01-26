@@ -18,11 +18,11 @@ import {
 })
 export class RepositoriesModalComponent implements OnInit {
   repositories$: Observable<Repository[]>;
-  @Output() closeSubject: Subject<boolean> = new Subject();
+  closeSubject: Subject<boolean> = new Subject();
   repositoryForm: FormGroup;
   subscription: any;
   selectedRepositoryIndex: number = -1;
-
+  saveRequired: boolean = false;
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
 
   constructor(
@@ -59,6 +59,7 @@ export class RepositoriesModalComponent implements OnInit {
       newRepository.id = uuidCustom();
       newRepository.enabled = true;
       this.repositoryService.addRepository(newRepository);
+      this.saveRequired = true;
       this.repositoryForm.reset();
     }
   }
@@ -70,6 +71,7 @@ export class RepositoriesModalComponent implements OnInit {
 
   toggleActivation(repository: Repository): void {
     repository.enabled = !repository.enabled;
+    this.saveRequired = true;
     this.repositoryService.updateRepository(repository);
   }
 
@@ -77,6 +79,7 @@ export class RepositoriesModalComponent implements OnInit {
     if (this.repositoryForm.valid) {
       const updatedRepository: Repository = this.repositoryForm.value;
       this.repositoryService.updateRepository(updatedRepository);
+      this.saveRequired = true;
       this.repositoryForm.reset();
     }
   }
@@ -100,6 +103,7 @@ export class RepositoriesModalComponent implements OnInit {
         if (result) {
           try {
             this.repositoryService.deleteRepository(repositoryId);
+            this.saveRequired = true;
           } catch (ex) {
             if (ex) {
               this.alertService.addServerFailure(ex);
@@ -113,15 +117,16 @@ export class RepositoriesModalComponent implements OnInit {
 
   onSave() {
     this.closeSubject.next(true);
+    this.closeSubject.complete();
   }
 
   onCancel() {
     this.closeSubject.next(false);
+    this.closeSubject.complete();
   }
 
   resetForm() {
     this.repositoryForm.reset();
     this.selectedRepositoryIndex = -1;
   }
-
 }

@@ -44,17 +44,17 @@ export interface CEP_Extension {
 export interface CEP_Block {
   id: string;
   name: string;
-  installed: boolean;
-  producesOutput: string;
-  description: string;
+  installed?: boolean;
+  producesOutput?: string;
+  description?: string;
   url: string;
   downloadUrl: string;
-  path: string;
+  path?: string;
   custom: boolean;
-  extension: string;
+  extension?: string;
   repositoryName: string;
   repositoryId: string;
-  category: Category;
+  category?: Category;
 }
 
 export interface Repository {

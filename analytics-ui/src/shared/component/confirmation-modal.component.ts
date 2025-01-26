@@ -36,13 +36,15 @@ import { Subject } from 'rxjs';
 export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   @Input() title: string;
   @Input() message: string;
-  @ViewChild('modalRef', { static: false }) modalRef: ConfirmModalComponent;
-  messageTranslated: string;
-  closeSubject: Subject<boolean> = new Subject();
   @Input() labels: ModalLabels = {
     ok: gettext('Ok'),
     cancel: gettext('Cancel')
   };
+
+  @ViewChild('modalRef', { static: false }) modalRef: ConfirmModalComponent;
+  
+  messageTranslated: string;
+  closeSubject: Subject<boolean> = new Subject();
   status: StatusType = Status.WARNING;
 
   constructor(private translateService: TranslateService) {}
