@@ -119,24 +119,36 @@ class C8YAgent:
         return self._get_tenant_instance(headers).get(
             resource=self.PATHS['CEP_DIAGNOSTICS']
         )
-    def _process_repository_data(self, repo_data: Union[Dict, str], repository_id: str = None) -> Dict:
+        
+    def _process_repository_data(self, repo_data: Union[Dict, str, 'TenantOption'], repository_id: str = None) -> Dict:
         """
         Process repository data into standard format.
         
         Args:
-            repo_data: Repository data as either a dictionary or JSON string
+            repo_data: Repository data as either a dictionary, JSON string, or TenantOption
             repository_id: Optional repository ID
             
         Returns:
             Dictionary containing processed repository data
         """
         try:
+            # Handle TenantOption input
+            if hasattr(repo_data, 'value'):
+                try:
+                    value_dict = json.loads(repo_data.value)
+                except json.JSONDecodeError:
+                    return {
+                        "id": repository_id or repo_data.key,
+                        "name": repo_data.value,  # Use the value as name
+                        "url": "",
+                        "accessToken": "",
+                        "enabled": False
+                    }
             # Handle string input
-            if isinstance(repo_data, str):
+            elif isinstance(repo_data, str):
                 try:
                     value_dict = json.loads(repo_data)
                 except json.JSONDecodeError:
-                    # If the string is not valid JSON, return a basic dict with default values
                     return {
                         "id": repository_id,
                         "name": repo_data,  # Use the string as name
@@ -171,22 +183,31 @@ class C8YAgent:
 
     def load_repositories(self, request) -> List[Dict]:
         headers = self.prepare_header(request)
-        # tenant_options = self.c8yapp.get_tenant_instance(headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
-           
-        response = self._get_tenant_instance(headers).get(
-            f"{self.PATHS['TENANT_OPTIONS']}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}"
-        )
+        tenant = self._get_tenant_instance(headers)
+        tenant_options = tenant.tenant_options.get_all(
+            category=self.ANALYTICS_MANAGEMENT_REPOSITORIES
+        )      
         return [
-            self._process_repository_data(response[repo_id], repo_id)
-            for repo_id in response
+            self._process_repository_data(option, option.key)
+            for option in tenant_options
         ]
 
     def load_repository(self, request, repository_id: str) -> Dict:
         headers = self.prepare_header(request)
-        response = self._get_tenant_instance(headers).get(
-            f"{self.PATHS['TENANT_OPTIONS']}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}/{repository_id}"
+        tenant = self._get_tenant_instance(headers)
+        tenant_option = tenant.tenant_options.get(
+            category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
+            key=repository_id
         )
-        return self._process_repository_data(response, repository_id)
+                # Print various attributes of the TenantOption object
+        print(f"TenantOption contents:")
+        print(f"Category: {tenant_option.category}")
+        print(f"Key: {tenant_option.key}")
+        print(f"Value: {tenant_option.value}")
+        
+        # Print the entire object
+        print(f"Complete TenantOption object: {vars(tenant_option)}")
+        return self._process_repository_data(tenant_option, repository_id)
 
     def update_repositories(self, request, repositories: List[Dict]) -> Tuple[Dict, int]:
         try:

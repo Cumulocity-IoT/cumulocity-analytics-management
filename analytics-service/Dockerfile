@@ -45,10 +45,11 @@ RUN git clone --depth 1 https://github.com/Cumulocity-IoT/apama-analytics-builde
 
 # Install Python dependencies
 COPY requirements.txt /apama_work/
-RUN pip3 install --no-cache-dir -r requirements.txt
+# RUN pip3 install --no-cache-dir -r requirements.txt
+RUN /usr/local/bin/pip3.10 install --no-cache-dir -r requirements.txt
 
 # Copy application files
 COPY flask_wrapper.py c8y_agent.py /apama_work/
 
 # Set the default command
-CMD ["python3", "flask_wrapper.py"]
+CMD ["/usr/local/bin/python3.10", "flask_wrapper.py"]
