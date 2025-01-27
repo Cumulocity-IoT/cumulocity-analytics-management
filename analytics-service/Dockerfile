@@ -1,43 +1,54 @@
 # Use the base image
-FROM public.ecr.aws/apama/apama-builder:10.15-ubi9
+FROM public.ecr.aws/apama/apama-builder:10.15-ubi9 AS builder
 
 # Set the working directory
 WORKDIR /apama_work
 
 USER root
 
-# Install only the necessary packages
-RUN microdnf install -y git tar
+# Combine all installation steps into a single layer and cleanup
+# Combine all installation steps into a single layer and cleanup
+RUN microdnf install -y gcc git tar openssl-devel bzip2-devel libffi-devel zlib-devel wget make && \
+    mkdir -p /tmp/builder && \
+    cd /tmp && \
+    wget https://www.python.org/ftp/python/3.10.13/Python-3.10.13.tgz && \
+    tar xzf Python-3.10.13.tgz && \
+    cd Python-3.10.13 && \
+    ./configure --enable-optimizations && \
+    make altinstall && \
+    cd .. && \
+    rm -rf Python-3.10.13 Python-3.10.13.tgz && \
+    microdnf remove -y gcc make wget && \
+    microdnf clean all && \
+    ln -sf /usr/local/bin/python3.10 /usr/bin/python3 && \
+    ln -sf /usr/local/bin/pip3.10 /usr/bin/pip3
 
+# Use multi-stage build to reduce final image size
+FROM public.ecr.aws/apama/apama-builder:10.15-ubi9
 
-# FROM python:3-slim
+WORKDIR /apama_work
 
-# # Set the working directory
-# WORKDIR /apama_work
+# Switch to root user
+USER root
 
-# USER root
+# Copy Python installation from builder
+COPY --from=builder /usr/local /usr/local
+COPY --from=builder /usr/bin/python3 /usr/bin/python3
+COPY --from=builder /usr/bin/pip3 /usr/bin/pip3
 
-# Install only the necessary packages
-# RUN apt-get update && apt-get install -y \
-#     git \
-#     tar \
-#     && rm -rf /var/lib/apt/lists/*  # Clean up to reduce image size
+# Install runtime dependencies
+RUN microdnf install -y git openssl-devel bzip2-devel libffi-devel zlib-devel && \
+    microdnf clean all
 
-# Clone the apama-analytics-builder-block-sdk repository
-RUN git clone https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git
+# Clone SDK with minimal history
+RUN git clone --depth 1 https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk.git
 
-# Alternatively
-# RUN wget https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk/archive/refs/heads/rel/10.18.0.x.zip
-# RUN unzip apama-analytics-builder-block-sdk-rel-10.18.0.x.zip
+# Install Python dependencies
+COPY requirements.txt /apama_work/
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-COPY requirements.txt /apama_work
-COPY flask_wrapper.py /apama_work
-COPY c8y_agent.py /apama_work
+# Copy application files
+COPY flask_wrapper.py c8y_agent.py /apama_work/
 
-# Used for test purposes
-RUN mkdir -p /tmp/builder
-
-RUN pip3 install --upgrade pip
-RUN pip3 install -r requirements.txt
-
+# Set the default command
 CMD ["python3", "flask_wrapper.py"]

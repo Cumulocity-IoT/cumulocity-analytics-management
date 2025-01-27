@@ -171,6 +171,8 @@ class C8YAgent:
 
     def load_repositories(self, request) -> List[Dict]:
         headers = self.prepare_header(request)
+        # tenant_options = self.c8yapp.get_tenant_instance(headers).tenant_options.get_all(category=self.ANALYTICS_MANAGEMENT_REPOSITORIES)
+           
         response = self._get_tenant_instance(headers).get(
             f"{self.PATHS['TENANT_OPTIONS']}/{self.ANALYTICS_MANAGEMENT_REPOSITORIES}"
         )
