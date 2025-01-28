@@ -44,22 +44,24 @@ export interface CEP_Extension {
 export interface CEP_Block {
   id: string;
   name: string;
-  installed: boolean;
-  producesOutput: string;
-  description: string;
+  installed?: boolean;
+  producesOutput?: string;
+  description?: string;
   url: string;
   downloadUrl: string;
-  path: string;
+  path?: string;
   custom: boolean;
-  extension: string;
+  extension?: string;
   repositoryName: string;
-  category: Category;
+  repositoryId: string;
+  category?: Category;
 }
 
 export interface Repository {
   id: string;
   name: string;
   url: string;
+  accessToken: string;
   enabled: boolean;
 }
 
@@ -73,7 +75,9 @@ export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 export const BACKEND_PATH_BASE = 'service/analytics-ext-service';
 export const EXTENSION_ENDPOINT = 'extension';
 export const CEP_ENDPOINT = 'cep';
-export const REPOSITORY_ENDPOINT = 'repository';
+export const REPOSITORY_CONTENT_ENDPOINT = 'repository/content';
+export const REPOSITORY_CONTENT_LIST_ENDPOINT = 'repository/contentList';
+export const REPOSITORY_CONFIGURATION_ENDPOINT = 'repository/configuration';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
 export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 
@@ -82,7 +86,7 @@ export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
 export const CEP_METADATA_FILE_EXTENSION = '.json';
 export const GITHUB_BASE = 'https://api.github.com';
-export const REPO_SAMPLES_OWNER = 'SoftwareAG';
+export const REPO_SAMPLES_OWNER = 'Cumulocity-IoT';
 export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
 export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
 export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;

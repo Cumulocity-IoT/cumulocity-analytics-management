@@ -5,45 +5,16 @@ import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../analytics.service';
 import { saveAs } from 'file-saver';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE } from '../analytics.model';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../analytics.model';
 import { CustomSwitchField } from './custom-switch-field';
 
 @Component({
   selector: 'a17t-extension-create-modal',
-  template: `<c8y-modal
-    title="Edit properties extension"
-    (onDismiss)="onDismiss($event)"
-    [labels]="labels"
-    [headerClasses]="'modal-header dialog-header'"
-  >
-    <div class="card-block">
-      <div [formGroup]="configFormly">
-        <formly-form
-          [form]="configFormly"
-          [fields]="configFormlyFields"
-          [model]="configuration"
-        ></formly-form>
-        <div class="col-lg-8">
-          <button
-            class="btn btn-default"
-            title="{{ 'Create extension' | translate }}"
-            (click)="createExtension()"
-            [disabled]="
-              (backendDeployed$ | async) === false || !configFormly.valid
-            "
-          >
-            <i c8yIcon="plugin"></i>
-            {{ 'Create extension' | translate }}
-          </button>
-        </div>
-      </div>
-    </div>
-    <div *ngIf="loading"><c8y-loading></c8y-loading></div>
-  </c8y-modal>`
+  templateUrl: './extension-create-modal.component.html'
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
-  @Input() monitors: string[];
+  @Input() monitors: CEP_Block[];
   configuration: any = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
@@ -57,7 +28,7 @@ export class ExtensionCreateComponent implements OnInit {
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService
-  ) {}
+  ) { }
 
   ngOnInit() {
     this.isDeployed();
@@ -137,22 +108,32 @@ export class ExtensionCreateComponent implements OnInit {
       this.configuration.deploy,
       this.monitors
     );
-    const binary = await await response.arrayBuffer();
-    this.loading = false;
-    const blob = new Blob([binary], {
-      type: 'application/x-zip-compressed'
-    });
+    if (response.status < 400) {
+      const binary = await await response.arrayBuffer();
+      this.loading = false;
+      const blob = new Blob([binary], {
+        type: 'application/x-zip-compressed'
+      });
 
-    if (!this.configuration.upload) {
-      saveAs(blob, `${this.configuration.name}.zip`);
-      this.alertService.success(
-        `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
-      );
+      if (!this.configuration.upload) {
+        saveAs(blob, `${this.configuration.name}.zip`);
+        this.alertService.success(
+          `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
+        );
+      } else {
+        this.alertService.success(
+          `Uploaded extension ${this.configuration.name}.zip.`
+        );
+      }
     } else {
-      this.alertService.success(
-        `Uploaded extension ${this.configuration.name}.zip.`
+      this.alertService.warning(
+        `Uploaded extension ${this.configuration.name}.zip was not successful`
       );
     }
     this.closeSubject.next(true);
+  }
+
+  onClose() {
+    this.closeSubject.next(false);
   }
 }

@@ -1,25 +1,22 @@
 // repository.service.ts
 
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, EMPTY, Observable } from 'rxjs';
-import {
-  ANALYTICS_REPOSITORIES_TYPE,
-  BACKEND_PATH_BASE,
-  CEP_Block,
-  REPOSITORY_ENDPOINT,
-  REPO_SAMPLES,
-  Repository
-} from './analytics.model';
 import {
   FetchClient,
-  IFetchResponse,
-  IManagedObject,
-  InventoryService
 } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, map } from 'rxjs/operators';
 import * as _ from 'lodash';
+import { BehaviorSubject, EMPTY, forkJoin, from, Observable, of } from 'rxjs';
+import { catchError, combineLatestWith, map, shareReplay, switchMap, take, tap } from 'rxjs/operators';
+import {
+  BACKEND_PATH_BASE,
+  CEP_Block,
+  Repository,
+  REPOSITORY_CONFIGURATION_ENDPOINT,
+  REPOSITORY_CONTENT_ENDPOINT,
+  REPOSITORY_CONTENT_LIST_ENDPOINT
+} from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
 
@@ -27,251 +24,288 @@ import { getFileExtension, removeFileExtension } from './utils';
   providedIn: 'root'
 })
 export class RepositoryService {
-  private repositories: Repository[] = [];
-  private repositoriesSubject: BehaviorSubject<Repository[]> =
-    new BehaviorSubject<Repository[]>([]);
-  private _repositories: Promise<Repository[]> | Repository[];
-  private _cep_block_cache: Map<string, Promise<CEP_Block[]>> = new Map();
-  private _isDirty: boolean = false;
+  private readonly currentRepositories$ = new BehaviorSubject<Repository[]>([]);
+  private originalRepositories: Repository[] = [];
+  private readonly blockCache = new Map<string, Observable<CEP_Block[]>>();
+  private readonly reloadTrigger$ = new BehaviorSubject<void>(undefined);
+  private hideInstalled = false;
+
+  readonly cepBlockSamples$ = this.reloadTrigger$.pipe(
+    switchMap(() => this.loadBlocksWithStatus()),
+    shareReplay(1)
+  );
 
   constructor(
-    private inventoryService: InventoryService,
-    private analyticsService: AnalyticsService,
-    public alertService: AlertService,
-    private githubFetchClient: HttpClient,
-    private fetchClient: FetchClient
+    private readonly analyticsService: AnalyticsService,
+    private readonly alertService: AlertService,
+    private readonly httpClient: HttpClient,
+    private readonly fetchClient: FetchClient
   ) {
-    this.init();
+    this.initializeRepositories();
   }
 
-  async init() {
-    this.repositories = await this.loadRepositories();
-    this.repositoriesSubject.next([...this.repositories]);
+  private initializeRepositories(): void {
+    this.loadRepositories().pipe(
+      tap(repos => {
+        this.originalRepositories = _.cloneDeep(repos); // Deep clone to preserve original state
+        this.currentRepositories$.next(repos);
+      }),
+      take(1)
+    ).subscribe();
   }
 
   getRepositories(): Observable<Repository[]> {
-    return this.repositoriesSubject.asObservable();
+    return this.currentRepositories$.asObservable();
   }
 
   addRepository(repository: Repository): void {
-    this.repositories.push(repository);
-    this.repositoriesSubject.next([...this.repositories]);
-    this._isDirty = true;
+    const current = this.currentRepositories$.value;
+    this.currentRepositories$.next([...current, repository]);
   }
 
   updateRepository(updatedRepository: Repository): void {
-    const index = this.repositories.findIndex(
-      (repo) => repo.id === updatedRepository.id
-    );
+    const current = this.currentRepositories$.value;
+    const index = current.findIndex(repo => repo.id === updatedRepository.id);
+
     if (index !== -1) {
-      this.repositories[index] = updatedRepository;
-      this.repositoriesSubject.next([...this.repositories]);
-      this._isDirty = true;
+      const updated = [
+        ...current.slice(0, index),
+        updatedRepository,
+        ...current.slice(index + 1)
+      ];
+      this.currentRepositories$.next(updated);
     }
   }
 
   deleteRepository(repositoryId: string): void {
-    this.repositories = this.repositories.filter(
-      (repo) => repo.id !== repositoryId
+    const current = this.currentRepositories$.value;
+    this.currentRepositories$.next(
+      current.filter(repo => repo.id !== repositoryId)
     );
-    this.repositoriesSubject.next([...this.repositories]);
-    this._isDirty = true;
   }
 
-  async loadRepositories(): Promise<Repository[]> {
-    if (!this._repositories) {
-      let repositories = [] as Repository[];
-      const filter: object = {
-        pageSize: 100,
-        withTotalPages: true
-      };
-      const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE
-      };
-      const { data } = await this.inventoryService.listQuery(query, filter);
-      if (!data || data.length == 0) {
-        const reposMO: Partial<IManagedObject> = {
-          name: 'AnalyticsRepositories',
-          type: ANALYTICS_REPOSITORIES_TYPE
-        };
-        reposMO[ANALYTICS_REPOSITORIES_TYPE] = REPO_SAMPLES;
-        this.inventoryService.create(reposMO);
-        repositories = reposMO[ANALYTICS_REPOSITORIES_TYPE];
-      } else if (data.length > 0) {
-        repositories = data[0][ANALYTICS_REPOSITORIES_TYPE];
-      }
-      this._repositories = Promise.resolve(repositories);
-    }
-    return this._repositories;
+  // Cancel all changes and revert to last saved state
+  cancelChanges(): void {
+    this.currentRepositories$.next(_.cloneDeep(this.originalRepositories));
+    this.reloadTrigger$.next();
   }
 
-  async saveRepositories(repositories: Repository[]): Promise<void> {
-    if (this._isDirty) {
-      const filter: object = {
-        pageSize: 100,
-        withTotalPages: true
-      };
-      const query: object = {
-        type: ANALYTICS_REPOSITORIES_TYPE
-      };
-      const { data } = await this.inventoryService.listQuery(query, filter);
-      if (!data || data.length == 0) {
-        const reposMO: Partial<IManagedObject> = {
-          name: 'AnalyticsRepositories',
-          type: ANALYTICS_REPOSITORIES_TYPE
-        };
-        reposMO[ANALYTICS_REPOSITORIES_TYPE] = repositories;
-        this.inventoryService.create(reposMO);
-      } else if (data.length > 0) {
-        data[0][ANALYTICS_REPOSITORIES_TYPE] = repositories;
-        this.inventoryService.update(data[0]);
-      }
-      this._repositories = repositories;
-      this._isDirty = false;
+  // Check if there are unsaved changes
+  hasUnsavedChanges(): boolean {
+    return !_.isEqual(this.originalRepositories, this.currentRepositories$.value);
+  }
 
-      this.alertService.success(gettext('Updated repositories successfully‚'));
+  async updateRepositories(): Promise<void> {
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(this.currentRepositories$.value),
+          method: 'POST',
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to save repositories');
+      }
+
+      // Update original repositories after successful save
+      this.originalRepositories = _.cloneDeep(this.currentRepositories$.value);
+      this.alertService.success(gettext('Updated repositories successfully'));
+    } catch (error) {
+      this.alertService.danger('Failed to save repositories', error.message);
+      throw error;
     }
   }
 
-  async resolveFullyQualified_CEP_Block_name(
-    block: CEP_Block,
-    rep: Repository
-  ): Promise<string> {
-    const fqn = await this.getCEP_BlockContent(block, true, true);
-    return fqn;
+  private loadRepositories(): Observable<Repository[]> {
+    return from(this.fetchRepositoriesFromBackend()).pipe(
+      catchError(error => {
+        this.alertService.danger('Failed to load repositories', error.message);
+        return of([]);
+      })
+    );
   }
 
-  async getCEP_BlockContent(
+  private async fetchRepositoriesFromBackend(): Promise<Repository[]> {
+    const response = await this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
+      {
+        headers: { 'content-type': 'application/json' },
+        method: 'GET'
+      }
+    );
+    return response.json();
+  }
+
+  getCEP_BlockSamples(): Observable<CEP_Block[]> {
+    return this.cepBlockSamples$;
+  }
+
+  updateCEP_BlockSamples(hideInstalled: boolean): void {
+    this.hideInstalled = hideInstalled;
+    this.reloadTrigger$.next();
+  }
+
+  // Helper methods to break down the logic
+  private loadBlocksWithStatus() {
+    return from(this.loadRepositories()).pipe(
+      combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
+      switchMap(([repos, loaded]) => this.processBlocks(repos, loaded))
+    );
+  }
+
+  private processBlocks(repos: Repository[], loaded: any[]): Observable<CEP_Block[]> {
+    const enabledRepos = repos.filter(repo => repo.enabled);
+    if (!enabledRepos.length) return of([]);
+
+    return forkJoin(
+      enabledRepos.map(repo => this.getCachedBlockSamples(repo))
+    ).pipe(
+      map(blocks => this.processBlocksWithStatus(blocks.flat(), loaded))
+    );
+  }
+
+  private getCachedBlockSamples(repository: Repository): Observable<CEP_Block[]> {
+    if (!this.blockCache.has(repository.id)) {
+      this.blockCache.set(
+        repository.id,
+        this.fetchBlockSamples(repository).pipe(shareReplay(1))
+      );
+    }
+    return this.blockCache.get(repository.id);
+  }
+
+  private fetchBlockSamples(repository: Repository): Observable<CEP_Block[]> {
+    return from(this.getGitHubContent(repository)).pipe(
+      switchMap(data => this.processGitHubContent(data, repository)),
+      catchError(error => {
+        this.handleError(error);
+        return EMPTY;
+      })
+    );
+  }
+
+  private async getGitHubContent(repository: Repository): Promise<any> {
+    const response = await this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
+      {
+        headers: { 'content-type': 'application/json' },
+        params: {
+          url: encodeURIComponent(repository.url),
+          id: repository.id,
+        },
+        method: 'GET'
+      }
+    );
+
+    if (!response.ok) {
+      // Try to get the error message from the response body
+      try {
+        const errorData = await response.json();
+        const errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
+        throw new Error(errorMessage);
+      } catch (parseError) {
+        // If we can't parse the JSON, fall back to text
+        const errorText = parseError.message;
+        throw new Error(errorText);
+      }
+    }
+
+    return response.json();
+  }
+
+  private processGitHubContent(data: any, repository: Repository): Observable<CEP_Block[]> {
+    const blocks = Object.values(data)
+      .filter(item => getFileExtension(item['name']) !== '.json')
+      .map(item => this.createCEPBlock(item, repository));
+
+    return forkJoin(
+      blocks.map(block =>
+        this.getCEP_BlockContent(block, true, true).pipe(
+          map(fqn => ({ ...block, id: fqn }))
+        )
+      )
+    );
+  }
+
+  getCEP_BlockContent(
     block: CEP_Block,
     backend: boolean,
     extractFQN_CEP_Block: boolean
-  ): Promise<string> {
-    let result;
+  ): Observable<string> {
     if (backend) {
-      const response: IFetchResponse = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_ENDPOINT}/any_repository/content`,
+      return from(this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
         {
           headers: {
             'content-type': 'text/plain'
           },
           params: {
-            url: encodeURIComponent(block.downloadUrl),
+            url: encodeURIComponent(block.url),
             extract_fqn_cep_block: extractFQN_CEP_Block,
+            id: block.repositoryId,
             cep_block_name: block.name
           },
           method: 'GET'
         }
-      );
-      result = response.text();
+      ).then(
+        resp => resp.text()
+      ))
     } else {
-      result = this.githubFetchClient
+      return this.httpClient
         .get(block.downloadUrl, {
           headers: {
-            // "content-type": "application/json",
             'Content-type': 'application/text',
             Accept: 'application/vnd.github.raw'
           },
           responseType: 'text'
         })
-        .toPromise();
-      if (extractFQN_CEP_Block) {
-        const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-        const match = result.match(regex);
-        const fqn = `${match[0].trim() }.${ block.name.slice(0, -4)}`;
-        result = fqn;
-      }
-    }
-    return result;
-  }
-
-  async getCEP_BlockSamples(rep: Repository): Promise<CEP_Block[]> {
-    if (!this._cep_block_cache || !this._cep_block_cache.get(rep.id)) {
-      console.log(`Looking for samples ${rep.id} - ${rep.name}`);
-      this._cep_block_cache.set(rep.id, this.getCEP_BlockSamplesUncached(rep));
-    }
-    return this._cep_block_cache.get(rep.id);
-  }
-
-  async getCEP_BlockSamplesUncached(rep: Repository): Promise<CEP_Block[]> {
-    const result: any = this.githubFetchClient
-      .get(rep.url, {
-        headers: {
-          'content-type': 'application/json'
-        }
-      })
-      .pipe(
-        map(async (data) => {
-          const dataArray = _.values(data);
-          const blocks = [];
-          for (let index = 0; index < dataArray.length; index++) {
-            if (getFileExtension(dataArray[index].name) != '.json') {
-              const tb: any = {
-                repositoryName: rep.name,
-                name: removeFileExtension(dataArray[index].name),
-                custom: true,
-                downloadUrl: dataArray[index].download_url,
-                url: dataArray[index].url
-              };
-              tb.id = await this.resolveFullyQualified_CEP_Block_name(tb, rep);
-              blocks.push(tb);
-              // console.log(`FQN:`, tb);
+        .pipe(
+          map(result => {
+            if (extractFQN_CEP_Block) {
+              const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+              const match = result.match(regex);
+              const fqn = `${match[0].trim()}.${block.name.slice(0, -4)}`;
+              return fqn;
             }
-          }
-          return blocks;
-        }),
-        catchError(this.handleError)
-      )
-      .toPromise();
-    return result;
+            return result;
+          })
+        );
+    }
   }
 
-  private handleError(error: HttpErrorResponse) {
-    if (error.status === 0) {
-      // A client-side or network error occurred. Handle it accordingly.
-      console.error('An error occurred. Ignoring repository:', error.error);
-    } else {
-      // The backend returned an unsuccessful response code.
-      // The response body may contain clues as to what went wrong.
-      console.error(
-        `Backend returned code ${error.status}.  Ignoring repository. Error body was: `,
-        error.error
-      );
+
+  private createCEPBlock(item: any, repository: Repository): CEP_Block {
+    if (!item.name || !item.download_url || !item.url) {
+      throw new Error('Missing required properties in GitHub item');
     }
-    return EMPTY;
+    return {
+      id: '', // This will be set later
+      repositoryName: repository.name,
+      repositoryId: repository.id,
+      name: removeFileExtension(item.name),
+      custom: true,
+      downloadUrl: item.download_url,
+      url: item.url
+    };
   }
 
-  async getAll_CEP_BlockSamples(hideInstalled: boolean): Promise<CEP_Block[]> {
-    const promises: Promise<CEP_Block[]>[] = [];
-    const reps: Repository[] = await this.loadRepositories();
-    const loadedBlocks = await this.analyticsService.getLoadedBlocksFromCEP();
-    const loadedBlocksIds: string[] = loadedBlocks.map((block) => block.id);
+  private processBlocksWithStatus(blocks: CEP_Block[], loaded: any[]): CEP_Block[] {
+    const loadedIds = new Set(loaded.map(block => block.id));
+    return this.hideInstalled
+      ? blocks.filter(block => !loadedIds.has(block.id))
+      : blocks.map(block => ({ ...block, installed: loadedIds.has(block.id) }));
+  }
 
-    for (let i = 0; i < reps.length; i++) {
-      if (reps[i].enabled) {
-        const promise: Promise<CEP_Block[]> = this.getCEP_BlockSamples(reps[i]);
-        promises.push(promise);
-      }
-    }
-    const combinedPromise = Promise.all(promises);
-    let result;
-    const resultUnfiltered = await combinedPromise.then((data) => {
-      const flattened = data.reduce(
-        (accumulator, value) => accumulator.concat(value),
-        []
-      );
-      return flattened;
-    });
-    if (hideInstalled) {
-      result = resultUnfiltered.filter(
-        (block) => !loadedBlocksIds.includes(block.id)
-      );
-    } else {
-      result = resultUnfiltered;
-    }
-    result.forEach(
-      (block: CEP_Block) =>
-        (block.installed = loadedBlocksIds.includes(block.id))
-    );
-    return result;
+  private handleError(error: HttpErrorResponse): void {
+    const message = error.status
+      ? `Backend returned code ${error.status}: ${error.message}`
+      : error.message;
+    this.alertService.danger(message);
   }
 }

@@ -48,6 +48,10 @@ pre span.line::before {
   margin-bottom: 48px;
 }
 
+#modal-body .modal-body {
+  height: 700px;
+}
+
 /* pre span.line:nth-child(odd)::before {
   background-color: #555;
 } */

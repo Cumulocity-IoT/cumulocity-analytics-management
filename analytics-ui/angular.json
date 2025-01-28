@@ -37,7 +37,7 @@
             "allowedCommonJsDependencies": [
               "regenerator-runtime/runtime",
               "@cordobo/qrcode",
-              "zone.js/dist/zone",
+              "zone.js",
               "chroma-js"
             ]
           },
@@ -73,10 +73,10 @@
           "builder": "@c8y/devkit:dev-server",
           "configurations": {
             "production": {
-              "browserTarget": "analytics-ui:build:production"
+              "buildTarget": "analytics-ui:build:production"
             },
             "development": {
-              "browserTarget": "analytics-ui:build:development"
+              "buildTarget": "analytics-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
@@ -107,10 +107,10 @@
           "builder": "@c8y/devkit:deploy",
           "configurations": {
             "production": {
-              "browserTarget": "analytics-ui:build:production"
+              "buildTarget": "analytics-ui:build:production"
             },
             "development": {
-              "browserTarget": "analytics-ui:build:development"
+              "buildTarget": "analytics-ui:build:development"
             }
           },
           "defaultConfiguration": "production"

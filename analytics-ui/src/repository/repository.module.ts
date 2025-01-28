@@ -5,10 +5,10 @@ import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscrip
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { RepositoriesModalComponent } from './repository/repositories-modal.component';
 import { SampleGridComponent } from './list/sample-grid.component';
-import { EditorStepperComponent } from './editor/editor-stepper.component';
 import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
-
+import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-components/editor';
+import { EplConfigService } from './editor/epl-config.service';
 @NgModule({
   imports: [
     CoreModule,
@@ -16,15 +16,17 @@ import { SharedModule } from '../shared/shared.module';
     ReactiveFormsModule,
     DefaultSubscriptionsModule,
     PopoverModule,
-    SharedModule
+    SharedModule,
+    EditorComponent,
+    MonacoEditorMarkerValidatorDirective
   ],
   declarations: [
     SampleGridComponent,
     RepositoriesModalComponent,
-    EditorStepperComponent,
     EditorModalComponent
   ],
   providers: [
+    EplConfigService,
     hookRoute({
       path: 'sag-ps-pkg-analytics-extension/repository',
       component: SampleGridComponent

@@ -40,7 +40,7 @@ For a deletion or upload to take effect you need to restart the analytics stream
 ### Upload custom extension
 
 An externally built extensions can be uploaded via the button **Add extension**. 
-Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Deploy extension (Restart)** and wait for the notification confirming the engine restart.
+Simply drop the **.zip** file to the modal dialog and the extension will be loaded to the repository, but not yet deployed. To use them, restart the Streaming Analytics engine by clicking on the button **Restart to deploy extension** and wait for the notification confirming the engine restart.
 When you try to add an extension with a name that already exists, you have the choice to confirm that the version of the existing extension is replaces with the new one you are about to upload. You can as well cancel the process if this is not what you intend.
 
 ![Build custom extension](resources/images/manage-extension-modal.png)
@@ -93,7 +93,7 @@ The modal dialog provides the option:
 
 On the monitoring tab you can view the latest alarms and events for the Streaming Analytics Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
 
-The property `is_safe_mode` is an indication if the engine was started in [Safe Mode](https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup), i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
+The property `is_safe_mode` is an indication if the engine was started in [Safe Mode](https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode), i.e. without loading any extension. In this case you have to delete the latest uploaded extension and restart the engine again.
 
 ![Monitoring](resources/images/monitoring.png)
 
@@ -236,11 +236,6 @@ In order to check if an extension is deployed look for a relevant message in the
 `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 
 The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
-
-> **Note**
-When a warning `Microservice: analytics-ext-service not subscribed. Please subscribe this service before using the analytics plugin!`appears please deploy the missing backend microservice.
-
-![Backend microservice missing](resources/images/missing-microsevice.png)
 
 ------------------------------
 

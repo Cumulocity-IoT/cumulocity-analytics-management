@@ -29,10 +29,7 @@ import {
   Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { BehaviorSubject, Observable } from 'rxjs';
-import { switchMap, tap } from 'rxjs/operators';
 import {
-  AnalyticsService,
   BooleanRendererComponent,
   CEP_Block,
   ExtensionCreateComponent,
@@ -41,6 +38,7 @@ import {
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
+import { Observable } from 'rxjs';
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -53,7 +51,6 @@ export class SampleGridComponent implements OnInit {
   dataGrid: DataGridComponent;
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
-  reload$: BehaviorSubject<void> = new BehaviorSubject(null);
   loading: boolean = false;
   showMonitorEditor: boolean = false;
   samples$: Observable<CEP_Block[]>;
@@ -90,6 +87,14 @@ export class SampleGridComponent implements OnInit {
       visible: true
     },
     {
+      name: 'repositoryId',
+      header: 'Repository Id',
+      path: 'repositoryId',
+      dataType: ColumnDataType.TextLong,
+      filterable: true,
+      visible: false
+    },
+    {
       name: 'url',
       header: 'Link Github',
       path: 'url',
@@ -106,21 +111,15 @@ export class SampleGridComponent implements OnInit {
   };
 
   constructor(
-    public analyticsService: AnalyticsService,
     public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService
-  ) {}
+  ) { }
 
-  async ngOnInit() {
-    this.samples$ = this.reload$.pipe(
-      tap(() => (this.loading = true)),
-      switchMap(() =>
-        this.repositoryService.getAll_CEP_BlockSamples(this.hideInstalled)
-      ),
-      tap(() => (this.loading = false))
-    );
-    this.samples$.subscribe((samples) => (this.samples = samples));
+  ngOnInit() {
+    this.samples$ =
+      this.repositoryService.getCEP_BlockSamples();
+    this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
@@ -136,20 +135,14 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
-  async viewMonitor(block: CEP_Block) {
-    let source;
-    try {
-      source = await this.repositoryService.getCEP_BlockContent(
+  viewMonitor(block: CEP_Block) {
+    const initialState = {
+      source$: this.repositoryService.getCEP_BlockContent(
         block,
         true,
         false
-      );
-    } catch (error) {
-      console.log('Something happened:', error);
-    }
-    const initialState = {
-      source: source,
-      monitor: block.name
+      ),
+      monitorName: block.name
     };
     this.bsModalService.show(EditorModalComponent, {
       class: 'modal-lg',
@@ -168,10 +161,13 @@ export class SampleGridComponent implements OnInit {
       ignoreBackdropClick: true
     });
 
-    modalRef.content.closeSubject.subscribe(async (repositories) => {
-      console.log('Repositories after edit:', repositories);
-      if (repositories) {
-        await this.repositoryService.saveRepositories(repositories);
+    modalRef.content.closeSubject.subscribe(async (response) => {
+      console.log('Repositories response after edit:', response);
+      if (response) {
+        await this.repositoryService.updateRepositories();
+        this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+      } else {
+        this.repositoryService.cancelChanges();
       }
     });
   }
@@ -193,7 +189,7 @@ export class SampleGridComponent implements OnInit {
     const monitors = [];
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
-        monitors.push(sample.downloadUrl);
+        monitors.push(sample);
       }
     });
     const initialState = {
@@ -209,6 +205,6 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
-    this.reload$.next();
+    this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
   }
 }

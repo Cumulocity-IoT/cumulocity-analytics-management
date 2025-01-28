@@ -1,4 +1,4 @@
-import { EnvironmentOptions } from '@c8y/devkit/dist/options';
+import { ConfigurationOptions } from '@c8y/devkit';
 import { author, description, version, license } from './package.json';
 
 export default {
@@ -56,4 +56,4 @@ export default {
       },
     ],
   },
-} as const satisfies EnvironmentOptions;
+} as const satisfies ConfigurationOptions;

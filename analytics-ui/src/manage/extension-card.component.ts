@@ -14,7 +14,7 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
   selector: 'a17t-extension-card',
   templateUrl: './extension-card.component.html'
 })
-export class ExtensionCardComponent {
+export class ExtensionCardComponent{
   @Input() extension: IManagedObject;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
@@ -24,8 +24,12 @@ export class ExtensionCardComponent {
     private router: Router,
     private activatedRoute: ActivatedRoute,
     private bsModalService: BsModalService,
+
     private wizardModalService: WizardModalService
   ) {}
+  // ngOnInit(): void {
+  //   console.log('application', this.as);
+  // }
 
   async detail() {
     if (this.extension.loaded) {
@@ -43,7 +47,7 @@ export class ExtensionCardComponent {
   async delete() {
     const initialState = {
       title: 'Delete extension',
-      message: 'You are about to delete an extension. Do you want to proceed?',
+      message: `You are about to delete the extension ${this.extension.name}. Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'
