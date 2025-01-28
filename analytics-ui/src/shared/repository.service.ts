@@ -1,22 +1,22 @@
 // repository.service.ts
 
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, combineLatest, EMPTY, forkJoin, from, merge, Observable, of } from 'rxjs';
-import {
-  BACKEND_PATH_BASE,
-  CEP_Block,
-  REPOSITORY_CONFIGURATION_ENDPOINT,
-  REPOSITORY_CONTENT_ENDPOINT,
-  REPOSITORY_CONTENT_LIST_ENDPOINT,
-  Repository
-} from './analytics.model';
 import {
   FetchClient,
 } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { catchError, map, switchMap, combineLatestWith, tap, shareReplay, take } from 'rxjs/operators';
 import * as _ from 'lodash';
+import { BehaviorSubject, EMPTY, forkJoin, from, Observable, of } from 'rxjs';
+import { catchError, combineLatestWith, map, shareReplay, switchMap, take, tap } from 'rxjs/operators';
+import {
+  BACKEND_PATH_BASE,
+  CEP_Block,
+  Repository,
+  REPOSITORY_CONFIGURATION_ENDPOINT,
+  REPOSITORY_CONTENT_ENDPOINT,
+  REPOSITORY_CONTENT_LIST_ENDPOINT
+} from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
 
