@@ -25,12 +25,12 @@ using com.softwareag.connectivity.httpclient.Request;
 using com.softwareag.connectivity.httpclient.Response;
 
 
-event HTTPHandler
+event HttpHandler
 	{
 		string deviceId;
 		string host;
 		BlockBase base;
-		/** Handle the HTTP response.*/
+		/** Handle the Http response.*/
 		action handleResponse(Response res) {
 			// $base.createTimer(0.01, res);		// Creates a timer with the specified duration.
 			TimerParams tp := TimerParams.relative(0.01).withPayload(res).withPartition(deviceId);
@@ -44,9 +44,9 @@ event HTTPHandler
 	}
 
 /**
- * Event definition of the parameters for the HTTP Output block.
+ * Event definition of the parameters for the Http Output block.
  */
-event EnhancedHTTPOutput_$Parameters {
+event EnhancedHttpOutput_$Parameters {
 	
 	/**
 	 * Host.
@@ -71,7 +71,7 @@ event EnhancedHTTPOutput_$Parameters {
 	integer port;
 	
 	/**
-	* Use HTTPS.
+	* Use Https.
 	*
 	* If selected, block will use Transport-level security to transfer data over the network.  Certificate checking is not enabled.
 	*/
@@ -94,17 +94,17 @@ event EnhancedHTTPOutput_$Parameters {
 	action $validate() {
 		BlockBase.throwsOnEmpty(host, "host", self);
 		if port < 0 and port > 65535 {
-			throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HTTPOutput_unexpected_port_value", [<any> port]);
+			throw L10N.getLocalizedException("sample_blk_apamax.analyticsbuilder.samples.HttpOutput_unexpected_port_value", [<any> port]);
 		}
 	}
 }
 
 /**
- * Enhanced HTTPOutput
+ * Enhanced HttpOutput
  *
  * Invokes a REST endpoint using POST
  *
- *  An example of HTTP request from the block:
+ *  An example of Http request from the block:
  * <code>
     Content-Type: application/json
     {
@@ -124,7 +124,7 @@ event EnhancedHTTPOutput_$Parameters {
  *
  * @$blockCategory Output
  */
-event EnhancedHTTPOutput {
+event EnhancedHttpOutput {
 
 	/**BlockBase object.
 	 *
@@ -133,7 +133,7 @@ event EnhancedHTTPOutput {
 	BlockBase $base;
 	
 	/**The parameters for the block.*/
-	EnhancedHTTPOutput_$Parameters $parameters;
+	EnhancedHttpOutput_$Parameters $parameters;
 	
 	/**
 	 * Handle to the connectivity chain that will handle the requests. It is created in the <tt>$init</tt> method and not in the <tt>$validate</tt> method so it only gets created if the model will become active. 
@@ -141,7 +141,7 @@ event EnhancedHTTPOutput {
 	 */
 	HttpTransport transport;
 	
-	/** Initializes the HTTP transport according to the specified configurations. */
+	/** Initializes the Http transport according to the specified configurations. */
 	action $init() {
 		string host := $parameters.host;
 		integer port := $parameters.port;
@@ -157,7 +157,7 @@ event EnhancedHTTPOutput {
 	/**
 	 * This action is called by the framework, it receives the input values and contains the logic of the block.
 	 * 
-	 * Sends the output using the HTTP protocol.
+	 * Sends the output using the Http protocol.
 	 *
 	 * @param $activation  The current activation, contextual information required when generating a block output. Blocks should only use the
 	 * <tt>Activation</tt> object passed to them from the framework, never creating their own or holding on to an <tt>Activation</tt> object.
@@ -189,7 +189,7 @@ event EnhancedHTTPOutput {
 
 		// Execute the request and pass the callback action.
 		log "Processing for partition: " + deviceId at DEBUG;
-		req.execute(HTTPHandler(deviceId, $parameters.host, $base).handleResponse);
+		req.execute(HttpHandler(deviceId, $parameters.host, $base).handleResponse);
 		$base.profile(BlockBase.PROFILE_OUTPUT);
 	}
 	
@@ -218,7 +218,7 @@ event EnhancedHTTPOutput {
 	/**
 	 * Response body.
 	 *
-	 * The HTTP response - any JSON properties are available as properties that the PropertyExtractor block can extract.
+	 * The Http response - any JSON properties are available as properties that the PropertyExtractor block can extract.
 	 */
 	action<Activation,Value> $setOutput_responseBody;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 
@@ -228,7 +228,7 @@ event EnhancedHTTPOutput {
 	/**
 	 * Response status code.
 	 *
-	 * The HTTP response status code.
+	 * The Http response status code.
 	 */
 	action<Activation,float> $setOutput_statusCode;	// This is initialized by the framework. It sets the output of the block and may trigger any blocks connected to this output.
 
