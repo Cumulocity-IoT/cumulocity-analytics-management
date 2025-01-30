@@ -60,7 +60,7 @@ Removing an extension will eliminate the block once more. It's important to note
 ### Build custom extension
 You can build and uploads a custom extension by following the screen flow below:
 
-![Build custom extension](resources/images/create-extension-upload-animated.gif)
+![Build custom extension](resources/images/create-extension-animated.gif)
 
 ### Options for custom extension
 For a custom extension you have the following options:
