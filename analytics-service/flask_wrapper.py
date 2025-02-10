@@ -93,7 +93,7 @@ def get_content_list():
         GET /repository/contentList?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fowner%2Frepo%2Fcontents&id=repo123
     """
     encoded_url = request.args.get("url")
-    repository_id = request.args.get("id")
+    repository_id = request.args.get("repository_id")
     headers = {"Accept": "application/json"}
 
     if repository_id:

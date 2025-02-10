@@ -37,11 +37,11 @@ export class ExtensionCardComponent{
         relativeTo: this.activatedRoute
       });
     }
-    console.log(
-      'Details for extension:',
-      this.extension.name,
-      this.activatedRoute
-    );
+    // console.log(
+    //   'Details for extension:',
+    //   this.extension.name,
+    //   this.activatedRoute
+    // );
   }
 
   async delete() {

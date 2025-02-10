@@ -197,7 +197,7 @@ export class RepositoryService {
         headers: { 'content-type': 'application/json' },
         params: {
           url: encodeURIComponent(repository.url),
-          id: repository.id,
+          repository_id: repository.id,
         },
         method: 'GET'
       }
@@ -248,7 +248,7 @@ export class RepositoryService {
           params: {
             url: encodeURIComponent(block.url),
             extract_fqn_cep_block: extractFQN_CEP_Block,
-            id: block.repositoryId,
+            repository_id: block.repositoryId,
             cep_block_name: block.name
           },
           method: 'GET'
