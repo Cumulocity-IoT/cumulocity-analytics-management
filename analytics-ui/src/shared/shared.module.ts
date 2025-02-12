@@ -11,6 +11,7 @@ import { BooleanRendererComponent } from './component/boolean-renderer.component
 import { ExtensionCreateComponent } from './component/extension-create-modal.component';
 import { LinkRendererComponent } from './component/link-renderer.component';
 import { LabelRendererComponent } from './renderer/label.renderer';
+import { RepositoryService } from './repository.service';
 
 @NgModule({
   imports: [
@@ -30,6 +31,7 @@ import { LabelRendererComponent } from './renderer/label.renderer';
     LabelRendererComponent
   ],
   providers: [
+    RepositoryService,
     {
       provide: FORMLY_CONFIG,
       multi: true,
@@ -40,5 +42,5 @@ import { LabelRendererComponent } from './renderer/label.renderer';
   ]
 })
 export class SharedModule {
-  constructor() {}
+  constructor() { }
 }
