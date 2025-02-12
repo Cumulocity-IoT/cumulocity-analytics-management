@@ -24,6 +24,8 @@ export class RepositoriesModalComponent implements OnInit {
   selectedRepositoryIndex: number = -1;
   saveRequired: boolean = false;
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
+  popup = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>`;
+  static readonly GITHUB_API = 'https://api.github.com/repos/';
 
   constructor(
     private repositoryService: RepositoryService,
@@ -40,11 +42,13 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   // Custom validator function
+
   urlValidator(control: AbstractControl): ValidationErrors | null {
     try {
-      new URL(control.value);
+      const url = RepositoriesModalComponent.GITHUB_API + control.value;
+      new URL(url);
       return null;
-    } catch {
+    } catch (e) {
       return { invalidUrl: true };
     }
   }
@@ -56,6 +60,7 @@ export class RepositoriesModalComponent implements OnInit {
   addRepository(): void {
     if (this.repositoryForm.valid) {
       const newRepository: Repository = this.repositoryForm.value;
+      newRepository.url = RepositoriesModalComponent.GITHUB_API + this.repositoryForm.value.url;
       newRepository.id = uuidCustom();
       newRepository.enabled = true;
       this.repositoryService.addRepository(newRepository);
@@ -66,7 +71,9 @@ export class RepositoriesModalComponent implements OnInit {
 
   editRepository(repository: Repository, index: number): void {
     this.selectedRepositoryIndex = index;
-    this.repositoryForm.patchValue(repository);
+    const r = { ...repository };
+    r.url = r.url.replace(RepositoriesModalComponent.GITHUB_API, '');
+    this.repositoryForm.patchValue(r);
   }
 
   toggleActivation(repository: Repository): void {

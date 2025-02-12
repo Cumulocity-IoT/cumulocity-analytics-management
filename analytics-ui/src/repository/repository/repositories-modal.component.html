@@ -1,4 +1,4 @@
-<c8y-modal title="Repositories for blocks" (onClose)="onSave()" (onDismiss)="onCancel()"  [labels]="labels"
+<c8y-modal title="Repositories for blocks" (onClose)="onSave()" (onDismiss)="onCancel()" [labels]="labels"
   [headerClasses]="'modal-header dialog-header'" [disabled]="!saveRequired">
 
   <ng-container c8y-modal-title>
@@ -60,30 +60,42 @@
             </c8y-form-group>
             <c8y-form-group>
               <label for="name"><span>{{'Repository Url '}}</span>
-                <button type="button" placement="right" popover="Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-                  triggers="focus" class="btn-help" aria-label="Help content"></button>
+                <button type="button" placement="right"
+                  popover="Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+                  class="btn-help" aria-label="Help content"></button>
               </label>
-              <input type="text" title="Repository Url" id="url" formControlName="url"
-                placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-                class="form-control" />
+              <div class="input-group">
+                <span class="input-group-addon" id="basic-addon3">
+                  https://api.github.com/repos/
+                </span>
+                <input type="text" title="Repository Url" id="url" formControlName="url"
+                  placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+                  class="form-control" />
+              </div>
             </c8y-form-group>
             <c8y-form-group>
+              <ng-template #popTemplate>
+                <div [innerHtml]="popup"></div>
+              </ng-template>
               <label for="name"><span>{{'Personal Access Token'}}</span>
-                <button type="button" placement="right"
-                  popover="Enter Personal Access Token (PAT) created here: https://github.com/settings/tokens/new/"
-                  triggers="focus" class="btn-help" aria-label="Help content"></button>
+                <button type="button" placement="right" [popover]="popTemplate" class="btn-help"
+                  aria-label="Help content"></button>
               </label>
+
               <input type="password" title="Access Token" id="accessToken" formControlName="accessToken"
                 placeholder="e.g.: your github Personal Access Token (PAT)" class="form-control" />
+
             </c8y-form-group>
             <!-- Add any other form controls based on your repository model -->
-            <button (click)="addRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex != -1 || !repositoryForm.valid" style="min-width:110px">
+            <button (click)="addRepository()" class="btn btn-default"
+              [disabled]="selectedRepositoryIndex != -1 || !repositoryForm.valid" style="min-width:110px">
               Add
             </button>
-            <button (click)="updateRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex == -1" style="min-width:110px">
+            <button (click)="updateRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex == -1"
+              style="min-width:110px">
               Update
             </button>
-            <button (click)="resetForm()" class="btn btn-default" style="min-width:110px" >
+            <button (click)="resetForm()" class="btn btn-default" style="min-width:110px">
               Reset form
             </button>
           </fieldset>
