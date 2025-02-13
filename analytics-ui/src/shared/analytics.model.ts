@@ -65,6 +65,12 @@ export interface Repository {
   enabled: boolean;
 }
 
+export interface RepositoryTestResult {
+  success: boolean;
+  message?: string;
+  status?: number;
+}
+
 export const CEP_PATH_BASE = 'service/cep';
 export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
 export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/en`;
@@ -126,7 +132,7 @@ export const REPO_SAMPLES = [
 ] as Repository[];
 
 
-export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' |'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
 
 export type CEPStatusObject = any;
 

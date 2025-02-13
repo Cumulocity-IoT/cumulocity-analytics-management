@@ -1,6 +1,6 @@
 // repository.service.ts
 
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import {
   FetchClient,
@@ -15,7 +15,8 @@ import {
   Repository,
   REPOSITORY_CONFIGURATION_ENDPOINT,
   REPOSITORY_CONTENT_ENDPOINT,
-  REPOSITORY_CONTENT_LIST_ENDPOINT
+  REPOSITORY_CONTENT_LIST_ENDPOINT,
+  RepositoryTestResult
 } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { getFileExtension, removeFileExtension } from './utils';
@@ -62,6 +63,60 @@ export class RepositoryService {
     const current = this.currentRepositories$.value;
     this.currentRepositories$.next([...current, repository]);
   }
+
+// repository.service.ts
+
+async testRepository(testRepository: Repository): Promise<RepositoryTestResult> {
+  const headers = new HttpHeaders({
+    'Accept': 'application/vnd.github.v3.raw',
+    'Authorization': `Bearer ${testRepository.accessToken}`
+  });
+
+  try {
+    const response = await this.httpClient
+      .get(testRepository.url, {
+        headers,
+        observe: 'response',
+        responseType: 'text'
+      })
+      .toPromise();
+
+    return {
+      success: true,
+      message: 'Successfully connected to repository',
+      status: response?.status
+    };
+
+  } catch (error) {
+    if (error instanceof HttpErrorResponse) {
+      switch (error.status) {
+        case 401:
+          return {
+            success: false,
+            message: 'Authentication failed. Please check your access token.',
+            status: error.status
+          };
+        case 404:
+          return {
+            success: false,
+            message: 'Repository not found. Please check the URL.',
+            status: error.status
+          };
+        default:
+          return {
+            success: false,
+            message: `Failed to connect to repository. Status: ${error.status}`,
+            status: error.status
+          };
+      }
+    }
+
+    return {
+      success: false,
+      message: 'Failed to connect to repository. Please check your connection and try again.'
+    };
+  }
+}
 
   updateRepository(updatedRepository: Repository): void {
     const current = this.currentRepositories$.value;

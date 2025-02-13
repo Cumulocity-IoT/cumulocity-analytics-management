@@ -26,6 +26,8 @@ export class RepositoriesModalComponent implements OnInit {
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
   popup = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>`;
   static readonly GITHUB_API = 'https://api.github.com/repos/';
+  DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";
+
 
   constructor(
     private repositoryService: RepositoryService,
@@ -88,6 +90,19 @@ export class RepositoriesModalComponent implements OnInit {
       this.repositoryService.updateRepository(updatedRepository);
       this.saveRequired = true;
       this.repositoryForm.reset();
+    }
+  }
+
+  async testRepository(repository: Repository): Promise<void> {
+    if (this.repositoryForm.valid) {
+      const testedRepository: Repository = {... this.repositoryForm.value};
+      testedRepository.url = RepositoriesModalComponent.GITHUB_API + testedRepository.url;
+      const result = await this.repositoryService.testRepository(testedRepository);
+      if (result.success) {
+        this.alertService.success(result.message);
+      } else {
+        this.alertService.danger(result.message);
+      }
     }
   }
 

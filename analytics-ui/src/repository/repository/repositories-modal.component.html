@@ -61,7 +61,7 @@
             <c8y-form-group>
               <label for="name"><span>{{'Repository Url '}}</span>
                 <button type="button" placement="right"
-                  popover="Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+                  [popover]="'Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}'"
                   class="btn-help" aria-label="Help content"></button>
               </label>
               <div class="input-group">
@@ -95,6 +95,14 @@
               style="min-width:110px">
               Update
             </button>
+            <button (click)="testRepository()" class="btn btn-default"
+              [disabled]="selectedRepositoryIndex == -1 || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN"
+              style="min-width:110px">
+              Test
+            </button>
+            <button type="button" placement="right"
+              [popover]="'Enter you PAT accesss token to test'" triggers="focus"
+              class="btn-help" aria-label="Help content"></button>
             <button (click)="resetForm()" class="btn btn-default" style="min-width:110px">
               Reset form
             </button>
