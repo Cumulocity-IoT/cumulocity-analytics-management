@@ -61,7 +61,7 @@
             <c8y-form-group>
               <label for="name"><span>{{'Repository Url '}}</span>
                 <button type="button" placement="right"
-                  [popover]="'Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}'"
+                  [popover]="'Enter the last parts to a github repository in the form: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>'"
                   class="btn-help" aria-label="Help content"></button>
               </label>
               <div class="input-group">
@@ -69,7 +69,7 @@
                   https://api.github.com/repos/
                 </span>
                 <input type="text" title="Repository Url" id="url" formControlName="url"
-                  placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
+                  placeholder="e.g.: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>, without the prefix https://api.github.com/repos/"
                   class="form-control" />
               </div>
             </c8y-form-group>

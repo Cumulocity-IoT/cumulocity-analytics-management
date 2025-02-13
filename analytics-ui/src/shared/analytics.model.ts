@@ -92,41 +92,41 @@ export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
 export const CEP_METADATA_FILE_EXTENSION = '.json';
 export const GITHUB_BASE = 'https://api.github.com';
-export const REPO_SAMPLES_OWNER = 'Cumulocity-IoT';
-export const REPO_SAMPLES_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
-export const REPO_SAMPLES_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
-export const REPO_SAMPLES_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
-export const REPO_SAMPLES_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
-export const REPO_SAMPLES_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_SAMPLES_OWNER}/cumulocity-analytics-management/contents/repository/blocks`;
+export const REPO_OWNER = 'Cumulocity-IoT';
+export const REPO_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
+export const REPO_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/blocks`;
+export const REPO_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
+export const REPO_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
+export const REPO_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_OWNER}/cumulocity-analytics-management/contents/repository/blocks`;
 export const REPO_SAMPLES = [
   {
     id: uuidCustom(),
     name: 'Block SDK Quick Start Samples',
-    url: REPO_SAMPLES_ANALYTICS_MANAGEMENT,
+    url: REPO_ANALYTICS_MANAGEMENT,
     enabled: true
   },
   {
     id: uuidCustom(),
     name: 'Block SDK Samples',
-    url: REPO_SAMPLES_BLOCKSDK,
+    url: REPO_BLOCKSDK,
     enabled: true
   },
   {
     id: uuidCustom(),
     name: 'Contrib Samples Block',
-    url: REPO_SAMPLES_CONTRIB_BLOCK,
+    url: REPO_CONTRIB_BLOCK,
     enabled: false
   },
   {
     id: uuidCustom(),
     name: 'Contrib Samples Simulation-Block',
-    url: REPO_SAMPLES_CONTRIB_SIMULATION,
+    url: REPO_CONTRIB_SIMULATION,
     enabled: false
   },
   {
     id: uuidCustom(),
     name: 'Contrib Samples Cumulocity-Block',
-    url: REPO_SAMPLES_CONTRIB_CUMULOCITY,
+    url: REPO_CONTRIB_CUMULOCITY,
     enabled: false
   }
 ] as Repository[];
