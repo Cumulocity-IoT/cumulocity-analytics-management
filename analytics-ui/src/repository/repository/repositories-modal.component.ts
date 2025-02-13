@@ -79,8 +79,10 @@ export class RepositoriesModalComponent implements OnInit {
 
   toggleActivation(repository: Repository): void {
     repository.enabled = !repository.enabled;
+    const updatedRepository = repository;
+    updatedRepository.url = updatedRepository.url;
     this.saveRequired = true;
-    this.repositoryService.updateRepository(repository);
+    this.repositoryService.updateRepository(updatedRepository);
   }
 
   updateRepository(): void {

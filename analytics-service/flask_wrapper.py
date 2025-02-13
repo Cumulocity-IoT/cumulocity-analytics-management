@@ -61,7 +61,7 @@ def get_repository_headers(
         )
         if "accessToken" in repository_configuration:
             headers["Authorization"] = (
-                f"token {repository_configuration['accessToken']}"
+                f"Bearer {repository_configuration['accessToken']}"
             )
             logger.info("Access token found and added to headers")
     return headers
