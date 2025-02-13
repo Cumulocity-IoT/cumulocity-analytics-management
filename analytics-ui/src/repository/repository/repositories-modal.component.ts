@@ -87,6 +87,7 @@ export class RepositoriesModalComponent implements OnInit {
   updateRepository(): void {
     if (this.repositoryForm.valid) {
       const updatedRepository: Repository = this.repositoryForm.value;
+      updatedRepository.url = RepositoriesModalComponent.GITHUB_API + updatedRepository.url;
       this.repositoryService.updateRepository(updatedRepository);
       this.saveRequired = true;
       this.repositoryForm.reset();
