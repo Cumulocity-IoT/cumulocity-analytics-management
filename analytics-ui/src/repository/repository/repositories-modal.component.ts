@@ -28,7 +28,6 @@ export class RepositoriesModalComponent implements OnInit {
   static readonly GITHUB_API = 'https://api.github.com/repos/';
   DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";
 
-
   constructor(
     private repositoryService: RepositoryService,
     private fb: FormBuilder,
