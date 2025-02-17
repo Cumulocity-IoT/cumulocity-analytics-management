@@ -58,6 +58,10 @@ export class RepositoriesModalComponent implements OnInit {
     this.repositories$ = this.repositoryService.getRepositories();
   }
 
+  warnAboutPATReset(): void {
+    this.alertService.warning("Changing the URL will reset the PAT token. If you don't enter the token again it will be deleted.")
+  }
+
   addRepository(): void {
     if (this.repositoryForm.valid) {
       const newRepository: Repository = this.repositoryForm.value;

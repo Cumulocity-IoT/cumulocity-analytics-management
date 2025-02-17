@@ -12,7 +12,7 @@
             <tr>
               <th width="5%"></th>
               <th width="15%">Name</th>
-              <th width="70%">Url</th>
+              <th width="70%">URL</th>
               <th width="5%">Enabled</th>
               <th width="10%">Action</th>
             </tr>
@@ -64,7 +64,7 @@
               <input type="text" id="name" formControlName="name" class="form-control" />
             </c8y-form-group>
             <c8y-form-group>
-              <label for="name"><span>{{'Repository Url '}}</span>
+              <label for="name"><span>{{'Repository URL '}}</span>
                 <button type="button" placement="right"
                   [popover]="'Enter the last parts to a github repository in the form: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>'"
                   class="btn-help" aria-label="Help content"></button>
@@ -73,7 +73,7 @@
                 <span class="input-group-addon" id="basic-addon3">
                   https://api.github.com/repos/
                 </span>
-                <input type="text" title="Repository Url" id="url" formControlName="url"
+                <input type="text" title="Repository URL" id="url" formControlName="url" (change)="warnAboutPATReset()"
                   placeholder="e.g.: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>, without the prefix https://api.github.com/repos/"
                   class="form-control" />
               </div>
