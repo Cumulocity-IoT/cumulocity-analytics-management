@@ -51,32 +51,32 @@ export class ExtensionCreateComponent implements OnInit {
       {
         fieldGroupClassName: 'row',
         fieldGroup: [
-          {
-            className: 'col-lg-6',
-            key: 'upload',
-            type: CustomSwitchField,
-            defaultValue: false,
-            wrappers: ['c8y-form-field'],
-            templateOptions: {
-              label: 'Upload extension',
-              switchMode: true,
-              description:
-                'The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.'
-            }
-          },
+          // {
+          //   className: 'col-lg-6',
+          //   key: 'upload',
+          //   type: CustomSwitchField,
+          //   defaultValue: true,
+          //   wrappers: ['c8y-form-field'],
+          //   templateOptions: {
+          //     label: 'Upload extension',
+          //     switchMode: true,
+          //     description:
+          //       'The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.'
+          //   }
+          // },
           {
             className: 'col-lg-6',
             key: 'deploy',
-            type: CustomSwitchField,
-            defaultValue: false,
+            type: 'switch',
+            defaultValue: true,
             wrappers: ['c8y-form-field'],
             templateOptions: {
-              label: 'Deploy automatically',
+              label: 'Restart to deploy',
               switchMode: true,
+              hideLabel: true,
               description:
-                'Deploy the extension after uploading to the repository.'
-            },
-            hideExpression: () => !this.configuration.upload
+                'Only after restart blocks are available.'
+            }
           }
         ]
       }
@@ -104,7 +104,7 @@ export class ExtensionCreateComponent implements OnInit {
     console.log('Create extension');
     const response = await this.analyticsService.createExtensionZIP(
       this.configuration.name,
-      this.configuration.upload,
+      true,
       this.configuration.deploy,
       this.monitors
     );
@@ -115,14 +115,23 @@ export class ExtensionCreateComponent implements OnInit {
         type: 'application/x-zip-compressed'
       });
 
-      if (!this.configuration.upload) {
-        saveAs(blob, `${this.configuration.name}.zip`);
+      // if (!this.configuration.upload) {
+      //   saveAs(blob, `${this.configuration.name}.zip`);
+      //   this.alertService.success(
+      //     `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
+      //   );
+      // } else {
+      //   this.alertService.success(
+      //     `Uploaded extension ${this.configuration.name}.zip.`
+      //   );
+      // }
+      if (this.configuration.deploy) {
         this.alertService.success(
-          `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
+          `Created extension ${this.configuration.name}.zip has been uploaded and Streaming Analytics Engine is restarting ...`
         );
       } else {
         this.alertService.success(
-          `Uploaded extension ${this.configuration.name}.zip.`
+          `The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.`
         );
       }
     } else {

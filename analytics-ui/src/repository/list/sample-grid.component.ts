@@ -201,7 +201,10 @@ export class SampleGridComponent implements OnInit {
       initialState
     });
 
-    modalRef.content.closeSubject.subscribe(() => modalRef.hide());
+    modalRef.content.closeSubject.subscribe(() => {
+      this.dataGrid.cancel()
+      modalRef.hide()
+    });
   }
 
   async loadSamples() {
