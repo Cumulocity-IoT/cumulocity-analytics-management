@@ -249,11 +249,20 @@ class C8YAgent:
         """Helper method to update a single repository"""
         try:
             # Get existing repository data
-            existing_repo = tenant.tenant_options.get(
-                category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
-                key=repository.get("id"),
-            )
-            existing_data = json.loads(existing_repo.value) if existing_repo else {}
+            existing_data = None
+            existing_repo = None
+            try:
+                existing_repo = tenant.tenant_options.get(
+                    category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
+                    key=repository.get("id"),
+                )
+            except KeyError:  # Specific exception for when the repository doesn't exist
+                self._logger.debug("Have to create new repository", exc_info=True)
+            except Exception as e:  # General exception for other errors
+                self._logger.error(f"Error accessing repository: {str(e)}", exc_info=True)
+
+            if existing_repo:
+                existing_data = json.loads(existing_repo.value) if existing_repo else {}
 
             # Handle access token
             new_access_token = False
