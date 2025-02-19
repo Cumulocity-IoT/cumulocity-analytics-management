@@ -33,12 +33,6 @@
                 {{ repository.url }}
               </td>
               <td class="j-c-center_">
-                <!-- <button title="{{ 'Toggle activation' | translate }}" class="btn btn-icon btn-clean"
-                  (click)="toggleActivation(repository)">
-                  <i [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'" class="m-r-5" c8yIcon="toggle-on"
-                    class="text-danger"></i>
-                  <span class="sr-only" translate>Toggle activation</span>
-                </button> -->
                 <label class="c8y-switch">
                   <input title="{{ 'Toggle activation' | translate }}" type="checkbox" [checked]="repository?.enabled"
                     (click)="toggleActivation(repository)" />

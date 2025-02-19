@@ -3,7 +3,6 @@ export * from './component/custom-switch-field';
 export * from './component/confirmation-modal.component';
 export * from './wizard/extension-add-wizard.component';
 export * from './wizard/extension-add.component';
-export * from './component/extension-create-modal.component';
 export * from './analytics.service';
 export * from './repository.service';
 export * from './analytics.constants';

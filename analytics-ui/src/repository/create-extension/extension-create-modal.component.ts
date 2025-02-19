@@ -3,10 +3,10 @@ import { AlertService, ModalLabels } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
-import { AnalyticsService } from '../analytics.service';
+import { AnalyticsService } from '../../shared/analytics.service';
 import { saveAs } from 'file-saver';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../analytics.model';
-import { CustomSwitchField } from './custom-switch-field';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../../shared/analytics.model';
+import { CustomSwitchField } from '../../shared/component/custom-switch-field';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -65,7 +65,11 @@ export class ExtensionCreateComponent implements OnInit {
           //   }
           // },
           {
-            className: 'col-lg-6',
+            className: 'col-lg-12',
+            template: '<div class="">Only after the restart, blocks are available to models in the Analytics Builder</div>',
+          },
+          {
+            className: 'col-lg-12',
             key: 'deploy',
             type: 'switch',
             defaultValue: true,
@@ -74,8 +78,8 @@ export class ExtensionCreateComponent implements OnInit {
               label: 'Restart to deploy',
               switchMode: true,
               hideLabel: true,
-              description:
-                'Only after restart blocks are available.'
+              // description:
+              //   'Only after restart blocks are available__________________________________________________________.'
             }
           }
         ]

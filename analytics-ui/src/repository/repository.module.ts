@@ -9,6 +9,7 @@ import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
 import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-components/editor';
 import { EplConfigService } from './editor/epl-config.service';
+import { ExtensionCreateComponent } from './create-extension/extension-create-modal.component';
 @NgModule({
   imports: [
     CoreModule,
@@ -23,7 +24,8 @@ import { EplConfigService } from './editor/epl-config.service';
   declarations: [
     SampleGridComponent,
     RepositoriesModalComponent,
-    EditorModalComponent
+    EditorModalComponent,
+    ExtensionCreateComponent,
   ],
   providers: [
     EplConfigService,
@@ -34,5 +36,5 @@ import { EplConfigService } from './editor/epl-config.service';
   ]
 })
 export class RepositoryModule {
-  constructor() {}
+  constructor() { }
 }

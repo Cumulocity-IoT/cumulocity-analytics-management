@@ -32,13 +32,13 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
   CEP_Block,
-  ExtensionCreateComponent,
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
 import { Observable } from 'rxjs';
+import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 
 @Component({
   selector: 'a17t-sample-grid',
