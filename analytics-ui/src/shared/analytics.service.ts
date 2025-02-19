@@ -15,7 +15,7 @@ import {
 
 import { AlertService, gettext } from '@c8y/ngx-components';
 
-import { BehaviorSubject, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject, shareReplay, Subject } from 'rxjs';
 import {
   CEP_Block,
   CEP_Extension,
@@ -42,8 +42,8 @@ export class AnalyticsService {
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private cepOperationObject$: Subject<IManagedObject> =
-    new Subject<IManagedObject>();
+  private cepOperationObject$: ReplaySubject<IManagedObject> = 
+    new ReplaySubject<IManagedObject>(1);
   private realtime: Realtime;
   private reloadThroughService$: Subject<boolean> = new Subject<boolean>();
 
@@ -269,8 +269,8 @@ export class AnalyticsService {
     return this._cepOperationObjectId;
   }
 
-  getCEP_OperationObject(): Subject<IManagedObject> {
-    return this.cepOperationObject$;
+  getCEP_OperationObject(): Observable<IManagedObject> {
+    return this.cepOperationObject$.asObservable();
   }
 
   async getCEP_CtrlStatus(): Promise<CEPStatusObject> {

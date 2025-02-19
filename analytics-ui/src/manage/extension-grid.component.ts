@@ -10,7 +10,6 @@ import { ModalOptions } from 'ngx-bootstrap/modal';
 import {
   BehaviorSubject,
   Observable,
-  Subject,
   Subscription,
   merge,
   of
@@ -24,7 +23,7 @@ import { AnalyticsService, CEPEngineStatus, CEPStatusObject } from '../shared';
   styleUrls: ['./extension-grid.component.css']
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
-  cepOperationObject$: Subject<IManagedObject>;
+  cepOperationObject$: Observable<IManagedObject>;
   cepCtrlStatus: CEPStatusObject;
   cepEngineStatus$: BehaviorSubject<CEPEngineStatus> =
     new BehaviorSubject<CEPEngineStatus>('unknown');
@@ -39,12 +38,14 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     private alertService: AlertService,
     private wizardModalService: WizardModalService
   ) { }
-  ngOnDestroy(): void {
-    this.sub1.unsubscribe();
-  }
+
 
   ngOnInit() {
     this.init();
+  }
+
+  ngOnDestroy(): void {
+    this.sub1.unsubscribe();
   }
 
   async init() {
@@ -54,6 +55,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     this.cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
     this.cepOperationObject$ = this.analyticsService.getCEP_OperationObject();
     this.sub1 = this.cepOperationObject$.subscribe((mo) => {
+      console.log("Update", (mo.c8y_Status ? mo.c8y_Status.status : 'Down').toLowerCase());
       this.cepEngineStatus$.next((mo.c8y_Status ? mo.c8y_Status.status : 'Down').toLowerCase());
     });
     this.extensions$ = merge(
