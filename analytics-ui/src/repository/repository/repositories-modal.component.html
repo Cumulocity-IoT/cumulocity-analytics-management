@@ -95,7 +95,7 @@
               Update
             </button>
             <button (click)="testRepository()" class="btn btn-default"
-              [disabled]="selectedRepositoryIndex == -1 || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN"
+              [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN"
               style="min-width:110px">
               Test
             </button>
