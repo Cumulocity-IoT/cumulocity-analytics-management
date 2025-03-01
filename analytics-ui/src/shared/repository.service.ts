@@ -279,13 +279,17 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
       .filter(item => getFileExtension(item['name']) !== '.json')
       .map(item => this.createCEPBlock(item, repository));
 
-    return forkJoin(
-      blocks.map(block =>
-        this.getCEP_BlockContent(block, true, true).pipe(
-          map(fqn => ({ ...block, id: fqn }))
-        )
-      )
-    );
+      return forkJoin(
+        blocks.map(block => {
+          if (block.type === 'file' && block.name.endsWith('.mon')) {
+            return this.getCEP_BlockContent(block, true, true).pipe(
+              map(fqn => ({ ...block, id: fqn }))
+            );
+          } else {
+            return of({ ...block, id: block.name });
+          }
+        })
+      );
   }
 
   getCEP_BlockContent(
@@ -336,7 +340,8 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
 
 
   private createCEPBlock(item: any, repository: Repository): CEP_Block {
-    if (!item.name || !item.download_url || !item.url) {
+    // if (!item.name || !item.download_url || !item.url) {
+    if (!item.name || !item.url) {
       throw new Error('Missing required properties in GitHub item');
     }
     return {
@@ -344,6 +349,8 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
       repositoryName: repository.name,
       repositoryId: repository.id,
       name: removeFileExtension(item.name),
+      file: item.name,
+      type: item.type,
       custom: true,
       downloadUrl: item.download_url,
       url: item.url

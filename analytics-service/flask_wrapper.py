@@ -189,6 +189,40 @@ def update_repositories():
 
     return agent.update_repositories(request, repositories)
 
+def download_directory_contents(url, headers, base_path, work_dir):
+    """Helper function to recursively download directory contents"""
+    response = requests.get(url, headers=headers, allow_redirects=True)
+    response.raise_for_status()
+    
+    # Assuming the response is a JSON list of files/directories
+    contents = response.json()
+    
+    for item in contents:
+        # item_url = item.get("downloadUrl")
+        item_url = item.get("url")
+        item_type = item.get("type")
+        item_path = item.get("path", "")
+        
+        # Create the relative directory structure
+        relative_path = item_path.replace(base_path, "").lstrip("/")
+        full_path = os.path.join(work_dir, relative_path)
+        
+        # Create directories if they don't exist
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        
+        if item_type == "file":
+            # Download file
+            file_response = requests.get(item_url, headers=headers, allow_redirects=True)
+            file_response.raise_for_status()
+            
+            with open(full_path, "wb") as f:
+                f.write(file_response.content)
+            logger.info(f"File downloaded and saved to: {full_path}")
+            
+        elif item_type == "dir":
+            # Recursively download directory contents
+            download_directory_contents(item_url, headers, base_path, work_dir)
+
 
 @app.route("/extension", methods=["POST"])
 @handle_errors
@@ -197,8 +231,11 @@ def create_extension_zip():
     Get details for a specific extension.
     
     Args:
-        name (str): Name of the extension
-    
+        name (str):       Name of the extension
+        monitors (list):  Monitors of the extension
+        upload (boolean): Upload extension
+        deploy (boolean): Deploy/restart Analytics to deploy  
+     
     Returns:
         Response: JSON object containing extension details with structure:
         {
@@ -206,6 +243,7 @@ def create_extension_zip():
             "analytics": List[{
                 "id": str,
                 "name": str,
+                "type": str,
                 "installed": bool,
                 "producesOutput": str,
                 "description": str,
@@ -234,21 +272,33 @@ def create_extension_zip():
         # Download and process monitors
         for monitor in monitors:
             try:
-                file_name = extract_raw_path(monitor["downloadUrl"])
                 repository_configuration = agent.load_repository(
                     request=request, repository_id=monitor["repositoryId"], replace_access_token=False
                 )
 
                 headers = get_repository_headers(request, monitor["repositoryId"])
-                response = requests.get(
-                    monitor["url"], headers=headers, allow_redirects=True
-                )
-                response.raise_for_status()
+                
+                if monitor.get("type") == "dir":
+                    # Handle directory type
+                    base_path = monitor.get("path", "")
+                    download_directory_contents(
+                        monitor["url"], 
+                        headers, 
+                        base_path, 
+                        work_temp_dir
+                    )
+                else:
+                    # Handle single file (original behavior)
+                    file_name = extract_raw_path(monitor["downloadUrl"])
+                    response = requests.get(
+                        monitor["url"], headers=headers, allow_redirects=True
+                    )
+                    response.raise_for_status()
 
-                file_path = os.path.join(work_temp_dir, file_name)
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
-                logger.info(f"File downloaded and saved to: {file_path}")
+                    file_path = os.path.join(work_temp_dir, file_name)
+                    with open(file_path, "wb") as f:
+                        f.write(response.content)
+                    logger.info(f"File downloaded and saved to: {file_path}")
 
             except Exception as e:
                 logger.error(f"Error downloading monitor: {monitor}", exc_info=True)

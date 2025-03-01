@@ -44,6 +44,8 @@ export interface CEP_Extension {
 export interface CEP_Block {
   id: string;
   name: string;
+  file: string;
+  type: string;
   installed?: boolean;
   producesOutput?: string;
   description?: string;

@@ -62,13 +62,29 @@ export class SampleGridComponent implements OnInit {
 
   columnsSamples: Column[] = [
     {
-      name: 'name',
-      header: 'Name',
-      path: 'name',
+      name: 'file',
+      header: 'File',
+      path: 'file',
       dataType: ColumnDataType.TextLong,
       filterable: true,
       visible: true
     },
+    {
+      name: 'type',
+      header: 'Type',
+      path: 'type',
+      dataType: ColumnDataType.TextLong,
+      filterable: true,
+      visible: true
+    },
+    // {
+    //   name: 'name',
+    //   header: 'Name',
+    //   path: 'name',
+    //   dataType: ColumnDataType.TextLong,
+    //   filterable: true,
+    //   visible: true
+    // },
     {
       name: 'installed',
       header: 'Installed',
