@@ -109,7 +109,7 @@ export class RepositoriesModalComponent implements OnInit {
     }
   }
 
-  async testRepository(repository: Repository): Promise<void> {
+  async testRepository(): Promise<void> {
     if (this.repositoryForm.valid) {
       const testedRepository: Repository = { ... this.repositoryForm.value };
       testedRepository.url = this.GITHUB_URL + testedRepository.url;
