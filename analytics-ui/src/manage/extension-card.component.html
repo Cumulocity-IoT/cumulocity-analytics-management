@@ -22,11 +22,11 @@
         [class]="
           extension.loaded === true
             ? 'label label-primary'
-            : 'label label-warning'
+            : 'label label-info'
         "
       >
         {{
-          extension.loaded === true ? 'Loaded' : ('Not Loaded' | translate)
+          extension.loaded === true ? 'Loaded' : ('Unknown' | translate)
         }}</span
       >
     </div>
