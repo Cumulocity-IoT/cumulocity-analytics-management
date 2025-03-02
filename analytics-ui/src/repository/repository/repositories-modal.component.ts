@@ -24,7 +24,8 @@ export class RepositoriesModalComponent implements OnInit {
   selectedRepositoryIndex: number = -1;
   saveRequired: boolean = false;
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
-  popup = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
+  popupPAT = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
+  popRepositoryUrl = `Enter the last parts to a github repository. If no branch name is given, the default branch <code>main</code> is assumed.`;
   GITHUB_API = 'https://api.github.com/repos/';
   GITHUB_URL = 'https://github.com/';
   DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";

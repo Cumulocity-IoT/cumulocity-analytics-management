@@ -78,6 +78,7 @@ export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
 export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/en`;
 export const CEP_PATH_METADATA_EN = `${CEP_PATH_CORRELATOR}/en/block-metadata.json`;
 export const CEP_PATH_DIAGNOSTICS = `${CEP_PATH_BASE}/diagnostics`;
+export const CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES = `${CEP_PATH_BASE}/diagnostics/extensionNames`;
 export const CEP_PATH_STATUS = `${CEP_PATH_DIAGNOSTICS}/apamaCtrlStatus`;
 
 export const BACKEND_PATH_BASE = 'service/analytics-ext-service';
@@ -92,7 +93,8 @@ export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
-export const CEP_METADATA_FILE_EXTENSION = '.json';
+export const CEP_METADATA_FILE_EXTENSION_1 = '.json';
+export const CEP_METADATA_FILE_EXTENSION_2 = '.zip';
 export const GITHUB_BASE = 'https://api.github.com';
 export const REPO_OWNER = 'Cumulocity-IoT';
 export const REPO_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;

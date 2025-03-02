@@ -149,6 +149,7 @@ export class SampleGridComponent implements OnInit {
       text: 'View Source',
       type: 'VIEW',
       icon: 'document-with-code',
+      showIf: (item) => item['type'] == 'file',
       callback: this.viewMonitor.bind(this)
     });
   }
