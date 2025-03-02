@@ -63,13 +63,22 @@ export class SampleGridComponent implements OnInit {
 
   columnsSamples: Column[] = [
     {
-      name: 'file',
+      name: 'File',
       header: 'File',
-      path: 'file',
+      path: 'url',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true
+      visible: true,
+      cellRendererComponent: LinkRendererComponent
     },
+    // {
+    //   name: 'file',
+    //   header: 'File',
+    //   path: 'file',
+    //   dataType: ColumnDataType.TextLong,
+    //   filterable: true,
+    //   visible: true
+    // },
     {
       name: 'type',
       header: 'Type',
@@ -112,15 +121,15 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       visible: false
     },
-    {
-      name: 'url',
-      header: 'Link Github',
-      path: 'url',
-      dataType: ColumnDataType.TextLong,
-      filterable: true,
-      visible: true,
-      cellRendererComponent: LinkRendererComponent
-    }
+    // {
+    //   name: 'url',
+    //   header: 'Link Github',
+    //   path: 'url',
+    //   dataType: ColumnDataType.TextLong,
+    //   filterable: true,
+    //   visible: true,
+    //   cellRendererComponent: LinkRendererComponent
+    // }
   ];
 
   pagination: Pagination = {
