@@ -26,6 +26,8 @@ logger.setLevel(logging.INFO)
 app = Flask(__name__)
 agent = C8YAgent()
 
+DEFAULT_BRANCH = 'main'
+
 
 # Error handling decorator
 def handle_errors(f):
@@ -472,7 +474,7 @@ def github_web_url_to_content_api(github_web_url: str) -> str:
         repo = path_parts[1]
         
         # Check if the URL points to a specific branch/tag/commit
-        branch = 'master'  # Default branch
+        branch = DEFAULT_BRANCH  # Default branch
         path_in_repo = ''
         
         if len(path_parts) > 3 and path_parts[2] == 'tree':
@@ -529,7 +531,7 @@ def content_api_to_github_web_url(content_api_url: str) -> str:
         
         # Get the branch from the ref query parameter
         query_params = parse_qs(parsed_url.query)
-        branch = query_params.get('ref', ['master'])[0]
+        branch = query_params.get('ref', [DEFAULT_BRANCH])[0]
         
         # Extract the path within the repo
         path_in_repo = '/'.join(path_parts[4:]) if len(path_parts) > 4 else ''

@@ -17,7 +17,7 @@
   <div
     class="card-block p-0 no-min-height card--d-col card-column-20"
   >
-    <div class="c8y-realtime text-center">
+    <div class="text-center">
       <span
         [class]="
           extension.loaded === true
@@ -27,6 +27,15 @@
       >
         {{
           extension.loaded === true ? 'Loaded' : ('Unknown' | translate)
+        }}</span
+      >
+    </div>
+
+    <div class="text-center" *ngIf="extension.loaded !== true">
+      <span
+      >
+        {{
+          'This is not an EPL extension'
         }}</span
       >
     </div>
