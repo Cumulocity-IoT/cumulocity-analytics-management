@@ -19,7 +19,7 @@ import {
   RepositoryTestResult
 } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
-import { getFileExtension, removeFileExtension } from './utils';
+import { getFileExtension, githubWebUrlToContentApi, removeFileExtension } from './utils';
 
 @Injectable({
   providedIn: 'root'
@@ -72,9 +72,10 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     'Authorization': `Bearer ${testRepository.accessToken}`
   });
 
+  const testUrl = githubWebUrlToContentApi(testRepository.url);
   try {
     const response = await this.httpClient
-      .get(testRepository.url, {
+      .get(testUrl, {
         headers,
         observe: 'response',
         responseType: 'text'

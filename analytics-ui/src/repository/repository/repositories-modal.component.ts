@@ -25,7 +25,8 @@ export class RepositoriesModalComponent implements OnInit {
   saveRequired: boolean = false;
   labels: ModalLabels = { ok: 'Save', cancel: 'Cancel' };
   popup = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
-  static readonly GITHUB_API = 'https://api.github.com/repos/';
+  GITHUB_API = 'https://api.github.com/repos/';
+  GITHUB_URL = 'https://github.com/';
   DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";
 
   constructor(
@@ -52,9 +53,10 @@ export class RepositoriesModalComponent implements OnInit {
 
   // Custom validator function
 
-  urlValidator(control: AbstractControl): ValidationErrors | null {
+  // Arrow function preserves 'this'
+  urlValidator = (control: AbstractControl): ValidationErrors | null => {
     try {
-      const url = RepositoriesModalComponent.GITHUB_API + control.value;
+      const url = this.GITHUB_URL + control.value;
       new URL(url);
       return null;
     } catch (e) {
@@ -73,7 +75,7 @@ export class RepositoriesModalComponent implements OnInit {
   addRepository(): void {
     if (this.repositoryForm.valid) {
       const newRepository: Repository = this.repositoryForm.value;
-      newRepository.url = RepositoriesModalComponent.GITHUB_API + this.repositoryForm.value.url;
+      newRepository.url = this.GITHUB_URL + this.repositoryForm.value.url;
       newRepository.id = uuidCustom();
       newRepository.enabled = true;
       this.repositoryService.addRepository(newRepository);
@@ -85,7 +87,7 @@ export class RepositoriesModalComponent implements OnInit {
   editRepository(repository: Repository, index: number): void {
     this.selectedRepositoryIndex = index;
     const r = { ...repository };
-    r.url = r.url.replace(RepositoriesModalComponent.GITHUB_API, '');
+    r.url = r.url.replace(this.GITHUB_URL, '');
     this.repositoryForm.patchValue(r);
   }
 
@@ -100,7 +102,7 @@ export class RepositoriesModalComponent implements OnInit {
   updateRepository(): void {
     if (this.repositoryForm.valid) {
       const updatedRepository: Repository = this.repositoryForm.value;
-      updatedRepository.url = RepositoriesModalComponent.GITHUB_API + updatedRepository.url;
+      updatedRepository.url = this.GITHUB_URL + updatedRepository.url;
       this.repositoryService.updateRepository(updatedRepository);
       this.saveRequired = true;
       this.repositoryForm.reset();
@@ -109,8 +111,8 @@ export class RepositoriesModalComponent implements OnInit {
 
   async testRepository(repository: Repository): Promise<void> {
     if (this.repositoryForm.valid) {
-      const testedRepository: Repository = {... this.repositoryForm.value};
-      testedRepository.url = RepositoriesModalComponent.GITHUB_API + testedRepository.url;
+      const testedRepository: Repository = { ... this.repositoryForm.value };
+      testedRepository.url = this.GITHUB_URL + testedRepository.url;
       const result = await this.repositoryService.testRepository(testedRepository);
       if (result.success) {
         this.alertService.success(result.message);

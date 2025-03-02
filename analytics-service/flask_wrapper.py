@@ -12,6 +12,7 @@ from requests.exceptions import HTTPError
 import json
 from functools import wraps
 from typing import Dict, Any, Optional
+from urllib.parse import urlparse, parse_qs
 
 # Configure logging
 logging.basicConfig(
@@ -100,9 +101,10 @@ def get_content_list():
         headers = get_repository_headers(request, repository_id)
 
     decoded_url = urllib.parse.unquote(encoded_url)
-    logger.info(f"Getting content list from: {decoded_url}")
+    decoded_content_url = urllib.parse.unquote(github_web_url_to_content_api(decoded_url)) 
+    logger.info(f"Getting content list from: {decoded_content_url} {decoded_url}")
 
-    response = requests.get(decoded_url, headers=headers, allow_redirects=True)
+    response = requests.get(decoded_content_url, headers=headers, allow_redirects=True)
     response.raise_for_status()
 
     return make_response(response.content, 200, {"Content-Type": "application/json"})
@@ -437,6 +439,114 @@ def get_cep_ctrl_status():
     return jsonify(result)
 
 # Additional utility functions
+
+def github_web_url_to_content_api(github_web_url: str) -> str:
+    """
+    Transforms a GitHub web URL to a GitHub Content API endpoint URL
+    
+    Args:
+        github_web_url: A GitHub web URL (e.g., https://github.com/user/repo/tree/branch/path)
+        
+    Returns:
+        The equivalent GitHub Content API URL
+        
+    Raises:
+        ValueError: If the URL is not a valid GitHub URL
+    """
+    try:
+        # Parse the URL
+        parsed_url = urlparse(github_web_url)
+        
+        # Verify it's a GitHub URL
+        if 'github.com' not in parsed_url.netloc:
+            raise ValueError('Not a GitHub URL')
+        
+        # Extract repo info from path
+        path_parts = [part for part in parsed_url.path.split('/') if part]
+        
+        # Need at least user and repo
+        if len(path_parts) < 2:
+            raise ValueError('Invalid GitHub URL: missing user or repository')
+        
+        user = path_parts[0]
+        repo = path_parts[1]
+        
+        # Check if the URL points to a specific branch/tag/commit
+        branch = 'master'  # Default branch
+        path_in_repo = ''
+        
+        if len(path_parts) > 3 and path_parts[2] == 'tree':
+            branch = path_parts[3]
+            path_in_repo = '/'.join(path_parts[4:]) if len(path_parts) > 4 else ''
+        elif len(path_parts) > 2:
+            # URL doesn't specify a branch, assume content is in the root
+            path_in_repo = '/'.join(path_parts[2:])
+        
+        # Build the Content API URL
+        content_api_url = f"https://api.github.com/repos/{user}/{repo}/contents"
+        
+        if path_in_repo:
+            content_api_url += f"/{path_in_repo}"
+        
+        content_api_url += f"?ref={branch}"
+        
+        return content_api_url
+    
+    except Exception as e:
+        raise ValueError(f"Failed to convert GitHub URL: {str(e)}")
+
+
+def content_api_to_github_web_url(content_api_url: str) -> str:
+    """
+    Transforms a GitHub Content API URL to a GitHub web URL
+    
+    Args:
+        content_api_url: A GitHub Content API URL
+        
+    Returns:
+        The equivalent GitHub web URL
+        
+    Raises:
+        ValueError: If the URL is not a valid GitHub API URL
+    """
+    try:
+        # Parse the URL
+        parsed_url = urlparse(content_api_url)
+        
+        # Verify it's a GitHub API URL
+        if 'api.github.com' not in parsed_url.netloc:
+            raise ValueError('Not a GitHub API URL')
+        
+        # Extract path parts
+        path_parts = [part for part in parsed_url.path.split('/') if part]
+        
+        # Need at least "repos", user, repo, "contents"
+        if len(path_parts) < 4 or path_parts[0] != 'repos' or path_parts[3] != 'contents':
+            raise ValueError('Invalid GitHub Content API URL format')
+        
+        user = path_parts[1]
+        repo = path_parts[2]
+        
+        # Get the branch from the ref query parameter
+        query_params = parse_qs(parsed_url.query)
+        branch = query_params.get('ref', ['master'])[0]
+        
+        # Extract the path within the repo
+        path_in_repo = '/'.join(path_parts[4:]) if len(path_parts) > 4 else ''
+        
+        # Build the GitHub web URL
+        github_web_url = f"https://github.com/{user}/{repo}"
+        
+        if path_in_repo:
+            github_web_url += f"/tree/{branch}/{path_in_repo}"
+        else:
+            github_web_url += f"/tree/{branch}"
+        
+        return github_web_url
+    
+    except Exception as e:
+        raise ValueError(f"Failed to convert GitHub API URL: {str(e)}")
+
 
 class ExtensionBuilder:
     """Helper class for building extensions"""

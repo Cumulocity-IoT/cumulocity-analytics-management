@@ -39,6 +39,7 @@ import { RepositoriesModalComponent } from '../repository/repositories-modal.com
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
 import { Observable } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
+import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -75,6 +76,7 @@ export class SampleGridComponent implements OnInit {
       path: 'type',
       dataType: ColumnDataType.TextLong,
       filterable: true,
+      cellRendererComponent: LabelRendererComponent,
       visible: true
     },
     // {
