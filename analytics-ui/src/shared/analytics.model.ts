@@ -39,6 +39,7 @@ export interface CEP_Extension {
   analytics: CEP_Block[];
   version: string;
   loaded: true;
+  type?: ExtensionType;
 }
 
 export interface CEP_Block {
@@ -137,6 +138,8 @@ export const REPO_SAMPLES = [
 
 
 export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+
+export type ExtensionType = 'block' | 'zip';
 
 export type CEPStatusObject = any;
 

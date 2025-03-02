@@ -81,7 +81,7 @@
           <button
             (click)="detail()"
             title="{{ 'Details' }}"
-            [disabled]="!extension.loaded"
+            [disabled]="!extension.loaded || extension.type == 'zip'"
           >
             <i c8yIcon="info" class="m-r-4"></i>
             {{ 'Details' | translate }}
