@@ -42,6 +42,16 @@
           </tr>
         </thead>
         <tbody>
+          <!-- Empty state row properly inside tbody -->
+          <tr *ngIf="!extension || extension?.analytics?.length == 0">
+            <td></td>
+            <td colspan="2">
+              <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
+                [title]="'This extension contains no .mon files .' | translate" [horizontal]="false">
+              </c8y-ui-empty-state>
+            </td>
+          </tr>
+
           <tr *ngFor="let block of extension?.analytics">
             <td [title]="block.id">{{ block.id }}</td>
             <td [title]="block.category">{{ block.category }}</td>
@@ -50,20 +60,21 @@
         </tbody>
       </table>
     </div>
-    <div class="card col-lg-12">
-      <div class="card-block">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th style="width: 100%">Files </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let file of extensionContent">
-              <td>{{file }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+    <div class="card-block">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th style="width: 5%"># </th>
+            <th style="width: 95%">File Name</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let file of extensionContent ; let i = index">
+            <td>{{i }}</td>
+            <td>{{file }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
+</div>

@@ -24,7 +24,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   ) {}
 
   get(): NavigatorNode {
-    console.log('AppState', this.as);
+    // console.log('AppState', this.as);
     if (this.canActivate()) {
       // id running in 
       if (this.as['options'].contextPath == 'streaminganalytics'){
