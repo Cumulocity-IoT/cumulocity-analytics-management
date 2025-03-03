@@ -56,7 +56,7 @@
       </button>
       <ul *dropdownMenu class="dropdown-menu dropdown-menu-right">
         <li>
-          <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!extension.loaded || extension.type == 'zip'">
+          <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!extension.loaded">
             <i c8yIcon="info" class="m-r-4"></i>
             {{ 'Details' | translate }}
           </button>

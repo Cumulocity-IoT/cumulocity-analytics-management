@@ -32,7 +32,7 @@ export class ExtensionCardComponent{
   }
 
   async detail() {
-    if (this.extension.loaded && this.extension.extensionType !== 'zip') {
+    if (this.extension.loaded) {
       this.router.navigate(['properties/', this.extension.name], {
         relativeTo: this.activatedRoute
       });

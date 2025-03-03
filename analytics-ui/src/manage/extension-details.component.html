@@ -22,19 +22,10 @@
 <c8y-title>Details {{ extension?.name }}</c8y-title>
 
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-atom'"
-    [label]="'Ecosystem' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-streaming-analytics'"
-    [label]="'Analytics' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-modules'"
-    [label]="'Manage extensions' | translate"
-    [path]="'sag-ps-pkg-analytics-extension/manage'"
-  >
+  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-modules'" [label]="'Manage extensions' | translate"
+    [path]="'sag-ps-pkg-analytics-extension/manage'">
   </c8y-breadcrumb-item>
   <c8y-breadcrumb-item [label]="extension?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
@@ -59,5 +50,20 @@
         </tbody>
       </table>
     </div>
+    <div class="card col-lg-12">
+      <div class="card-block">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th style="width: 100%">Files </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let file of extensionContent">
+              <td>{{file }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
-</div>
