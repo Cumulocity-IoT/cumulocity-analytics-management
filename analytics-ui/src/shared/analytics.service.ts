@@ -121,7 +121,7 @@ export class AnalyticsService {
         if (!extensions[index].loaded) {
           const key2 = extensions[index].name + CEP_METADATA_FILE_EXTENSION_2;
           extensions[index].loaded = loadedExtensionsFromDiagnostics.hasOwnProperty(key2);
-          extensions[index].type = 'zip';
+          extensions[index].extensionType = 'zip';
         }
         if (extensions[index].loaded) {
           const extensionDetails = await this.getExtensionDetailFromCEP(

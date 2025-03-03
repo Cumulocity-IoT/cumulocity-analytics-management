@@ -39,7 +39,7 @@ export interface CEP_Extension {
   analytics: CEP_Block[];
   version: string;
   loaded: true;
-  type?: ExtensionType;
+  extensionType?: ExtensionType;
 }
 
 export interface CEP_Block {

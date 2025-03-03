@@ -27,12 +27,12 @@ export class ExtensionCardComponent{
 
     private wizardModalService: WizardModalService
   ) {}
-  // ngOnInit(): void {
-  //   console.log('application', this.as);
-  // }
+  ngOnInit(): void {
+    console.log('Block', this.extension);
+  }
 
   async detail() {
-    if (this.extension.loaded && this.extension.type !== 'zip') {
+    if (this.extension.loaded && this.extension.extensionType !== 'zip') {
       this.router.navigate(['properties/', this.extension.name], {
         relativeTo: this.activatedRoute
       });
