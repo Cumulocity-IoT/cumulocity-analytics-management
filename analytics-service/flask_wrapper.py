@@ -4,6 +4,7 @@ import logging
 import tempfile
 import os
 import re
+import base64
 import io
 import subprocess
 import urllib.parse
@@ -192,41 +193,97 @@ def update_repositories():
             )
 
     return agent.update_repositories(request, repositories)
-
-def download_directory_contents(url, headers, base_path, work_dir):
-    """Helper function to recursively download directory contents"""
-    response = requests.get(url, headers=headers, allow_redirects=True)
-    response.raise_for_status()
     
-    # Assuming the response is a JSON list of files/directories
-    contents = response.json()
+def download_github_content(url, headers, base_path, work_dir, item=None):
+    """
+    Download content from GitHub, handling both files and directories.
+    If item is provided, it's a specific file/directory to download.
+    If not, we fetch the contents at the URL.
+    """
+    if item is None:
+        # No specific item provided, get the contents from the URL
+        response = requests.get(url, headers=headers, allow_redirects=True)
+        response.raise_for_status()
+        
+        try:
+            contents = response.json()
+            # Check if it's a list (directory) or a dict (single file)
+            if isinstance(contents, list):
+                # Directory contents
+                for item in contents:
+                    download_github_content(item.get("url"), headers, base_path, work_dir, item)
+            elif isinstance(contents, dict) and "type" in contents:
+                # Single file or directory
+                download_github_content(url, headers, base_path, work_dir, contents)
+            else:
+                logger.warning(f"Unexpected content structure from {url}")
+        except ValueError:
+            logger.warning(f"Non-JSON response from {url}")
+        return
     
-    for item in contents:
-        # item_url = item.get("downloadUrl")
-        item_url = item.get("url")
-        item_type = item.get("type")
-        item_path = item.get("path", "")
-        
-        # Create the relative directory structure
-        relative_path = item_path.replace(base_path, "").lstrip("/")
-        full_path = os.path.join(work_dir, relative_path)
-        
+    # Process the specific item
+    item_url = item.get("url")
+    item_type = item.get("type")
+    item_path = item.get("path", "")
+    item_url_as_web_url = content_api_to_github_web_url(item_url)
+    relative_path = extract_relative_path(item_url_as_web_url, base_path)
+    
+    # Full path to save the item
+    full_path = os.path.join(work_dir, relative_path)
+    
+    logger.info(f"Processing item: {item_path}")
+    logger.info(f"Base path: {base_path}")
+    logger.info(f"Relative path: {relative_path}")
+    logger.info(f"Full path: {full_path}")
+    
+    if item_type == "file":
         # Create directories if they don't exist
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         
-        if item_type == "file":
-            # Download file
-            file_response = requests.get(item_url, headers=headers, allow_redirects=True)
+        # Get download URL or content
+        download_url = item.get("download_url") or item.get("raw_url")
+        
+        if download_url:
+            # Direct download
+            file_response = requests.get(download_url, headers=headers, allow_redirects=True)
             file_response.raise_for_status()
             
             with open(full_path, "wb") as f:
                 f.write(file_response.content)
             logger.info(f"File downloaded and saved to: {full_path}")
             
-        elif item_type == "dir":
-            # Recursively download directory contents
-            download_directory_contents(item_url, headers, base_path, work_dir)
-
+        else:
+            # Get content from API
+            content_response = requests.get(item_url, headers=headers, allow_redirects=True)
+            content_response.raise_for_status()
+            
+            try:
+                content_data = content_response.json()
+                if isinstance(content_data, dict) and "content" in content_data:
+                    content = base64.b64decode(content_data["content"])
+                    with open(full_path, "wb") as f:
+                        f.write(content)
+                    logger.info(f"File downloaded and saved to: {full_path}")
+                else:
+                    logger.warning(f"Unexpected content format for {item_path}")
+            except ValueError:
+                logger.warning(f"Non-JSON response for {item_path}")
+                
+    elif item_type == "dir":
+        # Create directory
+        os.makedirs(full_path, exist_ok=True)
+        logger.info(f"Created directory: {full_path}")
+        
+        # Fetch and process directory contents
+        dir_response = requests.get(item_url, headers=headers, allow_redirects=True)
+        dir_response.raise_for_status()
+        
+        try:
+            dir_contents = dir_response.json()
+            for child_item in dir_contents:
+                download_github_content(child_item.get("url"), headers, base_path, work_dir, child_item)
+        except ValueError:
+            logger.warning(f"Non-JSON response for directory {item_path}")
 
 @app.route("/extension", methods=["POST"])
 @handle_errors
@@ -282,27 +339,14 @@ def create_extension_zip():
 
                 headers = get_repository_headers(request, monitor["repositoryId"])
                 
-                if monitor.get("type") == "dir":
-                    # Handle directory type
-                    base_path = monitor.get("path", "")
-                    download_directory_contents(
-                        monitor["url"], 
-                        headers, 
-                        base_path, 
-                        work_temp_dir
-                    )
-                else:
-                    # Handle single file (original behavior)
-                    file_name = extract_raw_path(monitor["downloadUrl"])
-                    response = requests.get(
-                        monitor["url"], headers=headers, allow_redirects=True
-                    )
-                    response.raise_for_status()
+                base_path = repository_configuration["url"]
+                download_github_content(
+                    monitor["url"], 
+                    headers, 
+                    base_path, 
+                    work_temp_dir
+                )
 
-                    file_path = os.path.join(work_temp_dir, file_name)
-                    with open(file_path, "wb") as f:
-                        f.write(response.content)
-                    logger.info(f"File downloaded and saved to: {file_path}")
 
             except Exception as e:
                 logger.error(f"Error downloading monitor: {monitor}", exc_info=True)
@@ -548,6 +592,34 @@ def content_api_to_github_web_url(content_api_url: str) -> str:
     
     except Exception as e:
         raise ValueError(f"Failed to convert GitHub API URL: {str(e)}")
+
+def extract_relative_path(url_file, url_repository):
+    """
+    Extract the relative path from a file URL using a repository URL as reference.
+    
+    Args:
+        url_file: The full URL to the file
+        url_repository: The URL to the repository or base directory
+        
+    Returns:
+        The file path relative to the repository URL
+    """
+    # Make sure both URLs end without trailing slash for consistent comparison
+    url_repository = url_repository.rstrip('/')
+    url_file = url_file.rstrip('/')
+    
+    # Check if the file URL starts with the repository URL
+    if url_file.startswith(url_repository):
+        # Get everything after the repository URL
+        relative_path = url_file[len(url_repository):]
+        # Remove leading slash if present
+        relative_path = relative_path.lstrip('/')
+        return relative_path
+    else:
+        # If the file URL doesn't start with the repository URL,
+        # try extracting the filename from the end of the URL
+        return url_file.split('/')[-1]
+
 
 
 class ExtensionBuilder:

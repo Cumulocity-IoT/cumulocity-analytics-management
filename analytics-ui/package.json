@@ -19,7 +19,7 @@
   "keywords": [
     "c8y"
   ],
-  "author": "murat.bayram@cumulocity.com, christof.strack@cumulocity.com",
+  "author": "christof.strack@cumulocity.com",
   "license": "Apache 2.0",
   "dependencies": {
     "@angular/animations": "^18.2.0",
