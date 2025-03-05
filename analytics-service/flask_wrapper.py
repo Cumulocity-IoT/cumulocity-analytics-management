@@ -603,8 +603,10 @@ def parse_boolean(value: Any) -> bool:
 
 
 def extract_raw_path(path: str) -> str:
-    return path.rsplit("/", 1)[-1]
-
+    # First split by '?' and take the first part
+    path_without_query = path.split("?", 1)[0]
+    # Then extract the filename as before
+    return path_without_query.rsplit("/", 1)[-1]
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)

@@ -21,82 +21,48 @@
 
 <c8y-title translate>Blocks from community repositories</c8y-title>
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-atom'"
-    [label]="'Ecosystem' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-streaming-analytics'"
-    [label]="'Analytics' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'test'"
-    [label]="'Repositories' | translate"
-    [path]="'sag-ps-pkg-analytics-extension/sample'"
-  >
+  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'test'" [label]="'Repositories' | translate"
+    [path]="'sag-ps-pkg-analytics-extension/sample'">
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <c8y-action-bar-item [placement]="'right'">
+  <button class="btn btn-link" title="{{ 'Create extension' | translate }}" (click)="createExtensionIncludeAll()">
+    <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="upload"></i>
+    {{ "Create extension" | translate }}
+  </button>
+</c8y-action-bar-item>
+<c8y-action-bar-item [placement]="'right'">
   <label class="c8y-switch">
-    <input
-      type="checkbox"
-      [(ngModel)]="hideInstalled"
-      (change)="loadSamples()"
-    />
+    <input type="checkbox" [(ngModel)]="hideInstalled" (change)="loadSamples()" />
     <span></span> Hide installed
   </label>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button
-    class="btn btn-link"
-    title="{{ 'Refresh' | translate }}"
-    (click)="loadSamples()"
-  >
+  <button class="btn btn-link" title="{{ 'Refresh' | translate }}" (click)="loadSamples()">
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
 </c8y-action-bar-item>
 <c8y-action-bar-item [placement]="'right'">
-  <button
-    class="btn btn-link"
-    title="{{ 'Repositories' | translate }}"
-    (click)="updateRepositories()"
-  >
+  <button class="btn btn-link" title="{{ 'Repositories' | translate }}" (click)="updateRepositories()">
     <i c8yIcon="change-theme"></i>
     {{ "Repositories" | translate }}
   </button>
 </c8y-action-bar-item>
 <!-- <div class="card-block" *ngIf="!loading"> -->
 <div class="content-fullpage border-top border-bottom">
-  <c8y-data-grid
-    *ngIf="!loading"
-    id="dataGrid"
-    #dataGrid
-    [title]="titleSample | translate"
-    [columns]="columnsSamples"
-    [rows]="samples$ | async"
-    [pagination]="pagination"
-    [selectable]="true"
-    (itemsSelect)="checkSelection($event)"
-    [actionControls]="actionControls"
-    [bulkActionControls]="bulkActionControls"
-  >
-    <c8y-ui-empty-state
-      [icon]="'cog'"
-      [title]="'No samples to display.' | translate"
-      [subtitle]="'Configure repositories.' | translate"
-      [horizontal]="true"
-    >
-      <button
-        class="btn btn-link m-t-24"
-        title="{{ 'Repositories' | translate }}"
-        (click)="updateRepositories()"
-      >
+  <c8y-data-grid *ngIf="!loading" id="dataGrid" #dataGrid [title]="titleSample | translate" [columns]="columnsSamples"
+    [rows]="samples$ | async" [pagination]="pagination" [selectable]="false" (itemsSelect)="checkSelection($event)"
+    [actionControls]="actionControls" [bulkActionControls]="bulkActionControls">
+    <c8y-ui-empty-state [icon]="'cog'" [title]="'No samples to display.' | translate"
+      [subtitle]="'Configure repositories.' | translate" [horizontal]="true">
+      <button class="btn btn-link m-t-24" title="{{ 'Repositories' | translate }}" (click)="updateRepositories()">
         <i c8yIcon="change-theme"></i>
         {{ "Repositories" | translate }}
-      </button></c8y-ui-empty-state
-    >
+      </button></c8y-ui-empty-state>
   </c8y-data-grid>
   <div style="padding-top: 48px" *ngIf="loading">
     <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">

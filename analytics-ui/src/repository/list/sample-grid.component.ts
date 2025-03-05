@@ -235,6 +235,27 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
+
+  async createExtensionIncludeAll() {
+    const monitors = [];
+    this.samples.forEach((sample) => {
+      monitors.push(sample);
+    });
+    const initialState = {
+      monitors
+    };
+
+    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+      class: 'modal-lg',
+      initialState
+    });
+
+    modalRef.content.closeSubject.subscribe(() => {
+      this.dataGrid.cancel()
+      modalRef.hide()
+    });
+  }
+
   async loadSamples() {
     this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
   }

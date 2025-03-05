@@ -84,7 +84,7 @@ export class AnalyticsService {
     deploy: boolean,
     monitors: CEP_Block[]
   ): Promise<IFetchResponse> {
-    console.log(`Create extensions for : ${name},  ${monitors},`);
+    console.log('Create extensions for:', name, monitors);
     return this.fetchClient.fetch(
       `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
       {
