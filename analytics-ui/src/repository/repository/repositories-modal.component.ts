@@ -79,7 +79,7 @@ export class RepositoriesModalComponent implements OnInit {
       const newRepository: Repository = this.repositoryForm.value;
       newRepository.url = this.GITHUB_URL + this.repositoryForm.value.url;
       newRepository.id = uuidCustom();
-      newRepository.enabled = true;
+      newRepository.enabled = false;
       this.repositoryService.addRepository(newRepository);
       this.saveRequired = true;
       this.repositoryForm.reset();
@@ -88,9 +88,10 @@ export class RepositoriesModalComponent implements OnInit {
 
   editRepository(repository: Repository, index: number): void {
     this.selectedRepositoryIndex = index;
-    const r = { ...repository };
-    r.url = r.url.replace(this.GITHUB_URL, '');
-    this.repositoryForm.patchValue(r);
+    const rep = { ...repository };
+    rep.url = rep.url.replace(this.GITHUB_URL, '');
+    this.repositoryForm.patchValue(rep);
+    this.activeRepository = rep;
   }
 
   toggleActivation(repository: Repository): void {
@@ -182,7 +183,8 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onSave() {
-    this.closeSubject.next(this.activeRepository);
+    const upRep = {...this.activeRepository};
+    this.closeSubject.next(upRep);
     this.closeSubject.complete();
   }
 
