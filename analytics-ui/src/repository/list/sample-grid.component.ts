@@ -32,12 +32,13 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
   CEP_Block,
+  Repository,
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
-import { Observable } from 'rxjs';
+import { distinctUntilChanged, map, Observable } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
 
@@ -54,6 +55,7 @@ export class SampleGridComponent implements OnInit {
   hideInstalled: boolean = false;
   loading: boolean = false;
   showMonitorEditor: boolean = false;
+  activeRepository: Repository;
   samples$: Observable<CEP_Block[]>;
   samples: CEP_Block[];
   actionControls: ActionControl[] = [];
@@ -151,7 +153,7 @@ export class SampleGridComponent implements OnInit {
       type: 'CREATE',
       text: 'Create extension',
       icon: 'export',
-      callback: this.createExtension.bind(this)
+      callback: this.createExtensionFromList.bind(this)
     });
 
     this.actionControls.push({
@@ -160,6 +162,27 @@ export class SampleGridComponent implements OnInit {
       icon: 'document-with-code',
       showIf: (item) => item['type'] == 'file',
       callback: this.viewMonitor.bind(this)
+    });
+
+    this.initializeActiveRepository();
+  }
+
+  initializeActiveRepository(): void {
+    // Subscribe to repositories$ to find and set the active repository
+    
+    this.repositoryService.getRepositories().pipe(
+      // Transform the array to find the enabled repository
+      map(repositories => repositories.find(repo => repo.enabled)),
+      // Only emit when the enabled repository changes
+      distinctUntilChanged((prev, curr) => 
+        prev?.id === curr?.id && prev?.enabled === curr?.enabled
+      )
+    ).subscribe(enabledRepository => {
+      // Set the active repository
+      this.activeRepository = enabledRepository || null;
+      
+      // You can perform additional actions here when active repository changes
+      console.log('Active repository changed:', this.activeRepository);
     });
   }
 
@@ -192,6 +215,7 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (response) => {
       console.log('Repositories response after edit:', response);
       if (response) {
+        this.activeRepository = response;
         await this.repositoryService.updateRepositories();
         this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
       } else {
@@ -213,7 +237,7 @@ export class SampleGridComponent implements OnInit {
     });
   }
 
-  async createExtension(ids: string[]) {
+  async createExtensionFromList(ids: string[]) {
     const monitors = [];
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
@@ -221,6 +245,7 @@ export class SampleGridComponent implements OnInit {
       }
     });
     const initialState = {
+      activeRepository: this.activeRepository,
       monitors
     };
 
@@ -236,13 +261,9 @@ export class SampleGridComponent implements OnInit {
   }
 
 
-  async createExtensionIncludeAll() {
-    const monitors = [];
-    this.samples.forEach((sample) => {
-      monitors.push(sample);
-    });
+  async createExtensionFromRepository() {
     const initialState = {
-      monitors
+      activeRepository: this.activeRepository
     };
 
     const modalRef = this.bsModalService.show(ExtensionCreateComponent, {

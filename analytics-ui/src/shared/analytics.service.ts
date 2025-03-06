@@ -31,7 +31,8 @@ import {
   CEPStatusObject,
   UploadMode,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
-  CEP_METADATA_FILE_EXTENSION_2
+  CEP_METADATA_FILE_EXTENSION_2,
+  Repository
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 
@@ -78,15 +79,43 @@ export class AnalyticsService {
     return result;
   }
 
-  async createExtensionZIP(
+  async createExtensionFromList(
     name: string,
+    monitors: CEP_Block[],
+    repository: Repository,
     upload: boolean,
     deploy: boolean,
-    monitors: CEP_Block[]
   ): Promise<IFetchResponse> {
     console.log('Create extensions for:', name, monitors);
     return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/list`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          monitors: monitors,
+          repository: repository,
+          upload: upload,
+          deploy: deploy,
+        }),
+        method: 'POST',
+        responseType: 'blob'
+      }
+    );
+  }
+
+  async createExtensionFromRepository(
+    name: string,
+    upload: boolean,
+    deploy: boolean,
+    repository: Repository
+  ): Promise<IFetchResponse> {
+    console.log('Create extensions for:', name, repository);
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/repository`,
       {
         headers: {
           accept: 'application/json',
@@ -96,7 +125,7 @@ export class AnalyticsService {
           extension_name: name,
           upload: upload,
           deploy: deploy,
-          monitors: monitors
+          repository: repository
         }),
         method: 'POST',
         responseType: 'blob'

@@ -2,7 +2,7 @@ import { Component, OnDestroy, OnInit, Output, ViewEncapsulation } from '@angula
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertService, ModalLabels } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { Observable, Subject } from 'rxjs';
+import { map, Observable, Subject, take } from 'rxjs';
 import {
   ConfirmationModalComponent,
   Repository,
@@ -18,7 +18,8 @@ import {
 })
 export class RepositoriesModalComponent implements OnInit {
   repositories$: Observable<Repository[]>;
-  closeSubject: Subject<boolean> = new Subject();
+  activeRepository: Repository;
+  closeSubject: Subject<Repository> = new Subject();
   repositoryForm: FormGroup;
   subscription: any;
   selectedRepositoryIndex: number = -1;
@@ -93,11 +94,37 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   toggleActivation(repository: Repository): void {
-    repository.enabled = !repository.enabled;
-    const updatedRepository = repository;
-    updatedRepository.url = updatedRepository.url;
-    this.saveRequired = true;
-    this.repositoryService.updateRepository(updatedRepository);
+    // Get the current value of repositories$ and update all repositories
+    this.repositories$.pipe(
+      take(1)  // Take only the current value
+    ).subscribe(repositories => {
+      // Process all repositories
+      repositories.forEach(repo => {
+        if (repo.id === repository.id) {
+          // Toggle enabled for the selected repository
+          const updatedRepo = {
+            ...repo,
+            enabled: !repo.enabled
+          };
+          if (updatedRepo.enabled)
+            this.activeRepository = updatedRepo;
+          // Update the toggled repository
+          this.repositoryService.updateRepository(updatedRepo);
+        } else if (repo.enabled) {
+          // Only update repositories that are currently enabled
+          const updatedRepo = {
+            ...repo,
+            enabled: false
+          };
+          // Update other repositories to disabled
+          this.repositoryService.updateRepository(updatedRepo);
+        }
+        // No need to update repositories that are already disabled
+      });
+
+      // Set the save required flag
+      this.saveRequired = true;
+    });
   }
 
   updateRepository(): void {
@@ -155,12 +182,12 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onSave() {
-    this.closeSubject.next(true);
+    this.closeSubject.next(this.activeRepository);
     this.closeSubject.complete();
   }
 
   onCancel() {
-    this.closeSubject.next(false);
+    this.closeSubject.next(undefined);
     this.closeSubject.complete();
   }
 

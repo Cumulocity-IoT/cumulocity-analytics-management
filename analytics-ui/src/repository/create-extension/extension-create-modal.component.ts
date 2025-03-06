@@ -4,9 +4,7 @@ import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { saveAs } from 'file-saver';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../../shared/analytics.model';
-import { CustomSwitchField } from '../../shared/component/custom-switch-field';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, Repository } from '../../shared/analytics.model';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -15,6 +13,7 @@ import { CustomSwitchField } from '../../shared/component/custom-switch-field';
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
   @Input() monitors: CEP_Block[];
+  @Input() activeRepository: Repository;
   configuration: any = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
@@ -106,19 +105,30 @@ export class ExtensionCreateComponent implements OnInit {
   async createExtension() {
     this.loading = true;
     console.log('Create extension');
-    const response = await this.analyticsService.createExtensionZIP(
-      this.configuration.name,
-      true,
-      this.configuration.deploy,
-      this.monitors
-    );
+    let response;
+
+    if (this.monitors) {
+      response = await this.analyticsService.createExtensionFromList(
+        this.configuration.name,
+        this.monitors,
+        this.activeRepository,
+        true,
+        this.configuration.deploy,
+      );
+    } else {
+      response = await this.analyticsService.createExtensionFromRepository(
+        this.configuration.name,
+        true,
+        this.configuration.deploy,
+        this.activeRepository
+      );
+    }
     if (response.status < 400) {
       const binary = await await response.arrayBuffer();
       this.loading = false;
-      const blob = new Blob([binary], {
-        type: 'application/x-zip-compressed'
-      });
-
+      // const blob = new Blob([binary], {
+      //   type: 'application/x-zip-compressed'
+      // });
       // if (!this.configuration.upload) {
       //   saveAs(blob, `${this.configuration.name}.zip`);
       //   this.alertService.success(
