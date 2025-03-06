@@ -43,22 +43,6 @@ def create_error_response(message: str, status_code: int) -> Response:
     )
 
 
-def get_repository_headers(
-    request, repository_id: Optional[str] = None
-) -> Dict[str, str]:
-    headers = {"Accept": "application/vnd.github.v3.raw"}
-    if repository_id:
-        repository_configuration = agent.load_repository(
-            request=request, repository_id=repository_id, replace_access_token=False
-        )
-        if "accessToken" in repository_configuration:
-            headers["Authorization"] = (
-                f"Bearer {repository_configuration['accessToken']}"
-            )
-            logger.info("Access token found and added to headers")
-    return headers
-
-
 def github_web_url_to_content_api(github_web_url: str) -> str:
     """
     Transforms a GitHub web URL to a GitHub Content API endpoint URL

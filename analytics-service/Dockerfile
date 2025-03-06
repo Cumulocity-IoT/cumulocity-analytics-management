@@ -49,7 +49,7 @@ COPY requirements.txt /apama_work/
 RUN /usr/local/bin/pip3.10 install --no-cache-dir -r requirements.txt
 
 # Copy application files
-COPY flask_wrapper.py c8y_agent.py /apama_work/
+COPY flask_wrapper.py c8y_agent.py extension_builder.py monitor_downloader.py solution_utils.py /apama_work/
 
 # Set the default command
 CMD ["/usr/local/bin/python3.10", "flask_wrapper.py"]

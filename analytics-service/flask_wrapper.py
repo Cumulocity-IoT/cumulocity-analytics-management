@@ -1,3 +1,4 @@
+from typing import Dict, Optional
 import requests
 from flask import Flask, request, send_file, make_response, jsonify
 import logging
@@ -9,15 +10,7 @@ import io
 import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
-from utils import (
-    handle_errors,
-    create_error_response,
-    get_repository_headers,
-    github_web_url_to_content_api,
-    parse_boolean,
-    remove_root_folders,
-    extract_raw_path,
-)
+from solution_utils import handle_errors,create_error_response,github_web_url_to_content_api,parse_boolean,remove_root_folders,extract_raw_path
 
 # Configure logging
 logging.basicConfig(
@@ -644,6 +637,21 @@ def get_cep_ctrl_status():
     if result is None:
         return create_error_response("CEP control status not found", 404)
     return jsonify(result)
+
+def get_repository_headers(
+    request, repository_id: Optional[str] = None
+) -> Dict[str, str]:
+    headers = {"Accept": "application/vnd.github.v3.raw"}
+    if repository_id:
+        repository_configuration = agent.load_repository(
+            request=request, repository_id=repository_id, replace_access_token=False
+        )
+        if "accessToken" in repository_configuration:
+            headers["Authorization"] = (
+                f"Bearer {repository_configuration['accessToken']}"
+            )
+            logger.info("Access token found and added to headers")
+    return headers
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)
