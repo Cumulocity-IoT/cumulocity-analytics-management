@@ -38,7 +38,7 @@ import {
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
-import { distinctUntilChanged, map, Observable } from 'rxjs';
+import { distinctUntilChanged, filter, map, Observable } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
 
@@ -146,8 +146,16 @@ export class SampleGridComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.samples$ =
-      this.repositoryService.getCEP_BlockSamples();
+    this.samples$ = this.repositoryService.getCEP_BlockSamples().pipe(
+      // Extract the array from the observable
+      map(blocks => blocks.filter(block =>
+        // 1. Type is "dir" OR
+        block.type === 'dir' ||
+        // 2. File extension is "mon" OR
+        (block.file && (block.file.toLowerCase().endsWith('.mon') || block.file.toLowerCase().endsWith('.py'))) ||
+        // 3. It's a file and name is "extension.yaml"
+        (block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml')
+      )));
     this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
@@ -169,18 +177,18 @@ export class SampleGridComponent implements OnInit {
 
   initializeActiveRepository(): void {
     // Subscribe to repositories$ to find and set the active repository
-    
+
     this.repositoryService.getRepositories().pipe(
       // Transform the array to find the enabled repository
       map(repositories => repositories.find(repo => repo.enabled)),
       // Only emit when the enabled repository changes
-      distinctUntilChanged((prev, curr) => 
+      distinctUntilChanged((prev, curr) =>
         prev?.id === curr?.id && prev?.enabled === curr?.enabled
       )
     ).subscribe(enabledRepository => {
       // Set the active repository
       this.activeRepository = enabledRepository || null;
-      
+
       // You can perform additional actions here when active repository changes
       console.log('Active repository changed:', this.activeRepository);
     });
@@ -225,16 +233,30 @@ export class SampleGridComponent implements OnInit {
   }
 
   checkSelection(ids: string[]) {
+    // console.log("Selected items", ids);
+    let errorSelection = false;
+    let errorItem;
     this.samples.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
         );
-        // does not work and results in loops
-        // this.dataGrid.setItemsSelected([], true);
-        // this.dataGrid.setAllItemsSelected(false)
+        errorSelection = true;
+        errorItem = sample;
+      }
+      if (ids.includes(sample.id) && sample.type == "file") {
+        if (!sample.file.endsWith(".mon") && sample.file !== "extensions.yaml") {
+          errorSelection = true;
+          errorItem = sample;
+        }
       }
     });
+    if (errorSelection) {
+      setTimeout(() => {
+        this.dataGrid.setItemsSelected([errorItem], false);
+        this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!")
+      }, 300);
+    }
   }
 
   async createExtensionFromList(ids: string[]) {
@@ -280,4 +302,5 @@ export class SampleGridComponent implements OnInit {
   async loadSamples() {
     this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
   }
+
 }

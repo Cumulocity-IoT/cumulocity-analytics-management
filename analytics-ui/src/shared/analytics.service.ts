@@ -107,6 +107,35 @@ export class AnalyticsService {
     );
   }
 
+
+  async createExtensionFromYaml(
+    name: string,
+    yaml: CEP_Block,
+    repository: Repository,
+    upload: boolean,
+    deploy: boolean,
+  ): Promise<IFetchResponse> {
+    console.log('Create extensions for:', name, yaml);
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/yaml`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          yaml: yaml,
+          repository: repository,
+          upload: upload,
+          deploy: deploy,
+        }),
+        method: 'POST',
+        responseType: 'blob'
+      }
+    );
+  }
+
   async createExtensionFromRepository(
     name: string,
     upload: boolean,

@@ -23,6 +23,7 @@ export class ExtensionCreateComponent implements OnInit {
   backendDeployed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
     false
   );
+  readonly DESCRIPTOR_YAML = "extensions.yaml";
 
   constructor(
     public analyticsService: AnalyticsService,
@@ -50,19 +51,6 @@ export class ExtensionCreateComponent implements OnInit {
       {
         fieldGroupClassName: 'row',
         fieldGroup: [
-          // {
-          //   className: 'col-lg-6',
-          //   key: 'upload',
-          //   type: CustomSwitchField,
-          //   defaultValue: true,
-          //   wrappers: ['c8y-form-field'],
-          //   templateOptions: {
-          //     label: 'Upload extension',
-          //     switchMode: true,
-          //     description:
-          //       'The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.'
-          //   }
-          // },
           {
             className: 'col-lg-12',
             template: '<div class="">Only after the restart, blocks are available to models in the Analytics Builder</div>',
@@ -77,8 +65,6 @@ export class ExtensionCreateComponent implements OnInit {
               label: 'Restart to deploy',
               switchMode: true,
               hideLabel: true,
-              // description:
-              //   'Only after restart blocks are available__________________________________________________________.'
             }
           }
         ]
@@ -107,14 +93,24 @@ export class ExtensionCreateComponent implements OnInit {
     console.log('Create extension');
     let response;
 
-    if (this.monitors) {
-      response = await this.analyticsService.createExtensionFromList(
-        this.configuration.name,
-        this.monitors,
-        this.activeRepository,
-        true,
-        this.configuration.deploy,
-      );
+    if (this.monitors && this.monitors.length > 0) {
+      if (this.monitors[0].file === this.DESCRIPTOR_YAML) {
+        response = await this.analyticsService.createExtensionFromYaml(
+          this.configuration.name,
+          this.monitors[0],
+          this.activeRepository,
+          true,
+          this.configuration.deploy,
+        );
+      } else {
+        response = await this.analyticsService.createExtensionFromList(
+          this.configuration.name,
+          this.monitors,
+          this.activeRepository,
+          true,
+          this.configuration.deploy,
+        );
+      }
     } else {
       response = await this.analyticsService.createExtensionFromRepository(
         this.configuration.name,
