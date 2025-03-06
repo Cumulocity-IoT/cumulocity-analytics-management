@@ -11,6 +11,7 @@ import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
 from solution_utils import handle_errors,create_error_response,github_web_url_to_content_api,parse_boolean,remove_root_folders,extract_raw_path
+import yaml 
 
 # Configure logging
 logging.basicConfig(
@@ -387,18 +388,27 @@ def create_extension_zip_from_yaml():
     repository_configuration = agent.load_repository(
         request=request, repository_id=repository["id"], replace_access_token=False
     )
+    base_url = repository_configuration["url"]
 
     with tempfile.TemporaryDirectory() as work_temp_dir:
         # Parse YAML and download files
         try:
             headers = get_repository_headers(request, repository_configuration["id"])
-            base_url = repository["url"]
+            url = yaml_data["url"]
+            response = requests.get(url, headers=headers, allow_redirects=True)
+            yaml_content = response.text
+            yaml_data = yaml.safe_load(yaml_content)
 
-            # Flatten the YAML structure to get all files
+            # Now iterate through the parsed structure
             files_to_download = []
-            for category, items in yaml_data.items():
-                for item in items:
-                    files_to_download.append(item)
+            # Flatten the YAML structure to get all files
+            if yaml_data and isinstance(yaml_data, dict):
+                for category, items in yaml_data.items():
+                    if isinstance(items, list):
+                        for item in items:
+                            files_to_download.append(item)
+                    else:
+                        logger.warning(f"Category '{category}' doesn't contain a list: {items}")
 
             if not files_to_download:
                 return create_error_response(
@@ -408,8 +418,9 @@ def create_extension_zip_from_yaml():
             # Download each file
             for file_path in files_to_download:
                 file_url = f"{base_url}/{file_path}"
-                download_github_content(file_url, headers, work_temp_dir)
-                logger.info(f"Downloaded {file_path} from {file_url}")
+                api_url = github_web_url_to_content_api(file_url)
+                download_github_content(api_url, headers, work_temp_dir)
+                logger.info(f"Downloaded {file_path} from {api_url}")
 
         except Exception as e:
             logger.error(
