@@ -255,7 +255,7 @@ export class SampleGridComponent implements OnInit {
       setTimeout(() => {
         this.dataGrid.setItemsSelected([errorItem], false);
         this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!")
-      }, 300);
+      }, 0);
     }
   }
 

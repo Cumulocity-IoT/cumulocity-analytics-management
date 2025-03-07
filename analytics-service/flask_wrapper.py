@@ -151,7 +151,7 @@ def update_repositories():
     return agent.update_repositories(request, repositories)
 
 
-def download_github_content(url, headers, work_dir, item=None):
+def download_github_content(url, headers, work_dir,skip_root_folder=True, item=None):
     """
     Download content from GitHub, handling both files and directories.
     If item is provided, it's a specific file/directory to download.
@@ -175,8 +175,9 @@ def download_github_content(url, headers, work_dir, item=None):
             # Check if response is a list of items or a single item
             if isinstance(content_response, list):
                 for item in content_response:
-                    item["path"] = remove_root_folders(item["path"], 1)
-                    download_github_content(url, headers, work_dir, item)
+                    if (skip_root_folder):
+                        item["path"] = remove_root_folders(item["path"], 1)
+                    download_github_content(url, headers, work_dir, skip_root_folder, item)
             else:
                 logger.warning(f"Unexpected content format from {url}")
             return
@@ -198,7 +199,11 @@ def download_github_content(url, headers, work_dir, item=None):
     logger.info(f"Processing {item_type}: {item_path}")
 
     # Extract relative path by removing left folder name
-    relative_path = remove_root_folders(item_path, 1)
+    if (skip_root_folder):
+        relative_path = remove_root_folders(item_path, 1)
+    else:
+        relative_path = item_path
+        
 
     # Full path in the work directory
     full_path = os.path.join(work_dir, relative_path)
@@ -269,7 +274,7 @@ def download_github_content(url, headers, work_dir, item=None):
         if isinstance(dir_contents, list):
             for dir_item in dir_contents:
                 dir_item["path"] = remove_root_folders(dir_item["path"], 1)
-                download_github_content(url, headers, work_dir, dir_item)
+                download_github_content(url, headers, work_dir, skip_root_folder, dir_item)
         else:
             logger.warning(f"Expected directory listing as a list for {item_path}")
 
@@ -419,7 +424,7 @@ def create_extension_zip_from_yaml():
             for file_path in files_to_download:
                 file_url = f"{base_url}/{file_path}"
                 api_url = github_web_url_to_content_api(file_url)
-                download_github_content(api_url, headers, work_temp_dir)
+                download_github_content(api_url, headers, work_temp_dir, False)
                 logger.info(f"Downloaded {file_path} from {api_url}")
 
         except Exception as e:
