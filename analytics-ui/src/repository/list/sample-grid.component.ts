@@ -123,15 +123,6 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       visible: false
     },
-    // {
-    //   name: 'url',
-    //   header: 'Link Github',
-    //   path: 'url',
-    //   dataType: ColumnDataType.TextLong,
-    //   filterable: true,
-    //   visible: true,
-    //   cellRendererComponent: LinkRendererComponent
-    // }
   ];
 
   pagination: Pagination = {
@@ -190,7 +181,7 @@ export class SampleGridComponent implements OnInit {
       this.activeRepository = enabledRepository || null;
 
       // You can perform additional actions here when active repository changes
-      console.log('Active repository changed:', this.activeRepository);
+      // console.log('Active repository changed:', this.activeRepository);
     });
   }
 

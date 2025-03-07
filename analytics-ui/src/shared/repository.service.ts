@@ -222,6 +222,7 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     return forkJoin(
       enabledRepos.map(repo => this.getCachedBlockSamples(repo))
     ).pipe(
+      tap( qq => {console.log("Hello I", qq.flat())}),
       map(blocks => this.processBlocksWithStatus(blocks.flat(), loaded))
     );
   }
@@ -233,11 +234,12 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
         this.fetchBlockSamples(repository).pipe(shareReplay(1))
       );
     }
-    return this.blockCache.get(repository.id);
+    return this.blockCache.get(repository.id).pipe(tap( qq => {console.log("Hello II", qq.flat())}));
   }
 
   private fetchBlockSamples(repository: Repository): Observable<CEP_Block[]> {
     return from(this.getGitHubContent(repository)).pipe(
+      tap( qq => {console.log("Hello III", qq.flat())}),
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
         this.handleError(error);
@@ -282,12 +284,12 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
 
       return forkJoin(
         blocks.map(block => {
-          if (block.type === 'file' && block.name.endsWith('.mon')) {
+          if (block.type === 'file' && block.file.endsWith('.mon')) {
             return this.getCEP_BlockContent(block, true, true).pipe(
               map(fqn => ({ ...block, id: fqn }))
             );
           } else {
-            return of({ ...block, id: block.name });
+            return of({ ...block, id: block.file });
           }
         })
       );
