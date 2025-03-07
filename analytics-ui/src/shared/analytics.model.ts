@@ -55,6 +55,7 @@ export interface CEP_Block {
   path?: string;
   custom: boolean;
   extension?: string;
+  resultingExtension?: string;
   repositoryName: string;
   repositoryId: string;
   category?: Category;

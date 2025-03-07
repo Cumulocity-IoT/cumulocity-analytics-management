@@ -199,7 +199,33 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
   }
 
   getCEP_BlockSamples(): Observable<CEP_Block[]> {
-    return this.cepBlockSamples$;
+    return this.cepBlockSamples$.pipe(
+      // First map to check if 'extensions.yaml' exists in the array
+      map(blocks => {
+        // Check if 'extensions.yaml' exists in the blocks array
+        const hasExtensionsYaml = blocks.some(block =>
+          block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+        );
+
+        // If 'extensions.yaml' exists, only return that
+        if (hasExtensionsYaml) {
+          return blocks.filter(block =>
+            block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+          );
+        }
+        // Otherwise, return directories and .mon files
+        else {
+          return blocks.filter(block =>
+            // Type is "dir" OR
+            block.type === 'dir' && !block.file.startsWith(".") ||
+            // File extension is "mon" or "py"
+            (block.file && (
+              block.file.toLowerCase().endsWith('.mon')
+            ))
+          );
+        }
+      })
+    );
   }
 
   updateCEP_BlockSamples(hideInstalled: boolean): void {
@@ -222,7 +248,7 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     return forkJoin(
       enabledRepos.map(repo => this.getCachedBlockSamples(repo))
     ).pipe(
-      tap( qq => {console.log("Hello I", qq.flat())}),
+      // tap( qq => {console.log("Hello I", qq.flat())}),
       map(blocks => this.processBlocksWithStatus(blocks.flat(), loaded))
     );
   }
@@ -234,7 +260,9 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
         this.fetchBlockSamples(repository).pipe(shareReplay(1))
       );
     }
-    return this.blockCache.get(repository.id).pipe(tap( qq => {console.log("Hello II", qq.flat())}));
+    return this.blockCache.get(repository.id).pipe(
+     // tap( qq => {console.log("Hello II", qq.flat())})
+    );
   }
 
   private fetchBlockSamples(repository: Repository): Observable<CEP_Block[]> {
