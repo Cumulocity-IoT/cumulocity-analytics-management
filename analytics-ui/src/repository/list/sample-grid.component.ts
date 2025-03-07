@@ -138,15 +138,32 @@ export class SampleGridComponent implements OnInit {
 
   ngOnInit() {
     this.samples$ = this.repositoryService.getCEP_BlockSamples().pipe(
-      // Extract the array from the observable
-      map(blocks => blocks.filter(block =>
-        // 1. Type is "dir" OR
-        block.type === 'dir' ||
-        // 2. File extension is "mon" OR
-        (block.file && (block.file.toLowerCase().endsWith('.mon') || block.file.toLowerCase().endsWith('.py'))) ||
-        // 3. It's a file and name is "extension.yaml"
-        (block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml')
-      )));
+      // First map to check if 'extensions.yaml' exists in the array
+      map(blocks => {
+        // Check if 'extensions.yaml' exists in the blocks array
+        const hasExtensionsYaml = blocks.some(block => 
+          block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+        );
+    
+        // If 'extensions.yaml' exists, only return that
+        if (hasExtensionsYaml) {
+          return blocks.filter(block => 
+            block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+          );
+        } 
+        // Otherwise, return directories and .mon files
+        else {
+          return blocks.filter(block =>
+            // Type is "dir" OR
+            block.type === 'dir' && !block.file.startsWith(".") ||
+            // File extension is "mon" or "py"
+            (block.file && (
+              block.file.toLowerCase().endsWith('.mon')
+            ))
+          );
+        }
+      })
+    );
     this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
