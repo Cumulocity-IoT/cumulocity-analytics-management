@@ -35,7 +35,7 @@ export class ExtensionCreateComponent implements OnInit {
 
   ngOnInit() {
     this.configurationIsExtension = !! this.extensionNames;
-    this.configuration['name'] = this.monitors[0].name;
+    this.configuration['name'] = this.monitors && this.monitors.length >0 ? this.monitors[0].name: undefined;
     this.isDeployed();
     this.configFormlyFields = [
       {
@@ -65,7 +65,7 @@ export class ExtensionCreateComponent implements OnInit {
             wrappers: ['c8y-form-field'],
             templateOptions: {
               label: 'Available Extensions',
-              description: 'The following extensions will be included in this package',
+              description: 'The following extensions will be included',
               extensionNames: this.extensionNames || [], // Pass your extension names array here
               readonly: true
             },
