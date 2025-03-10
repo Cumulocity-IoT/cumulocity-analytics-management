@@ -5,6 +5,7 @@ import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, Repository } from '../../shared/analytics.model';
+import { ExtensionListComponent } from '../list/extension-list.component';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -13,6 +14,7 @@ import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, Repository } from '..
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
   @Input() monitors: CEP_Block[];
+  @Input() extensionNames: string[];
   @Input() activeRepository: Repository;
   configuration: any = {};
 
@@ -24,6 +26,7 @@ export class ExtensionCreateComponent implements OnInit {
     false
   );
   readonly DESCRIPTOR_YAML = "extensions.yaml";
+  configurationIsExtension: boolean;
 
   constructor(
     public analyticsService: AnalyticsService,
@@ -31,6 +34,7 @@ export class ExtensionCreateComponent implements OnInit {
   ) { }
 
   ngOnInit() {
+    this.configurationIsExtension = !! this.extensionNames;
     this.isDeployed();
     this.configFormlyFields = [
       {
@@ -43,8 +47,28 @@ export class ExtensionCreateComponent implements OnInit {
             wrappers: ['c8y-form-field'],
             templateOptions: {
               label: 'Name Extension',
-              required: true
-            }
+              required: true,
+            }, 
+            hideExpression: this.configurationIsExtension
+          }
+        ]
+      },
+      // Extension list display
+      {
+        fieldGroupClassName: 'row',
+        fieldGroup: [
+          {
+            className: 'col-lg-12',
+            key: 'extensions',
+            type: ExtensionListComponent, // Custom type we'll define
+            wrappers: ['c8y-form-field'],
+            templateOptions: {
+              label: 'Available Extensions',
+              description: 'The following extensions will be included in this package',
+              extensionNames: this.extensionNames || [], // Pass your extension names array here
+              readonly: true
+            },
+            hideExpression: !this.configurationIsExtension
           }
         ]
       },

@@ -38,9 +38,10 @@ import {
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
-import { distinctUntilChanged, filter, map, Observable } from 'rxjs';
+import { catchError, distinctUntilChanged, filter, map, Observable, of, tap } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
+import * as jsyaml from 'js-yaml';
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -248,20 +249,85 @@ export class SampleGridComponent implements OnInit {
         monitors.push(sample);
       }
     });
-    const initialState = {
-      activeRepository: this.activeRepository,
-      monitors
-    };
 
-    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-      class: 'modal-lg',
-      initialState
-    });
+    // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
+    // Python:
+    //   - plugin.yaml
+    //   - Python.mon
+    //   - pythonBlockPlugin.py
+    //   - venv
+    // Offset:
+    //   - Offset.mon
 
-    modalRef.content.closeSubject.subscribe(() => {
-      this.dataGrid.cancel()
-      modalRef.hide()
-    });
+    if (this.samples[0].file === 'extensions.yaml') {
+      let extensionNames;
+      const source$ = this.repositoryService.getCEP_BlockContent(
+        this.samples[0],
+        true,
+        false
+      ).pipe(
+        // Parse content of YAML file and return list of first level entries as string[]
+        map(content => {
+          try {
+            // Parse the YAML content
+            const yamlContent = jsyaml.load(content);
+
+            // Extract the first level keys (extension names)
+            if (yamlContent && typeof yamlContent === 'object') {
+              return Object.keys(yamlContent);
+            } else {
+              console.warn('Invalid YAML content structure in extensions.yaml');
+              return [];
+            }
+          } catch (error) {
+            console.error('Error parsing extensions.yaml content:', error);
+            return [];
+          }
+        }),
+        tap(exN => {
+          console.log('Available extensions:', extensionNames);
+          // You can store the result in a class property if needed
+          extensionNames = exN;
+        }),
+        catchError(error => {
+          console.error('Error processing extensions.yaml:', error);
+          return of([]);  // Return empty array in case of error
+        })
+      );
+
+      // Subscribe to the observable to process the data
+      source$.subscribe(extensionNames => {
+        const initialState = {
+          activeRepository: this.activeRepository,
+          extensionNames
+        };
+  
+        const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+          class: 'modal-lg',
+          initialState
+        });
+  
+        modalRef.content.closeSubject.subscribe(() => {
+          this.dataGrid.cancel()
+          modalRef.hide()
+        });
+      });
+    } else {
+      const initialState = {
+        activeRepository: this.activeRepository,
+        monitors
+      };
+
+      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+        class: 'modal-lg',
+        initialState
+      });
+
+      modalRef.content.closeSubject.subscribe(() => {
+        this.dataGrid.cancel()
+        modalRef.hide()
+      });
+    }
   }
 
 
