@@ -77,7 +77,7 @@ export class ExtensionAddComponent {
           break;
         }
       }
-      if (this.isUpdate) {
+      if (this.isUpdate && this.mode == 'add' ) {
           this.done();
           this.confirmUpdate();
       } else {
@@ -118,6 +118,7 @@ export class ExtensionAddComponent {
     this.analyticsService.cancelExtensionCreation(this.createdApp);
     this.createdApp = null;
   }
+
   confirmUpdate() {
     const initialState = {
       title: 'Update extension',
