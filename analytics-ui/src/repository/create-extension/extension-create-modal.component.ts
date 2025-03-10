@@ -35,6 +35,7 @@ export class ExtensionCreateComponent implements OnInit {
 
   ngOnInit() {
     this.configurationIsExtension = !! this.extensionNames;
+    this.configuration['name'] = this.monitors[0].name;
     this.isDeployed();
     this.configFormlyFields = [
       {

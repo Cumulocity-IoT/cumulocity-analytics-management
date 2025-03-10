@@ -10,11 +10,16 @@ import { FieldType } from '@ngx-formly/core';
         {{ to.description }}
       </div>
       <div class="extension-list" *ngIf="to.extensionNames?.length > 0">
-        <ul class="list-group">
-          <li class="list-group-item" *ngFor="let extension of to.extensionNames">
-            <i class="fa fa-cube mr-2"></i> {{ extension }}
-          </li>
-        </ul>
+        <table class="extension-table">
+          <tbody>
+            <tr *ngFor="let extension of to.extensionNames; let i = index" class="extension-row">
+              <td class="number-cell">{{ i + 1 }}</td>
+              <td class="extension-cell">
+                <i class="fa fa-cube mr-2"></i> {{ extension }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
       <div class="no-extensions" *ngIf="!to.extensionNames || to.extensionNames.length === 0">
         <em>No extensions found in the package.</em>
@@ -29,9 +34,27 @@ import { FieldType } from '@ngx-formly/core';
       margin-bottom: 0.5rem;
       color: #666;
     }
-    .list-group-item {
+    .extension-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0 6px;
+    }
+    .extension-row {
       background-color: #f8f9fa;
-      border: 1px solid #e9ecef;
+    }
+    .number-cell {
+      width: 40px;
+      text-align: center;
+      background-color: #e9ecef;
+      font-weight: bold;
+      padding: 8px;
+      border-top-left-radius: 4px;
+      border-bottom-left-radius: 4px;
+    }
+    .extension-cell {
+      padding: 8px 12px;
+      border-top-right-radius: 4px;
+      border-bottom-right-radius: 4px;
     }
     .no-extensions {
       padding: 0.75rem;
