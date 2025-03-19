@@ -9,6 +9,7 @@ import {
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
+  IResult,
   IResultList,
   Realtime,
 } from '@c8y/client';
@@ -197,11 +198,12 @@ export class AnalyticsService {
   async deleteExtension(
     app: IManagedObject,
     showSuccessMessage
-  ): Promise<void> {
-    await this.inventoryBinaryService.delete(app.id);
+  ): Promise<IResult<null>> {
+    const result = await this.inventoryBinaryService.delete(app.id);
     if (showSuccessMessage)
       this.alertService.success(gettext('Extension deleted.'));
     this.extensionChanged.emit(app);
+    return result;
   }
 
   async clearCaches() {
@@ -464,16 +466,23 @@ export class AnalyticsService {
   ): Promise<IManagedObjectBinary> {
     let extensionToCreate: Partial<IManagedObject> = extension;
     if (mode === 'update') {
-      await this.deleteExtension(extension, false);
-      extensionToCreate = {
-        name: extension.name,
-        pas_extension: extension.name
-      };
+      try {
+        const result_01 = await this.deleteExtension(extension, false);
+        extensionToCreate = {
+          name: extension.name,
+          pas_extension: extension.name
+        };
+        const result_02 =
+          await this.inventoryBinaryService.create(file, extensionToCreate)
+          ;
+        if (!result_02.res.ok) this.alertService.warning(`Could not upload ${extension.name}`);
+        return result_02.data;
+      } catch (error) {
+        // Handle the error
+        //this.alertService.danger(`Error processing extension!`);
+        return;
+      }
     }
-    const result2 = (
-      await this.inventoryBinaryService.create(file, extensionToCreate)
-    ).data;
-    return result2;
   }
 
   cancelExtensionCreation(app: Partial<IManagedObject>): void {

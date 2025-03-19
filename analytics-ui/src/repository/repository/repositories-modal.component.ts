@@ -1,8 +1,8 @@
-import { Component, OnDestroy, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, ViewEncapsulation } from '@angular/core';
 import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import { AlertService, ModalLabels } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
-import { map, Observable, Subject, take } from 'rxjs';
+import { Observable, Subject, take } from 'rxjs';
 import {
   ConfirmationModalComponent,
   Repository,
