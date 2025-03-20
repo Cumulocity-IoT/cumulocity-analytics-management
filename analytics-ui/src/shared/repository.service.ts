@@ -247,13 +247,15 @@ export class RepositoryService {
           // Return the Observable directly since switchMap will flatten it
           return this.getSectionsFromExtensionYAML(extensionsYamlItem).pipe(
             map(sectionNames => {
+              // Generate all UUIDs at once before mapping
+              const uuids = sectionNames.map(() => uuidCustom());
               // Map each section name to a RepositoryItem
-              return sectionNames.map(name => {
+              return sectionNames.map((name, index) => {
                 // Create a new repository item by copying properties from the YAML item
                 // but replace the name with the section name
                 return {
                   ...extensionsYamlItem,
-                  id: uuidCustom(),
+                  id: uuids[index], // Use the pre-generated UUID
                   name: name,
                   // Optionally set other properties to indicate this is a YAML section
                   isYamlSection: true,

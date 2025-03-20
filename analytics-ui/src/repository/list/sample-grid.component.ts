@@ -39,7 +39,7 @@ import {
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
-import { distinctUntilChanged, map, Observable } from 'rxjs';
+import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 
@@ -53,14 +53,17 @@ import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 export class SampleGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })
   dataGrid: DataGridComponent;
+
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
   loading: boolean = false;
   singleSelection: boolean = false;
   showMonitorEditor: boolean = false;
+
   activeRepository: Repository;
-  samples$: Observable<RepositoryItem[]>;
-  samples: RepositoryItem[];
+  repositoryItems$: Observable<RepositoryItem[]>;
+  repositoryItems: RepositoryItem[];
+
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
@@ -124,13 +127,15 @@ export class SampleGridComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.samples$ = this.repositoryService.getRepositoryItemsAnalyzed();
-    this.samples$?.subscribe((samples) => (this.samples = samples));
+    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
+      shareReplay(1)
+    );
+    this.repositoryItems$?.subscribe((samples) => (this.repositoryItems = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
       icon: 'export',
-      callback: this.createExtensionFromList.bind(this)
+      callback: this.createExtension.bind(this)
     });
 
     this.actionControls.push({
@@ -205,7 +210,7 @@ export class SampleGridComponent implements OnInit {
     // console.log("Selected items", ids);
     let errorSelection = false;
     let errorItem;
-    this.samples.forEach((sample) => {
+    this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
@@ -228,15 +233,14 @@ export class SampleGridComponent implements OnInit {
     }
   }
 
-  async createExtensionFromList(ids: string[]) {
-    const monitors = [];
-    this.samples.forEach((sample) => {
+  async createExtension(ids: string[]) {
+    const selectedMonitors: RepositoryItem[] = [];
+    this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
-        monitors.push(sample);
+        selectedMonitors.push(sample);
       }
     });
 
-    const firstRepoItem = this.samples[0];
     // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
     // Python:
     //   - plugin.yaml
@@ -246,14 +250,15 @@ export class SampleGridComponent implements OnInit {
     // Offset:
     //   - Offset.mon
 
-    if (firstRepoItem.file === DESCRIPTOR_YAML) {
+    if (selectedMonitors.length > 0 && selectedMonitors[0].extensionsYamlItem) {
       const source$ = this.repositoryService.getSectionsFromExtensionYAML(
-        firstRepoItem);
+        selectedMonitors[0]);
 
       // Subscribe to the observable to process the data
       source$.subscribe(extensionNames => {
         const initialState = {
           activeRepository: this.activeRepository,
+          monitors: selectedMonitors,
           extensionNames
         };
   
@@ -270,7 +275,7 @@ export class SampleGridComponent implements OnInit {
     } else {
       const initialState = {
         activeRepository: this.activeRepository,
-        monitors
+        monitors: selectedMonitors
       };
 
       const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
@@ -283,23 +288,6 @@ export class SampleGridComponent implements OnInit {
         modalRef.hide()
       });
     }
-  }
-
-
-  async createExtensionFromRepository() {
-    const initialState = {
-      activeRepository: this.activeRepository
-    };
-
-    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-      class: 'modal-lg',
-      initialState
-    });
-
-    modalRef.content.closeSubject.subscribe(() => {
-      this.dataGrid.cancel()
-      modalRef.hide()
-    });
   }
 
   async loadSamples() {
