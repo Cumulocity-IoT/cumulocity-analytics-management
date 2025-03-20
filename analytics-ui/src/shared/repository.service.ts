@@ -4,6 +4,7 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { Injectable } from '@angular/core';
 import {
   FetchClient,
+  IFetchResponse,
 } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
 import * as _ from 'lodash';
@@ -13,6 +14,7 @@ import {
   BACKEND_PATH_BASE,
   CEP_Block,
   DESCRIPTOR_YAML,
+  EXTENSION_ENDPOINT,
   Repository,
   REPOSITORY_CONFIGURATION_ENDPOINT,
   REPOSITORY_CONTENT_ENDPOINT,
@@ -239,7 +241,7 @@ export class RepositoryService {
         const itemExtensionsYaml = items.filter(block =>
           block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
         );
-        
+
         if (itemExtensionsYaml && itemExtensionsYaml.length > 0) {
           const extensionsYamlItem = itemExtensionsYaml[0];
           // Return the Observable directly since switchMap will flatten it
@@ -254,7 +256,8 @@ export class RepositoryService {
                   id: uuidCustom(),
                   name: name,
                   // Optionally set other properties to indicate this is a YAML section
-                  isYamlSection: true
+                  isYamlSection: true,
+                  extensionsYamlItem
                 };
               });
             })
@@ -482,6 +485,90 @@ export class RepositoryService {
         console.error(`Error processing${DESCRIPTOR_YAML} content:`, error);
         return of([]);  // Return empty array in case of error
       })
+    );
+  }
+
+  async createExtensionFromList(
+    name: string,
+    monitors: RepositoryItem[],
+    repository: Repository,
+    upload: boolean,
+    deploy: boolean,
+  ): Promise<IFetchResponse> {
+    console.log('Create extensions for:', name, monitors);
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/list`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          monitors: monitors,
+          repository: repository,
+          upload: upload,
+          deploy: deploy,
+        }),
+        method: 'POST',
+        responseType: 'blob'
+      }
+    );
+  }
+
+  async createExtensionFromYaml(
+    name: string,
+    yaml: RepositoryItem,
+    sections: string[],
+    repository: Repository,
+    upload: boolean,
+    deploy: boolean,
+  ): Promise<IFetchResponse> {
+    console.log('Create extensions for:', name, yaml);
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/yaml`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          yaml,
+          sections,
+          repository,
+          upload,
+          deploy,
+        }),
+        method: 'POST',
+        responseType: 'blob'
+      }
+    );
+  }
+
+  async createExtensionFromRepository(
+    name: string,
+    upload: boolean,
+    deploy: boolean,
+    repository: Repository
+  ): Promise<IFetchResponse> {
+    console.log('Create extensions for:', name, repository);
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/repository`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          extension_name: name,
+          upload: upload,
+          deploy: deploy,
+          repository: repository
+        }),
+        method: 'POST',
+        responseType: 'blob'
+      }
     );
   }
 }

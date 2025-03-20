@@ -284,7 +284,7 @@ def download_github_content(url, headers, work_dir,skip_root_folder=True, item=N
 
 @app.route("/extension/repository", methods=["POST"])
 @handle_errors
-def create_extension_zip():
+def create_extension():
     """
     Get details for a specific extension.
 
@@ -366,18 +366,21 @@ def create_extension_zip():
 
 @app.route("/extension/yaml", methods=["POST"])
 @handle_errors
-def create_extension_zip_from_yaml():
+def create_extension_from_yaml():
     """
     Create multiple extension zip files from a YAML structure - one per section.
 
     Args:
+        name (string):        name for the extension
         yaml (dict):          YAML structure specifying files to include
+        sections (string[]):  sections in the yaml to include in the extension 
         repository (dict):    Repository to access
         upload (boolean):     Upload extensions
         deploy (boolean):     Deploy/restart Analytics to deploy
     """
     data = request.get_json()
     yaml_data = data.get("yaml", {})
+    sections = data.get("sections", [])
     repository = data.get("repository")
     upload = data.get("upload", False)
     deploy = data.get("deploy", False)
@@ -408,6 +411,9 @@ def create_extension_zip_from_yaml():
     # Process each section as a separate extension
     uploaded_extensions = []
     for section_idx, (section_name, files) in enumerate(yaml_structure.items()):
+        # Skip this section if the sections list isn't empty and this section isn't in it
+        if sections and section_name not in sections:
+            continue
         if not isinstance(files, list):
             logger.warning(f"Section '{section_name}' doesn't contain a list, skipping")
             continue
@@ -488,7 +494,7 @@ def create_extension_zip_from_yaml():
 
 @app.route("/extension/list", methods=["POST"])
 @handle_errors
-def create_extension_zip_from_list():
+def create_extension_from_list():
     """
     Get details for a specific extension.
 

@@ -73,6 +73,7 @@ export interface RepositoryItem {
   repositoryName: string;
   repositoryId: string;
   installed?: boolean;
+  extensionsYamlItem?: RepositoryItem;
 }
 
 export interface Repository {

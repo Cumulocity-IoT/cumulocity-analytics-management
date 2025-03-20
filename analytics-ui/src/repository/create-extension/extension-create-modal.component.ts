@@ -4,8 +4,9 @@ import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, DESCRIPTOR_YAML, Repository } from '../../shared/analytics.model';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, DESCRIPTOR_YAML, Repository, RepositoryItem } from '../../shared/analytics.model';
 import { ExtensionListComponent } from '../list/extension-list.component';
+import { RepositoryService } from 'src/shared';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -13,8 +14,8 @@ import { ExtensionListComponent } from '../list/extension-list.component';
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
-  @Input() monitors: CEP_Block[];
-  @Input() extensionNames: string[];
+  @Input() monitors: RepositoryItem[];
+  @Input() sections: string[];
   @Input() activeRepository: Repository;
   configuration: any = {};
 
@@ -30,11 +31,12 @@ export class ExtensionCreateComponent implements OnInit {
 
   constructor(
     public analyticsService: AnalyticsService,
+    public repositoryService: RepositoryService,
     public alertService: AlertService
   ) { }
 
   ngOnInit() {
-    this.configurationIsExtension = !! this.extensionNames;
+    this.configurationIsExtension = !! this.sections;
     this.configuration['name'] = this.monitors && this.monitors.length >0 ? this.monitors[0].name: undefined;
     this.isDeployed();
     this.configFormlyFields = [
@@ -66,7 +68,7 @@ export class ExtensionCreateComponent implements OnInit {
             templateOptions: {
               label: 'Available Extensions',
               description: 'The following extensions will be included',
-              extensionNames: this.extensionNames || [], // Pass your extension names array here
+              extensionNames: this.sections || [], // Pass your extension names array here
               readonly: true
             },
             hideExpression: !this.configurationIsExtension
@@ -119,16 +121,18 @@ export class ExtensionCreateComponent implements OnInit {
     let response;
 
     if (this.monitors && this.monitors.length > 0) {
-      if (this.monitors[0].file === DESCRIPTOR_YAML) {
-        response = await this.analyticsService.createExtensionFromYaml(
+      if (this.monitors[0].extensionsYamlItem) {
+        const extensionsYamlItem = this.monitors[0].extensionsYamlItem;
+        response = await this.repositoryService.createExtensionFromYaml(
           this.configuration.name,
-          this.monitors[0],
+          extensionsYamlItem,
+          this.sections,
           this.activeRepository,
           true,
           this.configuration.deploy,
         );
       } else {
-        response = await this.analyticsService.createExtensionFromList(
+        response = await this.repositoryService.createExtensionFromList(
           this.configuration.name,
           this.monitors,
           this.activeRepository,
@@ -137,7 +141,7 @@ export class ExtensionCreateComponent implements OnInit {
         );
       }
     } else {
-      response = await this.analyticsService.createExtensionFromRepository(
+      response = await this.repositoryService.createExtensionFromRepository(
         this.configuration.name,
         true,
         this.configuration.deploy,
