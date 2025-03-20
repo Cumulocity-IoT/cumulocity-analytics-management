@@ -12,14 +12,17 @@ import { catchError, combineLatestWith, map, shareReplay, switchMap, take, tap }
 import {
   BACKEND_PATH_BASE,
   CEP_Block,
+  DESCRIPTOR_YAML,
   Repository,
   REPOSITORY_CONFIGURATION_ENDPOINT,
   REPOSITORY_CONTENT_ENDPOINT,
   REPOSITORY_CONTENT_LIST_ENDPOINT,
+  RepositoryItem,
   RepositoryTestResult
 } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
-import { getFileExtension, githubWebUrlToContentApi, removeFileExtension } from './utils';
+import { getFileExtension, githubWebUrlToContentApi, removeFileExtension, uuidCustom } from './utils';
+import * as jsyaml from 'js-yaml';
 
 @Injectable({
   providedIn: 'root'
@@ -27,12 +30,12 @@ import { getFileExtension, githubWebUrlToContentApi, removeFileExtension } from 
 export class RepositoryService {
   private readonly currentRepositories$ = new BehaviorSubject<Repository[]>([]);
   private originalRepositories: Repository[] = [];
-  private readonly blockCache = new Map<string, Observable<CEP_Block[]>>();
+  private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
   private readonly reloadTrigger$ = new BehaviorSubject<void>(undefined);
   private hideInstalled = false;
 
-  readonly cepBlockSamples$ = this.reloadTrigger$.pipe(
-    switchMap(() => this.loadBlocksWithStatus()),
+  readonly repositoryItems$ = this.reloadTrigger$.pipe(
+    switchMap(() => this.loadRepositoryItemsWithStatus()),
     shareReplay(1)
   );
 
@@ -64,60 +67,60 @@ export class RepositoryService {
     this.currentRepositories$.next([...current, repository]);
   }
 
-// repository.service.ts
+  // repository.service.ts
 
-async testRepository(testRepository: Repository): Promise<RepositoryTestResult> {
-  const headers = new HttpHeaders({
-    'Accept': 'application/vnd.github.v3.raw',
-    'Authorization': `Bearer ${testRepository.accessToken}`
-  });
+  async testRepository(testRepository: Repository): Promise<RepositoryTestResult> {
+    const headers = new HttpHeaders({
+      'Accept': 'application/vnd.github.v3.raw',
+      'Authorization': `Bearer ${testRepository.accessToken}`
+    });
 
-  const testUrl = githubWebUrlToContentApi(testRepository.url);
-  try {
-    const response = await this.httpClient
-      .get(testUrl, {
-        headers,
-        observe: 'response',
-        responseType: 'text'
-      })
-      .toPromise();
+    const testUrl = githubWebUrlToContentApi(testRepository.url);
+    try {
+      const response = await this.httpClient
+        .get(testUrl, {
+          headers,
+          observe: 'response',
+          responseType: 'text'
+        })
+        .toPromise();
 
-    return {
-      success: true,
-      message: 'Successfully connected to repository',
-      status: response?.status
-    };
+      return {
+        success: true,
+        message: 'Successfully connected to repository',
+        status: response?.status
+      };
 
-  } catch (error) {
-    if (error instanceof HttpErrorResponse) {
-      switch (error.status) {
-        case 401:
-          return {
-            success: false,
-            message: 'Authentication failed. Please check your access token.',
-            status: error.status
-          };
-        case 404:
-          return {
-            success: false,
-            message: 'Repository not found. Please check the URL.',
-            status: error.status
-          };
-        default:
-          return {
-            success: false,
-            message: `Failed to connect to repository. Status: ${error.status}`,
-            status: error.status
-          };
+    } catch (error) {
+      if (error instanceof HttpErrorResponse) {
+        switch (error.status) {
+          case 401:
+            return {
+              success: false,
+              message: 'Authentication failed. Please check your access token.',
+              status: error.status
+            };
+          case 404:
+            return {
+              success: false,
+              message: 'Repository not found. Please check the URL.',
+              status: error.status
+            };
+          default:
+            return {
+              success: false,
+              message: `Failed to connect to repository. Status: ${error.status}`,
+              status: error.status
+            };
+        }
       }
-    }
 
-    return {
-      success: false,
-      message: 'Failed to connect to repository. Please check your connection and try again.'
-    };
+      return {
+        success: false,
+        message: 'Failed to connect to repository. Please check your connection and try again.'
+      };
+    }
   }
-}
 
   updateRepository(updatedRepository: Repository): void {
     const current = this.currentRepositories$.value;
@@ -198,19 +201,19 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     return response.json();
   }
 
-  getCEP_BlockSamples(): Observable<CEP_Block[]> {
-    return this.cepBlockSamples$.pipe(
+  getRepositoryItems(): Observable<RepositoryItem[]> {
+    return this.repositoryItems$.pipe(
       // First map to check if 'extensions.yaml' exists in the array
       map(blocks => {
         // Check if 'extensions.yaml' exists in the blocks array
         const hasExtensionsYaml = blocks.some(block =>
-          block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+          block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
         );
 
         // If 'extensions.yaml' exists, only return that
         if (hasExtensionsYaml) {
           return blocks.filter(block =>
-            block.type !== 'dir' && block.file && block.file.toLowerCase() === 'extensions.yaml'
+            block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
           );
         }
         // Otherwise, return directories and .mon files
@@ -228,46 +231,89 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     );
   }
 
-  updateCEP_BlockSamples(hideInstalled: boolean): void {
+  getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
+    return this.repositoryItems$.pipe(
+      // Use switchMap instead of map to handle the nested Observable
+      switchMap(items => {
+        // Check if 'extensions.yaml' exists in the blocks array
+        const itemExtensionsYaml = items.filter(block =>
+          block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
+        );
+        
+        if (itemExtensionsYaml && itemExtensionsYaml.length > 0) {
+          const extensionsYamlItem = itemExtensionsYaml[0];
+          // Return the Observable directly since switchMap will flatten it
+          return this.getSectionsFromExtensionYAML(extensionsYamlItem).pipe(
+            map(sectionNames => {
+              // Map each section name to a RepositoryItem
+              return sectionNames.map(name => {
+                // Create a new repository item by copying properties from the YAML item
+                // but replace the name with the section name
+                return {
+                  ...extensionsYamlItem,
+                  id: uuidCustom(),
+                  name: name,
+                  // Optionally set other properties to indicate this is a YAML section
+                  isYamlSection: true
+                };
+              });
+            })
+          );
+        } else {
+          // Return filtered items as an Observable to match the other branch
+          return of(items.filter(item =>
+            // Type is "dir" OR
+            item.type === 'dir' && !item.file.startsWith(".") ||
+            // File extension is "mon" or "py"
+            (item.file && (
+              item.file.toLowerCase().endsWith('.mon')
+            ))
+          ));
+        }
+      })
+    );
+  }
+
+  updateRepositoryItems(hideInstalled: boolean): void {
     this.hideInstalled = hideInstalled;
     this.reloadTrigger$.next();
   }
 
   // Helper methods to break down the logic
-  private loadBlocksWithStatus() {
+  private loadRepositoryItemsWithStatus() {
     return from(this.loadRepositories()).pipe(
       combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
-      switchMap(([repos, loaded]) => this.processBlocks(repos, loaded))
+      switchMap(([repos, loaded]) => this.processRepositoryItems(repos, loaded))
     );
   }
 
-  private processBlocks(repos: Repository[], loaded: any[]): Observable<CEP_Block[]> {
+  private processRepositoryItems(repos: Repository[], loaded: any[]): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
     if (!enabledRepos.length) return of([]);
 
     return forkJoin(
-      enabledRepos.map(repo => this.getCachedBlockSamples(repo))
+      enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
     ).pipe(
       // tap( qq => {console.log("Hello I", qq.flat())}),
-      map(blocks => this.processBlocksWithStatus(blocks.flat(), loaded))
+      map(blocks => this.processRepositoryItemsWithStatus(blocks.flat(), loaded))
     );
   }
 
-  private getCachedBlockSamples(repository: Repository): Observable<CEP_Block[]> {
+  private getCachedRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
     if (!this.blockCache.has(repository.id)) {
       this.blockCache.set(
         repository.id,
-        this.fetchBlockSamples(repository).pipe(shareReplay(1))
+        this.fetchRepositoryItems(repository).pipe(shareReplay(1))
       );
     }
     return this.blockCache.get(repository.id).pipe(
-     // tap( qq => {console.log("Hello II", qq.flat())})
+      // tap( qq => {console.log("Hello II", qq.flat())})
     );
   }
 
-  private fetchBlockSamples(repository: Repository): Observable<CEP_Block[]> {
+  private fetchRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
     return from(this.getGitHubContent(repository)).pipe(
-      tap( qq => {console.log("Hello III", qq.flat())}),
+      tap(qq => { console.log("Hello III", qq.flat()) }),
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
         this.handleError(error);
@@ -276,7 +322,7 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     );
   }
 
-  private async getGitHubContent(repository: Repository): Promise<any> {
+  private async getGitHubContent(repository: Repository): Promise<RepositoryItem[]> {
     const response = await this.fetchClient.fetch(
       `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
       {
@@ -305,26 +351,26 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     return response.json();
   }
 
-  private processGitHubContent(data: any, repository: Repository): Observable<CEP_Block[]> {
+  private processGitHubContent(data: any, repository: Repository): Observable<RepositoryItem[]> {
     const blocks = Object.values(data)
       .filter(item => getFileExtension(item['name']) !== '.json')
-      .map(item => this.createCEPBlock(item, repository));
+      .map(item => this.createRepositoryItem(item, repository));
 
-      return forkJoin(
-        blocks.map(block => {
-          if (block.type === 'file' && block.file.endsWith('.mon')) {
-            return this.getCEP_BlockContent(block, true, true).pipe(
-              map(fqn => ({ ...block, id: fqn }))
-            );
-          } else {
-            return of({ ...block, id: block.file });
-          }
-        })
-      );
+    return forkJoin(
+      blocks.map(block => {
+        if (block.type === 'file' && block.file.endsWith('.mon')) {
+          return this.getRepositoryItemContent(block, true, true).pipe(
+            map(fqn => ({ ...block, id: fqn }))
+          );
+        } else {
+          return of({ ...block, id: block.file });
+        }
+      })
+    );
   }
 
-  getCEP_BlockContent(
-    block: CEP_Block,
+  getRepositoryItemContent(
+    block: RepositoryItem,
     backend: boolean,
     extractFQN_CEP_Block: boolean
   ): Observable<string> {
@@ -370,7 +416,7 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
   }
 
 
-  private createCEPBlock(item: any, repository: Repository): CEP_Block {
+  private createRepositoryItem(item: any, repository: Repository): CEP_Block {
     // if (!item.name || !item.download_url || !item.url) {
     if (!item.name || !item.url) {
       throw new Error('Missing required properties in GitHub item');
@@ -388,7 +434,7 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
     };
   }
 
-  private processBlocksWithStatus(blocks: CEP_Block[], loaded: any[]): CEP_Block[] {
+  private processRepositoryItemsWithStatus(blocks: RepositoryItem[], loaded: any[]): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));
     return this.hideInstalled
       ? blocks.filter(block => !loadedIds.has(block.id))
@@ -400,5 +446,42 @@ async testRepository(testRepository: Repository): Promise<RepositoryTestResult> 
       ? `Backend returned code ${error.status}: ${error.message}`
       : error.message;
     this.alertService.danger(message);
+  }
+
+  public getSectionsFromExtensionYAML(item: RepositoryItem): Observable<any[] | string[]> {
+    let extensionNames;
+    return this.getRepositoryItemContent(
+      item,
+      true,
+      false
+    ).pipe(
+      // Parse content of YAML file and return list of first level entries as string[]
+      map(content => {
+        try {
+          // Parse the YAML content
+          const yamlContent = jsyaml.load(content);
+
+          // Extract the first level keys (extension names)
+          if (yamlContent && typeof yamlContent === 'object') {
+            return Object.keys(yamlContent);
+          } else {
+            console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
+            return [];
+          }
+        } catch (error) {
+          console.error(`Error parsing ${DESCRIPTOR_YAML} content:`, error);
+          return [];
+        }
+      }),
+      tap(exN => {
+        console.log('Available extensions:', extensionNames);
+        // You can store the result in a class property if needed
+        extensionNames = exN;
+      }),
+      catchError(error => {
+        console.error(`Error processing${DESCRIPTOR_YAML} content:`, error);
+        return of([]);  // Return empty array in case of error
+      })
+    );
   }
 }

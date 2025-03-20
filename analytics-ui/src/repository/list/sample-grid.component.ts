@@ -32,16 +32,17 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
   CEP_Block,
+  DESCRIPTOR_YAML,
   Repository,
+  RepositoryItem,
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
-import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
-import { catchError, distinctUntilChanged, filter, map, Observable, of, tap } from 'rxjs';
+import { distinctUntilChanged, map, Observable } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
-import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
-import * as jsyaml from 'js-yaml';
+import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
+
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -55,10 +56,11 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
   loading: boolean = false;
+  singleSelection: boolean = false;
   showMonitorEditor: boolean = false;
   activeRepository: Repository;
-  samples$: Observable<CEP_Block[]>;
-  samples: CEP_Block[];
+  samples$: Observable<RepositoryItem[]>;
+  samples: RepositoryItem[];
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
@@ -68,20 +70,12 @@ export class SampleGridComponent implements OnInit {
     {
       name: 'File',
       header: 'File',
-      path: 'url',
+      path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
       visible: true,
-      cellRendererComponent: LinkRendererComponent
+      // cellRendererComponent: LinkRendererComponent
     },
-    // {
-    //   name: 'file',
-    //   header: 'File',
-    //   path: 'file',
-    //   dataType: ColumnDataType.TextLong,
-    //   filterable: true,
-    //   visible: true
-    // },
     {
       name: 'type',
       header: 'Type',
@@ -91,14 +85,6 @@ export class SampleGridComponent implements OnInit {
       cellRendererComponent: LabelRendererComponent,
       visible: true
     },
-    // {
-    //   name: 'name',
-    //   header: 'Name',
-    //   path: 'name',
-    //   dataType: ColumnDataType.TextLong,
-    //   filterable: true,
-    //   visible: true
-    // },
     {
       name: 'installed',
       header: 'Installed',
@@ -138,7 +124,7 @@ export class SampleGridComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.samples$ = this.repositoryService.getCEP_BlockSamples();
+    this.samples$ = this.repositoryService.getRepositoryItemsAnalyzed();
     this.samples$?.subscribe((samples) => (this.samples = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
@@ -179,7 +165,7 @@ export class SampleGridComponent implements OnInit {
 
   viewMonitor(block: CEP_Block) {
     const initialState = {
-      source$: this.repositoryService.getCEP_BlockContent(
+      source$: this.repositoryService.getRepositoryItemContent(
         block,
         true,
         false
@@ -208,7 +194,7 @@ export class SampleGridComponent implements OnInit {
       if (response) {
         this.activeRepository = response;
         await this.repositoryService.updateRepositories();
-        this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+        this.repositoryService.updateRepositoryItems(this.hideInstalled);
       } else {
         this.repositoryService.cancelChanges();
       }
@@ -228,7 +214,7 @@ export class SampleGridComponent implements OnInit {
         errorItem = sample;
       }
       if (ids.includes(sample.id) && sample.type == "file") {
-        if (!sample.file.endsWith(".mon") && sample.file !== "extensions.yaml") {
+        if (!sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
           errorSelection = true;
           errorItem = sample;
         }
@@ -250,6 +236,7 @@ export class SampleGridComponent implements OnInit {
       }
     });
 
+    const firstRepoItem = this.samples[0];
     // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
     // Python:
     //   - plugin.yaml
@@ -259,41 +246,9 @@ export class SampleGridComponent implements OnInit {
     // Offset:
     //   - Offset.mon
 
-    if (this.samples[0].file === 'extensions.yaml') {
-      let extensionNames;
-      const source$ = this.repositoryService.getCEP_BlockContent(
-        this.samples[0],
-        true,
-        false
-      ).pipe(
-        // Parse content of YAML file and return list of first level entries as string[]
-        map(content => {
-          try {
-            // Parse the YAML content
-            const yamlContent = jsyaml.load(content);
-
-            // Extract the first level keys (extension names)
-            if (yamlContent && typeof yamlContent === 'object') {
-              return Object.keys(yamlContent);
-            } else {
-              console.warn('Invalid YAML content structure in extensions.yaml');
-              return [];
-            }
-          } catch (error) {
-            console.error('Error parsing extensions.yaml content:', error);
-            return [];
-          }
-        }),
-        tap(exN => {
-          console.log('Available extensions:', extensionNames);
-          // You can store the result in a class property if needed
-          extensionNames = exN;
-        }),
-        catchError(error => {
-          console.error('Error processing extensions.yaml:', error);
-          return of([]);  // Return empty array in case of error
-        })
-      );
+    if (firstRepoItem.file === DESCRIPTOR_YAML) {
+      const source$ = this.repositoryService.getSectionsFromExtensionYAML(
+        firstRepoItem);
 
       // Subscribe to the observable to process the data
       source$.subscribe(extensionNames => {
@@ -348,7 +303,7 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
-    this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+    this.repositoryService.updateRepositoryItems(this.hideInstalled);
   }
 
 }

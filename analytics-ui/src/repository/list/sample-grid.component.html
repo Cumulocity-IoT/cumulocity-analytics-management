@@ -50,7 +50,7 @@
 <div class="content-fullpage border-top border-bottom">
   <c8y-data-grid *ngIf="!loading" id="dataGrid" #dataGrid [title]="titleSample | translate" [columns]="columnsSamples"
     [rows]="samples$ | async" [pagination]="pagination" [selectable]="true" (itemsSelect)="checkSelection($event)"
-    [actionControls]="actionControls" [bulkActionControls]="bulkActionControls" [singleSelection]="true" >
+    [actionControls]="actionControls" [bulkActionControls]="bulkActionControls" [singleSelection]="singleSelection" >
     <c8y-ui-empty-state [icon]="'cog'" [title]="'No samples to display.' | translate"
       [subtitle]="'Configure repositories.' | translate" [horizontal]="true">
       <button class="btn btn-link m-t-24" title="{{ 'Repositories' | translate }}" (click)="updateRepositories()">

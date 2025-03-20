@@ -61,6 +61,20 @@ export interface CEP_Block {
   category?: Category;
 }
 
+
+export interface RepositoryItem {
+  id: string;
+  name: string;
+  path?: string;
+  url: string;
+  downloadUrl: string;
+  type: string;
+  file: string;
+  repositoryName: string;
+  repositoryId: string;
+  installed?: boolean;
+}
+
 export interface Repository {
   id: string;
   name: string;
@@ -136,6 +150,9 @@ export const REPO_SAMPLES = [
     enabled: false
   }
 ] as Repository[];
+
+
+export const DESCRIPTOR_YAML = "extensions.yaml";
 
 
 export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';

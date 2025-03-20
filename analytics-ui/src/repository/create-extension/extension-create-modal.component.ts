@@ -4,7 +4,7 @@ import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, Repository } from '../../shared/analytics.model';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, DESCRIPTOR_YAML, Repository } from '../../shared/analytics.model';
 import { ExtensionListComponent } from '../list/extension-list.component';
 
 @Component({
@@ -25,7 +25,7 @@ export class ExtensionCreateComponent implements OnInit {
   backendDeployed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(
     false
   );
-  readonly DESCRIPTOR_YAML = "extensions.yaml";
+
   configurationIsExtension: boolean;
 
   constructor(
@@ -119,7 +119,7 @@ export class ExtensionCreateComponent implements OnInit {
     let response;
 
     if (this.monitors && this.monitors.length > 0) {
-      if (this.monitors[0].file === this.DESCRIPTOR_YAML) {
+      if (this.monitors[0].file === DESCRIPTOR_YAML) {
         response = await this.analyticsService.createExtensionFromYaml(
           this.configuration.name,
           this.monitors[0],
@@ -145,21 +145,7 @@ export class ExtensionCreateComponent implements OnInit {
       );
     }
     if (response.status < 400) {
-      const binary = await await response.arrayBuffer();
       this.loading = false;
-      // const blob = new Blob([binary], {
-      //   type: 'application/x-zip-compressed'
-      // });
-      // if (!this.configuration.upload) {
-      //   saveAs(blob, `${this.configuration.name}.zip`);
-      //   this.alertService.success(
-      //     `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
-      //   );
-      // } else {
-      //   this.alertService.success(
-      //     `Uploaded extension ${this.configuration.name}.zip.`
-      //   );
-      // }
       if (this.configuration.deploy) {
         this.alertService.success(
           `Created extension ${this.configuration.name}.zip has been uploaded and Streaming Analytics Engine is restarting ...`
