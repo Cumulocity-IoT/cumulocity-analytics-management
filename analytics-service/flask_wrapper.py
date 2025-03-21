@@ -420,12 +420,14 @@ def create_extension_from_yaml():
 
     # Process each section as a separate extension
     uploaded_extensions = []
+    section_idx = 0
     # Process each selected section
     for section_name in sections_to_process:
         section_data = yaml_structure[section_name]
             # Check if this section has a 'files' key
         if 'files' in section_data and isinstance(section_data['files'], list):
             files = section_data['files']
+            section_idx = section_idx +1
             logger.info(f"Processing section '{section_name}' with {len(files)} files")
         
             logger.info(f"Processing files for section '{section_name}':")
