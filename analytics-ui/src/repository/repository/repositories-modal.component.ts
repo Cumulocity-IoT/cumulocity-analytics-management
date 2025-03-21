@@ -72,6 +72,13 @@ export class RepositoriesModalComponent implements OnInit {
 
   warnAboutPATReset(): void {
     this.alertService.warning("Changing the URL will reset the PAT token. If you don't enter the token again it will be deleted.")
+    // cut off trailing /
+    // Cut off trailing slashes from URL
+    const currentUrl = this.repositoryForm.get('url').value;
+    if (currentUrl && currentUrl.endsWith('/')) {
+      const trimmedUrl = currentUrl.replace(/\/+$/, ''); // Remove all trailing slashes
+      this.repositoryForm.patchValue({ url: trimmedUrl });
+    }
   }
 
   addRepository(): void {
@@ -183,7 +190,7 @@ export class RepositoriesModalComponent implements OnInit {
   }
 
   onSave() {
-    const upRep = {...this.activeRepository};
+    const upRep = { ...this.activeRepository };
     this.closeSubject.next(upRep);
     this.closeSubject.complete();
   }
