@@ -403,6 +403,16 @@ def create_extension_from_yaml():
 
         if not yaml_structure or not isinstance(yaml_structure, dict):
             return create_error_response("Invalid YAML structure", 400)
+        
+        # Assuming yaml_structure is your loaded YAML content
+        # and sections is your array of section names to include
+
+        # If sections is empty, process all sections
+        if not sections:
+            sections_to_process = list(yaml_structure.keys())
+        else:
+            # Only process sections that exist in the YAML
+            sections_to_process = [s for s in sections if s in yaml_structure]
             
     except Exception as e:
         logger.error(f"Error fetching or parsing YAML: {e}", exc_info=True)
@@ -410,81 +420,84 @@ def create_extension_from_yaml():
 
     # Process each section as a separate extension
     uploaded_extensions = []
-    for section_idx, (section_name, files) in enumerate(yaml_structure.items()):
-        # Skip this section if the sections list isn't empty and this section isn't in it
-        if sections and section_name not in sections:
-            continue
-        if not isinstance(files, list):
-            logger.warning(f"Section '{section_name}' doesn't contain a list, skipping")
-            continue
-            
-        logger.info(f"Processing section '{section_name}' with {len(files)} files")
+    # Process each selected section
+    for section_name in sections_to_process:
+        section_data = yaml_structure[section_name]
+            # Check if this section has a 'files' key
+        if 'files' in section_data and isinstance(section_data['files'], list):
+            files = section_data['files']
+            logger.info(f"Processing section '{section_name}' with {len(files)} files")
         
-        # Create a temp dir for this extension
-        with tempfile.TemporaryDirectory() as work_temp_dir:
-            # Download all files for this section
-            try:
-                for file_path in files:
-                    file_url = f"{base_url}/{file_path}"
-                    api_url = github_web_url_to_content_api(file_url)
-                    download_github_content(api_url, headers, work_temp_dir, False)
-                    logger.info(f"Downloaded {file_path} from {api_url}")
-                    
-            except Exception as e:
-                logger.error(f"Error downloading files for section '{section_name}': {e}", exc_info=True)
-                return create_error_response(f"Failed to download files for '{section_name}': {str(e)}", 400)
-
-            # Build extension for this section
-            extension_name = section_name
-            result_extension_file = f"{extension_name}.zip"
-            result_extension_absolute = os.path.join(work_temp_dir, result_extension_file)
-            
-            try:
-                subprocess.run(
-                    [
-                        "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
-                        "build",
-                        "extension",
-                        "--input",
-                        work_temp_dir,
-                        "--output",
-                        result_extension_absolute,
-                    ],
-                    check=True,
-                )
-            except subprocess.CalledProcessError as e:
-                return create_error_response(f"Failed to build extension for '{section_name}': {str(e)}", 500)
-
-            # Handle the extension file
-            try:
-                with open(result_extension_absolute, "rb") as extension_zip:
-                    if not upload:
-                        # If not uploading, return the first extension as a file
-                        if section_idx == 0:
-                            return send_file(
-                                io.BytesIO(extension_zip.read()),
-                                mimetype="application/zip",
-                                as_attachment=True,
-                                download_name=result_extension_file,
-                            )
-                    else:
-                        # Upload the extension
-                        id = agent.upload_extension(request, extension_name, extension_zip)
-                        logger.info(f"Uploaded extension {extension_name} as {id}")
-                        uploaded_extensions.append({
-                            "name": extension_name,
-                            "id": id
-                        })
+            logger.info(f"Processing files for section '{section_name}':")
+                     
+                # Create a temp dir for this extension
+            with tempfile.TemporaryDirectory() as work_temp_dir:
+                # Download all files for this section
+                try:
+                    for file_path in files:
+                        file_url = f"{base_url}/{file_path}"
+                        logger.info(f"Downloading file '{file_url}', '{base_url}', '{file_path}'")
+                        api_url = github_web_url_to_content_api(file_url)
+                        download_github_content(api_url, headers, work_temp_dir, False)
+                        logger.info(f"Downloaded {file_path} from {api_url}")
                         
-                        # Only restart after the last extension is uploaded
-                        is_last_section = section_idx == len(yaml_structure) - 1
-                        if deploy and is_last_section and uploaded_extensions:
-                            logger.info("Restarting Analytics Builder engine")
-                            agent.restart_cep(request)
-                        
-            except Exception as e:
-                return create_error_response(f"Failed to process extension for '{section_name}': {str(e)}", 500)
-    
+                except Exception as e:
+                    logger.error(f"Error downloading files for section '{section_name}': {e}", exc_info=True)
+                    return create_error_response(f"Failed to download files for '{section_name}': {str(e)}", 400)
+
+                # Build extension for this section
+                extension_name = section_name
+                result_extension_file = f"{extension_name}.zip"
+                result_extension_absolute = os.path.join(work_temp_dir, result_extension_file)
+                
+                try:
+                    subprocess.run(
+                        [
+                            "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
+                            "build",
+                            "extension",
+                            "--input",
+                            work_temp_dir,
+                            "--output",
+                            result_extension_absolute,
+                        ],
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as e:
+                    return create_error_response(f"Failed to build extension for '{section_name}': {str(e)}", 500)
+
+                # Handle the extension file
+                try:
+                    with open(result_extension_absolute, "rb") as extension_zip:
+                        if not upload:
+                            # If not uploading, return the first extension as a file
+                            if section_idx == 0:
+                                return send_file(
+                                    io.BytesIO(extension_zip.read()),
+                                    mimetype="application/zip",
+                                    as_attachment=True,
+                                    download_name=result_extension_file,
+                                )
+                        else:
+                            # Upload the extension
+                            id = agent.upload_extension(request, extension_name, extension_zip)
+                            logger.info(f"Uploaded extension {extension_name} as {id}")
+                            uploaded_extensions.append({
+                                "name": extension_name,
+                                "id": id
+                            })
+                            
+                            # Only restart after the last extension is uploaded
+                            is_last_section = section_idx == len(yaml_structure) - 1
+                            if deploy and is_last_section and uploaded_extensions:
+                                logger.info("Restarting Analytics Builder engine")
+                                agent.restart_cep(request)
+                            
+                except Exception as e:
+                    return create_error_response(f"Failed to process extension for '{section_name}': {str(e)}", 500)
+        else:
+            logger.error(f"Section '{section_name}' has no 'files' list or invalid format")
+
     # Return the results of the uploads
     if upload:
         return {"uploaded_extensions": uploaded_extensions}, 201

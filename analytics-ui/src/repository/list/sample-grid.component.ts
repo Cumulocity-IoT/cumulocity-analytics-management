@@ -234,10 +234,16 @@ export class SampleGridComponent implements OnInit {
   }
 
   async createExtension(ids: string[]) {
+    const selectedSections: string[] = [];
     const selectedMonitors: RepositoryItem[] = [];
     this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
-        selectedMonitors.push(sample);
+        if (sample.extensionsYamlItem) {
+          selectedSections.push(sample.name);
+          selectedMonitors[0] = sample.extensionsYamlItem;
+        } else {
+          selectedMonitors.push(sample);
+        }
       }
     });
 
@@ -250,28 +256,25 @@ export class SampleGridComponent implements OnInit {
     // Offset:
     //   - Offset.mon
 
-    if (selectedMonitors.length > 0 && selectedMonitors[0].extensionsYamlItem) {
-      const source$ = this.repositoryService.getSectionsFromExtensionYAML(
-        selectedMonitors[0]);
-
+    if (selectedSections.length > 0) {
       // Subscribe to the observable to process the data
-      source$.subscribe(extensionNames => {
-        const initialState = {
-          activeRepository: this.activeRepository,
-          monitors: selectedMonitors,
-          extensionNames
-        };
-  
-        const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-          class: 'modal-lg',
-          initialState
-        });
-  
-        modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel()
-          modalRef.hide()
-        });
+
+      const initialState = {
+        activeRepository: this.activeRepository,
+        monitors: selectedMonitors,
+        sections: selectedSections
+      };
+
+      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+        class: 'modal-lg',
+        initialState
       });
+
+      modalRef.content.closeSubject.subscribe(() => {
+        this.dataGrid.cancel()
+        modalRef.hide()
+      });
+
     } else {
       const initialState = {
         activeRepository: this.activeRepository,

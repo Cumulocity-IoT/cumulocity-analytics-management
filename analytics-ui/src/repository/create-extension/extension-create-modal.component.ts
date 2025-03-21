@@ -117,15 +117,13 @@ export class ExtensionCreateComponent implements OnInit {
 
   async createExtension() {
     this.loading = true;
-    console.log('Create extension');
     let response;
 
     if (this.monitors && this.monitors.length > 0) {
-      if (this.monitors[0].extensionsYamlItem) {
-        const extensionsYamlItem = this.monitors[0].extensionsYamlItem;
+      if (this.sections && this.sections.length > 0 ) {
         response = await this.repositoryService.createExtensionFromYaml(
           this.configuration.name,
-          extensionsYamlItem,
+          this.monitors[0],
           this.sections,
           this.activeRepository,
           true,
