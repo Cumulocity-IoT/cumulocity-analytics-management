@@ -25,10 +25,12 @@ import { AnalyticsService, CEP_Extension } from '../shared';
 
 @Component({
   selector: 'a17t-extension-details',
-  templateUrl: './extension-details.component.html'
+  templateUrl: './extension-details.component.html',
+  styleUrls: ['./extension-details.component.css']
 })
 export class ExtensionDetailsComponent {
   extension: CEP_Extension;
+  extensionContent: any;
   breadcrumbConfig: { icon: string; label: string; path: string };
 
   constructor(
@@ -50,6 +52,12 @@ export class ExtensionDetailsComponent {
   async loadExtension() {
     const { name } = this.activatedRoute.snapshot.params;
     this.extension = await this.analyticsService.getExtensionDetailFromCEP(name);
+    const extensionNames = await this.analyticsService.getExtensionNamesFromCEP();
+    const key = `${name}.zip`;
+    this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
+      return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
+    }) || [];
+    // console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
   }
 
   private setBreadcrumbConfig() {

@@ -10,6 +10,8 @@ import { SharedModule } from '../shared/shared.module';
 import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-components/editor';
 import { EplConfigService } from './editor/epl-config.service';
 import { ExtensionCreateComponent } from './create-extension/extension-create-modal.component';
+import { FORMLY_CONFIG } from '@ngx-formly/core';
+import { ExtensionListComponent } from './list/extension-list.component';
 @NgModule({
   imports: [
     CoreModule,
@@ -19,20 +21,34 @@ import { ExtensionCreateComponent } from './create-extension/extension-create-mo
     PopoverModule,
     SharedModule,
     EditorComponent,
-    MonacoEditorMarkerValidatorDirective
+    MonacoEditorMarkerValidatorDirective,
   ],
   declarations: [
     SampleGridComponent,
     RepositoriesModalComponent,
     EditorModalComponent,
     ExtensionCreateComponent,
+    ExtensionListComponent
   ],
   providers: [
     EplConfigService,
     hookRoute({
       path: 'sag-ps-pkg-analytics-extension/repository',
       component: SampleGridComponent
-    })
+    }),
+    {
+      provide: FORMLY_CONFIG,
+      multi: true,
+      useValue: {
+        types: [
+          { 
+            name: 'extension-list', 
+            component: ExtensionListComponent,
+            wrappers: ['c8y-form-field']
+          },
+        ],
+      }
+    }
   ]
 })
 export class RepositoryModule {

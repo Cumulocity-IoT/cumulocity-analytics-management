@@ -64,7 +64,7 @@
   </button>
   <a
     (click)="$event.stopPropagation()"
-    *ngIf="isAppCreated && canOpenInBrowser"
+    *ngIf="isAppCreated"
     [href]="getHref(createdApp)"
     target="_blank"
     class="btn btn-primary"

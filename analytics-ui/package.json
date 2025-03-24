@@ -19,7 +19,7 @@
   "keywords": [
     "c8y"
   ],
-  "author": "murat.bayram@cumulocity.com, christof.strack@cumulocity.com",
+  "author": "christof.strack@cumulocity.com",
   "license": "Apache 2.0",
   "dependencies": {
     "@angular/animations": "^18.2.0",
@@ -38,6 +38,7 @@
     "@c8y/ngx-components": "^1021.22.0",
     "@c8y/style": "^1021.22.0",
     "@ngx-translate/core": "15.0.0",
+    "js-yaml": "^4.1.0",
     "ngx-bootstrap": "^18.0.0",
     "rxjs": "~7.8.1",
     "zone.js": "~0.14.3"
@@ -54,6 +55,7 @@
     "@semantic-release/changelog": "^6.0.2",
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",
+    "@types/js-yaml": "^4.0.9",
     "@typescript-eslint/eslint-plugin": "^7.0.2",
     "eslint-plugin-import": "^2.29.1",
     "file-loader": "^6.2.0",

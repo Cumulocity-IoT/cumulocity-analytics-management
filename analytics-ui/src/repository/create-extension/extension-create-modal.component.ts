@@ -4,9 +4,9 @@ import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { saveAs } from 'file-saver';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block } from '../../shared/analytics.model';
-import { CustomSwitchField } from '../../shared/component/custom-switch-field';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, DESCRIPTOR_YAML, Repository, RepositoryItem } from '../../shared/analytics.model';
+import { ExtensionListComponent } from '../list/extension-list.component';
+import { RepositoryService } from 'src/shared';
 
 @Component({
   selector: 'a17t-extension-create-modal',
@@ -14,7 +14,9 @@ import { CustomSwitchField } from '../../shared/component/custom-switch-field';
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();
-  @Input() monitors: CEP_Block[];
+  @Input() monitors: RepositoryItem[];
+  @Input() sections: string[];
+  @Input() activeRepository: Repository;
   configuration: any = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
@@ -25,12 +27,17 @@ export class ExtensionCreateComponent implements OnInit {
     false
   );
 
+  configurationIsExtension: boolean;
+
   constructor(
     public analyticsService: AnalyticsService,
+    public repositoryService: RepositoryService,
     public alertService: AlertService
   ) { }
 
   ngOnInit() {
+    this.configurationIsExtension = !! this.sections;
+    this.configuration['name'] = this.monitors && this.monitors.length >0 ? this.monitors[0].name: undefined;
     this.isDeployed();
     this.configFormlyFields = [
       {
@@ -43,27 +50,34 @@ export class ExtensionCreateComponent implements OnInit {
             wrappers: ['c8y-form-field'],
             templateOptions: {
               label: 'Name Extension',
-              required: true
-            }
+              required: true,
+            }, 
+            hideExpression: this.configurationIsExtension
+          }
+        ]
+      },
+      // Extension list display
+      {
+        fieldGroupClassName: 'row',
+        fieldGroup: [
+          {
+            className: 'col-lg-12',
+            key: 'extensions',
+            type: ExtensionListComponent, // Custom type we'll define
+            wrappers: ['c8y-form-field'],
+            templateOptions: {
+              label: 'Available Extensions',
+              description: 'The following extensions will be included',
+              extensionNames: this.sections || [], // Pass your extension names array here
+              readonly: true
+            },
+            hideExpression: !this.configurationIsExtension
           }
         ]
       },
       {
         fieldGroupClassName: 'row',
         fieldGroup: [
-          // {
-          //   className: 'col-lg-6',
-          //   key: 'upload',
-          //   type: CustomSwitchField,
-          //   defaultValue: true,
-          //   wrappers: ['c8y-form-field'],
-          //   templateOptions: {
-          //     label: 'Upload extension',
-          //     switchMode: true,
-          //     description:
-          //       'The generated extension for the selected blocks is uploaded. After deploying they are available in the Analytics Builder model pallet.'
-          //   }
-          // },
           {
             className: 'col-lg-12',
             template: '<div class="">Only after the restart, blocks are available to models in the Analytics Builder</div>',
@@ -78,8 +92,6 @@ export class ExtensionCreateComponent implements OnInit {
               label: 'Restart to deploy',
               switchMode: true,
               hideLabel: true,
-              // description:
-              //   'Only after restart blocks are available__________________________________________________________.'
             }
           }
         ]
@@ -105,30 +117,37 @@ export class ExtensionCreateComponent implements OnInit {
 
   async createExtension() {
     this.loading = true;
-    console.log('Create extension');
-    const response = await this.analyticsService.createExtensionZIP(
-      this.configuration.name,
-      true,
-      this.configuration.deploy,
-      this.monitors
-    );
-    if (response.status < 400) {
-      const binary = await await response.arrayBuffer();
-      this.loading = false;
-      const blob = new Blob([binary], {
-        type: 'application/x-zip-compressed'
-      });
+    let response;
 
-      // if (!this.configuration.upload) {
-      //   saveAs(blob, `${this.configuration.name}.zip`);
-      //   this.alertService.success(
-      //     `Created extension ${this.configuration.name}.zip. Please deploy from UI.`
-      //   );
-      // } else {
-      //   this.alertService.success(
-      //     `Uploaded extension ${this.configuration.name}.zip.`
-      //   );
-      // }
+    if (this.monitors && this.monitors.length > 0) {
+      if (this.sections && this.sections.length > 0 ) {
+        response = await this.repositoryService.createExtensionFromYaml(
+          this.configuration.name,
+          this.monitors[0],
+          this.sections,
+          this.activeRepository,
+          true,
+          this.configuration.deploy,
+        );
+      } else {
+        response = await this.repositoryService.createExtensionFromList(
+          this.configuration.name,
+          this.monitors,
+          this.activeRepository,
+          true,
+          this.configuration.deploy,
+        );
+      }
+    } else {
+      response = await this.repositoryService.createExtensionFromRepository(
+        this.configuration.name,
+        true,
+        this.configuration.deploy,
+        this.activeRepository
+      );
+    }
+    if (response.status < 400) {
+      this.loading = false;
       if (this.configuration.deploy) {
         this.alertService.success(
           `Created extension ${this.configuration.name}.zip has been uploaded and Streaming Analytics Engine is restarting ...`

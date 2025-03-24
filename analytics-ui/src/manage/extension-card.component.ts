@@ -27,9 +27,9 @@ export class ExtensionCardComponent{
 
     private wizardModalService: WizardModalService
   ) {}
-  // ngOnInit(): void {
-  //   console.log('application', this.as);
-  // }
+  ngOnInit(): void {
+    console.log('Block', this.extension);
+  }
 
   async detail() {
     if (this.extension.loaded) {

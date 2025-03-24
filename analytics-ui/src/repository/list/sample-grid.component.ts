@@ -32,13 +32,17 @@ import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
   CEP_Block,
+  DESCRIPTOR_YAML,
+  Repository,
+  RepositoryItem,
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
-import { LinkRendererComponent } from '../../shared/component/link-renderer.component';
-import { Observable } from 'rxjs';
+import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
+import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
+
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -49,12 +53,17 @@ import { ExtensionCreateComponent } from '../create-extension/extension-create-m
 export class SampleGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })
   dataGrid: DataGridComponent;
+
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
   loading: boolean = false;
+  singleSelection: boolean = false;
   showMonitorEditor: boolean = false;
-  samples$: Observable<CEP_Block[]>;
-  samples: CEP_Block[];
+
+  activeRepository: Repository;
+  repositoryItems$: Observable<RepositoryItem[]>;
+  repositoryItems: RepositoryItem[];
+
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
 
@@ -62,11 +71,21 @@ export class SampleGridComponent implements OnInit {
 
   columnsSamples: Column[] = [
     {
-      name: 'name',
-      header: 'Name',
+      name: 'File',
+      header: 'File',
       path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
+      visible: true,
+      // cellRendererComponent: LinkRendererComponent
+    },
+    {
+      name: 'type',
+      header: 'Type',
+      path: 'type',
+      dataType: ColumnDataType.TextLong,
+      filterable: true,
+      cellRendererComponent: LabelRendererComponent,
       visible: true
     },
     {
@@ -94,15 +113,6 @@ export class SampleGridComponent implements OnInit {
       filterable: true,
       visible: false
     },
-    {
-      name: 'url',
-      header: 'Link Github',
-      path: 'url',
-      dataType: ColumnDataType.TextLong,
-      filterable: true,
-      visible: true,
-      cellRendererComponent: LinkRendererComponent
-    }
   ];
 
   pagination: Pagination = {
@@ -117,9 +127,10 @@ export class SampleGridComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.samples$ =
-      this.repositoryService.getCEP_BlockSamples();
-    this.samples$?.subscribe((samples) => (this.samples = samples));
+    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
+      shareReplay(1)
+    );
+    this.repositoryItems$?.subscribe((samples) => (this.repositoryItems = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
@@ -131,13 +142,35 @@ export class SampleGridComponent implements OnInit {
       text: 'View Source',
       type: 'VIEW',
       icon: 'document-with-code',
+      showIf: (item) => item['type'] == 'file',
       callback: this.viewMonitor.bind(this)
+    });
+
+    this.initializeActiveRepository();
+  }
+
+  initializeActiveRepository(): void {
+    // Subscribe to repositories$ to find and set the active repository
+
+    this.repositoryService.getRepositories().pipe(
+      // Transform the array to find the enabled repository
+      map(repositories => repositories.find(repo => repo.enabled)),
+      // Only emit when the enabled repository changes
+      distinctUntilChanged((prev, curr) =>
+        prev?.id === curr?.id && prev?.enabled === curr?.enabled
+      )
+    ).subscribe(enabledRepository => {
+      // Set the active repository
+      this.activeRepository = enabledRepository || null;
+
+      // You can perform additional actions here when active repository changes
+      // console.log('Active repository changed:', this.activeRepository);
     });
   }
 
   viewMonitor(block: CEP_Block) {
     const initialState = {
-      source$: this.repositoryService.getCEP_BlockContent(
+      source$: this.repositoryService.getRepositoryItemContent(
         block,
         true,
         false
@@ -164,8 +197,9 @@ export class SampleGridComponent implements OnInit {
     modalRef.content.closeSubject.subscribe(async (response) => {
       console.log('Repositories response after edit:', response);
       if (response) {
+        this.activeRepository = response;
         await this.repositoryService.updateRepositories();
-        this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+        this.repositoryService.updateRepositoryItems(this.hideInstalled);
       } else {
         this.repositoryService.cancelChanges();
       }
@@ -173,41 +207,94 @@ export class SampleGridComponent implements OnInit {
   }
 
   checkSelection(ids: string[]) {
-    this.samples.forEach((sample) => {
+    // console.log("Selected items", ids);
+    let errorSelection = false;
+    let errorItem;
+    this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
         );
-        // does not work and results in loops
-        // this.dataGrid.setItemsSelected([], true);
-        // this.dataGrid.setAllItemsSelected(false)
+        errorSelection = true;
+        errorItem = sample;
+      }
+      if (ids.includes(sample.id) && sample.type == "file") {
+        if (!sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
+          errorSelection = true;
+          errorItem = sample;
+        }
       }
     });
+    if (errorSelection) {
+      setTimeout(() => {
+        this.dataGrid.setItemsSelected([errorItem], false);
+        this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!")
+      }, 0);
+    }
   }
 
   async createExtension(ids: string[]) {
-    const monitors = [];
-    this.samples.forEach((sample) => {
+    const selectedSections: string[] = [];
+    const selectedMonitors: RepositoryItem[] = [];
+    this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && !sample.installed) {
-        monitors.push(sample);
+        if (sample.extensionsYamlItem) {
+          selectedSections.push(sample.name);
+          selectedMonitors[0] = sample.extensionsYamlItem;
+        } else {
+          selectedMonitors.push(sample);
+        }
       }
     });
-    const initialState = {
-      monitors
-    };
 
-    const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-      class: 'modal-lg',
-      initialState
-    });
+    // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
+    // Python:
+    //   - plugin.yaml
+    //   - Python.mon
+    //   - pythonBlockPlugin.py
+    //   - venv
+    // Offset:
+    //   - Offset.mon
 
-    modalRef.content.closeSubject.subscribe(() => {
-      this.dataGrid.cancel()
-      modalRef.hide()
-    });
+    if (selectedSections.length > 0) {
+      // Subscribe to the observable to process the data
+
+      const initialState = {
+        activeRepository: this.activeRepository,
+        monitors: selectedMonitors,
+        sections: selectedSections
+      };
+
+      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+        class: 'modal-lg',
+        initialState
+      });
+
+      modalRef.content.closeSubject.subscribe(() => {
+        this.dataGrid.cancel()
+        modalRef.hide()
+      });
+
+    } else {
+      const initialState = {
+        activeRepository: this.activeRepository,
+        monitors: selectedMonitors
+      };
+
+      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+        class: 'modal-lg',
+        initialState
+      });
+
+      modalRef.content.closeSubject.subscribe(() => {
+        this.dataGrid.cancel()
+        modalRef.hide()
+      });
+    }
   }
 
   async loadSamples() {
-    this.repositoryService.updateCEP_BlockSamples(this.hideInstalled);
+    this.repositoryService.updateRepositoryItems(this.hideInstalled);
   }
+
 }

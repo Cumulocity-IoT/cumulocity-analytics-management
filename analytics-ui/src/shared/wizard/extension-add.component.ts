@@ -77,7 +77,7 @@ export class ExtensionAddComponent {
           break;
         }
       }
-      if (this.isUpdate) {
+      if (this.isUpdate && this.mode == 'add' ) {
           this.done();
           this.confirmUpdate();
       } else {
@@ -97,9 +97,17 @@ export class ExtensionAddComponent {
   }
 
   private async uploadExtension(mode: UploadMode) {
-    await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
-    this.alertService.success('Uploaded new extension.');
-    this.isAppCreated = true;
+    const result = await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
+    if (result) {
+      this.alertService.success('Uploaded new extension.');
+      this.isAppCreated = true;
+      this.progress.next(100);
+    } else {
+      this.errorMessage = "Could not create extension!"
+      this.isAppCreated = false;
+      this.progress.next(100);
+
+    }
     this.progress.next(100);
     this.isLoading = false;
   }
@@ -118,6 +126,7 @@ export class ExtensionAddComponent {
     this.analyticsService.cancelExtensionCreation(this.createdApp);
     this.createdApp = null;
   }
+
   confirmUpdate() {
     const initialState = {
       title: 'Update extension',

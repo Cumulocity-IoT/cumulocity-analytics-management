@@ -9,6 +9,7 @@ import {
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
+  IResult,
   IResultList,
   Realtime,
 } from '@c8y/client';
@@ -26,10 +27,13 @@ import {
   BACKEND_PATH_BASE,
   EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
-  CEP_METADATA_FILE_EXTENSION,
+  CEP_METADATA_FILE_EXTENSION_1,
   CEP_ENDPOINT,
   CEPStatusObject,
-  UploadMode
+  UploadMode,
+  CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
+  CEP_METADATA_FILE_EXTENSION_2,
+  Repository
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 
@@ -42,7 +46,7 @@ export class AnalyticsService {
   private _blocksDeployed: Promise<CEP_Block[]>;
   private _extensionsDeployed: Promise<IManagedObject[]>;
   private _isBackendDeployed: Promise<boolean>;
-  private cepOperationObject$: ReplaySubject<IManagedObject> = 
+  private cepOperationObject$: ReplaySubject<IManagedObject> =
     new ReplaySubject<IManagedObject>(1);
   private realtime: Realtime;
   private reloadThroughService$: Subject<boolean> = new Subject<boolean>();
@@ -76,44 +80,25 @@ export class AnalyticsService {
     return result;
   }
 
-  async createExtensionZIP(
-    name: string,
-    upload: boolean,
-    deploy: boolean,
-    monitors: CEP_Block[]
-  ): Promise<IFetchResponse> {
-    console.log(`Create extensions for : ${name},  ${monitors},`);
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          extension_name: name,
-          upload: upload,
-          deploy: deploy,
-          monitors: monitors
-        }),
-        method: 'POST',
-        responseType: 'blob'
-      }
-    );
-  }
-
   async getExtensionsMetadataEnriched(): Promise<IManagedObject[]> {
     if (!this._extensionsDeployed) {
       const { data } = await this.getExtensionsMetadataFromInventory();
       const extensions = data;
       const loadedExtensions: CEP_ExtensionsMetadata =
         await this.getExtensionsMetadataFromCEP();
+      const loadedExtensionsFromDiagnostics: CEP_ExtensionsMetadata =
+        await this.getExtensionNamesFromCEP();
       for (let index = 0; index < extensions.length; index++) {
         extensions[index].name = removeFileExtension(extensions[index].name);
-        const key = extensions[index].name + CEP_METADATA_FILE_EXTENSION;
+        const key1 = extensions[index].name + CEP_METADATA_FILE_EXTENSION_1;
         extensions[index].loaded = loadedExtensions?.metadatas?.some((le) =>
-          key.includes(le)
+          key1.includes(le)
         );
+        if (!extensions[index].loaded) {
+          const key2 = extensions[index].name + CEP_METADATA_FILE_EXTENSION_2;
+          extensions[index].loaded = loadedExtensionsFromDiagnostics.hasOwnProperty(key2);
+          extensions[index].extensionType = 'zip';
+        }
         if (extensions[index].loaded) {
           const extensionDetails = await this.getExtensionDetailFromCEP(
             extensions[index].name
@@ -130,11 +115,12 @@ export class AnalyticsService {
   async deleteExtension(
     app: IManagedObject,
     showSuccessMessage
-  ): Promise<void> {
-    await this.inventoryBinaryService.delete(app.id);
+  ): Promise<IResult<null>> {
+    const result = await this.inventoryBinaryService.delete(app.id);
     if (showSuccessMessage)
       this.alertService.success(gettext('Extension deleted.'));
     this.extensionChanged.emit(app);
+    return result;
   }
 
   async clearCaches() {
@@ -174,6 +160,21 @@ export class AnalyticsService {
   async getExtensionsMetadataFromCEP(): Promise<CEP_ExtensionsMetadata> {
     const response: IFetchResponse = await this.fetchClient.fetch(
       `/${CEP_PATH_METADATA_EN}`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        method: 'GET'
+      }
+    );
+    const data = await response.json();
+    return data;
+  }
+
+  async getExtensionNamesFromCEP(): Promise<CEP_ExtensionsMetadata> {
+    const response: IFetchResponse = await this.fetchClient.fetch(
+      `/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`,
       {
         headers: {
           accept: 'application/json',
@@ -382,16 +383,23 @@ export class AnalyticsService {
   ): Promise<IManagedObjectBinary> {
     let extensionToCreate: Partial<IManagedObject> = extension;
     if (mode === 'update') {
-      await this.deleteExtension(extension, false);
-      extensionToCreate = {
-        name: extension.name,
-        pas_extension: extension.name
-      };
+      try {
+        const result_01 = await this.deleteExtension(extension, false);
+        extensionToCreate = {
+          name: extension.name,
+          pas_extension: extension.name
+        };
+        const result_02 =
+          await this.inventoryBinaryService.create(file, extensionToCreate)
+          ;
+        if (!result_02.res.ok) this.alertService.warning(`Could not upload ${extension.name}`);
+        return result_02.data;
+      } catch (error) {
+        // Handle the error
+        //this.alertService.danger(`Error processing extension!`);
+        return;
+      }
     }
-    const result2 = (
-      await this.inventoryBinaryService.create(file, extensionToCreate)
-    ).data;
-    return result2;
   }
 
   cancelExtensionCreation(app: Partial<IManagedObject>): void {

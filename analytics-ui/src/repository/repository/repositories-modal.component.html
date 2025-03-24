@@ -11,13 +11,22 @@
           <thead>
             <tr>
               <th width="5%"></th>
-              <th width="5%">Id</th>
+              <!-- <th width="5%">Id</th> -->
               <th width="15%">Name</th>
               <th width="70%">URL</th>
               <th width="5%">Enabled</th>
               <th width="10%">Action</th>
             </tr>
           </thead>
+          <tr *ngIf="(repositories$| async).length == 0">
+            <td colspan="5">
+              <c8y-ui-empty-state [icon]="'c8y-icon dlt-c8y-icon-connected'"
+                [title]="'No repository configured.' | translate" [subtitle]="
+                  'Create your first repository.' | translate
+                  " [horizontal]="false">
+              </c8y-ui-empty-state>
+            <td>
+          </tr>
           <tbody>
             <tr *ngFor="let repository of (repositories$| async); let i = index">
               <td>
@@ -27,9 +36,9 @@
                   <span></span>
                 </label>
               </td>
-              <td>
+              <!-- <td>
                 {{ repository.id }}
-              </td>
+              </td> -->
               <td>
                 {{ repository.name }}
               </td>
@@ -58,30 +67,33 @@
           <fieldset>
             <input type="hidden" formControlName="id" />
             <c8y-form-group>
-              <label >Name</label>
+              <label>Name</label>
               <input type="text" id="name" formControlName="name" class="form-control" />
             </c8y-form-group>
             <c8y-form-group>
-              <label ><span>{{'Repository URL '}}</span>
-                <button type="button" placement="right"
-                  [popover]="'Enter the last parts to a github repository in the form: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>'"
-                  class="btn-help" aria-label="Help content"></button>
+              <ng-template #popupRepositoryUrl>
+                <div [innerHtml]="popRepositoryUrl"></div>
+              </ng-template>
+              <label><span>{{'Repository URL '}}</span>
+                <button type="button" placement="right" [popover]="popupRepositoryUrl" class="btn-help"
+                  aria-label="Help content"></button>
               </label>
               <div class="input-group">
                 <span class="input-group-addon" id="basic-addon3">
-                  https://api.github.com/repos/
+                  {{ GITHUB_URL}}
                 </span>
-                <input type="text" title="Repository URL" id="url" autocomplete="off" formControlName="url" (change)="warnAboutPATReset()"
-                  placeholder="e.g.: <REPO_OWNER>/>REPO_NAME>/contents/<REPO_PATH>, without the prefix https://api.github.com/repos/"
+                <input type="text" title="Repository URL" id="url" autocomplete="off" formControlName="url"
+                  (change)="warnAboutPATReset()"
+                  placeholder="url without the prefix 'https://github.com/'', e.g. 'apama-analytics-builder-block-sdk/tree/main/samples/blocks'"
                   class="form-control" />
               </div>
             </c8y-form-group>
             <c8y-form-group>
-              <ng-template #popTemplate>
-                <div [innerHtml]="popup"></div>
+              <ng-template #popupTemplate>
+                <div [innerHtml]="popupPAT"></div>
               </ng-template>
-              <label ><span>{{'Personal Access Token'}}</span>
-                <button type="button" placement="right" [popover]="popTemplate" class="btn-help"
+              <label><span>{{'Personal Access Token'}}</span>
+                <button type="button" placement="right" [popover]="popupTemplate" class="btn-help"
                   aria-label="Help content"></button>
               </label>
 

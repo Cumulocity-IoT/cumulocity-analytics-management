@@ -1,17 +1,17 @@
+from typing import Dict, Optional
 import requests
-from flask import Flask, request, Response, send_file, make_response, jsonify
+from flask import Flask, request, send_file, make_response, jsonify
 import logging
 import tempfile
 import os
 import re
+import base64
 import io
 import subprocess
 import urllib.parse
 from c8y_agent import C8YAgent
-from requests.exceptions import HTTPError
-import json
-from functools import wraps
-from typing import Dict, Any, Optional
+from solution_utils import handle_errors,create_error_response,github_web_url_to_content_api,parse_boolean,remove_root_folders,extract_raw_path
+import yaml 
 
 # Configure logging
 logging.basicConfig(
@@ -26,47 +26,6 @@ app = Flask(__name__)
 agent = C8YAgent()
 
 
-# Error handling decorator
-def handle_errors(f):
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        try:
-            return f(*args, **kwargs)
-        except HTTPError as e:
-            status_code = e.response.status_code
-            logger.error(f"HTTP Error: {status_code}", exc_info=True)
-            return create_error_response(str(e), status_code)
-        except Exception as e:
-            logger.error("Unexpected error", exc_info=True)
-            return create_error_response(str(e), 500)
-
-    return wrapper
-
-
-def create_error_response(message: str, status_code: int) -> Response:
-    return Response(
-        json.dumps({"message": f"Error: {message}"}),
-        status=status_code,
-        mimetype="application/json",
-    )
-
-
-def get_repository_headers(
-    request, repository_id: Optional[str] = None
-) -> Dict[str, str]:
-    headers = {"Accept": "application/vnd.github.v3.raw"}
-    if repository_id:
-        repository_configuration = agent.load_repository(
-            request=request, repository_id=repository_id, replace_access_token=False
-        )
-        if "accessToken" in repository_configuration:
-            headers["Authorization"] = (
-                f"Bearer {repository_configuration['accessToken']}"
-            )
-            logger.info("Access token found and added to headers")
-    return headers
-
-
 @app.route("/health")
 def health():
     return jsonify({"status": "UP"})
@@ -77,18 +36,18 @@ def health():
 def get_content_list():
     """
     Retrieve a list of contents from a specified URL in a repository.
-    
+
     Args (via query parameters):
         url (str): Encoded URL of the repository content to list
         id (str, optional): Repository ID used to fetch authentication headers
-    
+
     Returns:
         Response: JSON response containing the list of contents with status code 200
             Content-Type: application/json
-            
+
     Raises:
         HTTPError: If the request to the repository fails
-        
+
     Example:
         GET /repository/contentList?url=https%3A%2F%2Fapi.github.com%2Frepos%2Fowner%2Frepo%2Fcontents&id=repo123
     """
@@ -100,9 +59,12 @@ def get_content_list():
         headers = get_repository_headers(request, repository_id)
 
     decoded_url = urllib.parse.unquote(encoded_url)
-    logger.info(f"Getting content list from: {decoded_url}")
+    decoded_content_url = urllib.parse.unquote(
+        github_web_url_to_content_api(decoded_url)
+    )
+    logger.info(f"Getting content list from: {decoded_content_url} {decoded_url}")
 
-    response = requests.get(decoded_url, headers=headers, allow_redirects=True)
+    response = requests.get(decoded_content_url, headers=headers, allow_redirects=True)
     response.raise_for_status()
 
     return make_response(response.content, 200, {"Content-Type": "application/json"})
@@ -161,13 +123,12 @@ def load_repositories():
     return jsonify(result)
 
 
-
 @app.route("/repository/configuration", methods=["POST"])
 @handle_errors
 def update_repositories():
     """
     Update all the configured repositories.
-    
+
     Returns:
         Response: Result of the update operation
     """
@@ -190,71 +151,409 @@ def update_repositories():
     return agent.update_repositories(request, repositories)
 
 
-@app.route("/extension", methods=["POST"])
+def download_github_content(url, headers, work_dir,skip_root_folder=True, item=None):
+    """
+    Download content from GitHub, handling both files and directories.
+    If item is provided, it's a specific file/directory to download.
+    If not, we fetch the contents at the URL.
+
+    Args:
+        url (str): URL pointing to GitHub API endpoint for repository content
+        headers (dict): Headers to include in API requests (auth tokens, etc.)
+        work_dir (str): Directory to save downloaded content to
+        item (dict, optional): Single item to process (used in recursive calls)
+    """
+    if item is None:
+        # No specific item provided, get the contents from the URL
+        logger.info(f"Fetching contents from {url}")
+        response = requests.get(url, headers=headers, allow_redirects=True)
+        response.raise_for_status()
+
+        try:
+            content_response = response.json()
+
+            # Check if response is a list of items or a single item
+            if isinstance(content_response, list):
+                for item in content_response:
+                    if (skip_root_folder):
+                        item["path"] = remove_root_folders(item["path"], 1)
+                    download_github_content(url, headers, work_dir, skip_root_folder, item)
+            else:
+                logger.warning(f"Unexpected content format from {url}")
+            return
+        except ValueError:
+            # Single file
+            file_name = extract_raw_path(url)
+            full_path = os.path.join(work_dir, file_name)
+            with open(full_path, "wb") as f:
+                f.write(response.content)
+            logger.info(f"Saving single file {url}, {full_path}")
+            return
+
+    # Process a specific item
+    item_path = item.get("path", "")
+    item_type = item.get("type", "")
+    item_url = item.get("url", "")
+    download_url = item.get("download_url")
+
+    logger.info(f"Processing {item_type}: {item_path}")
+
+    # Extract relative path by removing left folder name
+    if (skip_root_folder):
+        relative_path = remove_root_folders(item_path, 1)
+    else:
+        relative_path = item_path
+        
+
+    # Full path in the work directory
+    full_path = os.path.join(work_dir, relative_path)
+
+    logger.debug(f"Item path: {item_path}")
+    logger.debug(f"Relative path: {relative_path}")
+    logger.debug(f"Full path: {full_path}")
+
+    if item_type == "file":
+        # Create parent directories if they don't exist
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+        # Download file content
+        if download_url:
+            # Use the direct download URL if available
+            logger.info(f"Downloading file from {download_url}")
+            file_response = requests.get(
+                download_url, headers=headers, allow_redirects=True
+            )
+            file_response.raise_for_status()
+
+            # Write file content
+            with open(full_path, "wb") as f:
+                f.write(file_response.content)
+
+            logger.info(f"File downloaded and saved to: {full_path}")
+        else:
+            # Use the API URL and handle GitHub API response format
+            logger.info(f"Fetching file content from API: {item_url}")
+            content_response = requests.get(
+                item_url, headers=headers, allow_redirects=True
+            )
+            content_response.raise_for_status()
+
+            try:
+                # Try to parse as JSON (GitHub API format)
+                content_data = content_response.json()
+
+                if isinstance(content_data, dict) and "content" in content_data:
+                    # GitHub API returns base64 encoded content
+                    content = base64.b64decode(content_data["content"])
+
+                    with open(full_path, "wb") as f:
+                        f.write(content)
+
+                    logger.info(f"File downloaded and saved to: {full_path}")
+                else:
+                    logger.warning(f"Unexpected content format for file: {item_path}")
+            except ValueError:
+                # Not JSON, treat as raw content
+                with open(full_path, "wb") as f:
+                    f.write(content_response.content)
+
+                logger.info(f"Raw content saved to: {full_path}")
+
+    elif item_type == "dir":
+        # Create directory if it doesn't exist
+        os.makedirs(full_path, exist_ok=True)
+        logger.info(f"Created directory: {full_path}")
+
+        # Recursively process directory contents
+        dir_response = requests.get(item_url, headers=headers, allow_redirects=True)
+        dir_response.raise_for_status()
+
+        dir_contents = dir_response.json()
+
+        # Process each item in the directory
+        if isinstance(dir_contents, list):
+            for dir_item in dir_contents:
+                dir_item["path"] = remove_root_folders(dir_item["path"], 1)
+                download_github_content(url, headers, work_dir, skip_root_folder, dir_item)
+        else:
+            logger.warning(f"Expected directory listing as a list for {item_path}")
+
+    else:
+        logger.warning(f"Unknown item type: {item_type} for {item_path}")
+
+
+@app.route("/extension/repository", methods=["POST"])
 @handle_errors
-def create_extension_zip():
+def create_extension():
     """
     Get details for a specific extension.
-    
+
     Args:
-        name (str): Name of the extension
-    
-    Returns:
-        Response: JSON object containing extension details with structure:
-        {
-            "name": str,
-            "analytics": List[{
-                "id": str,
-                "name": str,
-                "installed": bool,
-                "producesOutput": str,
-                "description": str,
-                "url": str,
-                "downloadUrl": str,
-                "path": str,
-                "custom": bool,
-                "extension": str,
-                "repositoryName": str,
-                "category": str
-            }],
-            "version": str,
-            "loaded": bool
-        }
+        name (str):         Name of the extension
+        repository (dict):  Repository with extensions
+        upload (boolean):   Upload extension
+        deploy (boolean):   Deploy/restart Analytics to deploy
+
     """
     data = request.get_json()
     extension_name = data.get("extension_name")
-    monitors = data.get("monitors", [])
+    repository = data.get("repository")
     upload = data.get("upload", False)
     deploy = data.get("deploy", False)
 
     if not extension_name:
         return create_error_response("Extension name is required", 400)
 
+    repository_configuration = agent.load_repository(
+        request=request, repository_id=repository["id"], replace_access_token=False
+    )
     with tempfile.TemporaryDirectory() as work_temp_dir:
         # Download and process monitors
-        for monitor in monitors:
-            try:
-                file_name = extract_raw_path(monitor["downloadUrl"])
-                repository_configuration = agent.load_repository(
-                    request=request, repository_id=monitor["repositoryId"], replace_access_token=False
-                )
+        try:
 
-                headers = get_repository_headers(request, monitor["repositoryId"])
-                response = requests.get(
-                    monitor["url"], headers=headers, allow_redirects=True
-                )
-                response.raise_for_status()
+            headers = get_repository_headers(request, repository_configuration["id"])
 
-                file_path = os.path.join(work_temp_dir, file_name)
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
-                logger.info(f"File downloaded and saved to: {file_path}")
+            api_url = github_web_url_to_content_api(repository_configuration["url"])
+            download_github_content(api_url, headers, work_temp_dir)
 
-            except Exception as e:
-                logger.error(f"Error downloading monitor: {monitor}", exc_info=True)
-                return create_error_response(
-                    f"Failed to download monitor: {str(e)}", 400
-                )
+        except Exception as e:
+            logger.error(
+                f"Error downloading monitor: {repository_configuration}", exc_info=True
+            )
+            return create_error_response(f"Failed to download monitor: {str(e)}", 400)
+
+        # Create extension
+        result_extension_file = f"{extension_name}.zip"
+        result_extension_absolute = os.path.join(work_temp_dir, result_extension_file)
+
+        try:
+            subprocess.run(
+                [
+                    "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
+                    "build",
+                    "extension",
+                    "--input",
+                    work_temp_dir,
+                    "--output",
+                    result_extension_absolute,
+                ],
+                check=True,
+            )
+        except subprocess.CalledProcessError as e:
+            return create_error_response(f"Failed to build extension: {str(e)}", 500)
+
+        # Handle the extension file
+        try:
+            with open(result_extension_absolute, "rb") as extension_zip:
+                if not upload:
+                    return send_file(
+                        io.BytesIO(extension_zip.read()),
+                        mimetype="application/zip",
+                        as_attachment=True,
+                        download_name=result_extension_file,
+                    )
+                else:
+                    id = agent.upload_extension(request, extension_name, extension_zip)
+                    logger.info(f"Uploaded extension {extension_name} as {id}")
+
+                    if deploy:
+                        agent.restart_cep(request)
+
+                    return "", 201
+        except Exception as e:
+            return create_error_response(f"Failed to process extension: {str(e)}", 500)
+
+
+@app.route("/extension/yaml", methods=["POST"])
+@handle_errors
+def create_extension_from_yaml():
+    """
+    Create multiple extension zip files from a YAML structure - one per section.
+
+    Args:
+        name (string):        name for the extension
+        yaml (dict):          YAML structure specifying files to include
+        sections (string[]):  sections in the yaml to include in the extension 
+        repository (dict):    Repository to access
+        upload (boolean):     Upload extensions
+        deploy (boolean):     Deploy/restart Analytics to deploy
+    """
+    data = request.get_json()
+    yaml_data = data.get("yaml", {})
+    sections = data.get("sections", [])
+    repository = data.get("repository")
+    upload = data.get("upload", False)
+    deploy = data.get("deploy", False)
+
+    if not yaml_data:
+        return create_error_response("YAML structure is required", 400)
+
+    repository_configuration = agent.load_repository(
+        request=request, repository_id=repository["id"], replace_access_token=False
+    )
+    base_url = repository_configuration["url"]
+    headers = get_repository_headers(request, repository_configuration["id"])
+
+    # Get and parse the YAML content
+    try:
+        url = yaml_data["url"]
+        response = requests.get(url, headers=headers, allow_redirects=True)
+        yaml_content = response.text
+        yaml_structure = yaml.safe_load(yaml_content)
+
+        if not yaml_structure or not isinstance(yaml_structure, dict):
+            return create_error_response("Invalid YAML structure", 400)
+        
+        # Assuming yaml_structure is your loaded YAML content
+        # and sections is your array of section names to include
+
+        # If sections is empty, process all sections
+        if not sections:
+            sections_to_process = list(yaml_structure.keys())
+        else:
+            # Only process sections that exist in the YAML
+            sections_to_process = [s for s in sections if s in yaml_structure]
+            
+    except Exception as e:
+        logger.error(f"Error fetching or parsing YAML: {e}", exc_info=True)
+        return create_error_response(f"Failed to fetch or parse YAML: {str(e)}", 400)
+
+    # Process each section as a separate extension
+    uploaded_extensions = []
+    section_idx = 0
+    # Process each selected section
+    for section_name in sections_to_process:
+        section_data = yaml_structure[section_name]
+            # Check if this section has a 'files' key
+        if 'files' in section_data and isinstance(section_data['files'], list):
+            files = section_data['files']
+            section_idx = section_idx +1
+            logger.info(f"Processing section '{section_name}' with {len(files)} files")
+        
+            logger.info(f"Processing files for section '{section_name}':")
+                     
+                # Create a temp dir for this extension
+            with tempfile.TemporaryDirectory() as work_temp_dir:
+                # Download all files for this section
+                try:
+                    for file_path in files:
+                        file_url = f"{base_url}/{file_path}"
+                        logger.info(f"Downloading file '{file_url}', '{base_url}', '{file_path}'")
+                        api_url = github_web_url_to_content_api(file_url)
+                        download_github_content(api_url, headers, work_temp_dir, False)
+                        logger.info(f"Downloaded {file_path} from {api_url}")
+                        
+                except Exception as e:
+                    logger.error(f"Error downloading files for section '{section_name}': {e}", exc_info=True)
+                    return create_error_response(f"Failed to download files for '{section_name}': {str(e)}", 400)
+
+                # Build extension for this section
+                extension_name = section_name
+                result_extension_file = f"{extension_name}.zip"
+                result_extension_absolute = os.path.join(work_temp_dir, result_extension_file)
+                
+                try:
+                    subprocess.run(
+                        [
+                            "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
+                            "build",
+                            "extension",
+                            "--input",
+                            work_temp_dir,
+                            "--output",
+                            result_extension_absolute,
+                        ],
+                        check=True,
+                    )
+                except subprocess.CalledProcessError as e:
+                    return create_error_response(f"Failed to build extension for '{section_name}': {str(e)}", 500)
+
+                # Handle the extension file
+                try:
+                    with open(result_extension_absolute, "rb") as extension_zip:
+                        if not upload:
+                            # If not uploading, return the first extension as a file
+                            if section_idx == 0:
+                                return send_file(
+                                    io.BytesIO(extension_zip.read()),
+                                    mimetype="application/zip",
+                                    as_attachment=True,
+                                    download_name=result_extension_file,
+                                )
+                        else:
+                            # Upload the extension
+                            id = agent.upload_extension(request, extension_name, extension_zip)
+                            logger.info(f"Uploaded extension {extension_name} as {id}")
+                            uploaded_extensions.append({
+                                "name": extension_name,
+                                "id": id
+                            })
+                            
+                            # Only restart after the last extension is uploaded
+                            is_last_section = section_idx == len(yaml_structure) - 1
+                            if deploy and is_last_section and uploaded_extensions:
+                                logger.info("Restarting Analytics Builder engine")
+                                agent.restart_cep(request)
+                            
+                except Exception as e:
+                    return create_error_response(f"Failed to process extension for '{section_name}': {str(e)}", 500)
+        else:
+            logger.error(f"Section '{section_name}' has no 'files' list or invalid format")
+
+    # Return the results of the uploads
+    if upload:
+        return {"uploaded_extensions": uploaded_extensions}, 201
+    else:
+        # If we get here without returning a file, it means there were no valid sections
+        return create_error_response("No valid sections found in YAML", 400)
+
+@app.route("/extension/list", methods=["POST"])
+@handle_errors
+def create_extension_from_list():
+    """
+    Get details for a specific extension.
+
+    Args:
+        extension_name (str):  Name of the extension
+        monitors (list):       List of monitors to include in the extensions
+        repository (dict):     Repository to access
+        upload (boolean):      Upload extension
+        deploy (boolean):       Deploy/restart Analytics to deploy
+    """
+    data = request.get_json()
+    extension_name = data.get("extension_name")
+    monitors = data.get("monitors", [])
+    repository = data.get("repository")
+    upload = data.get("upload", False)
+    deploy = data.get("deploy", False)
+
+    if not extension_name:
+        return create_error_response("Extension name is required", 400)
+
+    if len(monitors) != 1:
+        return create_error_response("Exactly one item in monitors is required", 400)
+
+    repository_configuration = agent.load_repository(
+        request=request, repository_id=repository["id"], replace_access_token=False
+    )
+    with tempfile.TemporaryDirectory() as work_temp_dir:
+        # Download and process monitors
+        try:
+
+            headers = get_repository_headers(request, repository_configuration["id"])
+
+            if monitors[0]["type"] == "file":
+                api_url = monitors[0]["url"]
+                download_github_content(api_url, headers, work_temp_dir)
+            else:
+                api_url = monitors[0]["url"]
+                download_github_content(api_url, headers, work_temp_dir)
+
+        except Exception as e:
+            logger.error(
+                f"Error downloading monitor: {repository_configuration}", exc_info=True
+            )
+            return create_error_response(f"Failed to download monitor: {str(e)}", 400)
 
         # Create extension
         result_extension_file = f"{extension_name}.zip"
@@ -303,13 +602,13 @@ def create_extension_zip():
 def get_extension(name: str):
     """
     Get details for a specific extension.
-    
+
     Args:
         name (str): Name of monitor to download
-    
+
     Returns:
         Response: JSON object containing extension details with the following structure:
-        
+
         CEP_Extension:
         {
             "name": str,
@@ -317,7 +616,7 @@ def get_extension(name: str):
             "version": str,
             "loaded": bool
         }
-        
+
         Where CEP_Block is:
         {
             "id": str,
@@ -344,7 +643,7 @@ def get_extension(name: str):
 def get_extension_metadata():
     """
     Get details on all loaded extensions.
-    
+
     Returns:
         Response: JSON object containing extension metadata with structure:
         {
@@ -362,7 +661,7 @@ def get_extension_metadata():
 def get_cep_operationobject_id():
     """
     Get the managedObject that represents the CEP ctrl microservice.
-    
+
     Returns:
         Response: JSON object containing the CEP operation object ID
     """
@@ -377,7 +676,7 @@ def get_cep_operationobject_id():
 def get_cep_ctrl_status():
     """
     Get the managedObject that represents the CEP ctrl microservice.
-    
+
     Returns:
         Response: JSON object containing the CEP operation object ID
     """
@@ -386,63 +685,20 @@ def get_cep_ctrl_status():
         return create_error_response("CEP control status not found", 404)
     return jsonify(result)
 
-# Additional utility functions
-
-class ExtensionBuilder:
-    """Helper class for building extensions"""
-
-    def __init__(self, work_dir: str, extension_name: str):
-        self.work_dir = work_dir
-        self.extension_name = extension_name
-        self.extension_file = f"{extension_name}.zip"
-        self.extension_path = os.path.join(work_dir, self.extension_file)
-
-    def build(self) -> None:
-        """Build the extension using analytics_builder"""
-        subprocess.run(
-            [
-                "/apama_work/apama-analytics-builder-block-sdk/analytics_builder",
-                "build",
-                "extension",
-                "--input",
-                self.work_dir,
-                "--output",
-                self.extension_path,
-            ],
-            check=True,
+def get_repository_headers(
+    request, repository_id: Optional[str] = None
+) -> Dict[str, str]:
+    headers = {"Accept": "application/vnd.github.v3.raw"}
+    if repository_id:
+        repository_configuration = agent.load_repository(
+            request=request, repository_id=repository_id, replace_access_token=False
         )
-
-    def get_file_path(self) -> str:
-        """Get the path to the built extension file"""
-        return self.extension_path
-
-
-class MonitorDownloader:
-    """Helper class for downloading monitors"""
-
-    @staticmethod
-    async def download_monitor(
-        url: str, headers: Dict[str, str], target_path: str
-    ) -> None:
-        """Download a monitor file"""
-        response = requests.get(url, headers=headers, allow_redirects=True)
-        response.raise_for_status()
-
-        with open(target_path, "wb") as f:
-            f.write(response.content)
-
-
-def parse_boolean(value: Any) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        return value.lower() == "true"
-    return False
-
-
-def extract_raw_path(path: str) -> str:
-    return path.rsplit("/", 1)[-1]
-
+        if "accessToken" in repository_configuration:
+            headers["Authorization"] = (
+                f"Bearer {repository_configuration['accessToken']}"
+            )
+            logger.info("Access token found and added to headers")
+    return headers
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=80, debug=False)
