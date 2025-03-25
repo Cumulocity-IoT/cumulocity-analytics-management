@@ -15,13 +15,11 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <div class="c8y-realtime p-r-8" [title]="'Streaming Analytics ' + (cepOperationObject$ | async)">
+  <div class="c8y-realtime p-r-8">
     <i [c8yIcon]="'ok text-success'" *ngIf="(cepOperationObject$ | async)?.c8y_Status?.status === 'Up'"></i>
     <i [c8yIcon]="'warning text-warning'" *ngIf="(cepOperationObject$ | async)?.c8y_Status?.status !== 'Up'"></i>
 
-    <a style="margin-left:4px;" href="/apps/administration/index.html#/ecosystem/microservice/microservices/{{
-        cepId
-      }}/properties" target="'_blank'">{{ 'Streaming Analytics' }}</a>
+    <a style="margin-left:4px;" href='/apps/administration/index.html#/ecosystem/microservice/microservices/{{cepId}}/properties' target="'_blank'">{{ 'Streaming Analytics' }}</a>
   </div>
 </c8y-action-bar-item>
 
