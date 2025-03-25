@@ -239,6 +239,7 @@ The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl
 
 ------------------------------
 
-These tools are provided as-is and without warranty or support. They do not constitute part of the Software AG product suite. Users are free to use, fork and modify them, subject to the license agreement. While Software AG welcomes contributions, we cannot guarantee to include every contribution in the master project.
+These tools are provided as-is and without warranty or support. They do not constitute part of the Cumulocity product. Users are free to use, fork and modify them, subject to the license agreement. While Cumulocity welcomes contributions, we cannot guarantee to include every contribution in the master project.
 _____________________
+
 For more information you can Ask a Question in the [techcommunity cumulocity](https://techcommunity.cumulocity.com/).
