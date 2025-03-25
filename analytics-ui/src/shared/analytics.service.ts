@@ -384,21 +384,27 @@ export class AnalyticsService {
     let extensionToCreate: Partial<IManagedObject> = extension;
     if (mode === 'update') {
       try {
-        const result_01 = await this.deleteExtension(extension, false);
+        const result = await this.deleteExtension(extension, false);
         extensionToCreate = {
           name: extension.name,
           pas_extension: extension.name
         };
-        const result_02 =
-          await this.inventoryBinaryService.create(file, extensionToCreate)
-          ;
-        if (!result_02.res.ok) this.alertService.warning(`Could not upload ${extension.name}`);
-        return result_02.data;
       } catch (error) {
         // Handle the error
         //this.alertService.danger(`Error processing extension!`);
         return;
       }
+    }
+    try {
+      const result =
+        await this.inventoryBinaryService.create(file, extensionToCreate)
+        ;
+      if (!result.res.ok) this.alertService.warning(`Could not upload ${extension.name}`);
+      return result.data;
+    } catch (error) {
+      // Handle the error
+      //this.alertService.danger(`Error processing extension!`);
+      return;
     }
   }
 
