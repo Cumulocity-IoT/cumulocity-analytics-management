@@ -17,7 +17,8 @@ let initializedMonaco = false;
   selector: 'a17t-name-extension-modal',
   styleUrls: ['./editor-modal.component.css'],
   templateUrl: './editor-modal.component.html',
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  standalone: false
 })
 export class EditorModalComponent implements OnInit {
 

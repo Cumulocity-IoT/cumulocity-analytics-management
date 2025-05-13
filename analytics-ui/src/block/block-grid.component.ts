@@ -42,7 +42,8 @@ import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
   selector: 'a17t-block-grid',
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  standalone: false
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;

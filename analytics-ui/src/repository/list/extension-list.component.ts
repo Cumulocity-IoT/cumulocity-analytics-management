@@ -60,7 +60,8 @@ import { FieldType } from '@ngx-formly/core';
       padding: 0.75rem;
       color: #6c757d;
     }
-  `]
+  `],
+  standalone: false
 })
 export class ExtensionListComponent extends FieldType {
   // The base FieldType provides access to field properties

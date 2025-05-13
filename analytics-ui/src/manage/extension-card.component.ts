@@ -12,7 +12,8 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 
 @Component({
   selector: 'a17t-extension-card',
-  templateUrl: './extension-card.component.html'
+  templateUrl: './extension-card.component.html',
+  standalone: false
 })
 export class ExtensionCardComponent{
   @Input() extension: IManagedObject;

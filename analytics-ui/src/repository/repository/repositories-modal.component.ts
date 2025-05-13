@@ -14,7 +14,8 @@ import {
   selector: 'a17t-name-repositories-modal',
   styleUrls: ['../editor/editor-modal.component.css'],
   templateUrl: './repositories-modal.component.html',
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  standalone: false
 })
 export class RepositoriesModalComponent implements OnInit {
   repositories$: Observable<Repository[]>;

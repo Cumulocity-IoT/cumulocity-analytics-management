@@ -18,7 +18,8 @@ import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 
 @Component({
   selector: 'a17t-extension-add',
-  templateUrl: './extension-add.component.html'
+  templateUrl: './extension-add.component.html',
+  standalone: false
 })
 export class ExtensionAddComponent {
   @Input() headerText: string;
@@ -42,7 +43,7 @@ export class ExtensionAddComponent {
     private alertService: AlertService,
     private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
-  ) {}
+  ) { }
 
   get progress(): BehaviorSubject<number> {
     return this.analyticsService.progress;
@@ -77,9 +78,9 @@ export class ExtensionAddComponent {
           break;
         }
       }
-      if (this.isUpdate && this.mode == 'add' ) {
-          this.done();
-          this.confirmUpdate();
+      if (this.isUpdate && this.mode == 'add') {
+        this.done();
+        this.confirmUpdate();
       } else {
         await this.uploadExtension(this.mode);
       }

@@ -28,7 +28,8 @@ import { CellRendererContext } from '@c8y/ngx-components';
         <span class="text-12 label label-primary">{{context.value}}</span
         >
     </div>
-  `
+  `,
+  standalone: false
 })
 export class LabelRendererComponent {
     constructor(public context: CellRendererContext) {

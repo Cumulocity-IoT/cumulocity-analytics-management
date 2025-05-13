@@ -12,7 +12,8 @@ import { UploadMode } from '../analytics.model';
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
     [mode]="mode"
-  ></a17t-extension-add>`
+  ></a17t-extension-add>`,
+  standalone: false
 })
 export class ExtensionAddWizardComponent implements OnInit {
   @Input() mode: UploadMode;
@@ -21,7 +22,7 @@ export class ExtensionAddWizardComponent implements OnInit {
   @Output() refresh;
   successText: string = gettext('Extension created');
 
-  constructor(private analyticsService: AnalyticsService) {}
+  constructor(private analyticsService: AnalyticsService) { }
   ngOnInit(): void {
     console.log('Mode', this.mode);
   }

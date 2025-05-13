@@ -10,7 +10,8 @@ import { RepositoryService } from 'src/shared';
 
 @Component({
   selector: 'a17t-extension-create-modal',
-  templateUrl: './extension-create-modal.component.html'
+  templateUrl: './extension-create-modal.component.html',
+  standalone: false
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();

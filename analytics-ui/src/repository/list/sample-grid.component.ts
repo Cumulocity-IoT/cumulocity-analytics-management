@@ -48,7 +48,8 @@ import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
   selector: 'a17t-sample-grid',
   templateUrl: 'sample-grid.component.html',
   styleUrls: ['./sample-grid.component.css'],
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  standalone: false
 })
 export class SampleGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })

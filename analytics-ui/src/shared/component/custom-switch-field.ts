@@ -57,6 +57,7 @@ import { FieldType } from '@ngx-formly/core';
     *ngIf="!!to.description"
   ></button> -->
     </label>
-  `
+  `,
+  standalone: false
 })
 export class CustomSwitchField extends FieldType {}

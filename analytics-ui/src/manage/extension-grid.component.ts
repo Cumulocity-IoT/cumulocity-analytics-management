@@ -20,7 +20,8 @@ import { AnalyticsService, CEPEngineStatus, CEPStatusObject } from '../shared';
 @Component({
   selector: 'a17t-extension',
   templateUrl: './extension-grid.component.html',
-  styleUrls: ['./extension-grid.component.css']
+  styleUrls: ['./extension-grid.component.css'],
+  standalone: false
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
   cepOperationObject$: Observable<IManagedObject>;

@@ -26,7 +26,8 @@ import { AnalyticsService, CEP_Extension } from '../shared';
 @Component({
   selector: 'a17t-extension-details',
   templateUrl: './extension-details.component.html',
-  styleUrls: ['./extension-details.component.css']
+  styleUrls: ['./extension-details.component.css'],
+  standalone: false
 })
 export class ExtensionDetailsComponent {
   extension: CEP_Extension;
