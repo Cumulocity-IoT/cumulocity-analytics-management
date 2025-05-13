@@ -1,6 +1,6 @@
 {
   "name": "analytics-extension",
-  "version": "2.4.1",
+  "version": "2.4.2",
   "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
   "repository": {
     "type": "git",
