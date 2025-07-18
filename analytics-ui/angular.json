@@ -22,7 +22,6 @@
             "polyfills": [
               "zone.js"
             ],
-            "sourceMap": true,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
             "assets": [

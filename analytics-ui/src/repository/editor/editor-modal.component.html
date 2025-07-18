@@ -5,5 +5,5 @@
   </ng-container>
 
   <c8y-editor [editorOptions]="editorOptions" style="height: 50% !important" [ngModel]="source$ | async"
-    monacoEditorMarkerValidator></c8y-editor>
+    monacoEditorMarkerValidator  (editorInit)="assignSchema()"></c8y-editor>
 </c8y-modal>

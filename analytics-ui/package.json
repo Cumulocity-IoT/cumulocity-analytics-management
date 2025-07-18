@@ -37,7 +37,6 @@
     "@c8y/style": "^1022.8.0",
     "@ngx-translate/core": "15.0.0",
     "js-yaml": "^4.1.0",
-    "monaco-editor": "^0.52.2",
     "ngx-bootstrap": "^19.0.2",
     "rxjs": "~7.8.1",
     "webpack": "5.94.0",
