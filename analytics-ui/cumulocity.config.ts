@@ -47,8 +47,53 @@ export default {
     ],
     copy: [
       {
-        from: '../resources/images',
-        to: 'resources/images',
+        from: '../resources/images/extension-add-extension.png',
+        to: 'resources/images/extension-add-extension.png',
+      },
+      {
+        from: '../resources/images/block-block-list.png',
+        to: 'resources/images/block-block-list.png',
+      },
+      {
+        from: '../resources/images/extension-create-extension-animated.gif',
+        to: 'resources/images/extension-create-extension-animated.gif',
+      },
+      {
+        from: '../resources/images/extension-update-extension-modal.png',
+        to: 'resources/images/extension-update-extension-modal.png',
+      },
+      {
+        from: '../resources/images/extension-safe-mode.png',
+        to: 'resources/images/extension-safe-mode.png',
+      },
+
+      {
+        from: '../resources/images/use-analytics-builder-block.png',
+        to: 'resources/images/use-analytics-builder-block.png',
+      },
+      {
+        from: '../resources/images/extension-manage-extension.png',
+        to: 'resources/images/extension-manage-extension.png',
+      },
+      {
+        from: '../resources/images/repository-samples-manage-repository.png',
+        to: 'resources/images/repository-samples-manage-repository.pn',
+      },
+      {
+        from: '../resources/images/repository-samples-view-code-modal.png',
+        to: 'resources/images/repository-samples-view-code-modal.png',
+      },
+      {
+        from: '../resources/images/extension-create-extension-modal.png',
+        to: 'resources/images/extension-create-extension-modal.png',
+      },
+      {
+        from: '../resources/images/plugin-installation.png',
+        to: 'resources/images/plugin-installation.png',
+      },
+      {
+        from: '../resources/images/use-block-detail.png',
+        to: 'resources/images/use-block-detail.png',
       },
       {
         from: '../README.md',

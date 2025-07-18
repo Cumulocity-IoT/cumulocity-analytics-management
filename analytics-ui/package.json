@@ -22,6 +22,7 @@
   "author": "christof.strack@cumulocity.com",
   "license": "Apache 2.0",
   "dependencies": {
+    "@angular/cdk": "^19.2.18",
     "@angular/animations": "^19.2.14",
     "@angular/common": "^19.2.14",
     "@angular/compiler": "^19.2.14",
@@ -32,15 +33,15 @@
     "@angular/router": "^19.2.14",
     "@angular/upgrade": "^19.2.14",
     "@c8y/client": "^1022.8.0",
-    "@c8y/devkit": "^1022.8.0",
     "@c8y/ngx-components": "^1022.8.0",
     "@c8y/style": "^1022.8.0",
     "@ngx-translate/core": "15.0.0",
     "js-yaml": "^4.1.0",
+    "monaco-editor": "^0.52.2",
     "ngx-bootstrap": "^19.0.2",
     "rxjs": "~7.8.1",
-    "zone.js": "~0.15.0",
-    "webpack": "5.94.0"
+    "webpack": "5.94.0",
+    "zone.js": "~0.15.0"
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.2.11",
@@ -50,6 +51,7 @@
     "@angular/cli": "^19.2.11",
     "@angular/compiler-cli": "^19.2.0",
     "@c8y/websdk": "^1022.8.0",
+    "@c8y/devkit": "^1022.8.0",
     "@semantic-release/changelog": "^6.0.2",
     "@semantic-release/exec": "^6.0.3",
     "@semantic-release/git": "^10.0.1",

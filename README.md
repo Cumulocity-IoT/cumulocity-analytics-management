@@ -27,7 +27,7 @@ The extension allows you to manage the complete lifecycle of an extension:
 
 Analytics Builder blocks are build using the [Analytics Builder Block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk). Additionally, externally built extensions can be uploaded in the UI. 
 
-![Extension installation](resources/images/extension-add-extension.gif)
+![Extension installation](resources/images/extension-add-extension.png)
 
 In addition a table lists all installed analytics blocks with the following information: name, category, custom block, extension package name.
 
@@ -222,13 +222,6 @@ The provided block is an example of the adding the two inputs.
 
 ![Use Extension](resources/images/use-block-detail.png)
 
-<!-- <br/>
-<p align="center" style="text-indent:70px;">
-  <a>
-    <img width="70%" src="resources/images/use-block-detail.png">
-  </a>
-</p>
-<br/> -->
 
 ## Troubleshooting
 > **Note**
