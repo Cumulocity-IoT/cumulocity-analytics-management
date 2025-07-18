@@ -65,7 +65,7 @@ export class ExtensionDetailsComponent {
     this.breadcrumbConfig = {
       icon: 'c8y-modules',
       label: gettext('Extensions'),
-      path: 'sag-ps-pkg-analytics-extension/manage'
+      path: 'c8y-pkg-analytics-extension/manage'
     };
   }
 }

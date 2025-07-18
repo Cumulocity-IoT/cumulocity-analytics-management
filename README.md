@@ -237,6 +237,11 @@ In order to check if an extension is deployed look for a relevant message in the
 
 The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
 
+
+**NOTE:** 
+* This solution requires an additional microservice. The microservice `analytics-ext-service.zip` can be found in the [release section](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases) of the github project. Instruction how to the deploy the microservice can be found in the [documentation](https://cumulocity.com/docs/standard-tenant/ecosystem/#managing-microservices).
+* The solution was re branded. If you still want to use previous releases ( < 2.5.0) you can find them in the [release section](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases).
+
 ------------------------------
 
 These tools are provided as-is and without warranty or support. They do not constitute part of the Cumulocity product. Users are free to use, fork and modify them, subject to the license agreement. While Cumulocity welcomes contributions, we cannot guarantee to include every contribution in the master project.

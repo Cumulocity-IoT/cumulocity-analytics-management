@@ -26,7 +26,7 @@ import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
   ],
   providers: [
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/manage',
+      path: 'c8y-pkg-analytics-extension/manage',
       children: [
         {
           path: '',

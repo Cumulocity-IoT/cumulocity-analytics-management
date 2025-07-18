@@ -64,7 +64,7 @@ jobs:
 
       - name: Zip build
         run: |
-          cd dist/sag-ps-pkg-analytics-extension
+          cd dist/c8y-pkg-analytics-extension
           zip -r -q ../../build.zip *
           cd ../../..
         # ls analytics-ui/
@@ -149,7 +149,7 @@ jobs:
            ./analytics-ui 
       - name: Rename file 
         run: | 
-          mv ./analytics-ui/build.zip  ./analytics-ui/sag-ps-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+          mv ./analytics-ui/build.zip  ./analytics-ui/c8y-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
           ls -lah ./analytics-ui
           pwd
       - name: Release UI

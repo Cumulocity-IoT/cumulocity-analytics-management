@@ -33,16 +33,16 @@ export class AnalyticsTabFactory implements TabFactory {
   get(): Observable<Tab[]> {
     const tabs: Tab[] = [];
     let repositoryTab$: Observable<Tab>;
-    if (this.router.url.match(/sag-ps-pkg-analytics-extension/g)) {
+    if (this.router.url.match(/c8y-pkg-analytics-extension/g)) {
       tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/manage',
+        path: 'c8y-pkg-analytics-extension/manage',
         priority: 960,
         label: 'Manage extensions',
         icon: 'extension',
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/block',
+        path: 'c8y-pkg-analytics-extension/block',
         priority: 940,
         label: 'Blocks installed',
         icon: 'flow-chart',
@@ -54,7 +54,7 @@ export class AnalyticsTabFactory implements TabFactory {
         map((result) => {
           if (result) {
             return {
-              path: 'sag-ps-pkg-analytics-extension/repository',
+              path: 'c8y-pkg-analytics-extension/repository',
               priority: 920,
               label: 'Repositories',
               icon: 'test',
@@ -64,7 +64,7 @@ export class AnalyticsTabFactory implements TabFactory {
         })
       );
       tabs.push({
-        path: 'sag-ps-pkg-analytics-extension/monitoring',
+        path: 'c8y-pkg-analytics-extension/monitoring',
         priority: 900,
         label: 'Monitoring',
         icon: 'monitoring',

@@ -33,7 +33,7 @@ import { ExtensionListComponent } from './list/extension-list.component';
   providers: [
     EplConfigService,
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/repository',
+      path: 'c8y-pkg-analytics-extension/repository',
       component: SampleGridComponent
     }),
     {
