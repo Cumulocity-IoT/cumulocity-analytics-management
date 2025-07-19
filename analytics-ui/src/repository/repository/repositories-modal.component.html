@@ -1,4 +1,4 @@
-<c8y-modal title="Repositories for blocks" (onClose)="onSave()" (onDismiss)="onCancel()"  [labels]="labels"
+<c8y-modal title="Repositories for blocks" (onClose)="onSave()" (onDismiss)="onCancel()" [labels]="labels"
   [headerClasses]="'modal-header dialog-header'" [disabled]="!saveRequired">
 
   <ng-container c8y-modal-title>
@@ -11,12 +11,22 @@
           <thead>
             <tr>
               <th width="5%"></th>
+              <!-- <th width="5%">Id</th> -->
               <th width="15%">Name</th>
-              <th width="70%">Url</th>
+              <th width="70%">URL</th>
               <th width="5%">Enabled</th>
               <th width="10%">Action</th>
             </tr>
           </thead>
+          <tr *ngIf="(repositories$| async).length == 0">
+            <td colspan="5">
+              <c8y-ui-empty-state [icon]="'c8y-icon dlt-c8y-icon-connected'"
+                [title]="'No repository configured.' | translate" [subtitle]="
+                  'Create your first repository.' | translate
+                  " [horizontal]="false">
+              </c8y-ui-empty-state>
+            <td>
+          </tr>
           <tbody>
             <tr *ngFor="let repository of (repositories$| async); let i = index">
               <td>
@@ -26,6 +36,9 @@
                   <span></span>
                 </label>
               </td>
+              <!-- <td>
+                {{ repository.id }}
+              </td> -->
               <td>
                 {{ repository.name }}
               </td>
@@ -33,15 +46,14 @@
                 {{ repository.url }}
               </td>
               <td class="j-c-center_">
-                <button title="{{ 'Toggle activation' | translate }}" class="btn btn-icon btn-clean"
-                  (click)="toggleActivation(repository)">
-                  <i [c8yIcon]="!repository?.enabled ? 'toggle-off' : 'toggle-on'" class="m-r-5" c8yIcon="toggle-on"
-                    class="text-danger"></i>
-                  <span class="sr-only" translate>Toggle activation</span>
-                </button>
+                <label class="c8y-switch">
+                  <input title="{{ 'Toggle activation' | translate }}" type="checkbox" [checked]="repository?.enabled"
+                    (click)="toggleActivation(repository)" />
+                  <span></span>
+                </label>
               </td>
               <td width="10%" class="j-c-center_">
-                <button title="{{ 'Delete' | translate }}" class="btn btn-icon btn-clean"
+                <button title="{{ 'Delete' | translate }}" class="btn btn-icon btn-clean showOnHover"
                   (click)="deleteRepository(repository.id)">
                   <i c8yIcon="trash-o" class="text-danger"></i>
                   <span class="sr-only" translate>Delete</span>
@@ -51,39 +63,61 @@
           </tbody>
         </table>
         <div class="legend form-block">Selected repository</div>
-        <form [formGroup]="repositoryForm">
+        <form [formGroup]="repositoryForm" autocomplete="off">
           <fieldset>
             <input type="hidden" formControlName="id" />
             <c8y-form-group>
-              <label for="name">Name</label>
+              <label>Name</label>
               <input type="text" id="name" formControlName="name" class="form-control" />
             </c8y-form-group>
             <c8y-form-group>
-              <label for="name"><span>{{'Repository Url '}}</span>
-                <button type="button" placement="right" popover="Enter the Url to a github repository in the form: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-                  triggers="focus" class="btn-help" aria-label="Help content"></button>
+              <ng-template #popupRepositoryUrl>
+                <div [innerHtml]="popRepositoryUrl"></div>
+              </ng-template>
+              <label><span>{{'Repository URL '}}</span>
+                <button type="button" placement="right" [popover]="popupRepositoryUrl" class="btn-help"
+                  aria-label="Help content"></button>
               </label>
-              <input type="text" title="Repository Url" id="url" formControlName="url"
-                placeholder="e.g.: https://api.github.com/repos/{REPO_SAMPLES_OWNER}/{REPO_SAMPLES_NAME}/contents/{REPO_SAMPLES_PATH}"
-                class="form-control" />
+              <div class="input-group">
+                <span class="input-group-addon" id="basic-addon3">
+                  {{ GITHUB_URL}}
+                </span>
+                <input type="text" title="Repository URL" id="url" autocomplete="off" formControlName="url"
+                  (change)="warnAboutPATReset()"
+                  placeholder="url without the prefix 'https://github.com/'', e.g. 'apama-analytics-builder-block-sdk/tree/main/samples/blocks'"
+                  class="form-control" />
+              </div>
             </c8y-form-group>
             <c8y-form-group>
-              <label for="name"><span>{{'Personal Access Token'}}</span>
-                <button type="button" placement="right"
-                  popover="Enter Personal Access Token (PAT) created here: https://github.com/settings/tokens/new/"
-                  triggers="focus" class="btn-help" aria-label="Help content"></button>
+              <ng-template #popupTemplate>
+                <div [innerHtml]="popupPAT"></div>
+              </ng-template>
+              <label><span>{{'Personal Access Token'}}</span>
+                <button type="button" placement="right" [popover]="popupTemplate" class="btn-help"
+                  aria-label="Help content"></button>
               </label>
+
               <input type="password" title="Access Token" id="accessToken" formControlName="accessToken"
                 placeholder="e.g.: your github Personal Access Token (PAT)" class="form-control" />
+
             </c8y-form-group>
             <!-- Add any other form controls based on your repository model -->
-            <button (click)="addRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex != -1 || !repositoryForm.valid" style="min-width:110px">
+            <button (click)="addRepository()" class="btn btn-default"
+              [disabled]="selectedRepositoryIndex != -1 || !repositoryForm.valid" style="min-width:110px">
               Add
             </button>
-            <button (click)="updateRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex == -1" style="min-width:110px">
+            <button (click)="updateRepository()" class="btn btn-default" [disabled]="selectedRepositoryIndex == -1"
+              style="min-width:110px">
               Update
             </button>
-            <button (click)="resetForm()" class="btn btn-default" style="min-width:110px" >
+            <button (click)="testRepository()" class="btn btn-default"
+              [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN"
+              style="min-width:110px">
+              Test
+            </button>
+            <button type="button" placement="right" [popover]="'Enter you PAT access token to test'" triggers="focus"
+              class="btn-help" aria-label="Help content"></button>
+            <button (click)="resetForm()" class="btn btn-default" style="min-width:110px">
               Reset form
             </button>
           </fieldset>

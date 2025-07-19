@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
- * and/or its subsidiaries and/or its affiliates and/or their licensors.
+ * Copyright (c) 2025 Cumulocity GmbH
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -18,6 +17,7 @@
  *
  * @authors Christof Strack
  */
+
 import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
 
@@ -25,10 +25,11 @@ import { CellRendererContext } from '@c8y/ngx-components';
     selector: 'a17t-label-renderer-api',
     template: `
 	<div>
-        <span class="text-11 label label-primary">{{context.value}}</span
+        <span class="text-12 label label-primary">{{context.value}}</span
         >
     </div>
-  `
+  `,
+  standalone: false
 })
 export class LabelRendererComponent {
     constructor(public context: CellRendererContext) {

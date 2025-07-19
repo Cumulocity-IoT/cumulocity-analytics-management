@@ -12,7 +12,8 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 
 @Component({
   selector: 'a17t-extension-card',
-  templateUrl: './extension-card.component.html'
+  templateUrl: './extension-card.component.html',
+  standalone: false
 })
 export class ExtensionCardComponent{
   @Input() extension: IManagedObject;
@@ -27,9 +28,9 @@ export class ExtensionCardComponent{
 
     private wizardModalService: WizardModalService
   ) {}
-  // ngOnInit(): void {
-  //   console.log('application', this.as);
-  // }
+  ngOnInit(): void {
+    console.log('Block', this.extension);
+  }
 
   async detail() {
     if (this.extension.loaded) {
@@ -37,11 +38,11 @@ export class ExtensionCardComponent{
         relativeTo: this.activatedRoute
       });
     }
-    console.log(
-      'Details for extension:',
-      this.extension.name,
-      this.activatedRoute
-    );
+    // console.log(
+    //   'Details for extension:',
+    //   this.extension.name,
+    //   this.activatedRoute
+    // );
   }
 
   async delete() {

@@ -16,7 +16,8 @@ import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 @Component({
   selector: 'a17t-engine-monitoring',
   templateUrl: './engine-monitoring.component.html',
-  encapsulation: ViewEncapsulation.None
+  encapsulation: ViewEncapsulation.None,
+  standalone: false
 })
 export class EngineMonitoringComponent implements OnInit {
   cepOperationObjectId: string;

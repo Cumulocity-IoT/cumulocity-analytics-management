@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
- * and/or its subsidiaries and/or its affiliates and/or their licensors.
+ * Copyright (c) 2025 Cumulocity GmbH
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -57,6 +56,7 @@ import { FieldType } from '@ngx-formly/core';
     *ngIf="!!to.description"
   ></button> -->
     </label>
-  `
+  `,
+  standalone: false
 })
 export class CustomSwitchField extends FieldType {}

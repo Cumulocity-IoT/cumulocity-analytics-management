@@ -22,7 +22,7 @@ import { CollapseModule } from 'ngx-bootstrap/collapse';
   declarations: [EngineMonitoringComponent],
   providers: [
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/monitoring',
+      path: 'c8y-pkg-analytics-extension/monitoring',
       component: EngineMonitoringComponent
     })
   ]

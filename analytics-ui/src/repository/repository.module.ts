@@ -7,8 +7,11 @@ import { RepositoriesModalComponent } from './repository/repositories-modal.comp
 import { SampleGridComponent } from './list/sample-grid.component';
 import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
-import { EditorComponent, MonacoEditorMarkerValidatorDirective } from '@c8y/ngx-components/editor';
+import { EditorComponent } from '@c8y/ngx-components/editor';
 import { EplConfigService } from './editor/epl-config.service';
+import { ExtensionCreateComponent } from './create-extension/extension-create-modal.component';
+import { FORMLY_CONFIG } from '@ngx-formly/core';
+import { ExtensionListComponent } from './list/extension-list.component';
 @NgModule({
   imports: [
     CoreModule,
@@ -18,21 +21,35 @@ import { EplConfigService } from './editor/epl-config.service';
     PopoverModule,
     SharedModule,
     EditorComponent,
-    MonacoEditorMarkerValidatorDirective
   ],
   declarations: [
     SampleGridComponent,
     RepositoriesModalComponent,
-    EditorModalComponent
+    EditorModalComponent,
+    ExtensionCreateComponent,
+    ExtensionListComponent
   ],
   providers: [
     EplConfigService,
     hookRoute({
-      path: 'sag-ps-pkg-analytics-extension/repository',
+      path: 'c8y-pkg-analytics-extension/repository',
       component: SampleGridComponent
-    })
+    }),
+    {
+      provide: FORMLY_CONFIG,
+      multi: true,
+      useValue: {
+        types: [
+          { 
+            name: 'extension-list', 
+            component: ExtensionListComponent,
+            wrappers: ['c8y-form-field']
+          },
+        ],
+      }
+    }
   ]
 })
 export class RepositoryModule {
-  constructor() {}
+  constructor() { }
 }

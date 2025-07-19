@@ -11,12 +11,12 @@
   <c8y-breadcrumb-item
     [icon]="'monitoring'"
     [label]="'Monitoring' | translate"
-    [path]="'sag-ps-pkg-analytics-extension/monitoring'"
+    [path]="'c8y-pkg-analytics-extension/monitoring'"
   >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <div class="card card--grid content-fullpage grid__col--6-6--md">
-  <div class="inner-scroll bg-level-0 p-r-8">
+  <!-- <div class="inner-scroll bg-level-0 p-r-8">
     <div class="card-header separator sticky-top large-padding">
       <h4>Latest alarms</h4>
     </div>
@@ -103,8 +103,8 @@
         </button>
       </div>
     </div>
-  </div>
-  <div class="inner-scroll bg-level-0 p-l-8">
+  </div> -->
+  <!-- <div class="inner-scroll bg-level-0 p-l-8">
     <div class="card-header separator sticky-top large-padding">
       <h4>Latest events</h4>
     </div>
@@ -159,40 +159,8 @@
         </button>
       </div>
     </div>
-  </div>
-  <!-- <div class="inner-scroll bg-level-0 p-r-8">
-    <div class="card-header separator sticky-top large-padding"><h4>Safe Mode</h4></div>
-    <div class="card-block large-padding bg-inherit overflow-visible">
-      <p>
-        <span
-          >If no extension is loaded after deploying your latest extension
-          please try to delete this extension and restart the Streaming
-          Analytics again.</span
-        >
-      </p>
-      <p>
-        <span>
-          When extensions can't be loaded because of errors, the Streaming
-          Analytics engine starts in
-          <a
-            href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
-            target="_blank"
-            >Safe Mode</a
-          >.</span
-        >
-      </p>
-      <p>
-        <span>
-          To recover from this situation you have to delete the defective
-          extension.</span
-        >
-      </p>
-    </div>
   </div> -->
   <div class="inner-scroll bg-level-0 p-r-8">
-    <div class="card-header separator sticky-top large-padding">
-      <h4>CEP Engine Status</h4>
-    </div>
     <div class="card-block large-padding bg-inherit overflow-visible">
       <c8y-properties-list
         *ngIf="cepOperationObjectId && (cepCtrlStatusLabels$ | async).length > 0"
@@ -204,7 +172,7 @@
       <div class="c8y-empty-state" *ngIf="!cepOperationObjectId">
         <h1 [c8yIcon]="'monitoring'"></h1>
         <p>
-          <strong>This information is not available, since the support microservice is not deployed.</strong><br />
+          <strong>This information is not available, since the support microservice is not deployed or the Analytics Engine is about to restart.</strong><br />
           <small translate>Deploy microservice <code>analytics-ext-service</code>.</small><br />
         </p>
       </div>

@@ -13,7 +13,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   protected extensionsNode = new NavigatorNode({
     label: gettext('Analytics extensions'),
     icon: 'extension',
-    path: 'sag-ps-pkg-analytics-extension/block',
+    path: 'c8y-pkg-analytics-extension/block',
     parent: gettext('Ecosystem'),
     priority: 200,
     preventDuplicates: true
@@ -24,7 +24,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   ) {}
 
   get(): NavigatorNode {
-    console.log('AppState', this.as);
+    // console.log('AppState', this.as);
     if (this.canActivate()) {
       // id running in 
       if (this.as['options'].contextPath == 'streaminganalytics'){

@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
- * and/or its subsidiaries and/or its affiliates and/or their licensors.
+ * Copyright (c) 2025 Cumulocity GmbH
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -18,6 +17,7 @@
  *
  * @authors Christof Strack
  */
+
 import { Component } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { gettext } from '@c8y/ngx-components';
@@ -25,10 +25,13 @@ import { AnalyticsService, CEP_Extension } from '../shared';
 
 @Component({
   selector: 'a17t-extension-details',
-  templateUrl: './extension-details.component.html'
+  templateUrl: './extension-details.component.html',
+  styleUrls: ['./extension-details.component.css'],
+  standalone: false
 })
 export class ExtensionDetailsComponent {
   extension: CEP_Extension;
+  extensionContent: any;
   breadcrumbConfig: { icon: string; label: string; path: string };
 
   constructor(
@@ -50,13 +53,19 @@ export class ExtensionDetailsComponent {
   async loadExtension() {
     const { name } = this.activatedRoute.snapshot.params;
     this.extension = await this.analyticsService.getExtensionDetailFromCEP(name);
+    const extensionNames = await this.analyticsService.getExtensionNamesFromCEP();
+    const key = `${name}.zip`;
+    this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
+      return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
+    }) || [];
+    // console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
   }
 
   private setBreadcrumbConfig() {
     this.breadcrumbConfig = {
       icon: 'c8y-modules',
       label: gettext('Extensions'),
-      path: 'sag-ps-pkg-analytics-extension/manage'
+      path: 'c8y-pkg-analytics-extension/manage'
     };
   }
 }

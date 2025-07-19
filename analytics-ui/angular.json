@@ -17,12 +17,11 @@
         "build": {
           "builder": "@c8y/devkit:build",
           "options": {
-            "outputPath": "dist/sag-ps-pkg-analytics-extension",
+            "outputPath": "dist/c8y-pkg-analytics-extension",
             "main": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
-            "sourceMap": true,
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "less",
             "assets": [

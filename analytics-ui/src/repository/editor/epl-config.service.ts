@@ -44,7 +44,7 @@ export class EplConfigService {
 			formatOnPaste: true,
 			formatOnType: true,
 			scrollBeyondLastLine: false,
-			hover:{
+			hover: {
 				above: false
 			},
 			minimap: {

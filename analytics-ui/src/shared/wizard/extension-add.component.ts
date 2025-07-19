@@ -18,7 +18,8 @@ import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 
 @Component({
   selector: 'a17t-extension-add',
-  templateUrl: './extension-add.component.html'
+  templateUrl: './extension-add.component.html',
+  standalone: false
 })
 export class ExtensionAddComponent {
   @Input() headerText: string;
@@ -42,7 +43,7 @@ export class ExtensionAddComponent {
     private alertService: AlertService,
     private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
-  ) {}
+  ) { }
 
   get progress(): BehaviorSubject<number> {
     return this.analyticsService.progress;
@@ -77,9 +78,9 @@ export class ExtensionAddComponent {
           break;
         }
       }
-      if (this.isUpdate) {
-          this.done();
-          this.confirmUpdate();
+      if (this.isUpdate && this.mode == 'add') {
+        this.done();
+        this.confirmUpdate();
       } else {
         await this.uploadExtension(this.mode);
       }
@@ -97,9 +98,17 @@ export class ExtensionAddComponent {
   }
 
   private async uploadExtension(mode: UploadMode) {
-    await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
-    this.alertService.success('Uploaded new extension.');
-    this.isAppCreated = true;
+    const result = await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
+    if (result) {
+      this.alertService.success('Uploaded new extension.');
+      this.isAppCreated = true;
+      this.progress.next(100);
+    } else {
+      this.errorMessage = "Could not create extension!"
+      this.isAppCreated = false;
+      this.progress.next(100);
+
+    }
     this.progress.next(100);
     this.isLoading = false;
   }
@@ -118,6 +127,7 @@ export class ExtensionAddComponent {
     this.analyticsService.cancelExtensionCreation(this.createdApp);
     this.createdApp = null;
   }
+
   confirmUpdate() {
     const initialState = {
       title: 'Update extension',

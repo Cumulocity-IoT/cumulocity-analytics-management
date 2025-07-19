@@ -248,19 +248,36 @@ class C8YAgent:
     def _update_single_repository(self, tenant, repository: Dict) -> None:
         """Helper method to update a single repository"""
         try:
-            # If the access token is the dummy, get the original from existing repository
-            if repository.get("accessToken") == self.DUMMY_ACCESS_TOKEN:
+            # Get existing repository data
+            existing_data = None
+            existing_repo = None
+            try:
                 existing_repo = tenant.tenant_options.get(
                     category=self.ANALYTICS_MANAGEMENT_REPOSITORIES,
                     key=repository.get("id"),
                 )
-                if existing_repo:
-                    existing_data = json.loads(existing_repo.value)
-                    access_token = existing_data.get("accessToken", "")
-                else:
-                    access_token = ""
+            except KeyError:  # Specific exception for when the repository doesn't exist
+                self._logger.debug("Have to create new repository", exc_info=True)
+            except Exception as e:  # General exception for other errors
+                self._logger.error(f"Error accessing repository: {str(e)}", exc_info=True)
+
+            if existing_repo:
+                existing_data = json.loads(existing_repo.value) if existing_repo else {}
+
+            # Handle access token
+            new_access_token = False
+            if repository.get("accessToken") == self.DUMMY_ACCESS_TOKEN:
+                access_token = existing_data.get("accessToken", "")
             else:
                 access_token = repository.get("accessToken", "")
+                new_access_token = True
+
+            # Check if URL has changed
+            if existing_data and existing_data.get("url") != repository.get("url"):
+                # URL has changed, remove access token if it was not submitted again
+                if not new_access_token:
+                    access_token = ""
+                self._logger.info(f"URL changed for repository {repository.get('id')}, removing access token")
 
             value_dict = {
                 "name": repository.get("name"),

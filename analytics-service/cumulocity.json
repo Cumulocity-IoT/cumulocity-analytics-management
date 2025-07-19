@@ -4,6 +4,7 @@
   "provider": {
     "name": "Cumulocity GmbH"
   },
+  "contextPath": "analytics-ext-service",
   "isolation": "MULTI_TENANT",
   "requiredRoles": [
     "ROLE_OPTION_MANAGEMENT_READ",

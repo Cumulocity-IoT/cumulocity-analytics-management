@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
- * and/or its subsidiaries and/or its affiliates and/or their licensors.
+ * Copyright (c) 2025 Cumulocity GmbH
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -18,11 +17,14 @@
  *
  * @authors Christof Strack
  */
+
 import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-  template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> '
+  selector: 'a17t-boolean',
+  template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> ',
+  standalone: false
 })
 export class BooleanRendererComponent {
   constructor(public context: CellRendererContext) {

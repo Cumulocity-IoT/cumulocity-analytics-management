@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2022 Software AG, Darmstadt, Germany and/or Software AG USA Inc., Reston, VA, USA,
- * and/or its subsidiaries and/or its affiliates and/or their licensors.
+ * Copyright (c) 2025 Cumulocity GmbH
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -18,6 +17,7 @@
  *
  * @authors Christof Strack
  */
+
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
   ConfirmModalComponent,
@@ -31,7 +31,8 @@ import { Subject } from 'rxjs';
 
 @Component({
   selector: 'a17t-confirmation-modal',
-  templateUrl: './confirmation-modal.component.html'
+  templateUrl: './confirmation-modal.component.html',
+  standalone: false
 })
 export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   @Input() title: string;
