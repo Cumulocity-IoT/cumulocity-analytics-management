@@ -7,7 +7,7 @@ export default {
     description,
     license,
     version,
-    name: 'Analytics Extension', // key for repository connect
+    name: 'Analytics Builder Management', // key for repository connect
     contextPath: 'c8y-pkg-analytics-extension', // key for repository connect
     key: 'c8y-pkg-analytics-extension-key', // key for repository connect
     contentSecurityPolicy:
@@ -21,10 +21,10 @@ export default {
     noAppSwitcher: true,
     exports: [
       {
-        name: 'Analytics Builder Extension',
+        name: 'Analytics Builder Management',
         module: 'AnalyticsExtensionModule',
         path: './src/analytics-extension.module',
-        description: 'Adds Extensions for the Analytics Builder',
+        description: 'Manage blocks for the Analytics Builder',
       },
     ],
   },

@@ -1,4 +1,4 @@
-# cumulocity-analytics-management
+# Analytics Builder Management
 
 ## Content
 - [Overview](#overview)
@@ -16,7 +16,7 @@
 
 ## Overview
 
-This solution extends the functionality of the standard Cumulocity Streaming Analytics application by incorporating a plugin to manage and add Analytics Builder extensions. The current standard user interface lacks the capability to upload custom blocks packaged as **.zip** files. This plugin enhances the Streaming-Analytics UI by introducing these capabilities.
+This solution extends the functionality of the standard Cumulocity Streaming Analytics application by incorporating a plugin to manage and add Analytics Builder Blocks as extensions. The current standard user interface lacks the capability to upload custom blocks packaged as **.zip** files. This plugin enhances the Streaming-Analytics UI by introducing these capabilities.
 
 The extension allows you to manage the complete lifecycle of an extension:
 * List, upload, download, update and delete Analytics Builder extensions.

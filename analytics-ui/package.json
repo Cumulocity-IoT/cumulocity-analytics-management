@@ -1,7 +1,7 @@
 {
   "name": "analytics-extension",
   "version": "2.5.0",
-  "description": "Extends the standard Cumulocity administration web application with a dialog to add Analytics Builder extensions.",
+  "description": "Cumulocity plugin to manage custom Analytics Builder Blocks as extensions.",
   "repository": {
     "type": "git",
     "url": "git@github.com:Cumulocity-IoT/cumulocity-analytics-management.git"
