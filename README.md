@@ -210,7 +210,7 @@ To build the backend as a microservice `analytics-ext-service` follow these step
 > **NOTE**
 For the first deployment you have to use:
 ```
-# c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
+# c8y microservices create --file dist/analytics-extension-service.zip --name analytics-extension-service --timeout 360
 ```
 
 ## Analytics Builder block SDK
