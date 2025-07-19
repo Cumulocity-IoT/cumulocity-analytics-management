@@ -108,7 +108,7 @@ jobs:
 
       - name: Build backend
         run: |
-          ./build.sh analytics-ext-service  ${{ needs.build_ui.outputs.version }}
+          ./build.sh analytics-extension-service  ${{ needs.build_ui.outputs.version }}
       - name: Upload build artifact service
         uses: actions/upload-artifact@v4
         with:
@@ -116,7 +116,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-            ./analytics-service/dist/analytics-ext-service.zip
+            ./analytics-service/dist/analytics-extension-service.zip
   release-assets:
     needs: [build_ui, build_service]
     # if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}

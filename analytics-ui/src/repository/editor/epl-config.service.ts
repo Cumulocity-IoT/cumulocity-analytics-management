@@ -7,6 +7,7 @@
 
 import { Injectable } from '@angular/core';
 import eplTokenProvider from './epl-token.provider';
+import * as monaco from 'monaco-editor';
 @Injectable()
 export class EplConfigService {
 
@@ -29,7 +30,7 @@ export class EplConfigService {
 	/**
 	 * Default Editor configuration options
 	 */
-	public defaultEditorConfigs(): any {
+	public defaultEditorConfigs(): monaco.editor.IStandaloneEditorConstructionOptions {
 		return {
 			autoIndent: 'advanced',
 			autoClosingBrackets: 'languageDefined',
@@ -43,7 +44,7 @@ export class EplConfigService {
 			formatOnPaste: true,
 			formatOnType: true,
 			scrollBeyondLastLine: false,
-			hover:{
+			hover: {
 				above: false
 			},
 			minimap: {
@@ -66,7 +67,7 @@ export class EplConfigService {
 	 * The language configuration interface defines the contract between extensions and various editor features, 
 	 * like automatic bracket insertion, automatic indentation etc.
 	 */
-	public getEPLLanguageConfig(): any {
+	public getEPLLanguageConfig(): monaco.languages.LanguageConfiguration {
 		return {
 			// the default separators except `@$`
 			wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
@@ -106,8 +107,8 @@ export class EplConfigService {
 	/**
 	 * Get monaco.languages.ILanguageExtensionPoint object for 'epl' Language
 	 */
-	public getCustomLangExtensionPoint(): any {
-		const newLanguage: any = {
+	public getCustomLangExtensionPoint(): monaco.languages.ILanguageExtensionPoint {
+		const newLanguage: monaco.languages.ILanguageExtensionPoint = {
 			id: 'epl',
 			aliases: ['EPL', 'epl', 'Epl'],
 			extensions: ['.mon', '.MON']
@@ -129,7 +130,7 @@ export class EplConfigService {
 	/**
 	 * Creates and return custom Editor theme for EPL Language
 	 */
-	public getCustomLangTheme(): any{
+	public getCustomLangTheme(): monaco.editor.IStandaloneThemeData {
 		return {
 			base: 'vs',
 			inherit: false,
