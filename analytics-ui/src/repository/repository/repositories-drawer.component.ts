@@ -23,16 +23,19 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     repositories$: Observable<Repository[]>;
     repositoriesList: Repository[] = [];
-    displayList: Repository[] = []; // For display including temporary items
-    filteredDisplayList: Repository[] = []; // Filtered list based on search
+    displayList: Repository[] = [];
+    filteredDisplayList: Repository[] = [];
     activeRepository: Repository;
     repositoryForm: FormGroup;
     selectedRepositoryIndex: number = -1;
     isAddingNew: boolean = false;
     tempNewRepository: Repository | null = null;
-    searchTerm: string = ''; // Search term
+    searchTerm: string = '';
+    
+    // Store original form values to detect changes
+    originalFormValues: any = null;
 
-    // popupPAT = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
+    popupPAT = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
     popRepositoryUrl = `Enter the last parts to a github repository. If no branch name is given, the default branch <code>main</code> is assumed.`;
     GITHUB_API = 'https://api.github.com/repos/';
     GITHUB_URL = 'https://github.com/';
@@ -86,13 +89,11 @@ export class RepositoriesDrawerComponent implements OnInit {
     async ngOnInit(): Promise<void> {
         this.repositories$ = this.repositoryService.getRepositories();
         
-        // Subscribe to repository changes and update local list
         this.repositories$.subscribe(repos => {
             this.repositoriesList = repos;
             this.activeRepository = repos.find(r => r.enabled);
             this.updateDisplayList();
             
-            // If we just added a new repository, select it
             if (this.isAddingNew && this.tempNewRepository) {
                 const addedRepo = repos.find(r => r.name === this.tempNewRepository.name);
                 if (addedRepo) {
@@ -104,18 +105,13 @@ export class RepositoriesDrawerComponent implements OnInit {
             }
         });
         
-        // Select first repository if available
         if (this.repositoriesList.length > 0) {
             this.setIndex(0);
         } else {
-            // If no repositories, show the add form
             this.createCustomRepository();
         }
     }
 
-    /**
-     * Update the display list with real repositories + temporary new one if adding
-     */
     private updateDisplayList(): void {
         if (this.isAddingNew && this.tempNewRepository) {
             this.displayList = [...this.repositoriesList, this.tempNewRepository];
@@ -123,20 +119,15 @@ export class RepositoriesDrawerComponent implements OnInit {
             this.displayList = [...this.repositoriesList];
         }
         
-        // Apply search filter
         this.applySearchFilter();
     }
 
-    /**
-     * Apply search filter to the display list
-     */
     private applySearchFilter(): void {
         if (!this.searchTerm || this.searchTerm.trim() === '') {
             this.filteredDisplayList = [...this.displayList];
         } else {
             const searchLower = this.searchTerm.toLowerCase().trim();
             this.filteredDisplayList = this.displayList.filter(repo => {
-                // Search in name, url, and id
                 return repo.name?.toLowerCase().includes(searchLower) ||
                        repo.url?.toLowerCase().includes(searchLower) ||
                        repo.id?.toLowerCase().includes(searchLower);
@@ -144,10 +135,6 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
     }
 
-    /**
-     * Search/filter repositories based on input
-     * Called on keyup event in the search input
-     */
     searchRepositories(event?: Event): void {
         if (event) {
             const target = event.target as HTMLInputElement;
@@ -157,36 +144,72 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.applySearchFilter();
     }
 
-    /**
-     * Clear the search filter
-     */
     clearSearch(): void {
         this.searchTerm = '';
         this.applySearchFilter();
     }
 
+    /**
+     * Check if the current form has unsaved changes
+     */
+    private hasFormChanges(): boolean {
+        if (!this.originalFormValues) {
+            return false;
+        }
+
+        const currentValues = this.repositoryForm.value;
+        
+        // Get the full URL with prefix for comparison
+        const currentUrl = this.GITHUB_URL + (currentValues.url || '');
+        const originalUrl = this.originalFormValues.url;
+        
+        // Check name change
+        if (currentValues.name !== this.originalFormValues.name) {
+            return true;
+        }
+        
+        // Check URL change
+        if (currentUrl !== originalUrl) {
+            return true;
+        }
+        
+        // Check access token change
+        // Only consider it changed if there's a new non-empty value that's not the dummy token
+        const hasNewToken = currentValues.accessToken && 
+                           currentValues.accessToken !== '' && 
+                           currentValues.accessToken !== this.DUMMY_ACCESS_TOKEN;
+        if (hasNewToken) {
+            return true;
+        }
+        
+        return false;
+    }
+
     get isSaveDisabled(): boolean {
+        // For new repositories, just check form validity
         if (this.isAddingNew) {
             return this.repositoryForm.invalid || this.isSaving;
         }
         
-        return this.repositoryForm.invalid || 
-               (this.isSaving) ||
-               (!this.repositoryService.hasUnsavedEnabledChanges() && this.selectedRepositoryIndex !== -1);
+        // For existing repositories, enable save if:
+        // 1. Form is valid AND
+        // 2. (There are form changes OR there are unsaved enabled changes)
+        if (this.repositoryForm.invalid || this.isSaving) {
+            return true;
+        }
+        
+        return !this.hasFormChanges() && !this.repositoryService.hasUnsavedEnabledChanges();
     }
 
     get hasUnsavedChanges(): boolean {
-        return this.repositoryService.hasUnsavedEnabledChanges();
+        return this.hasFormChanges() || this.repositoryService.hasUnsavedEnabledChanges();
     }
 
     onEditRepository(repository: Repository, index: number): void {
-        // Check if this is the temporary repository
         if (this.isAddingNew && this.tempNewRepository && repository.id === this.tempNewRepository.id) {
-            // Already in add mode, just keep the form
             return;
         }
 
-        // Find the actual index in displayList (not filteredDisplayList)
         const actualIndex = this.displayList.indexOf(repository);
         this.selectedRepositoryIndex = actualIndex;
         this.isAddingNew = false;
@@ -194,6 +217,17 @@ export class RepositoriesDrawerComponent implements OnInit {
         
         const rep = { ...repository };
         rep.url = rep.url.replace(this.GITHUB_URL, '');
+        
+        // Store original values for change detection
+        this.originalFormValues = {
+            id: rep.id,
+            name: rep.name,
+            url: repository.url, // Keep full URL for comparison
+            accessToken: rep.accessToken || '',
+            enabled: rep.enabled
+        };
+        
+        // Set form with URL without prefix
         this.repositoryForm.patchValue(rep);
         this.showAddRepository = true;
         this.deleteDisabled = false;
@@ -212,22 +246,19 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.isAddingNew = false;
         this.tempNewRepository = null;
         this.showAddRepository = false;
+        this.originalFormValues = null;
         this.repositoryForm.reset();
         this.updateDisplayList();
     }
 
-    /**
-     * Switch to "Add New Repository" mode
-     * Creates a temporary placeholder in the list
-     */
     createCustomRepository(): void {
         this.resetForm();
         this.selectedRepositoryIndex = -1;
         this.isAddingNew = true;
         this.showAddRepository = true;
         this.deleteDisabled = true;
+        this.originalFormValues = null;
         
-        // Create temporary repository for display
         this.tempNewRepository = {
             id: 'temp-' + uuidCustom(),
             name: 'New repository',
@@ -236,8 +267,6 @@ export class RepositoriesDrawerComponent implements OnInit {
         } as Repository;
         
         this.updateDisplayList();
-        
-        // Select the temporary repository (last in list)
         this.selectedRepositoryIndex = this.displayList.length - 1;
     }
 
@@ -250,9 +279,6 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
     }
 
-    /**
-     * Actually add the repository to the backend
-     */
     private async addRepository(): Promise<void> {
         if (this.repositoryForm.valid) {
             const newRepository: Repository = this.repositoryForm.value;
@@ -262,16 +288,11 @@ export class RepositoriesDrawerComponent implements OnInit {
             
             await this.repositoryService.addRepository(newRepository);
             
-            // The subscription will handle updating the UI and selecting the new repo
             this.repositoryService.updateRepositoryItems(this.hideInstalled);
         }
     }
 
-    /**
-     * Toggle repository enabled status - LOCAL ONLY
-     */
     toggleActivation(repository: Repository): void {
-        // Don't allow toggling the temporary repository
         if (this.isAddingNew && this.tempNewRepository && repository.id === this.tempNewRepository.id) {
             return;
         }
@@ -283,15 +304,21 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
     }
 
-    /**
-     * Actually update the repository in the backend
-     */
     private async updateRepository(): Promise<void> {
         if (this.repositoryForm.valid) {
             const updatedRepository: Repository = this.repositoryForm.value;
             updatedRepository.url = this.GITHUB_URL + updatedRepository.url;
             
             await this.repositoryService.updateRepository(updatedRepository);
+            
+            // Update original form values after successful save
+            this.originalFormValues = {
+                id: updatedRepository.id,
+                name: updatedRepository.name,
+                url: updatedRepository.url,
+                accessToken: updatedRepository.accessToken || '',
+                enabled: updatedRepository.enabled
+            };
             
             this.repositoryService.updateRepositoryItems(this.hideInstalled);
         }
@@ -360,26 +387,26 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.isSaving = true;
         try {
             if (this.isAddingNew) {
+                // Adding a new repository
                 await this.addRepository();
             } else if (this.selectedRepositoryIndex !== -1) {
-                const currentRepo = this.displayList[this.selectedRepositoryIndex];
-                const actualRepo = this.repositoriesList.find(r => r.id === currentRepo.id);
+                const hasFormModifications = this.hasFormChanges();
+                const hasEnabledChanges = this.repositoryService.hasUnsavedEnabledChanges();
                 
-                if (actualRepo) {
-                    const formValue = this.repositoryForm.value;
-                    const formUrl = this.GITHUB_URL + formValue.url;
-                    
-                    const hasFormChanges = 
-                        actualRepo.name !== formValue.name ||
-                        actualRepo.url !== formUrl ||
-                        (formValue.accessToken && formValue.accessToken !== '' && formValue.accessToken !== this.DUMMY_ACCESS_TOKEN);
-                    
-                    if (hasFormChanges) {
-                        await this.updateRepository();
-                    } else if (this.hasUnsavedChanges) {
-                        await this.repositoryService.saveAllRepositories();
-                        this.repositoryService.updateRepositoryItems(this.hideInstalled);
-                    }
+                if (hasFormModifications && hasEnabledChanges) {
+                    // Both form and enabled status changed
+                    // Update the repository details first
+                    await this.updateRepository();
+                    // Then save all enabled states
+                    await this.repositoryService.saveAllRepositories();
+                    this.repositoryService.updateRepositoryItems(this.hideInstalled);
+                } else if (hasFormModifications) {
+                    // Only form changed (name, url, token)
+                    await this.updateRepository();
+                } else if (hasEnabledChanges) {
+                    // Only enabled status changed
+                    await this.repositoryService.saveAllRepositories();
+                    this.repositoryService.updateRepositoryItems(this.hideInstalled);
                 }
             }
             
@@ -393,7 +420,6 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     onCancel(): void {
         if (this.isAddingNew) {
-            // Remove temporary repository and go back
             this.tempNewRepository = null;
             this.isAddingNew = false;
             this.updateDisplayList();
@@ -407,7 +433,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         } else if (this.hasUnsavedChanges) {
             const initialState = {
                 title: 'Unsaved Changes',
-                message: 'You have unsaved changes to repository enabled status. Do you want to discard these changes?',
+                message: 'You have unsaved changes. Do you want to discard these changes?',
                 labels: {
                     ok: 'Discard',
                     cancel: 'Keep Editing'
@@ -420,6 +446,13 @@ export class RepositoriesDrawerComponent implements OnInit {
             confirmCancelModalRef.content.closeSubject.subscribe(
                 (result: boolean) => {
                     if (result) {
+                        // Revert form changes
+                        if (this.originalFormValues) {
+                            const revertValues = { ...this.originalFormValues };
+                            revertValues.url = revertValues.url.replace(this.GITHUB_URL, '');
+                            this.repositoryForm.patchValue(revertValues);
+                        }
+                        // Revert enabled changes
                         this.repositoryService.cancelEnabledChanges();
                         this.cancel.emit();
                     }
@@ -435,5 +468,6 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.repositoryForm.reset();
         this.selectedRepositoryIndex = -1;
         this.isAddingNew = false;
+        this.originalFormValues = null;
     }
 }

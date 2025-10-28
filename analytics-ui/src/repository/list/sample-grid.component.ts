@@ -284,7 +284,7 @@ export class SampleGridComponent implements OnInit {
   }
 
   onRepositoryCommit(repository: Repository): void {
-    console.log('Repository saved:', repository);
+    // console.log('Repository saved:', repository);
     this.showConfigRepositories = false;
     // Handle the saved repository
   }

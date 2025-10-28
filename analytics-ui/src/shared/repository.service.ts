@@ -438,7 +438,7 @@ export class RepositoryService {
 
   private fetchRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
     return from(this.getGitHubContent(repository)).pipe(
-      tap(qq => { console.log("Hello III", qq.flat()) }),
+      // tap(qq => { console.log("Hello III", qq.flat()) }),
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
         this.handleError(error);
