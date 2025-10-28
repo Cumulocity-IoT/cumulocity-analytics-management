@@ -3,7 +3,6 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CoreModule, hookRoute } from '@c8y/ngx-components';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { RepositoriesModalComponent } from './repository/repositories-modal.component';
 import { SampleGridComponent } from './list/sample-grid.component';
 import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
@@ -12,6 +11,7 @@ import { EplConfigService } from './editor/epl-config.service';
 import { ExtensionCreateComponent } from './create-extension/extension-create-modal.component';
 import { FORMLY_CONFIG } from '@ngx-formly/core';
 import { ExtensionListComponent } from './list/extension-list.component';
+import { RepositoriesDrawerComponent } from './repository/repositories-drawer.component';
 @NgModule({
   imports: [
     CoreModule,
@@ -24,10 +24,10 @@ import { ExtensionListComponent } from './list/extension-list.component';
   ],
   declarations: [
     SampleGridComponent,
-    RepositoriesModalComponent,
     EditorModalComponent,
     ExtensionCreateComponent,
-    ExtensionListComponent
+    ExtensionListComponent,
+    RepositoriesDrawerComponent
   ],
   providers: [
     EplConfigService,

@@ -38,7 +38,6 @@ import {
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
-import { RepositoriesModalComponent } from '../repository/repositories-modal.component';
 import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
@@ -60,6 +59,7 @@ export class SampleGridComponent implements OnInit {
   loading: boolean = false;
   singleSelection: boolean = false;
   showMonitorEditor: boolean = false;
+  showConfigRepositories: boolean = false;
 
   activeRepository: Repository;
   repositoryItems$: Observable<RepositoryItem[]>;
@@ -187,25 +187,6 @@ export class SampleGridComponent implements OnInit {
     }).content as EditorModalComponent;
   }
 
-  async updateRepositories() {
-    const initialState = {};
-    const modalRef = this.bsModalService.show(RepositoriesModalComponent, {
-      class: 'modal-lg',
-      initialState,
-      ignoreBackdropClick: true
-    });
-
-    modalRef.content.closeSubject.subscribe(async (response) => {
-      console.log('Repositories response after edit:', response);
-      if (response) {
-        this.activeRepository = response;
-        await this.repositoryService.updateRepositories();
-        this.repositoryService.updateRepositoryItems(this.hideInstalled);
-      } else {
-        this.repositoryService.cancelChanges();
-      }
-    });
-  }
 
   checkSelection(ids: string[]) {
     // console.log("Selected items", ids);
@@ -298,4 +279,18 @@ export class SampleGridComponent implements OnInit {
     this.repositoryService.updateRepositoryItems(this.hideInstalled);
   }
 
+  openRepositoriesDrawer(): void {
+    this.showConfigRepositories = true;
+  }
+
+  onRepositoryCommit(repository: Repository): void {
+    console.log('Repository saved:', repository);
+    this.showConfigRepositories = false;
+    // Handle the saved repository
+  }
+
+  onRepositoryCancel(): void {
+    this.showConfigRepositories = false;
+
+  }
 }
