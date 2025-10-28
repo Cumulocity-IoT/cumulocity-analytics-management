@@ -1,18 +1,9 @@
 <c8y-title translate>Monitoring Streaming Analytics</c8y-title>
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-atom'"
-    [label]="'Ecosystem' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'c8y-streaming-analytics'"
-    [label]="'Analytics' | translate"
-  ></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item
-    [icon]="'monitoring'"
-    [label]="'Monitoring' | translate"
-    [path]="'c8y-pkg-analytics-extension/monitoring'"
-  >
+  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'monitoring'" [label]="'Monitoring' | translate"
+    [path]="'c8y-pkg-analytics-extension/monitoring'">
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <div class="card card--grid content-fullpage grid__col--6-6--md">
@@ -161,18 +152,18 @@
     </div>
   </div> -->
   <div class="inner-scroll bg-level-0 p-r-8">
+    <div class="card-header separator">
+      <p class="card-title">Status CEP</p>
+    </div>
     <div class="card-block large-padding bg-inherit overflow-visible">
-      <c8y-properties-list
-        *ngIf="cepOperationObjectId && (cepCtrlStatusLabels$ | async).length > 0"
-        [title]="'CEP Engine Status'"
-        [emptyLabel]="'--'"
-        [properties]="cepCtrlStatusLabels$ | async"
-      >
+      <c8y-properties-list *ngIf="cepOperationObjectId && (cepCtrlStatusLabels$ | async).length > 0"
+        [title]="'CEP Engine Status'" [emptyLabel]="'--'" [properties]="cepCtrlStatusLabels$ | async">
       </c8y-properties-list>
       <div class="c8y-empty-state" *ngIf="!cepOperationObjectId">
         <h1 [c8yIcon]="'monitoring'"></h1>
         <p>
-          <strong>This information is not available, since the support microservice is not deployed or the Analytics Engine is about to restart.</strong><br />
+          <strong>This information is not available, since the support microservice is not deployed or the Analytics
+            Engine is about to restart.</strong><br />
           <small translate>Deploy microservice <code>analytics-ext-service</code>.</small><br />
         </p>
       </div>
