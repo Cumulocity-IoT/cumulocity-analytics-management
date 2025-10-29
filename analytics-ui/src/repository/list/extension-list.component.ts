@@ -6,9 +6,9 @@ import { FieldType } from '@ngx-formly/core';
   selector: 'app-extension-list',
   template: `
     <div class="extension-list-container" *ngIf="!to.hidden">
-      <div class="extension-list-description" *ngIf="to.description">
+      <!-- <div class="extension-list-description" *ngIf="to.description">
         {{ to.description }}
-      </div>
+      </div> -->
       <div class="extension-list" *ngIf="to.extensionNames?.length > 0">
         <table class="extension-table">
           <tbody>
@@ -47,14 +47,14 @@ import { FieldType } from '@ngx-formly/core';
       text-align: center;
       background-color: #e9ecef;
       font-weight: bold;
-      padding: 8px;
-      border-top-left-radius: 4px;
-      border-bottom-left-radius: 4px;
+      padding: 4px;
+      //border-top-left-radius: 4px;
+      //border-bottom-left-radius: 4px;
     }
     .extension-cell {
-      padding: 8px 12px;
-      border-top-right-radius: 4px;
-      border-bottom-right-radius: 4px;
+      padding: 4px 8px;
+      //border-top-right-radius: 4px;
+      //border-bottom-right-radius: 4px;
     }
     .no-extensions {
       padding: 0.75rem;

@@ -37,8 +37,8 @@ export class ExtensionCreateComponent implements OnInit {
   ) { }
 
   ngOnInit() {
-    this.configurationIsExtension = !! this.sections;
-    this.configuration['name'] = this.monitors && this.monitors.length >0 ? this.monitors[0].name: undefined;
+    this.configurationIsExtension = !!this.sections;
+    this.configuration['name'] = this.monitors && this.monitors.length > 0 ? this.monitors[0].name : undefined;
     this.isDeployed();
     this.configFormlyFields = [
       {
@@ -52,7 +52,7 @@ export class ExtensionCreateComponent implements OnInit {
             templateOptions: {
               label: 'Name Extension',
               required: true,
-            }, 
+            },
             hideExpression: this.configurationIsExtension
           }
         ]
@@ -79,10 +79,10 @@ export class ExtensionCreateComponent implements OnInit {
       {
         fieldGroupClassName: 'row',
         fieldGroup: [
-          {
-            className: 'col-lg-12',
-            template: '<div class="">Only after the restart, blocks are available to models in the Analytics Builder</div>',
-          },
+          // {
+          //   className: 'col-lg-12',
+          //   template: '<div class="">Only after the restart, blocks are available to models in the Analytics Builder</div>',
+          // },
           {
             className: 'col-lg-12',
             key: 'deploy',
@@ -91,6 +91,7 @@ export class ExtensionCreateComponent implements OnInit {
             wrappers: ['c8y-form-field'],
             templateOptions: {
               label: 'Restart to deploy',
+              description: 'Only after the restart, blocks are available to models in the Analytics Builder',
               switchMode: true,
               hideLabel: true,
             }
@@ -121,7 +122,7 @@ export class ExtensionCreateComponent implements OnInit {
     let response;
 
     if (this.monitors && this.monitors.length > 0) {
-      if (this.sections && this.sections.length > 0 ) {
+      if (this.sections && this.sections.length > 0) {
         response = await this.repositoryService.createExtensionFromYaml(
           this.configuration.name,
           this.monitors[0],
