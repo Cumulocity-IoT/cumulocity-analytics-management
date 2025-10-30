@@ -18,8 +18,8 @@
  * @authors Christof Strack
  */
 
-import { Component } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
 import { gettext } from '@c8y/ngx-components';
 import { AnalyticsService, CEP_Extension } from '../shared';
 
@@ -29,30 +29,51 @@ import { AnalyticsService, CEP_Extension } from '../shared';
   styleUrls: ['./extension-details.component.css'],
   standalone: false
 })
-export class ExtensionDetailsComponent {
+export class ExtensionDetailsComponent implements OnInit {
+  extensionFromCEP: CEP_Extension;
   extension: CEP_Extension;
   extensionContent: any;
+  buildInformation: any[] = [];
   breadcrumbConfig: { icon: string; label: string; path: string };
 
   constructor(
-    private activatedRoute: ActivatedRoute,
+    private route: ActivatedRoute,
+    private router: Router,
     private analyticsService: AnalyticsService
   ) {
-    this.refresh();
+    // Get the extension from navigation state in constructor
+    const navigation = this.router.getCurrentNavigation();
+    this.extension = navigation?.extras?.state?.['extension'];
   }
 
-  async refresh() {
-    await this.load();
+  async ngOnInit(): Promise<void> {
+    this.extensionFromCEP = await this.route.snapshot.data['extensionFromCEP'];
+
+    // Alternative: Get extension from history state if not set in constructor
+    if (!this.extension) {
+      this.extension = history.state.extension;
+    }
+    this.buildInformation.push({
+      label: 'Build Type',
+      type: 'string',
+      value: this.extension['build_information']['build_type']
+    });
+    this.buildInformation.push({
+      label: 'Repository Name',
+      type: 'string',
+      value: this.extension['build_information']['repository']['name']
+    });
+    this.buildInformation.push({
+      label: 'Repository Url',
+      type: 'string',
+      value: this.extension['build_information']['repository']['url']
+    });
+    await this.init();
+  }
+
+  async init() {
     this.setBreadcrumbConfig();
-  }
-
-  async load() {
-    await this.loadExtension();
-  }
-
-  async loadExtension() {
-    const { name } = this.activatedRoute.snapshot.params;
-    this.extension = await this.analyticsService.getExtensionDetailFromCEP(name);
+    const { name } = this.route.snapshot.params;
     const extensionNames = await this.analyticsService.getExtensionNamesFromCEP();
     const key = `${name}.zip`;
     this.extensionContent = extensionNames[key]?.contents?.map(fileName => {

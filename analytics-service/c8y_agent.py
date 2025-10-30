@@ -63,7 +63,11 @@ class C8YAgent:
         return request.headers, request.cookies
 
     def upload_extension(
-        self, request, extension_name: str, ext_file
+        self,
+        request,
+        extension_name: str,
+        ext_file,
+        build_information: Optional[Dict] = None,
     ) -> str:
         """
         Upload an extension to Cumulocity.
@@ -72,6 +76,7 @@ class C8YAgent:
             request: Flask request object
             extension_name: Name of the extension
             ext_file: File object containing the extension
+            build_information: Optional build metadata
 
         Returns:
             Binary ID of uploaded extension
@@ -87,11 +92,14 @@ class C8YAgent:
                 name=extension_name,
                 file=ext_file,
                 pas_extension=extension_name,
+                build_information=build_information or {},
             ).create()
             self._logger.info(f"Successfully uploaded extension: {extension_name}")
             return binary.id
         except Exception as e:
-            self._logger.error(f"Failed to upload extension {extension_name}: {e}", exc_info=True)
+            self._logger.error(
+                f"Failed to upload extension {extension_name}: {e}", exc_info=True
+            )
             raise
 
     def restart_cep(self, request) -> None:
@@ -146,7 +154,9 @@ class C8YAgent:
             return None
 
         except Exception as e:
-            self._logger.error(f"Failed to get CEP operation object ID: {e}", exc_info=True)
+            self._logger.error(
+                f"Failed to get CEP operation object ID: {e}", exc_info=True
+            )
             return None
 
     def get_cep_ctrl_status(self, request) -> Optional[Dict]:
@@ -250,7 +260,9 @@ class C8YAgent:
                 category=self.ANALYTICS_MANAGEMENT_REPOSITORIES
             )
             return [
-                self._process_repository_data(option, option.key, replace_access_token=True)
+                self._process_repository_data(
+                    option, option.key, replace_access_token=True
+                )
                 for option in tenant_options
             ]
         except Exception as e:
@@ -285,7 +297,9 @@ class C8YAgent:
             self._logger.warning(f"Repository not found: {repository_id}")
             return None
         except Exception as e:
-            self._logger.error(f"Failed to load repository {repository_id}: {e}", exc_info=True)
+            self._logger.error(
+                f"Failed to load repository {repository_id}: {e}", exc_info=True
+            )
             return None
 
     def update_repositories(
@@ -307,7 +321,9 @@ class C8YAgent:
 
             existing_repos = self.load_repositories(request)
             new_repo_ids = {repo.get("id") for repo in repositories if repo.get("id")}
-            existing_repo_ids = {repo.get("id") for repo in existing_repos if repo.get("id")}
+            existing_repo_ids = {
+                repo.get("id") for repo in existing_repos if repo.get("id")
+            }
             repos_to_delete = existing_repo_ids - new_repo_ids
 
             # Update/create repositories
@@ -365,7 +381,9 @@ class C8YAgent:
                 and not new_access_token
             ):
                 access_token = ""
-                self._logger.info(f"URL changed for repository {repo_id}, clearing access token")
+                self._logger.info(
+                    f"URL changed for repository {repo_id}, clearing access token"
+                )
 
             value_dict = {
                 "name": repository.get("name", ""),
@@ -385,7 +403,9 @@ class C8YAgent:
             self._logger.info(f"Updated repository: {repo_id}")
 
         except Exception as e:
-            self._logger.error(f"Failed to update repository {repo_id}: {e}", exc_info=True)
+            self._logger.error(
+                f"Failed to update repository {repo_id}: {e}", exc_info=True
+            )
             raise
 
     def _delete_repositories(self, tenant, repo_ids: Set[str]) -> None:

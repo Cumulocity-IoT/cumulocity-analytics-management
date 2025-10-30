@@ -68,7 +68,9 @@ def get_content_list():
 
     logger.info(f"Fetching content list from: {content_url}")
 
-    response = requests.get(content_url, headers=headers, allow_redirects=True, timeout=30)
+    response = requests.get(
+        content_url, headers=headers, allow_redirects=True, timeout=30
+    )
     response.raise_for_status()
 
     return make_response(response.content, 200, {"Content-Type": "application/json"})
@@ -100,15 +102,20 @@ def get_content():
     headers = get_repository_headers(request, repository_id)
     decoded_url = urllib.parse.unquote(encoded_url)
 
-    response = requests.get(decoded_url, headers=headers, allow_redirects=True, timeout=30)
+    response = requests.get(
+        decoded_url, headers=headers, allow_redirects=True, timeout=30
+    )
     response.raise_for_status()
 
     if extract_fqn:
         if not cep_block_name:
-            return create_error_response("cep_block_name required for FQN extraction", 400)
+            return create_error_response(
+                "cep_block_name required for FQN extraction", 400
+            )
 
         # Extract package name using regex
         import re
+
         package_match = re.search(r"package\s+([\w.]+)\s*;", response.text)
         if not package_match:
             return create_error_response("Package name not found in monitor file", 400)
@@ -179,8 +186,12 @@ def download_github_content(
             if isinstance(content_response, list):
                 for content_item in content_response:
                     if skip_root_folder:
-                        content_item["path"] = remove_root_folders(content_item["path"], 1)
-                    download_github_content(url, headers, work_dir, skip_root_folder, content_item)
+                        content_item["path"] = remove_root_folders(
+                            content_item["path"], 1
+                        )
+                    download_github_content(
+                        url, headers, work_dir, skip_root_folder, content_item
+                    )
             else:
                 logger.warning(f"Unexpected content format from {url}")
             return
@@ -208,11 +219,15 @@ def download_github_content(
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
         if download_url:
-            response = requests.get(download_url, headers=headers, allow_redirects=True, timeout=30)
+            response = requests.get(
+                download_url, headers=headers, allow_redirects=True, timeout=30
+            )
             response.raise_for_status()
             content = response.content
         else:
-            response = requests.get(item_url, headers=headers, allow_redirects=True, timeout=30)
+            response = requests.get(
+                item_url, headers=headers, allow_redirects=True, timeout=30
+            )
             response.raise_for_status()
 
             try:
@@ -232,7 +247,9 @@ def download_github_content(
         os.makedirs(full_path, exist_ok=True)
         logger.info(f"Created directory: {full_path}")
 
-        response = requests.get(item_url, headers=headers, allow_redirects=True, timeout=30)
+        response = requests.get(
+            item_url, headers=headers, allow_redirects=True, timeout=30
+        )
         response.raise_for_status()
         dir_contents = response.json()
 
@@ -240,7 +257,9 @@ def download_github_content(
             for dir_item in dir_contents:
                 if skip_root_folder:
                     dir_item["path"] = remove_root_folders(dir_item["path"], 1)
-                download_github_content(url, headers, work_dir, skip_root_folder, dir_item)
+                download_github_content(
+                    url, headers, work_dir, skip_root_folder, dir_item
+                )
 
 
 def build_extension(work_dir: str, extension_name: str) -> str:
@@ -333,7 +352,13 @@ def create_extension():
                         download_name=f"{extension_name}.zip",
                     )
                 else:
-                    ext_id = agent.upload_extension(request, extension_name, ext_file)
+                    build_info = {
+                        "build_type": "repository",
+                        "repository": repository,
+                    }
+                    ext_id = agent.upload_extension(
+                        request, extension_name, ext_file, build_info
+                    )
                     logger.info(f"Uploaded extension {extension_name} as {ext_id}")
 
                     if deploy:
@@ -382,7 +407,9 @@ def create_extension_from_yaml():
 
     try:
         yaml_url = yaml_data["url"]
-        response = requests.get(yaml_url, headers=headers, allow_redirects=True, timeout=30)
+        response = requests.get(
+            yaml_url, headers=headers, allow_redirects=True, timeout=30
+        )
         response.raise_for_status()
         yaml_structure = yaml.safe_load(response.text)
 
@@ -413,16 +440,26 @@ def create_extension_from_yaml():
                 for file_path in files:
                     file_url = f"{base_url}/{file_path}"
                     api_url = github_web_url_to_content_api(file_url)
-                    download_github_content(api_url, headers, work_dir, skip_root_folder=False)
+                    download_github_content(
+                        api_url, headers, work_dir, skip_root_folder=False
+                    )
             except Exception as e:
-                logger.error(f"Download failed for section '{section_name}': {e}", exc_info=True)
-                return create_error_response(f"Download failed for '{section_name}': {e}", 400)
+                logger.error(
+                    f"Download failed for section '{section_name}': {e}", exc_info=True
+                )
+                return create_error_response(
+                    f"Download failed for '{section_name}': {e}", 400
+                )
 
             try:
                 extension_path = build_extension(work_dir, section_name)
             except subprocess.CalledProcessError as e:
-                logger.error(f"Build failed for '{section_name}': {e.stderr}", exc_info=True)
-                return create_error_response(f"Build failed for '{section_name}': {e.stderr}", 500)
+                logger.error(
+                    f"Build failed for '{section_name}': {e.stderr}", exc_info=True
+                )
+                return create_error_response(
+                    f"Build failed for '{section_name}': {e.stderr}", 500
+                )
 
             try:
                 with open(extension_path, "rb") as ext_file:
@@ -435,7 +472,17 @@ def create_extension_from_yaml():
                                 download_name=f"{section_name}.zip",
                             )
                     else:
-                        ext_id = agent.upload_extension(request, section_name, ext_file)
+                        build_info = {
+                            "build_type": "yaml",
+                            "yaml": yaml_data,
+                            "sections": sections,
+                            "repository": repository,
+                            "section_name": section_name,
+                            "files": files,
+                        }
+                        ext_id = agent.upload_extension(
+                            request, section_name, ext_file, build_info
+                        )
                         logger.info(f"Uploaded extension {section_name} as {ext_id}")
                         uploaded_extensions.append({"name": section_name, "id": ext_id})
 
@@ -444,8 +491,12 @@ def create_extension_from_yaml():
                             agent.restart_cep(request)
 
             except Exception as e:
-                logger.error(f"Processing failed for '{section_name}': {e}", exc_info=True)
-                return create_error_response(f"Processing failed for '{section_name}': {e}", 500)
+                logger.error(
+                    f"Processing failed for '{section_name}': {e}", exc_info=True
+                )
+                return create_error_response(
+                    f"Processing failed for '{section_name}': {e}", 500
+                )
 
     if upload:
         return jsonify({"uploaded_extensions": uploaded_extensions}), 201
@@ -512,7 +563,14 @@ def create_extension_from_list():
                         download_name=f"{extension_name}.zip",
                     )
                 else:
-                    ext_id = agent.upload_extension(request, extension_name, ext_file)
+                    build_info = {
+                        "build_type": "list",
+                        "monitors": monitors,
+                        "repository": repository,
+                    }
+                    ext_id = agent.upload_extension(
+                        request, extension_name, ext_file, build_info
+                    )
                     logger.info(f"Uploaded extension {extension_name} as {ext_id}")
 
                     if deploy:

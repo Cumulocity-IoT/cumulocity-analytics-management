@@ -18,11 +18,21 @@
         extension.loaded === true ? 'Loaded' : ('Unknown' | translate)
         }}</span>
     </div>
+    <div class="text-center">
+      <span [class]="
+          extension.build_information 
+            ? 'label label-primary'
+            : 'label label-info'
+        ">
+        {{
+        extension.build_information ? 'Build Information' : ('No Build Information' | translate)
+        }}</span>
+    </div>
 
     <div class="text-center" *ngIf="extension.loaded !== true">
       <span>
         {{
-        'This is not an EPL extension'
+        'This extension is not loaded'
         }}</span>
     </div>
   </div>
@@ -59,6 +69,12 @@
           <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!extension.loaded">
             <i c8yIcon="info" class="m-r-4"></i>
             {{ 'Details' | translate }}
+          </button>
+        </li>
+        <li>
+          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!extension.build_information">
+            <i c8yIcon="process" class="m-r-4"></i>
+            {{ 'Rebuild' | translate }}
           </button>
         </li>
         <li>

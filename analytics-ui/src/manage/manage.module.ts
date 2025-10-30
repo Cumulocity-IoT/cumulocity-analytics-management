@@ -8,6 +8,7 @@ import { ExtensionDetailsComponent } from './extension-details.component';
 import { ExtensionGridComponent } from './extension-grid.component';
 import { SharedModule } from '../shared/shared.module';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+import { extensionResolver } from './utils';
 
 @NgModule({
   imports: [
@@ -35,12 +36,14 @@ import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
         },
         {
           path: 'properties/:name',
-          component: ExtensionDetailsComponent
+          component: ExtensionDetailsComponent, resolve: {
+            extensionFromCEP: extensionResolver
+          }
         }
       ]
     })
   ]
 })
 export class ManageModule {
-  constructor() {}
+  constructor() { }
 }

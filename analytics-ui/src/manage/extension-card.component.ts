@@ -15,7 +15,7 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
   templateUrl: './extension-card.component.html',
   standalone: false
 })
-export class ExtensionCardComponent{
+export class ExtensionCardComponent {
   @Input() extension: IManagedObject;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
@@ -27,7 +27,7 @@ export class ExtensionCardComponent{
     private bsModalService: BsModalService,
 
     private wizardModalService: WizardModalService
-  ) {}
+  ) { }
   ngOnInit(): void {
     console.log('Block', this.extension);
   }
@@ -35,7 +35,8 @@ export class ExtensionCardComponent{
   async detail() {
     if (this.extension.loaded) {
       this.router.navigate(['properties/', this.extension.name], {
-        relativeTo: this.activatedRoute
+        relativeTo: this.activatedRoute,
+        state: { extension: this.extension }
       });
     }
     // console.log(
@@ -90,20 +91,23 @@ export class ExtensionCardComponent{
     }
   }
 
+  async rebuild() {
+  }
+
   async update() {
     const wizardConfig: WizardConfig = {
       headerIcon: 'upload'
     };
 
     const initialState: any = {
-        wizardConfig,
-        id: 'uploadAnalyticsExtension',
-        componentInitialState: {
-          mode: 'update',
-          extensionToReplace: this.extension,
-          headerText: 'Update extension',
-        },
-      };
+      wizardConfig,
+      id: 'uploadAnalyticsExtension',
+      componentInitialState: {
+        mode: 'update',
+        extensionToReplace: this.extension,
+        headerText: 'Update extension',
+      },
+    };
 
     const modalOptions: ModalOptions = { initialState };
 
