@@ -13,6 +13,7 @@
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 - [Troubleshooting](#troubleshooting)
+- [Repository Layout](#repository-layout)
 
 ## Overview
 
@@ -229,6 +230,37 @@ In order to check if an extension is deployed look for a relevant message in the
 `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 
 The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
+
+
+## Repository Layout
+
+Two primary approaches are proposed to achieve the desired extension packaging behavior:
+
+1. Directory is Extension (The Preferred Solution)
+This was the solution that was ultimately agreed upon to implement because of its simplicity and the fact that Matthew confirmed it looked good when initially tested.
+
+Mechanism: The extension builder inspects the top-level items in the configured repository path.
+
+If an item is a .mon file (e.g., Difference.mon), a single-file extension is created from just that file.
+
+If an item is a directory (e.g., Python), an extension is created by packaging all the content within that directory (including subdirectories like venv).
+
+User UI: The user sees a list of names for each top-level .mon file and top-level directory (e.g., "Difference", "Offset", "Python").
+
+Key Benefit: Retains simple behavior for existing single-file blocks while easily supporting complex blocks that require multiple files and/or directories (like a Python environment).
+
+2. Configuration File (e.g., extension.yaml)
+This approach suggests using a dedicated configuration file to define the extension's contents explicitly.
+
+Mechanism: The builder recursively inspects the directory for a specific configuration file (e.g., extension.yaml).
+
+If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include.
+
+If no config file is present, it defaults to listing simple .mon files as before.
+
+User UI: If the config file is present, the UI should read it and only show the top-level keys defined in the file, not the embedded files or directories.
+
+Key Benefit: Highly flexible, allowing for specifying dependent bundles and explicit control over included content. (However, this was abandoned in favor of the simpler Directory is Extension approach).
 
 
 **NOTE:** 
