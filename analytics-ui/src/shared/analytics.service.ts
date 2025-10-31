@@ -25,7 +25,6 @@ import {
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
   BACKEND_PATH_BASE,
-  EXTENSION_ENDPOINT,
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   CEP_METADATA_FILE_EXTENSION_1,
   CEP_ENDPOINT,
@@ -33,7 +32,6 @@ import {
   UploadMode,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_METADATA_FILE_EXTENSION_2,
-  Repository
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 

@@ -123,26 +123,27 @@
                             {{ 'Test' | translate }}
                         </button>
                         <button type="button" placement="right"
-                            [popover]="'Enter you PAT access token to test' | translate"  [outsideClick]="true"
+                            [popover]="'Enter you PAT access token to test' | translate" [outsideClick]="true"
                             class="btn-help" aria-label="Help content"></button>
                     </div>
                 </fieldset>
+                <!-- Repository Status Section - Only show when editing, not when adding new -->
+                <div class="m-t-24" *ngIf="!isAddingNew && selectedRepositoryIndex !== -1">
+                    <fieldset>
+                        <legend class="form-block">{{ 'Repository Status' | translate }}</legend>
+                        <div class="flex-row">
+                            <label class="c8y-switch">
+                                <input type="checkbox" [checked]="repositoryForm.value.enabled"
+                                    formControlName="enabled"
+                                    (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
+                                <span></span>
+                                <span class="m-l-8">{{ 'Enable this repository' | translate }}</span>
+                            </label>
+                        </div>
+                    </fieldset>
+                </div>
             </form>
 
-            <!-- Repository Status Section - Only show when editing, not when adding new -->
-            <div class="m-t-24" *ngIf="!isAddingNew && selectedRepositoryIndex !== -1">
-                <fieldset>
-                    <legend class="form-block">{{ 'Repository Status' | translate }}</legend>
-                    <div class="flex-row">
-                        <label class="c8y-switch">
-                            <input type="checkbox" [checked]="repositoryForm.value.enabled"
-                                (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
-                            <span></span>
-                            <span class="m-l-8">{{ 'Enable this repository' | translate }}</span>
-                        </label>
-                    </div>
-                </fieldset>
-            </div>
         </div>
 
         <div class="ff-scroll-fix"></div>

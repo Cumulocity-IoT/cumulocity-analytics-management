@@ -271,12 +271,12 @@ export class RepositoriesDrawerComponent implements OnInit {
     }
 
     warnAboutPATReset(): void {
-        this.alertService.warning("Changing the URL will reset the PAT token. If you don't enter the token again it will be deleted.");
-        const currentUrl = this.repositoryForm.get('url').value;
-        if (currentUrl && currentUrl.endsWith('/')) {
-            const trimmedUrl = currentUrl.replace(/\/+$/, '');
-            this.repositoryForm.patchValue({ url: trimmedUrl });
-        }
+        // this.alertService.warning("Changing the URL will reset the PAT token. If you don't enter the token again it will be deleted.");
+        // const currentUrl = this.repositoryForm.get('url').value;
+        // if (currentUrl && currentUrl.endsWith('/')) {
+        //     const trimmedUrl = currentUrl.replace(/\/+$/, '');
+        //     this.repositoryForm.patchValue({ url: trimmedUrl });
+        // }
     }
 
     private async addRepository(): Promise<void> {
