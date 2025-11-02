@@ -44,6 +44,7 @@ export class ExtensionDetailsComponent implements OnInit {
     // Get the extension from navigation state in constructor
     const navigation = this.router.getCurrentNavigation();
     this.extension = navigation?.extras?.state?.['extension'];
+    // console.log("Navigation", navigation?.extras);
   }
 
   async ngOnInit(): Promise<void> {
@@ -53,28 +54,30 @@ export class ExtensionDetailsComponent implements OnInit {
     if (!this.extension) {
       this.extension = history.state.extension;
     }
-    this.buildInformation.push({
-      label: 'Build Type',
-      type: 'string',
-      value: this.extension['build_information']['build_type']
-    });
-    this.buildInformation.push({
-      label: 'Repository Name',
-      type: 'string',
-      value: this.extension['build_information']['repository']['name']
-    });
-    this.buildInformation.push({
-      label: 'Repository Url',
-      type: 'string',
-      value: this.extension['build_information']['repository']['url']
-    });
+    if (this.extension['build_information']) {
+      this.buildInformation.push({
+        label: 'Build Type',
+        type: 'string',
+        value: this.extension['build_information']['build_type']
+      });
+      this.buildInformation.push({
+        label: 'Repository Name',
+        type: 'string',
+        value: this.extension['build_information']['repository']['name']
+      });
+      this.buildInformation.push({
+        label: 'Repository Url',
+        type: 'string',
+        value: this.extension['build_information']['repository']['url']
+      });
+    }
     await this.init();
   }
 
   async init() {
     this.setBreadcrumbConfig();
     const { name } = this.route.snapshot.params;
-    const extensionNames = await this.analyticsService.getExtensionNamesFromCEP();
+    const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
     const key = `${name}.zip`;
     this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
       return fileName.startsWith('files/') ? fileName.substring(6) : fileName;

@@ -276,7 +276,7 @@ export class SampleGridComponent implements OnInit {
   }
 
   async loadSamples() {
-    this.repositoryService.updateRepositoryItems(this.hideInstalled);
+    this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
   }
 
   openRepositoriesDrawer(): void {

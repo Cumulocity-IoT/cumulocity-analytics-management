@@ -35,7 +35,7 @@ import { extensionResolver } from './utils';
           component: ExtensionGridComponent
         },
         {
-          path: 'properties/:name',
+          path: 'details/:name',
           component: ExtensionDetailsComponent, resolve: {
             extensionFromCEP: extensionResolver
           }

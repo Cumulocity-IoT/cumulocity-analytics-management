@@ -49,7 +49,7 @@ export class AnalyticsTabFactory implements TabFactory {
         orientation: 'horizontal'
       } as Tab);
       repositoryTab$ = from(
-        this.analyticsService.isBackendDeployed()
+        this.analyticsService.isBackendServiceAvailable()
       ).pipe(
         map((result) => {
           if (result) {

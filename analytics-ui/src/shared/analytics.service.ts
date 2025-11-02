@@ -1,22 +1,17 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { EventEmitter, Injectable } from '@angular/core';
+import { EventEmitter, Injectable, OnDestroy } from '@angular/core';
 import {
   ApplicationService,
   FetchClient,
   IFetchOptions,
-  IFetchResponse,
   IManagedObject,
   IManagedObjectBinary,
   InventoryBinaryService,
   InventoryService,
   IResult,
-  IResultList,
   Realtime,
 } from '@c8y/client';
-
 import { AlertService, gettext } from '@c8y/ngx-components';
-
-import { BehaviorSubject, Observable, ReplaySubject, shareReplay, Subject } from 'rxjs';
+import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
   CEP_Block,
   CEP_Extension,
@@ -35,402 +30,609 @@ import {
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
 
+/**
+ * Service for managing Streaming Analytics (CEP) extensions and blocks
+ */
 @Injectable({ providedIn: 'root' })
-export class AnalyticsService {
-  extensionChanged = new EventEmitter<IManagedObject>();
-  progress: BehaviorSubject<number> = new BehaviorSubject<number>(null);
-  private _cepOperationObjectId: Promise<string>;
-  private _cepCtrlStatus: Promise<CEPStatusObject>;
-  private _blocksDeployed: Promise<CEP_Block[]>;
-  private _extensionsDeployed: Promise<IManagedObject[]>;
-  private _isBackendDeployed: Promise<boolean>;
-  private cepOperationObject$: ReplaySubject<IManagedObject> =
-    new ReplaySubject<IManagedObject>(1);
-  private realtime: Realtime;
-  private reloadThroughService$: Subject<boolean> = new Subject<boolean>();
+export class AnalyticsService implements OnDestroy {
+  // ============================================================================
+  // Public Observables & Events
+  // ============================================================================
+
+  /**
+   * Emits when an extension is created, updated, or deleted
+   */
+  readonly extensionChanged$ = new EventEmitter<IManagedObject>();
+
+  /**
+   * Upload progress percentage (0-100)
+   */
+  readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
+
+  /**
+   * Stream of CEP operation object updates
+   */
+  readonly cepOperationObjectStream$ = new ReplaySubject<IManagedObject>(1);
+
+  /**
+   * Trigger for external cache reload requests
+   */
+  readonly cacheReloadRequest$ = new Subject<boolean>();
+
+  // ============================================================================
+  // Private State - Cached Promises
+  // ============================================================================
+
+  private cachedCepOperationObjectId: Promise<string> | null = null;
+  private cachedCepStatus: Promise<CEPStatusObject> | null = null;
+  private cachedDeployedBlocks: Promise<CEP_Block[]> | null = null;
+  private cachedDeployedExtensions: Promise<IManagedObject[]> | null = null;
+  private cachedBackendAvailability: Promise<boolean> | null = null;
+
+  // ============================================================================
+  // Private Dependencies
+  // ============================================================================
+
+  private readonly realtime: Realtime;
+  private readonly destroy$ = new Subject<void>();
+
+  // ============================================================================
+  // Constants
+  // ============================================================================
+
+  private readonly DEFAULT_PAGE_SIZE = 100;
+  private readonly JSON_HEADERS = {
+    accept: 'application/json',
+    'content-type': 'application/json'
+  };
 
   constructor(
-    private alertService: AlertService,
-    private inventoryService: InventoryService,
-    private inventoryBinaryService: InventoryBinaryService,
-    private fetchClient: FetchClient,
-    private applicationService: ApplicationService,
+    private readonly alertService: AlertService,
+    private readonly inventoryService: InventoryService,
+    private readonly inventoryBinaryService: InventoryBinaryService,
+    private readonly fetchClient: FetchClient,
+    private readonly applicationService: ApplicationService,
   ) {
     this.realtime = new Realtime(this.fetchClient);
-    this.subscribeMonitoringChannel();
+    this.initializeMonitoring();
   }
 
-  initiateReload(resetCache: boolean) {
-    this.reloadThroughService$.next(resetCache);
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  getReloadThroughService() {
-    return this.reloadThroughService$;
+  // ============================================================================
+  // Public API - Cache Management
+  // ============================================================================
+
+  /**
+   * Trigger a cache reload from external components
+   * @param clearCache - Whether to clear all caches before reload
+   */
+  triggerCacheReload(clearCache: boolean): void {
+    this.cacheReloadRequest$.next(clearCache);
   }
 
-  getExtensionsMetadataFromInventory(): Promise<IResultList<IManagedObject>> {
-    const filter: object = {
-      pageSize: 100,
+  /**
+   * Get observable for cache reload requests
+   */
+  getCacheReloadRequests$(): Observable<boolean> {
+    return this.cacheReloadRequest$.asObservable();
+  }
+
+  /**
+   * Clear all cached data and reinitialize monitoring
+   */
+  async clearAllCaches(): Promise<void> {
+    this.cachedDeployedBlocks = null;
+    this.cachedDeployedExtensions = null;
+    this.cachedCepOperationObjectId = null;
+    this.cachedCepStatus = null;
+    // Don't clear backend availability cache
+    await this.subscribeToOperationObjectUpdates();
+  }
+
+  // ============================================================================
+  // Public API - Extensions (Inventory)
+  // ============================================================================
+
+  /**
+   * Get all extension metadata from Cumulocity inventory
+   * @returns Array of extension managed objects
+   */
+  async getExtensionsFromInventory(): Promise<IManagedObject[]> {
+    const filter = {
+      pageSize: this.DEFAULT_PAGE_SIZE,
       withTotalPages: true,
       fragmentType: 'pas_extension'
     };
-    const result = this.inventoryService.list(filter);
-    return result;
-  }
 
-  async getExtensionsMetadataEnriched(): Promise<IManagedObject[]> {
-    if (!this._extensionsDeployed) {
-      const { data } = await this.getExtensionsMetadataFromInventory();
-      const extensions = data;
-      const loadedExtensions: CEP_ExtensionsMetadata =
-        await this.getExtensionsMetadataFromCEP();
-      const loadedExtensionsFromDiagnostics: CEP_ExtensionsMetadata =
-        await this.getExtensionNamesFromCEP();
-      for (let index = 0; index < extensions.length; index++) {
-        extensions[index].name = removeFileExtension(extensions[index].name);
-        const key1 = extensions[index].name + CEP_METADATA_FILE_EXTENSION_1;
-        extensions[index].loaded = loadedExtensions?.metadatas?.some((le) =>
-          key1.includes(le)
-        );
-        if (!extensions[index].loaded) {
-          const key2 = extensions[index].name + CEP_METADATA_FILE_EXTENSION_2;
-          extensions[index].loaded = loadedExtensionsFromDiagnostics.hasOwnProperty(key2);
-          extensions[index].extensionType = 'zip';
-        }
-        if (extensions[index].loaded) {
-          const extensionDetails = await this.getExtensionDetailFromCEP(
-            extensions[index].name
-          );
-          extensions[index].blocksCount = extensionDetails?.analytics.length;
-        }
-      }
+    const { data } = await this.inventoryService.list(filter);
 
-      this._extensionsDeployed = Promise.resolve(extensions);
+    if (data.length >= this.DEFAULT_PAGE_SIZE) {
+      console.warn('Extensions may be paginated. Consider implementing full pagination.');
     }
-    return this._extensionsDeployed;
-  }
 
-  async deleteExtension(
-    app: IManagedObject,
-    showSuccessMessage
-  ): Promise<IResult<null>> {
-    const result = await this.inventoryBinaryService.delete(app.id);
-    if (showSuccessMessage)
-      this.alertService.success(gettext('Extension deleted.'));
-    this.extensionChanged.emit(app);
-    return result;
-  }
-
-  async clearCaches() {
-    this._blocksDeployed = undefined;
-    this._extensionsDeployed = undefined;
-    this._cepOperationObjectId = undefined;
-    this.subscribeMonitoringChannel();
-  }
-
-  async getLoadedBlocksFromCEP(): Promise<CEP_Block[]> {
-    if (!this._blocksDeployed) {
-      const blocks: CEP_Block[] = [];
-      const meta: CEP_ExtensionsMetadata =
-        await this.getExtensionsMetadataFromCEP();
-      if (meta && meta.metadatas) {
-        for (let index = 0; index < meta.metadatas.length; index++) {
-          const extensionNameAbbreviated = removeFileExtension(
-            meta.metadatas[index]
-          );
-          const extension: CEP_Extension = await this.getExtensionDetailFromCEP(
-            extensionNameAbbreviated
-          );
-          extension.analytics.forEach((block) => {
-            const cepBlock = block as CEP_Block;
-            cepBlock.custom = isCustomCEP_Block(cepBlock);
-            cepBlock.extension = extensionNameAbbreviated;
-            // console.log("Inspect CEP_Block:", cepBlock.name, cepBlock.id, cepBlock.extension, cepBlock.custom)
-            blocks.push(cepBlock);
-          });
-        }
-      }
-      this._blocksDeployed = Promise.resolve(blocks);
-    }
-    return this._blocksDeployed;
-  }
-
-  async getExtensionsMetadataFromCEP(): Promise<CEP_ExtensionsMetadata> {
-    const response: IFetchResponse = await this.fetchClient.fetch(
-      `/${CEP_PATH_METADATA_EN}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        method: 'GET'
-      }
-    );
-    const data = await response.json();
     return data;
   }
 
-  async getExtensionNamesFromCEP(): Promise<CEP_ExtensionsMetadata> {
-    const response: IFetchResponse = await this.fetchClient.fetch(
-      `/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        method: 'GET'
-      }
-    );
-    const data = await response.json();
-    return data;
-  }
+  /**
+   * Get extensions enriched with deployment status and block counts
+   * @returns Extensions with loaded status and block counts
+   */
+  async getEnrichedExtensions(): Promise<IManagedObject[]> {
+    if (!this.cachedDeployedExtensions) {
+      const [
+        inventoryExtensions,
+        deployedExtensionsMetadata,
+        diagnosticsExtensions
+      ] = await Promise.all([
+        this.getExtensionsFromInventory(),
+        this.getDeployedExtensionsMetadata(),
+        this.getExtensionNamesFromCep()
+      ]);
 
-  async getExtensionDetailFromCEP(name: string): Promise<CEP_Extension> {
-    const response: IFetchResponse = await this.fetchClient.fetch(
-      `${CEP_PATH_EN}/${name}.json`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        method: 'GET'
-      }
-    );
-    let data;
-    if (response.status < 400) {
-      data = await response.json();
-      data.name = name;
-    }
-    return data;
-  }
-
-  async getCEP_OperationObjectId(): Promise<string> {
-    let cepOperationObjectId: string;
-    if (!this._cepOperationObjectId) {
-      if (await this.isBackendDeployed()) {
-        // get name of microservice from cep endpoint
-        const response: IFetchResponse = await this.fetchClient.fetch(
-          `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`,
-          {
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json'
-            },
-            method: 'GET'
-          }
-        );
-        const data = await response.json();
-        cepOperationObjectId = data.id;
-      } else {
-        // get name of microservice from cep endpoint
-        const response: IFetchResponse = await this.fetchClient.fetch(
-          `${CEP_PATH_STATUS}`,
-          {
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json'
-            },
-            method: 'GET'
-          }
-        );
-        if (response.status < 400) {
-          const data1 = await response.json();
-          const cepMicroservice = data1.microservice_name;
-          const { microservice_application_id } = data1;
-
-          // get source id of microservice representation in inventory
-          const filter: object = {
-            pageSize: 100,
-            withTotalPages: true
-          };
-          const query: object = {
-            name: cepMicroservice,
-            applicationId: microservice_application_id
-          };
-          const { data }: IResultList<IManagedObject> =
-            await this.inventoryService.listQuery(query, filter);
-          console.log('Found ctrl-microservice:', data1, data);
-          if (!data || data.length > 1) {
-            this.alertService.warning(
-              "Can't find ctrl-microservice for Streaming Analytics! Please report this issue."
-            );
-            return;
-          }
-          cepOperationObjectId = data[0].id;
-        }
-      }
-      if (cepOperationObjectId) {
-        this._cepOperationObjectId = Promise.resolve(cepOperationObjectId);
-      } else {
-        this._cepOperationObjectId = undefined;
-      }
-    }
-    return this._cepOperationObjectId;
-  }
-
-  getCEP_OperationObject(): Observable<IManagedObject> {
-    return this.cepOperationObject$.asObservable();
-  }
-
-  async getCEP_CtrlStatus(): Promise<CEPStatusObject> {
-    let response: IFetchResponse;
-    if (!this._cepCtrlStatus) {
-      if (await this.isBackendDeployed()) {
-        // get name of microservice from cep endpoint
-        response = await this.fetchClient.fetch(
-          `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-          {
-            headers: {
-              accept: 'application/json',
-              'content-type': 'application/json'
-            },
-            method: 'GET'
-          }
-        );
-      } else {
-        // get name of microservice from cep endpoint
-        response = await this.fetchClient.fetch(`${CEP_PATH_STATUS}`, {
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json'
-          },
-          method: 'GET'
-        });
-      }
-      this._cepCtrlStatus = await response.json();
-    }
-    return this._cepCtrlStatus;
-  }
-
-  async subscribeMonitoringChannel(): Promise<object> {
-    const cepOperationObjectId = await this.getCEP_OperationObjectId();
-    if (!cepOperationObjectId) {
-      if (!this._isBackendDeployed) {
-        this.alertService.warning(
-          'The supporting microservice for the Analytics Management is currently not deployed. Not all feature are available ...'
-        );
-      } else {
-        this.alertService.warning(
-          'Streaming Analytics is restarting. Please retry later ...'
-        );
-      }
-    }
-    const { data } = await this.inventoryService.detail(cepOperationObjectId);
-    this.cepOperationObject$.next(data);
-    // console.log(
-    //   'Started subscription on CEP operationObject:',
-    //   cepOperationObjectId
-    // );
-    const subMO = this.realtime.subscribe(
-      `/managedobjects/${cepOperationObjectId}`,
-      this.updateStatusFromOperationObject.bind(this)
-    );
-    return subMO;
-  }
-
-  unsubscribeFromMonitoringChannel(subscription: any) {
-    this.realtime.unsubscribe(subscription);
-  }
-
-  private updateStatusFromOperationObject(p: object): void {
-    const payload = p['data']['data'];
-    this.cepOperationObject$.next(payload);
-    if (payload?.c8y_Status.status == 'Up') {
-      this._cepCtrlStatus = undefined;
-      // cache new cep status
-      this.getCEP_CtrlStatus();
-    }
-    console.log('New updateStatusFromOperationObject for cep:', payload);
-  }
-
-  updateUploadProgress(event): void {
-    if (event.lengthComputable) {
-      const currentProgress = this.progress.value;
-      this.progress.next(
-        currentProgress + (event.loaded / event.total) * (95 - currentProgress)
+      const enriched = await Promise.all(
+        inventoryExtensions.map(ext =>
+          this.addDeploymentStatus(ext, deployedExtensionsMetadata, diagnosticsExtensions)
+        )
       );
+
+      this.cachedDeployedExtensions = Promise.resolve(enriched);
     }
+    return this.cachedDeployedExtensions;
   }
 
-  async restartCEP(): Promise<any> {
-    const fetchOptions: IFetchOptions = {
-      method: 'PUT',
-      body: '{}',
-      // headers: { 'content-type': 'multipart/form-data', accept: 'application/json' },
-      headers: {
-        accept: 'application/json',
-        'Content-Type': 'application/json'
-      }
-    };
-    const url = '/service/cep/restart';
-
-    try {
-      await this.fetchClient.fetch(url, fetchOptions);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      console.log('We do cleanup here');
-    }
-    this.clearCaches();
-  }
-
+  /**
+   * Upload a new extension or update existing one
+   */
   async uploadExtension(
     file: File,
     extension: IManagedObject,
     mode: UploadMode
-  ): Promise<IManagedObjectBinary> {
-    let extensionToCreate: Partial<IManagedObject> = extension;
-    if (mode === 'update') {
-      try {
-        const result = await this.deleteExtension(extension, false);
-        extensionToCreate = {
-          name: extension.name,
-          pas_extension: extension.name
-        };
-      } catch (error) {
-        // Handle the error
-        //this.alertService.danger(`Error processing extension!`);
-        return;
-      }
-    }
+  ): Promise<IManagedObjectBinary | null> {
     try {
-      const result =
-        await this.inventoryBinaryService.create(file, extensionToCreate)
-        ;
-      if (!result.res.ok) this.alertService.warning(`Could not upload ${extension.name}`);
+      const extensionToCreate = mode === 'update'
+        ? await this.prepareExtensionForUpdate(extension)
+        : extension;
+
+      const result = await this.inventoryBinaryService.create(file, extensionToCreate);
+
+      if (!result.res.ok) {
+        this.alertService.warning(`Could not upload ${extension.name}`);
+        return null;
+      }
+
+      this.invalidateExtensionCaches();
+      this.alertService.success(`Extension ${extension.name} uploaded successfully`);
+      this.extensionChanged$.emit(result.data as IManagedObject);
+
       return result.data;
     } catch (error) {
-      // Handle the error
-      //this.alertService.danger(`Error processing extension!`);
+      console.error(`Failed to upload extension ${extension.name}:`, error);
+      this.alertService.danger(`Error uploading extension: ${error.message}`);
+      return null;
+    }
+  }
+
+  /**
+   * Delete an extension from inventory
+   */
+  async deleteExtension(
+    extension: IManagedObject,
+    showSuccessMessage: boolean = true
+  ): Promise<IResult<null>> {
+    try {
+      const result = await this.inventoryBinaryService.delete(extension.id);
+
+      this.invalidateExtensionCaches();
+
+      if (showSuccessMessage) {
+        this.alertService.success(gettext('Extension deleted.'));
+      }
+
+      this.extensionChanged$.emit(extension);
+      return result;
+    } catch (error) {
+      this.alertService.danger(gettext('Failed to delete extension.'));
+      throw error;
+    }
+  }
+
+  /**
+   * Download an extension as ArrayBuffer
+   */
+  async downloadExtension(extension: IManagedObject): Promise<ArrayBuffer> {
+    try {
+      const response = await this.inventoryBinaryService.download(extension);
+      return await response.arrayBuffer();
+    } catch (error) {
+      console.error(`Failed to download extension ${extension.name}:`, error);
+      this.alertService.danger(`Failed to download extension: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel extension creation (cleanup)
+   */
+  cancelExtensionCreation(extension: Partial<IManagedObject>): void {
+    if (extension?.id) {
+      this.inventoryBinaryService.delete(extension);
+    }
+  }
+
+  /**
+   * Update upload progress (for progress bar)
+   */
+  updateUploadProgress(event: ProgressEvent): void {
+    if (event.lengthComputable) {
+      const currentProgress = this.uploadProgress$.value || 0;
+      const newProgress = currentProgress + (event.loaded / event.total) * (95 - currentProgress);
+      this.uploadProgress$.next(newProgress);
+    }
+  }
+
+  // ============================================================================
+  // Public API - Blocks (CEP Deployed)
+  // ============================================================================
+
+  /**
+   * Get all blocks currently deployed in CEP engine
+   * @returns Array of deployed blocks with metadata
+   */
+  async getDeployedBlocks(): Promise<CEP_Block[]> {
+    if (!this.cachedDeployedBlocks) {
+      try {
+        const metadata = await this.getDeployedExtensionsMetadata();
+
+        if (!metadata?.metadatas?.length) {
+          this.cachedDeployedBlocks = Promise.resolve([]);
+          return [];
+        }
+
+        const extensions = await Promise.all(
+          metadata.metadatas.map(async (metadataFile) => {
+            const extensionName = removeFileExtension(metadataFile);
+            return this.getDeployedExtensionDetails(extensionName);
+          })
+        );
+
+        const blocks = extensions
+          .filter(ext => ext?.analytics)
+          .flatMap(ext =>
+            ext.analytics.map(block => this.addBlockMetadata(block, ext.name))
+          );
+
+        this.cachedDeployedBlocks = Promise.resolve(blocks);
+      } catch (error) {
+        console.error('Failed to load deployed blocks:', error);
+        this.cachedDeployedBlocks = null;
+        throw error;
+      }
+    }
+
+    return this.cachedDeployedBlocks;
+  }
+
+
+  // ============================================================================
+  // Public API - CEP Status & Control
+  // ============================================================================
+
+  /**
+   * Get CEP engine status
+   */
+  async getCepStatus(): Promise<CEPStatusObject> {
+    if (this.cachedCepStatus) {
+      return this.cachedCepStatus;
+    }
+
+    try {
+      const isBackendAvailable = await this.isBackendServiceAvailable();
+      const url = isBackendAvailable
+        ? `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`
+        : `${CEP_PATH_STATUS}`;
+
+      const status = await this.fetchJSON<CEPStatusObject>(url);
+      this.cachedCepStatus = Promise.resolve(status);
+      return status;
+    } catch (error) {
+      console.error('Failed to get CEP status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get observable stream of CEP operation object updates
+   */
+  getCepOperationObjectStream$(): Observable<IManagedObject> {
+    return this.cepOperationObjectStream$.asObservable();
+  }
+
+  /**
+   * Restart the CEP engine
+   */
+  async restartCepEngine(): Promise<void> {
+    const url = '/service/cep/restart';
+
+    try {
+      await this.fetchJSON(url, {
+        method: 'PUT',
+        body: '{}'
+      });
+
+      this.alertService.success(gettext('CEP restart initiated'));
+      await this.clearAllCaches();
+    } catch (error) {
+      console.error('Failed to restart CEP:', error);
+      this.alertService.danger(gettext('Failed to restart CEP. Please try again.'));
+      throw error;
+    }
+  }
+
+  /**
+   * Check if backend analytics service is available
+   */
+  async isBackendServiceAvailable(): Promise<boolean> {
+    if (this.cachedBackendAvailability) {
+      return this.cachedBackendAvailability;
+    }
+
+    try {
+      const result = await this.applicationService.isAvailable(
+        APPLICATION_ANALYTICS_BUILDER_SERVICE
+      );
+
+      const isAvailable = result?.data ?? false;
+      this.cachedBackendAvailability = Promise.resolve(isAvailable);
+
+      return isAvailable;
+    } catch (error) {
+      console.error('Failed to check backend service availability:', error);
+      return false;
+    }
+  }
+
+  // ============================================================================
+  // Public API - CEP Metadata (Read-only)
+  // ============================================================================
+
+  /**
+   * Get metadata of all deployed extensions from CEP
+   */
+  async getDeployedExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
+    return this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
+  }
+
+  /**
+   * Get extension names from CEP diagnostics
+   */
+  async getExtensionNamesFromCep(): Promise<CEP_ExtensionsMetadata> {
+    return this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
+  }
+
+  /**
+   * Get detailed information about a deployed extension
+   * @param extensionName - Name of the extension (without file extension)
+   */
+  async getDeployedExtensionDetails(extensionName: string): Promise<CEP_Extension | null> {
+    try {
+      const data = await this.fetchJSON<CEP_Extension>(`${CEP_PATH_EN}/${extensionName}.json`);
+      return { ...data, name: extensionName };
+    } catch (error) {
+      console.warn(`Failed to get extension details for ${extensionName}:`, error);
+      return null;
+    }
+  }
+
+  public async getCepOperationObjectId(): Promise<string | undefined> {
+    if (this.cachedCepOperationObjectId) {
+      return this.cachedCepOperationObjectId;
+    }
+
+    try {
+      const isBackendAvailable = await this.isBackendServiceAvailable();
+      const id = isBackendAvailable
+        ? await this.fetchOperationIdFromBackend()
+        : await this.fetchOperationIdFromCepStatus();
+
+      if (id) {
+        this.cachedCepOperationObjectId = Promise.resolve(id);
+        return id;
+      }
+    } catch (error) {
+      console.error('Failed to get CEP operation object ID:', error);
+    }
+
+    this.showCepUnavailableWarning(await this.isBackendServiceAvailable());
+    return undefined;
+  }
+
+  // ============================================================================
+  // Private Methods - Initialization
+  // ============================================================================
+
+  private async initializeMonitoring(): Promise<void> {
+    try {
+      await this.subscribeToOperationObjectUpdates();
+    } catch (error) {
+      console.error('Failed to initialize monitoring:', error);
+    }
+  }
+
+  // ============================================================================
+  // Private Methods - Extension Enrichment
+  // ============================================================================
+
+  /**
+   * Add deployment status and block count to extension
+   */
+  private async addDeploymentStatus(
+    extension: IManagedObject,
+    deployedMetadata: CEP_ExtensionsMetadata,
+    diagnostics: CEP_ExtensionsMetadata
+  ): Promise<IManagedObject> {
+    const cleanName = removeFileExtension(extension.name);
+    const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
+    const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
+
+    const isDeployedViaMetadata = deployedMetadata?.metadatas?.some(
+      name => metadataKey.includes(name)
+    );
+    const isDeployedViaDiagnostics = diagnostics?.hasOwnProperty(diagnosticsKey);
+    const isDeployed = isDeployedViaMetadata || isDeployedViaDiagnostics;
+
+    let blockCount = 0;
+    if (isDeployed) {
+      const details = await this.getDeployedExtensionDetails(cleanName);
+      blockCount = details?.analytics?.length || 0;
+    }
+
+    return {
+      ...extension,
+      name: cleanName,
+      loaded: isDeployed,
+      extensionType: isDeployedViaDiagnostics ? 'zip' : undefined,
+      blocksCount: blockCount
+    };
+  }
+
+  /**
+   * Add metadata to a block (extension name, custom flag)
+   */
+  private addBlockMetadata(block: any, extensionName: string): CEP_Block {
+    return {
+      ...block,
+      custom: isCustomCEP_Block(block),
+      extension: extensionName
+    } as CEP_Block;
+  }
+
+  // ============================================================================
+  // Private Methods - Extension Update
+  // ============================================================================
+
+  private async prepareExtensionForUpdate(
+    extension: IManagedObject
+  ): Promise<Partial<IManagedObject>> {
+    await this.deleteExtension(extension, false);
+
+    return {
+      name: extension.name,
+      pas_extension: extension.name
+    };
+  }
+
+  // ============================================================================
+  // Private Methods - Cache Management
+  // ============================================================================
+
+  private invalidateExtensionCaches(): void {
+    this.cachedDeployedExtensions = null;
+    this.cachedDeployedBlocks = null;
+  }
+
+  // ============================================================================
+  // Private Methods - CEP Operation Object
+  // ============================================================================
+
+
+  private async fetchOperationIdFromBackend(): Promise<string> {
+    const data = await this.fetchJSON<{ id: string }>(
+      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`
+    );
+    return data.id;
+  }
+
+  private async fetchOperationIdFromCepStatus(): Promise<string | undefined> {
+    const statusData = await this.fetchJSON<any>(`${CEP_PATH_STATUS}`);
+    const { microservice_name, microservice_application_id } = statusData;
+
+    const { data } = await this.inventoryService.listQuery(
+      { name: microservice_name, applicationId: microservice_application_id },
+      { pageSize: 100, withTotalPages: true }
+    );
+
+    if (!data || data.length !== 1) {
+      console.error('Unexpected ctrl-microservice query result:', statusData, data);
+      throw new Error('Could not find unique ctrl-microservice for Streaming Analytics');
+    }
+
+    return data[0].id;
+  }
+
+  // ============================================================================
+  // Private Methods - Monitoring
+  // ============================================================================
+
+  private async subscribeToOperationObjectUpdates(): Promise<any> {
+    const operationObjectId = await this.getCepOperationObjectId();
+
+    if (!operationObjectId) {
+      return null;
+    }
+
+    const { data } = await this.inventoryService.detail(operationObjectId);
+    this.cepOperationObjectStream$.next(data);
+
+    return this.realtime.subscribe(
+      `/managedobjects/${operationObjectId}`,
+      this.handleCepOperationObjectUpdate.bind(this)
+    );
+  }
+
+  private handleCepOperationObjectUpdate(payload: any): void {
+    const managedObject = payload?.data?.data;
+
+    if (!managedObject) {
+      console.warn('Received invalid operation object update:', payload);
       return;
     }
-  }
 
-  cancelExtensionCreation(app: Partial<IManagedObject>): void {
-    if (app) {
-      this.inventoryBinaryService.delete(app);
+    this.cepOperationObjectStream$.next(managedObject);
+
+    if (managedObject.c8y_Status?.status === 'Up') {
+      this.cachedCepStatus = null;
+      this.getCepStatus().catch(err =>
+        console.error('Failed to refresh CEP status:', err)
+      );
     }
+
+    console.log('CEP operation object updated:', managedObject);
   }
 
-  async downloadExtension(app: IManagedObject): Promise<ArrayBuffer> {
-    const response: IFetchResponse =
-      await this.inventoryBinaryService.download(app);
-    console.log('Downloading Extension', app);
-    return response.arrayBuffer();
+  // ============================================================================
+  // Private Methods - Warnings
+  // ============================================================================
+
+  private showCepUnavailableWarning(isBackendAvailable: boolean): void {
+    const message = isBackendAvailable
+      ? gettext('Streaming Analytics is restarting. Please retry later...')
+      : gettext('The supporting microservice for Analytics Management is not deployed. Not all features are available...');
+
+    this.alertService.warning(message);
   }
 
-  async isBackendDeployed(): Promise<boolean> {
-    if (!this._isBackendDeployed) {
-      this._isBackendDeployed = this.applicationService
-        .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
-        .then((av) => {
-          let result = false;
-          if (av) {
-            result = av.data;
-          }
-          return result;
-        });
+  // ============================================================================
+  // Private Methods - HTTP
+  // ============================================================================
+
+  private async fetchJSON<T>(
+    url: string,
+    options: Partial<IFetchOptions> = {}
+  ): Promise<T> {
+    const response = await this.fetchClient.fetch(url, {
+      headers: this.JSON_HEADERS,
+      method: 'GET',
+      ...options
+    });
+
+    if (!response.ok) {
+      throw new Error(`API call failed: ${response.status} ${response.statusText}`);
     }
-    return this._isBackendDeployed;
+
+    return response.json();
   }
 }

@@ -1,15 +1,29 @@
-// repository.service.ts
-
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
-import { Injectable } from '@angular/core';
-import {
-  FetchClient,
-  IFetchResponse,
-} from '@c8y/client';
+import { Injectable, OnDestroy } from '@angular/core';
+import { FetchClient, IFetchResponse } from '@c8y/client';
 import { AlertService, gettext } from '@c8y/ngx-components';
-import * as _ from 'lodash';
-import { BehaviorSubject, EMPTY, forkJoin, from, Observable, of } from 'rxjs';
-import { catchError, combineLatestWith, map, shareReplay, switchMap, take, tap } from 'rxjs/operators';
+import * as jsyaml from 'js-yaml';
+import {
+  BehaviorSubject,
+  EMPTY,
+  Observable,
+  Subject,
+  combineLatest,
+  forkJoin,
+  from,
+  of,
+  throwError
+} from 'rxjs';
+import {
+  catchError,
+  distinctUntilChanged,
+  map,
+  shareReplay,
+  switchMap,
+  take,
+  takeUntil,
+  tap
+} from 'rxjs/operators';
 import {
   BACKEND_PATH_BASE,
   CEP_Block,
@@ -23,22 +37,74 @@ import {
   RepositoryTestResult
 } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
-import { getFileExtension, githubWebUrlToContentApi, removeFileExtension, uuidCustom } from './utils';
-import * as jsyaml from 'js-yaml';
+import {
+  getFileExtension,
+  githubWebUrlToContentApi,
+  removeFileExtension,
+  uuidCustom
+} from './utils';
+
+interface RepositoryState {
+  repositories: Repository[];
+  savedRepositories: Repository[];
+  hideInstalled: boolean;
+}
+
+interface CreateExtensionRequest {
+  extension_name: string;
+  upload: boolean;
+  deploy: boolean;
+  repository: Repository;
+}
+
+interface CreateExtensionFromListRequest extends CreateExtensionRequest {
+  monitors: RepositoryItem[];
+}
+
+interface CreateExtensionFromYamlRequest extends CreateExtensionRequest {
+  yaml: RepositoryItem;
+  sections: string[];
+}
 
 @Injectable({
   providedIn: 'root'
 })
-export class RepositoryService {
-  private readonly currentRepositories$ = new BehaviorSubject<Repository[]>([]);
-  private savedRepositories: Repository[] = []; // Keep track of saved state for enabled status comparison
+export class RepositoryService implements OnDestroy {
+  private readonly destroy$ = new Subject<void>();
+  
+  // State management
+  private readonly state$ = new BehaviorSubject<RepositoryState>({
+    repositories: [],
+    savedRepositories: [],
+    hideInstalled: false
+  });
+
+  // Cache management
   private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
   private readonly reloadTrigger$ = new BehaviorSubject<void>(undefined);
-  private hideInstalled = false;
 
-  readonly repositoryItems$ = this.reloadTrigger$.pipe(
-    switchMap(() => this.loadRepositoryItemsWithStatus()),
-    shareReplay(1)
+  // Public observables
+  readonly repositories$ = this.state$.pipe(
+    map(state => state.repositories),
+    distinctUntilChanged((a, b) => this.areRepositoriesEqual(a, b)),
+    shareReplay({ bufferSize: 1, refCount: true })
+  );
+
+  readonly repositoryItems$ = combineLatest([
+    this.reloadTrigger$,
+    this.state$
+  ]).pipe(
+    switchMap(([_, state]) => 
+      this.loadRepositoryItemsWithStatus(state.hideInstalled)
+    ),
+    shareReplay({ bufferSize: 1, refCount: true }),
+    takeUntil(this.destroy$)
+  );
+
+  readonly hasUnsavedChanges$ = this.state$.pipe(
+    map(state => this.hasUnsavedChanges(state)),
+    distinctUntilChanged(),
+    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   constructor(
@@ -50,164 +116,161 @@ export class RepositoryService {
     this.initializeRepositories();
   }
 
-  private initializeRepositories(): void {
-    this.loadRepositoriesFromBackend().subscribe();
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.clearCache();
   }
 
+  // ============================================================================
+  // Public API - Repository Management
+  // ============================================================================
+
+  /**
+   * Get current repositories as observable
+   */
   getRepositories(): Observable<Repository[]> {
-    return this.currentRepositories$.asObservable();
+    return this.repositories$;
   }
 
   /**
-   * Add a new repository - calls backend immediately
+   * Add a new repository and save to backend
    */
   async addRepository(repository: Repository): Promise<void> {
+    const state = this.state$.value;
+    const updated = [...state.repositories, repository];
+
     try {
-      const current = this.currentRepositories$.value;
-      const updated = [...current, repository];
-      
       await this.saveRepositoriesToBackend(updated);
-      
-      // Update both local and saved state after successful backend call
-      this.currentRepositories$.next(updated);
-      this.savedRepositories = _.cloneDeep(updated);
-      this.clearCache();
-      this.reloadTrigger$.next();
-      
+      this.updateState({
+        repositories: updated,
+        savedRepositories: [...updated]
+      });
+      this.invalidateCache();
       this.alertService.success(gettext('Repository added successfully'));
     } catch (error) {
-      this.alertService.danger('Failed to add repository', error.message);
+      this.handleError('Failed to add repository', error);
       throw error;
     }
   }
 
   /**
-   * Update an existing repository - calls backend immediately
-   * Note: This is for updating repository details (name, url, token), not enabled status
+   * Update repository details and save to backend
    */
   async updateRepository(updatedRepository: Repository): Promise<void> {
+    const state = this.state$.value;
+    const index = state.repositories.findIndex(r => r.id === updatedRepository.id);
+
+    if (index === -1) {
+      throw new Error('Repository not found');
+    }
+
+    const updated = [
+      ...state.repositories.slice(0, index),
+      updatedRepository,
+      ...state.repositories.slice(index + 1)
+    ];
+
     try {
-      const current = this.currentRepositories$.value;
-      const index = current.findIndex(repo => repo.id === updatedRepository.id);
-
-      if (index === -1) {
-        throw new Error('Repository not found');
-      }
-
-      const updated = [
-        ...current.slice(0, index),
-        updatedRepository,
-        ...current.slice(index + 1)
-      ];
-
       await this.saveRepositoriesToBackend(updated);
-      
-      // Update both local and saved state after successful backend call
-      this.currentRepositories$.next(updated);
-      this.savedRepositories = _.cloneDeep(updated);
-      this.clearCache();
-      this.reloadTrigger$.next();
-      
+      this.updateState({
+        repositories: updated,
+        savedRepositories: [...updated]
+      });
+      this.invalidateCache();
       this.alertService.success(gettext('Repository updated successfully'));
     } catch (error) {
-      this.alertService.danger('Failed to update repository', error.message);
+      this.handleError('Failed to update repository', error);
       throw error;
     }
   }
 
   /**
-   * Toggle repository enabled status - LOCAL ONLY (not saved to backend)
-   * When enabling a repository, automatically disable all others
+   * Toggle repository enabled status (local only, not saved)
+   * When enabling a repository, disables all others
    */
   toggleRepositoryEnabled(repositoryId: string): void {
-    const current = this.currentRepositories$.value;
-    const targetRepo = current.find(repo => repo.id === repositoryId);
-    
+    const state = this.state$.value;
+    const targetRepo = state.repositories.find(r => r.id === repositoryId);
+
     if (!targetRepo) {
       console.error('Repository not found:', repositoryId);
       return;
     }
 
     const newEnabledState = !targetRepo.enabled;
-    
-    // Update all repositories: enable the target, disable all others if target is being enabled
-    const updated = current.map(repo => {
+    const updated = state.repositories.map(repo => {
       if (repo.id === repositoryId) {
         return { ...repo, enabled: newEnabledState };
-      } else if (newEnabledState && repo.enabled) {
-        // Disable other repositories when enabling the target
+      }
+      // Disable other repos when enabling target
+      if (newEnabledState && repo.enabled) {
         return { ...repo, enabled: false };
       }
       return repo;
     });
 
-    // Update only local state, do NOT save to backend
-    this.currentRepositories$.next(updated);
-    
-    // Trigger repository items reload with new enabled state
-    this.clearCache();
-    this.reloadTrigger$.next();
+    this.updateState({ repositories: updated });
+    this.invalidateCache();
   }
 
   /**
-   * Save all current repository states (including enabled status) to backend
+   * Save all repository states (including enabled status) to backend
    */
   async saveAllRepositories(): Promise<void> {
+    const state = this.state$.value;
+
     try {
-      const current = this.currentRepositories$.value;
-      await this.saveRepositoriesToBackend(current);
-      
-      // Update saved state to match current state
-      this.savedRepositories = _.cloneDeep(current);
-      
+      await this.saveRepositoriesToBackend(state.repositories);
+      this.updateState({
+        savedRepositories: [...state.repositories]
+      });
       this.alertService.success(gettext('Repositories saved successfully'));
     } catch (error) {
-      this.alertService.danger('Failed to save repositories', error.message);
+      this.handleError('Failed to save repositories', error);
       throw error;
     }
   }
 
   /**
-   * Check if there are unsaved changes in enabled status
+   * Check if there are unsaved changes
    */
-  hasUnsavedEnabledChanges(): boolean {
-    const current = this.currentRepositories$.value;
-    
-    // Check if enabled states differ between current and saved
-    return current.some(repo => {
-      const savedRepo = this.savedRepositories.find(sr => sr.id === repo.id);
-      return savedRepo && savedRepo.enabled !== repo.enabled;
+  hasUnsavedChanges(state?: RepositoryState): boolean {
+    const currentState = state || this.state$.value;
+    return currentState.repositories.some(repo => {
+      const saved = currentState.savedRepositories.find(sr => sr.id === repo.id);
+      return saved && saved.enabled !== repo.enabled;
     });
   }
 
   /**
-   * Cancel unsaved enabled status changes and revert to last saved state
+   * Revert to last saved state
    */
-  cancelEnabledChanges(): void {
-    this.currentRepositories$.next(_.cloneDeep(this.savedRepositories));
-    this.clearCache();
-    this.reloadTrigger$.next();
+  cancelChanges(): void {
+    const state = this.state$.value;
+    this.updateState({
+      repositories: [...state.savedRepositories]
+    });
+    this.invalidateCache();
   }
 
   /**
-   * Delete a repository - calls backend immediately
+   * Delete a repository and save to backend
    */
   async deleteRepository(repositoryId: string): Promise<void> {
-    try {
-      const current = this.currentRepositories$.value;
-      const updated = current.filter(repo => repo.id !== repositoryId);
+    const state = this.state$.value;
+    const updated = state.repositories.filter(r => r.id !== repositoryId);
 
+    try {
       await this.saveRepositoriesToBackend(updated);
-      
-      // Update both local and saved state after successful backend call
-      this.currentRepositories$.next(updated);
-      this.savedRepositories = _.cloneDeep(updated);
-      this.clearCache();
-      this.reloadTrigger$.next();
-      
+      this.updateState({
+        repositories: updated,
+        savedRepositories: [...updated]
+      });
+      this.invalidateCache();
       this.alertService.success(gettext('Repository deleted successfully'));
     } catch (error) {
-      this.alertService.danger('Failed to delete repository', error.message);
+      this.handleError('Failed to delete repository', error);
       throw error;
     }
   }
@@ -215,13 +278,14 @@ export class RepositoryService {
   /**
    * Test repository connection without saving
    */
-  async testRepository(testRepository: Repository): Promise<RepositoryTestResult> {
+  async testRepository(repository: Repository): Promise<RepositoryTestResult> {
     const headers = new HttpHeaders({
       'Accept': 'application/vnd.github.v3.raw',
-      'Authorization': `Bearer ${testRepository.accessToken}`
+      'Authorization': `Bearer ${repository.accessToken}`
     });
 
-    const testUrl = githubWebUrlToContentApi(testRepository.url);
+    const testUrl = githubWebUrlToContentApi(repository.url);
+
     try {
       const response = await this.httpClient
         .get(testUrl, {
@@ -236,86 +300,170 @@ export class RepositoryService {
         message: 'Successfully connected to repository',
         status: response?.status
       };
-
     } catch (error) {
-      if (error instanceof HttpErrorResponse) {
-        switch (error.status) {
-          case 401:
-            return {
-              success: false,
-              message: 'Authentication failed. Please check your access token.',
-              status: error.status
-            };
-          case 404:
-            return {
-              success: false,
-              message: 'Repository not found. Please check the URL.',
-              status: error.status
-            };
-          default:
-            return {
-              success: false,
-              message: `Failed to connect to repository. Status: ${error.status}`,
-              status: error.status
-            };
-        }
-      }
-
-      return {
-        success: false,
-        message: 'Failed to connect to repository. Please check your connection and try again.'
-      };
+      return this.handleTestError(error);
     }
   }
 
   /**
-   * Reload repositories from backend (useful for refresh)
+   * Reload repositories from backend
    */
   async refreshRepositories(): Promise<void> {
     try {
-      await this.loadRepositoriesFromBackend().pipe(take(1)).toPromise();
-      this.clearCache();
-      this.reloadTrigger$.next();
+      await this.loadRepositoriesFromBackend()
+        .pipe(take(1))
+        .toPromise();
+      this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
-      this.alertService.danger('Failed to refresh repositories', error.message);
+      this.handleError('Failed to refresh repositories', error);
       throw error;
     }
   }
 
-  /**
-   * Private method to save repositories to backend
-   */
-  private async saveRepositoriesToBackend(repositories: Repository[]): Promise<void> {
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(repositories),
-        method: 'POST',
-      }
-    );
+  // ============================================================================
+  // Public API - Repository Items
+  // ============================================================================
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to save repositories');
-    }
+  /**
+   * Get filtered repository items
+   */
+  getRepositoryItems(): Observable<RepositoryItem[]> {
+    return this.repositoryItems$.pipe(
+      map(blocks => this.filterRepositoryItems(blocks))
+    );
   }
 
   /**
-   * Load repositories from backend and update local state
+   * Get analyzed repository items (with YAML sections processed)
    */
+  getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
+    return this.repositoryItems$.pipe(
+      switchMap(items => this.analyzeRepositoryItems(items))
+    );
+  }
+
+  /**
+   * Update hide installed filter
+   */
+  updateHideInstalledFilter(hideInstalled: boolean): void {
+    this.updateState({ hideInstalled });
+  }
+
+  /**
+   * Get content of a repository item
+   */
+  getRepositoryItemContent(
+    block: RepositoryItem,
+    useBackend: boolean = true,
+    extractFQN: boolean = false
+  ): Observable<string> {
+    if (useBackend) {
+      return this.getItemContentFromBackend(block, extractFQN);
+    }
+    return this.getItemContentDirectly(block, extractFQN);
+  }
+
+  /**
+   * Get sections from extension YAML
+   */
+  getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
+    return this.getRepositoryItemContent(item, true, false).pipe(
+      map(content => this.parseYamlSections(content)),
+      catchError(error => {
+        console.error(`Error processing ${DESCRIPTOR_YAML}:`, error);
+        return of([]);
+      })
+    );
+  }
+
+  // ============================================================================
+  // Public API - Extension Creation
+  // ============================================================================
+
+  /**
+   * Create extension from list of monitors
+   */
+  async createExtensionFromList(
+    name: string,
+    monitors: RepositoryItem[],
+    repository: Repository,
+    upload: boolean = false,
+    deploy: boolean = false
+  ): Promise<IFetchResponse> {
+    const request: CreateExtensionFromListRequest = {
+      extension_name: name,
+      monitors,
+      repository,
+      upload,
+      deploy
+    };
+
+    return this.createExtension('list', request);
+  }
+
+  /**
+   * Create extension from YAML
+   */
+  async createExtensionFromYaml(
+    name: string,
+    yaml: RepositoryItem,
+    sections: string[],
+    repository: Repository,
+    upload: boolean = false,
+    deploy: boolean = false
+  ): Promise<IFetchResponse> {
+    const request: CreateExtensionFromYamlRequest = {
+      extension_name: name,
+      yaml,
+      sections,
+      repository,
+      upload,
+      deploy
+    };
+
+    return this.createExtension('yaml', request);
+  }
+
+  /**
+   * Create extension from entire repository
+   */
+  async createExtensionFromRepository(
+    name: string,
+    repository: Repository,
+    upload: boolean = false,
+    deploy: boolean = false
+  ): Promise<IFetchResponse> {
+    const request: CreateExtensionRequest = {
+      extension_name: name,
+      repository,
+      upload,
+      deploy
+    };
+
+    return this.createExtension('repository', request);
+  }
+
+  // ============================================================================
+  // Private Methods - Initialization
+  // ============================================================================
+
+  private initializeRepositories(): void {
+    this.loadRepositoriesFromBackend()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe();
+  }
+
   private loadRepositoriesFromBackend(): Observable<Repository[]> {
     return from(this.fetchRepositoriesFromBackend()).pipe(
       tap(repos => {
-        this.currentRepositories$.next(repos);
-        this.savedRepositories = _.cloneDeep(repos); // Initialize saved state
+        this.updateState({
+          repositories: repos,
+          savedRepositories: [...repos]
+        });
       }),
       catchError(error => {
-        this.alertService.danger('Failed to load repositories', error.message);
+        this.handleError('Failed to load repositories', error);
         return of([]);
       })
     );
@@ -329,219 +477,160 @@ export class RepositoryService {
         method: 'GET'
       }
     );
-    
+
     if (!response.ok) {
       throw new Error('Failed to fetch repositories');
     }
-    
+
     return response.json();
   }
 
-  /**
-   * Clear the block cache when repositories change
-   */
+  // ============================================================================
+  // Private Methods - State Management
+  // ============================================================================
+
+  private updateState(partial: Partial<RepositoryState>): void {
+    const current = this.state$.value;
+    this.state$.next({ ...current, ...partial });
+  }
+
+  private invalidateCache(): void {
+    this.clearCache();
+    this.reloadTrigger$.next();
+  }
+
   private clearCache(): void {
     this.blockCache.clear();
   }
 
-  getRepositoryItems(): Observable<RepositoryItem[]> {
-    return this.repositoryItems$.pipe(
-      map(blocks => {
-        const hasExtensionsYaml = blocks.some(block =>
-          block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
-        );
-
-        if (hasExtensionsYaml) {
-          return blocks.filter(block =>
-            block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
-          );
-        } else {
-          return blocks.filter(block =>
-            block.type === 'dir' && !block.file.startsWith(".") ||
-            (block.file && (
-              block.file.toLowerCase().endsWith('.mon')
-            ))
-          );
-        }
-      })
+  private areRepositoriesEqual(a: Repository[], b: Repository[]): boolean {
+    if (a.length !== b.length) return false;
+    return a.every((repo, index) => 
+      repo.id === b[index].id && 
+      repo.enabled === b[index].enabled &&
+      repo.name === b[index].name &&
+      repo.url === b[index].url
     );
   }
 
-  getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
-    return this.repositoryItems$.pipe(
-      switchMap(items => {
-        const itemExtensionsYaml = items.filter(block =>
-          block.type !== 'dir' && block.file && block.file.toLowerCase() === DESCRIPTOR_YAML
-        );
+  // ============================================================================
+  // Private Methods - Repository Items
+  // ============================================================================
 
-        if (itemExtensionsYaml && itemExtensionsYaml.length > 0) {
-          const extensionsYamlItem = itemExtensionsYaml[0];
-          return this.getSectionsFromExtensionYAML(extensionsYamlItem).pipe(
-            map(sectionNames => {
-              const uuids = sectionNames.map(() => uuidCustom());
-              return sectionNames.map((name, index) => {
-                return {
-                  ...extensionsYamlItem,
-                  id: uuids[index],
-                  name: name,
-                  isYamlSection: true,
-                  extensionsYamlItem
-                };
-              });
-            })
-          );
-        } else {
-          return of(items.filter(item =>
-            item.type === 'dir' && !item.file.startsWith(".") ||
-            (item.file && (
-              item.file.toLowerCase().endsWith('.mon')
-            ))
-          ));
-        }
-      })
+  private loadRepositoryItemsWithStatus(
+    hideInstalled: boolean
+  ): Observable<RepositoryItem[]> {
+    return combineLatest([
+      this.repositories$,
+      from(this.analyticsService.getDeployedBlocks())
+    ]).pipe(
+      switchMap(([repos, loaded]) => 
+        this.processRepositoryItems(repos, loaded, hideInstalled)
+      )
     );
   }
 
-  updateRepositoryItems(hideInstalled: boolean): void {
-    this.hideInstalled = hideInstalled;
-    this.reloadTrigger$.next();
-  }
-
-  // Helper methods to break down the logic
-  private loadRepositoryItemsWithStatus() {
-    return this.currentRepositories$.pipe(
-      combineLatestWith(from(this.analyticsService.getLoadedBlocksFromCEP())),
-      switchMap(([repos, loaded]) => this.processRepositoryItems(repos, loaded))
-    );
-  }
-
-  private processRepositoryItems(repos: Repository[], loaded: any[]): Observable<RepositoryItem[]> {
+  private processRepositoryItems(
+    repos: Repository[],
+    loaded: CEP_Block[],
+    hideInstalled: boolean
+  ): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
-    if (!enabledRepos.length) return of([]);
+    
+    if (!enabledRepos.length) {
+      return of([]);
+    }
 
     return forkJoin(
       enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
     ).pipe(
-      map(blocks => this.processRepositoryItemsWithStatus(blocks.flat(), loaded))
+      map(blocks => 
+        this.addInstallationStatus(blocks.flat(), loaded, hideInstalled)
+      )
     );
   }
 
-  private getCachedRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
+  private getCachedRepositoryItems(
+    repository: Repository
+  ): Observable<RepositoryItem[]> {
     if (!this.blockCache.has(repository.id)) {
-      this.blockCache.set(
-        repository.id,
-        this.fetchRepositoryItems(repository).pipe(shareReplay(1))
+      const items$ = this.fetchRepositoryItems(repository).pipe(
+        shareReplay({ bufferSize: 1, refCount: true })
       );
+      this.blockCache.set(repository.id, items$);
     }
-    return this.blockCache.get(repository.id);
+    return this.blockCache.get(repository.id)!;
   }
 
-  private fetchRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
+  private fetchRepositoryItems(
+    repository: Repository
+  ): Observable<RepositoryItem[]> {
     return from(this.getGitHubContent(repository)).pipe(
-      // tap(qq => { console.log("Hello III", qq.flat()) }),
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
-        this.handleError(error);
+        this.handleError(`Failed to fetch items from ${repository.name}`, error);
         return EMPTY;
       })
     );
   }
 
-  private async getGitHubContent(repository: Repository): Promise<RepositoryItem[]> {
+  private async getGitHubContent(repository: Repository): Promise<any[]> {
     const response = await this.fetchClient.fetch(
       `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
       {
         headers: { 'content-type': 'application/json' },
         params: {
           url: encodeURIComponent(repository.url),
-          repository_id: repository.id,
+          repository_id: repository.id
         },
         method: 'GET'
       }
     );
 
     if (!response.ok) {
-      try {
-        const errorData = await response.json();
-        const errorMessage = errorData.message || errorData.error || JSON.stringify(errorData);
-        throw new Error(errorMessage);
-      } catch (parseError) {
-        const errorText = parseError.message;
-        throw new Error(errorText);
-      }
+      const errorMessage = await this.extractErrorMessage(response);
+      throw new Error(errorMessage);
     }
 
     return response.json();
   }
 
-  private processGitHubContent(data: any, repository: Repository): Observable<RepositoryItem[]> {
-    const blocks = Object.values(data)
-      .filter(item => getFileExtension(item['name']) !== '.json')
-      .map(item => this.createRepositoryItem(item, repository));
+  private async extractErrorMessage(response: IFetchResponse): Promise<string> {
+    try {
+      const errorData = await response.json();
+      return errorData.message || errorData.error || JSON.stringify(errorData);
+    } catch {
+      return await response.text();
+    }
+  }
+
+  private processGitHubContent(
+    data: any,
+    repository: Repository
+  ): Observable<RepositoryItem[]> {
+    const items = Object.values(data)
+      .filter((item: any) => getFileExtension(item.name) !== '.json')
+      .map((item: any) => this.createRepositoryItem(item, repository));
 
     return forkJoin(
-      blocks.map(block => {
-        if (block.type === 'file' && block.file.endsWith('.mon')) {
-          return this.getRepositoryItemContent(block, true, true).pipe(
-            map(fqn => ({ ...block, id: fqn }))
-          );
-        } else {
-          return of({ ...block, id: block.file });
-        }
-      })
+      items.map(item => this.enrichRepositoryItem(item))
     );
   }
 
-  getRepositoryItemContent(
-    block: RepositoryItem,
-    backend: boolean,
-    extractFQN_CEP_Block: boolean
-  ): Observable<string> {
-    if (backend) {
-      return from(this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
-        {
-          headers: {
-            'content-type': 'text/plain'
-          },
-          params: {
-            url: encodeURIComponent(block.url),
-            extract_fqn_cep_block: extractFQN_CEP_Block,
-            repository_id: block.repositoryId,
-            cep_block_name: block.name
-          },
-          method: 'GET'
-        }
-      ).then(
-        resp => resp.text()
-      ))
-    } else {
-      return this.httpClient
-        .get(block.downloadUrl, {
-          headers: {
-            'Content-type': 'application/text',
-            Accept: 'application/vnd.github.raw'
-          },
-          responseType: 'text'
-        })
-        .pipe(
-          map(result => {
-            if (extractFQN_CEP_Block) {
-              const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-              const match = result.match(regex);
-              const fqn = `${match[0].trim()}.${block.name.slice(0, -4)}`;
-              return fqn;
-            }
-            return result;
-          })
-        );
+  private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
+    if (item.type === 'file' && item.file.endsWith('.mon')) {
+      return this.getRepositoryItemContent(item, true, true).pipe(
+        map(fqn => ({ ...item, id: fqn }))
+      );
     }
+    return of({ ...item, id: item.file });
   }
 
-  private createRepositoryItem(item: any, repository: Repository): CEP_Block {
+  private createRepositoryItem(item: any, repository: Repository): RepositoryItem {
     if (!item.name || !item.url) {
       throw new Error('Missing required properties in GitHub item');
     }
+
     return {
       id: '',
       repositoryName: repository.name,
@@ -552,137 +641,228 @@ export class RepositoryService {
       custom: true,
       downloadUrl: item.download_url,
       url: item.url
-    };
+    } as RepositoryItem;
   }
 
-  private processRepositoryItemsWithStatus(blocks: RepositoryItem[], loaded: any[]): RepositoryItem[] {
+  private filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
+    const hasExtensionsYaml = blocks.some(
+      block => block.type !== 'dir' && 
+               block.file?.toLowerCase() === DESCRIPTOR_YAML
+    );
+
+    if (hasExtensionsYaml) {
+      return blocks.filter(
+        block => block.type !== 'dir' && 
+                 block.file?.toLowerCase() === DESCRIPTOR_YAML
+      );
+    }
+
+    return blocks.filter(
+      block => (block.type === 'dir' && !block.file.startsWith('.')) ||
+               (block.file?.toLowerCase().endsWith('.mon'))
+    );
+  }
+
+  private analyzeRepositoryItems(items: RepositoryItem[]): Observable<RepositoryItem[]> {
+    const yamlItems = items.filter(
+      block => block.type !== 'dir' && 
+               block.file?.toLowerCase() === DESCRIPTOR_YAML
+    );
+
+    if (yamlItems.length > 0) {
+      const yamlItem = yamlItems[0];
+      return this.getSectionsFromExtensionYAML(yamlItem).pipe(
+        map(sectionNames => this.createYamlSectionItems(sectionNames, yamlItem))
+      );
+    }
+
+    return of(
+      items.filter(
+        item => (item.type === 'dir' && !item.file.startsWith('.')) ||
+                (item.file?.toLowerCase().endsWith('.mon'))
+      )
+    );
+  }
+
+  private createYamlSectionItems(
+    sectionNames: string[],
+    yamlItem: RepositoryItem
+  ): RepositoryItem[] {
+    return sectionNames.map(name => ({
+      ...yamlItem,
+      id: uuidCustom(),
+      name,
+      isYamlSection: true,
+      extensionsYamlItem: yamlItem
+    }));
+  }
+
+  private addInstallationStatus(
+    blocks: RepositoryItem[],
+    loaded: CEP_Block[],
+    hideInstalled: boolean
+  ): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));
-    return this.hideInstalled
-      ? blocks.filter(block => !loadedIds.has(block.id))
-      : blocks.map(block => ({ ...block, installed: loadedIds.has(block.id) }));
+    
+    if (hideInstalled) {
+      return blocks.filter(block => !loadedIds.has(block.id));
+    }
+    
+    return blocks.map(block => ({
+      ...block,
+      installed: loadedIds.has(block.id)
+    }));
   }
 
-  private handleError(error: HttpErrorResponse): void {
-    const message = error.status
-      ? `Backend returned code ${error.status}: ${error.message}`
-      : error.message;
-    this.alertService.danger(message);
-  }
+  // ============================================================================
+  // Private Methods - Content Retrieval
+  // ============================================================================
 
-  public getSectionsFromExtensionYAML(item: RepositoryItem): Observable<any[] | string[]> {
-    let extensionNames;
-    return this.getRepositoryItemContent(
-      item,
-      true,
-      false
-    ).pipe(
-      map(content => {
-        try {
-          const yamlContent = jsyaml.load(content);
-
-          if (yamlContent && typeof yamlContent === 'object') {
-            return Object.keys(yamlContent);
-          } else {
-            console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
-            return [];
-          }
-        } catch (error) {
-          console.error(`Error parsing ${DESCRIPTOR_YAML} content:`, error);
-          return [];
+  private getItemContentFromBackend(
+    block: RepositoryItem,
+    extractFQN: boolean
+  ): Observable<string> {
+    return from(
+      this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
+        {
+          headers: { 'content-type': 'text/plain' },
+          params: {
+            url: encodeURIComponent(block.url),
+            extract_fqn_cep_block: extractFQN.toString(),
+            repository_id: block.repositoryId,
+            cep_block_name: block.name
+          },
+          method: 'GET'
         }
-      }),
-      tap(exN => {
-        console.log('Available extensions:', extensionNames);
-        extensionNames = exN;
-      }),
-      catchError(error => {
-        console.error(`Error processing${DESCRIPTOR_YAML} content:`, error);
-        return of([]);
-      })
+      ).then(resp => resp.text())
     );
   }
 
-  async createExtensionFromList(
-    name: string,
-    monitors: RepositoryItem[],
-    repository: Repository,
-    upload: boolean,
-    deploy: boolean,
-  ): Promise<IFetchResponse> {
-    console.log('Create extensions for:', name, monitors);
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/list`,
+  private getItemContentDirectly(
+    block: RepositoryItem,
+    extractFQN: boolean
+  ): Observable<string> {
+    return this.httpClient.get(block.downloadUrl, {
+      headers: {
+        'Content-type': 'application/text',
+        Accept: 'application/vnd.github.raw'
+      },
+      responseType: 'text'
+    }).pipe(
+      map(content => extractFQN ? this.extractFQN(content, block) : content)
+    );
+  }
+
+  private extractFQN(content: string, block: RepositoryItem): string {
+    const regex = /(?<=^package\s)(.*?)(?=;)/gm;
+    const match = content.match(regex);
+    if (match && match[0]) {
+      const packageName = match[0].trim();
+      const className = block.name.slice(0, -4);
+      return `${packageName}.${className}`;
+    }
+    throw new Error('Could not extract FQN from content');
+  }
+
+  private parseYamlSections(content: string): string[] {
+    try {
+      const yamlContent = jsyaml.load(content);
+      
+      if (yamlContent && typeof yamlContent === 'object') {
+        return Object.keys(yamlContent);
+      }
+      
+      console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
+      return [];
+    } catch (error) {
+      console.error(`Error parsing ${DESCRIPTOR_YAML}:`, error);
+      return [];
+    }
+  }
+
+  // ============================================================================
+  // Private Methods - Backend Operations
+  // ============================================================================
+
+  private async saveRepositoriesToBackend(
+    repositories: Repository[]
+  ): Promise<void> {
+    const response = await this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
       {
         headers: {
           accept: 'application/json',
           'content-type': 'application/json'
         },
-        body: JSON.stringify({
-          extension_name: name,
-          monitors: monitors,
-          repository: repository,
-          upload: upload,
-          deploy: deploy,
-        }),
+        body: JSON.stringify(repositories),
+        method: 'POST'
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(errorText || 'Failed to save repositories');
+    }
+  }
+
+  private async createExtension(
+    endpoint: string,
+    request: any
+  ): Promise<IFetchResponse> {
+    console.log(`Creating extension from ${endpoint}:`, request.extension_name);
+    
+    return this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/${endpoint}`,
+      {
+        headers: {
+          accept: 'application/json',
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify(request),
         method: 'POST',
         responseType: 'blob'
       }
     );
   }
 
-  async createExtensionFromYaml(
-    name: string,
-    yaml: RepositoryItem,
-    sections: string[],
-    repository: Repository,
-    upload: boolean,
-    deploy: boolean,
-  ): Promise<IFetchResponse> {
-    console.log('Create extensions for:', name, yaml);
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/yaml`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          extension_name: name,
-          yaml,
-          sections,
-          repository,
-          upload,
-          deploy,
-        }),
-        method: 'POST',
-        responseType: 'blob'
-      }
-    );
+  // ============================================================================
+  // Private Methods - Error Handling
+  // ============================================================================
+
+  private handleError(message: string, error: any): void {
+    const errorMessage = error?.message || error?.toString() || 'Unknown error';
+    console.error(message, error);
+    this.alertService.danger(`${message}: ${errorMessage}`);
   }
 
-  async createExtensionFromRepository(
-    name: string,
-    upload: boolean,
-    deploy: boolean,
-    repository: Repository
-  ): Promise<IFetchResponse> {
-    console.log('Create extensions for:', name, repository);
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/repository`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          extension_name: name,
-          upload: upload,
-          deploy: deploy,
-          repository: repository
-        }),
-        method: 'POST',
-        responseType: 'blob'
+  private handleTestError(error: any): RepositoryTestResult {
+    if (error instanceof HttpErrorResponse) {
+      switch (error.status) {
+        case 401:
+          return {
+            success: false,
+            message: 'Authentication failed. Please check your access token.',
+            status: error.status
+          };
+        case 404:
+          return {
+            success: false,
+            message: 'Repository not found. Please check the URL.',
+            status: error.status
+          };
+        default:
+          return {
+            success: false,
+            message: `Failed to connect. Status: ${error.status}`,
+            status: error.status
+          };
       }
-    );
+    }
+
+    return {
+      success: false,
+      message: 'Failed to connect. Please check your connection and try again.'
+    };
   }
 }

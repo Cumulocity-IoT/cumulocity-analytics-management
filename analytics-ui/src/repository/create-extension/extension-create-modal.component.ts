@@ -107,7 +107,7 @@ export class ExtensionCreateComponent implements OnInit {
   }
 
   async isDeployed() {
-    from(this.analyticsService.isBackendDeployed()).subscribe((status) => {
+    from(this.analyticsService.isBackendServiceAvailable()).subscribe((status) => {
       this.backendDeployed$.next(status);
       if (!status) {
         this.alertService.warning(
@@ -143,9 +143,9 @@ export class ExtensionCreateComponent implements OnInit {
     } else {
       response = await this.repositoryService.createExtensionFromRepository(
         this.configuration.name,
+        this.activeRepository,
         true,
         this.configuration.deploy,
-        this.activeRepository
       );
     }
     if (response.status < 400) {

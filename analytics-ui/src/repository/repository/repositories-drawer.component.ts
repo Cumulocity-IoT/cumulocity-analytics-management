@@ -198,11 +198,11 @@ export class RepositoriesDrawerComponent implements OnInit {
             return true;
         }
         
-        return !this.hasFormChanges() && !this.repositoryService.hasUnsavedEnabledChanges();
+        return !this.hasFormChanges() && !this.repositoryService.hasUnsavedChanges();
     }
 
     get hasUnsavedChanges(): boolean {
-        return this.hasFormChanges() || this.repositoryService.hasUnsavedEnabledChanges();
+        return this.hasFormChanges() || this.repositoryService.hasUnsavedChanges();
     }
 
     onEditRepository(repository: Repository, index: number): void {
@@ -288,7 +288,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             
             await this.repositoryService.addRepository(newRepository);
             
-            this.repositoryService.updateRepositoryItems(this.hideInstalled);
+            this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
         }
     }
 
@@ -320,7 +320,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                 enabled: updatedRepository.enabled
             };
             
-            this.repositoryService.updateRepositoryItems(this.hideInstalled);
+            this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
         }
     }
 
@@ -364,7 +364,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                             this.createCustomRepository();
                         }
                         
-                        this.repositoryService.updateRepositoryItems(this.hideInstalled);
+                        this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
                     } catch (ex) {
                         console.error('Failed to delete repository:', ex);
                     } finally {
@@ -391,7 +391,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                 await this.addRepository();
             } else if (this.selectedRepositoryIndex !== -1) {
                 const hasFormModifications = this.hasFormChanges();
-                const hasEnabledChanges = this.repositoryService.hasUnsavedEnabledChanges();
+                const hasEnabledChanges = this.repositoryService.hasUnsavedChanges();
                 
                 if (hasFormModifications && hasEnabledChanges) {
                     // Both form and enabled status changed
@@ -399,14 +399,14 @@ export class RepositoriesDrawerComponent implements OnInit {
                     await this.updateRepository();
                     // Then save all enabled states
                     await this.repositoryService.saveAllRepositories();
-                    this.repositoryService.updateRepositoryItems(this.hideInstalled);
+                    this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
                 } else if (hasFormModifications) {
                     // Only form changed (name, url, token)
                     await this.updateRepository();
                 } else if (hasEnabledChanges) {
                     // Only enabled status changed
                     await this.repositoryService.saveAllRepositories();
-                    this.repositoryService.updateRepositoryItems(this.hideInstalled);
+                    this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
                 }
             }
             
@@ -453,7 +453,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                             this.repositoryForm.patchValue(revertValues);
                         }
                         // Revert enabled changes
-                        this.repositoryService.cancelEnabledChanges();
+                        this.repositoryService.cancelChanges();
                         this.cancel.emit();
                     }
                     confirmCancelModalRef.hide();

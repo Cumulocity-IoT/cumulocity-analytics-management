@@ -88,6 +88,13 @@
               <td>{{file }}</td>
             </tr>
           </tbody>
+
+          <!-- <div class="c8y-empty-state" *ngIf="extensionContent?.length == 0">
+            <h1 [c8yIcon]="'monitoring'"></h1>
+            <p>
+              <strong>Extension contains no file information.</strong><br />
+            </p>
+          </div> -->
         </table>
       </div>
     </div>
@@ -100,9 +107,15 @@
         </h4>
       </div>
       <div class="card-block">
-        <c8y-properties-list *ngIf="buildInformation?.length > 0"
-          [emptyLabel]="'--'" [properties]="buildInformation">
+        <c8y-properties-list *ngIf="buildInformation?.length > 0" [emptyLabel]="'--'" [properties]="buildInformation">
         </c8y-properties-list>
+
+        <div class="c8y-empty-state" *ngIf="buildInformation?.length == 0">
+          <h1 [c8yIcon]="'monitoring'"></h1>
+          <p>
+            <strong>Extension contains no build information.</strong><br />
+          </p>
+        </div>
       </div>
     </div>
   </div>

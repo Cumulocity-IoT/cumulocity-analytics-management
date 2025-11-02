@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
 import {
@@ -15,53 +15,54 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
   templateUrl: './extension-card.component.html',
   standalone: false
 })
-export class ExtensionCardComponent {
+export class ExtensionCardComponent implements OnInit {
   @Input() extension: IManagedObject;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
   constructor(
-    private analyticsService: AnalyticsService,
-    private alertService: AlertService,
-    private router: Router,
-    private activatedRoute: ActivatedRoute,
-    private bsModalService: BsModalService,
-
-    private wizardModalService: WizardModalService
+    private readonly analyticsService: AnalyticsService,
+    private readonly alertService: AlertService,
+    private readonly router: Router,
+    private readonly activatedRoute: ActivatedRoute,
+    private readonly bsModalService: BsModalService,
+    private readonly wizardModalService: WizardModalService
   ) { }
+
   ngOnInit(): void {
-    console.log('Block', this.extension);
+    console.log('Extension loaded:', this.extension);
   }
 
-  async detail() {
-    if (this.extension.loaded) {
-      this.router.navigate(['properties/', this.extension.name], {
+  async detail(): Promise<void> {
+    if (this.extension?.loaded) {
+      await this.router.navigate(['details', this.extension.name], {
         relativeTo: this.activatedRoute,
-        state: { extension: this.extension }
+        state: {
+          extension: this.extension
+        }
       });
+      console.log("Added extension",this.extension);
+    } else {
+      console.warn('Extension not loaded yet');
     }
-    // console.log(
-    //   'Details for extension:',
-    //   this.extension.name,
-    //   this.activatedRoute
-    // );
   }
 
-  async delete() {
+  async delete(): Promise<void> {
     const initialState = {
       title: 'Delete extension',
-      message: `You are about to delete the extension ${this.extension.name}. Do you want to proceed?`,
+      message: `You are about to delete the extension "${this.extension.name}". Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'
       }
     };
+
     const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
       ConfirmationModalComponent,
       { initialState }
     );
+
     confirmDeletionModalRef.content.closeSubject.subscribe(
       async (result: boolean) => {
-        // console.log("Confirmation delete result:", result);
         if (result) {
           try {
             await this.analyticsService.deleteExtension(this.extension, true);
@@ -77,12 +78,12 @@ export class ExtensionCardComponent {
     );
   }
 
-  async download() {
+  async download(): Promise<void> {
     try {
       const bin: ArrayBuffer = await this.analyticsService.downloadExtension(
         this.extension
       );
-      const blob = new Blob([bin]);
+      const blob = new Blob([bin], { type: 'application/zip' });
       saveAs(blob, `${this.extension.name}.zip`);
     } catch (ex) {
       if (ex) {
@@ -91,10 +92,7 @@ export class ExtensionCardComponent {
     }
   }
 
-  async rebuild() {
-  }
-
-  async update() {
+  async update(): Promise<void> {
     const wizardConfig: WizardConfig = {
       headerIcon: 'upload'
     };
