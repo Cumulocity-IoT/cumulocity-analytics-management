@@ -79,7 +79,7 @@
 
                     <c8y-form-group>
                         <label for="name">{{ 'Name' | translate }}</label>
-                        <input type="text" id="name" formControlName="name" class="form-control"
+                        <input type="text" id="name" formControlName="name" class="form-control"  (change)="warnAboutPATReset()"
                             [placeholder]="'Repository name' | translate" />
                     </c8y-form-group>
 
@@ -112,9 +112,16 @@
                                 </p>
                             </ng-template>
                         </label>
-                        <input type="password" id="accessToken" formControlName="accessToken"
+                        <input type="password" id="accessToken" formControlName="accessToken" required="true"
                             [placeholder]="'e.g.: your github Personal Access Token (PAT)' | translate"
                             class="form-control" />
+
+                        <!-- Warning message displayed under the input -->
+                        <c8y-messages *ngIf="showPATWarning" class="m-t-8 m-b-8">
+                            <c8y-message class="text-warning">
+                                {{ 'Changing the URL or name resets the PAT token. Enter the token again.' | translate }}
+                            </c8y-message>
+                        </c8y-messages>
                     </c8y-form-group>
 
                     <div class="btn-toolbar">

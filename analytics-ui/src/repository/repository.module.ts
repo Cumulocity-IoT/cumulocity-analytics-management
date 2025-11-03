@@ -1,6 +1,6 @@
 import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { CoreModule, hookRoute } from '@c8y/ngx-components';
+import { CommonModule, CoreModule, hookRoute } from '@c8y/ngx-components';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { SampleGridComponent } from './list/sample-grid.component';
@@ -15,6 +15,7 @@ import { RepositoriesDrawerComponent } from './repository/repositories-drawer.co
 @NgModule({
   imports: [
     CoreModule,
+    CommonModule,
     FormsModule,
     ReactiveFormsModule,
     DefaultSubscriptionsModule,

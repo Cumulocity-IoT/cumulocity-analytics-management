@@ -31,7 +31,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     isAddingNew: boolean = false;
     tempNewRepository: Repository | null = null;
     searchTerm: string = '';
-    
+
     // Store original form values to detect changes
     originalFormValues: any = null;
 
@@ -44,6 +44,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     showAddRepository: boolean = false;
     deleteDisabled: boolean = false;
     isSaving: boolean = false;
+    showPATWarning: boolean = false;
 
     constructor(
         private repositoryService: RepositoryService,
@@ -88,12 +89,12 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     async ngOnInit(): Promise<void> {
         this.repositories$ = this.repositoryService.getRepositories();
-        
+
         this.repositories$.subscribe(repos => {
             this.repositoriesList = repos;
             this.activeRepository = repos.find(r => r.enabled);
             this.updateDisplayList();
-            
+
             if (this.isAddingNew && this.tempNewRepository) {
                 const addedRepo = repos.find(r => r.name === this.tempNewRepository.name);
                 if (addedRepo) {
@@ -104,7 +105,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                 }
             }
         });
-        
+
         if (this.repositoriesList.length > 0) {
             this.setIndex(0);
         } else {
@@ -118,7 +119,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         } else {
             this.displayList = [...this.repositoriesList];
         }
-        
+
         this.applySearchFilter();
     }
 
@@ -129,8 +130,8 @@ export class RepositoriesDrawerComponent implements OnInit {
             const searchLower = this.searchTerm.toLowerCase().trim();
             this.filteredDisplayList = this.displayList.filter(repo => {
                 return repo.name?.toLowerCase().includes(searchLower) ||
-                       repo.url?.toLowerCase().includes(searchLower) ||
-                       repo.id?.toLowerCase().includes(searchLower);
+                    repo.url?.toLowerCase().includes(searchLower) ||
+                    repo.id?.toLowerCase().includes(searchLower);
             });
         }
     }
@@ -140,7 +141,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             const target = event.target as HTMLInputElement;
             this.searchTerm = target.value;
         }
-        
+
         this.applySearchFilter();
     }
 
@@ -158,30 +159,30 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
 
         const currentValues = this.repositoryForm.value;
-        
+
         // Get the full URL with prefix for comparison
         const currentUrl = this.GITHUB_URL + (currentValues.url || '');
         const originalUrl = this.originalFormValues.url;
-        
+
         // Check name change
         if (currentValues.name !== this.originalFormValues.name) {
             return true;
         }
-        
+
         // Check URL change
         if (currentUrl !== originalUrl) {
             return true;
         }
-        
+
         // Check access token change
         // Only consider it changed if there's a new non-empty value that's not the dummy token
-        const hasNewToken = currentValues.accessToken && 
-                           currentValues.accessToken !== '' && 
-                           currentValues.accessToken !== this.DUMMY_ACCESS_TOKEN;
+        const hasNewToken = currentValues.accessToken &&
+            currentValues.accessToken !== '' &&
+            currentValues.accessToken !== this.DUMMY_ACCESS_TOKEN;
         if (hasNewToken) {
             return true;
         }
-        
+
         return false;
     }
 
@@ -190,14 +191,14 @@ export class RepositoriesDrawerComponent implements OnInit {
         if (this.isAddingNew) {
             return this.repositoryForm.invalid || this.isSaving;
         }
-        
+
         // For existing repositories, enable save if:
         // 1. Form is valid AND
         // 2. (There are form changes OR there are unsaved enabled changes)
         if (this.repositoryForm.invalid || this.isSaving) {
             return true;
         }
-        
+
         return !this.hasFormChanges() && !this.repositoryService.hasUnsavedChanges();
     }
 
@@ -214,10 +215,11 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.selectedRepositoryIndex = actualIndex;
         this.isAddingNew = false;
         this.tempNewRepository = null;
-        
+        this.showPATWarning = false;
+
         const rep = { ...repository };
         rep.url = rep.url.replace(this.GITHUB_URL, '');
-        
+
         // Store original values for change detection
         this.originalFormValues = {
             id: rep.id,
@@ -226,7 +228,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             accessToken: rep.accessToken || '',
             enabled: rep.enabled
         };
-        
+
         // Set form with URL without prefix
         this.repositoryForm.patchValue(rep);
         this.showAddRepository = true;
@@ -258,25 +260,35 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.showAddRepository = true;
         this.deleteDisabled = true;
         this.originalFormValues = null;
-        
+        this.showPATWarning = false;
+
         this.tempNewRepository = {
             id: 'temp-' + uuidCustom(),
             name: 'New repository',
             url: '',
             enabled: false
         } as Repository;
-        
+
         this.updateDisplayList();
         this.selectedRepositoryIndex = this.displayList.length - 1;
     }
 
     warnAboutPATReset(): void {
-        // this.alertService.warning("Changing the URL will reset the PAT token. If you don't enter the token again it will be deleted.");
-        // const currentUrl = this.repositoryForm.get('url').value;
-        // if (currentUrl && currentUrl.endsWith('/')) {
-        //     const trimmedUrl = currentUrl.replace(/\/+$/, '');
-        //     this.repositoryForm.patchValue({ url: trimmedUrl });
-        // }
+        // Show warning if URL or name is changed and there's an existing token
+        if (!this.isAddingNew && this.originalFormValues) {
+            const currentUrl = this.GITHUB_URL + this.repositoryForm.get('url').value;
+            const originalUrl = this.originalFormValues.url;
+            const currentName = this.repositoryForm.get('name').value;
+            const originalName = this.originalFormValues.name;
+
+            if (currentUrl !== originalUrl || currentName !== originalName) {
+                this.showPATWarning = true;
+                // Clear the access token when URL or name changes
+                this.repositoryForm.patchValue({ accessToken: '' });
+            } else {
+                this.showPATWarning = false;
+            }
+        }
     }
 
     private async addRepository(): Promise<void> {
@@ -285,9 +297,9 @@ export class RepositoriesDrawerComponent implements OnInit {
             newRepository.url = this.GITHUB_URL + this.repositoryForm.value.url;
             newRepository.id = uuidCustom();
             newRepository.enabled = false;
-            
+
             await this.repositoryService.addRepository(newRepository);
-            
+
             this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
         }
     }
@@ -298,7 +310,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
 
         this.repositoryService.toggleRepositoryEnabled(repository.id);
-        
+
         if (!repository.enabled) {
             this.activeRepository = repository;
         }
@@ -308,9 +320,9 @@ export class RepositoriesDrawerComponent implements OnInit {
         if (this.repositoryForm.valid) {
             const updatedRepository: Repository = this.repositoryForm.value;
             updatedRepository.url = this.GITHUB_URL + updatedRepository.url;
-            
+
             await this.repositoryService.updateRepository(updatedRepository);
-            
+
             // Update original form values after successful save
             this.originalFormValues = {
                 id: updatedRepository.id,
@@ -319,7 +331,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                 accessToken: updatedRepository.accessToken || '',
                 enabled: updatedRepository.enabled
             };
-            
+
             this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
         }
     }
@@ -357,13 +369,13 @@ export class RepositoriesDrawerComponent implements OnInit {
                     this.isSaving = true;
                     try {
                         await this.repositoryService.deleteRepository(repositoryId);
-                        
+
                         if (this.repositoriesList.length > 0) {
                             this.setIndex(0);
                         } else {
                             this.createCustomRepository();
                         }
-                        
+
                         this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
                     } catch (ex) {
                         console.error('Failed to delete repository:', ex);
@@ -392,7 +404,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             } else if (this.selectedRepositoryIndex !== -1) {
                 const hasFormModifications = this.hasFormChanges();
                 const hasEnabledChanges = this.repositoryService.hasUnsavedChanges();
-                
+
                 if (hasFormModifications && hasEnabledChanges) {
                     // Both form and enabled status changed
                     // Update the repository details first
@@ -409,7 +421,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
                 }
             }
-            
+
             this.commit.emit(this.activeRepository);
         } catch (error) {
             console.error('Failed to save:', error);
@@ -423,7 +435,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             this.tempNewRepository = null;
             this.isAddingNew = false;
             this.updateDisplayList();
-            
+
             if (this.repositoriesList.length > 0) {
                 this.setIndex(0);
             } else {
