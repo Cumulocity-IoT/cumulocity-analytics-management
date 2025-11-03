@@ -316,9 +316,9 @@ def create_extension():
     deploy = data.get("deploy", False)
 
     if not extension_name:
-        return create_error_response("extension_name is required", 400)
+        return create_error_response("Parameter extension_name is required", 400)
     if not repository or not repository.get("id"):
-        return create_error_response("repository with id is required", 400)
+        return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(
         request=request, repository_id=repository["id"], replace_access_token=False
@@ -391,9 +391,9 @@ def create_extension_from_yaml():
     deploy = data.get("deploy", False)
 
     if not yaml_data or not yaml_data.get("url"):
-        return create_error_response("yaml with url is required", 400)
+        return create_error_response("Parameter yaml with url is required", 400)
     if not repository or not repository.get("id"):
-        return create_error_response("repository with id is required", 400)
+        return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(
         request=request, repository_id=repository["id"], replace_access_token=False
@@ -525,11 +525,11 @@ def create_extension_from_list():
     deploy = data.get("deploy", False)
 
     if not extension_name:
-        return create_error_response("extension_name is required", 400)
+        return create_error_response("Parameter extension_name is required", 400)
     if len(monitors) != 1:
         return create_error_response("Exactly one monitor is required", 400)
     if not repository or not repository.get("id"):
-        return create_error_response("repository with id is required", 400)
+        return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(
         request=request, repository_id=repository["id"], replace_access_token=False

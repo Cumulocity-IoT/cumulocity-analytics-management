@@ -57,7 +57,7 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
   loading: boolean = false;
-  singleSelection: boolean = false;
+  singleSelection: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
 
