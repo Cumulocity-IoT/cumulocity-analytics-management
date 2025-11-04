@@ -307,7 +307,7 @@ def create_extension():
         extension_name: Name for the extension
         repository: Repository object
         upload: Whether to upload to Cumulocity
-        deploy: Whether to restart CEP after upload
+        deploy: Whether to restart Cep after upload
     """
     data = request.get_json()
     extension_name = data.get("extension_name")
@@ -381,7 +381,7 @@ def create_extension_from_yaml():
         sections: Sections to include (empty = all)
         repository: Repository object
         upload: Whether to upload
-        deploy: Whether to restart CEP
+        deploy: Whether to restart Cep
     """
     data = request.get_json()
     yaml_data = data.get("yaml", {})
@@ -515,7 +515,7 @@ def create_extension_from_list():
         monitors: List with single monitor/directory
         repository: Repository object
         upload: Whether to upload
-        deploy: Whether to restart CEP
+        deploy: Whether to restart Cep
     """
     data = request.get_json()
     extension_name = data.get("extension_name")
@@ -585,20 +585,20 @@ def create_extension_from_list():
 @app.route("/cep/id", methods=["GET"])
 @handle_errors
 def get_cep_operationobject_id():
-    """Get CEP operation object ID."""
+    """Get Cep operation object ID."""
     result = agent.get_cep_operationobject_id(request)
     if result is None:
-        return create_error_response("CEP operation object not found", 404)
+        return create_error_response("Cep operation object not found", 404)
     return jsonify(result), 200
 
 
 @app.route("/cep/status", methods=["GET"])
 @handle_errors
 def get_cep_ctrl_status():
-    """Get CEP control status."""
+    """Get Cep control status."""
     result = agent.get_cep_ctrl_status(request)
     if result is None:
-        return create_error_response("CEP control status not found", 404)
+        return create_error_response("Cep control status not found", 404)
     return jsonify(result), 200
 
 

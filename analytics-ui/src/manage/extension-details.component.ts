@@ -21,7 +21,7 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { gettext } from '@c8y/ngx-components';
-import { AnalyticsService, CEP_Extension } from '../shared';
+import { AnalyticsService, CepExtension } from '../shared';
 
 @Component({
   selector: 'a17t-extension-details',
@@ -30,8 +30,8 @@ import { AnalyticsService, CEP_Extension } from '../shared';
   standalone: false
 })
 export class ExtensionDetailsComponent implements OnInit {
-  extensionFromCEP: CEP_Extension;
-  extension: CEP_Extension;
+  extensionFromCep: CepExtension;
+  extension: CepExtension;
   extensionContent: any;
   buildInformation: any[] = [];
   breadcrumbConfig: { icon: string; label: string; path: string };
@@ -48,7 +48,7 @@ export class ExtensionDetailsComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.extensionFromCEP = await this.route.snapshot.data['extensionFromCEP'];
+    this.extensionFromCep = await this.route.snapshot.data['extensionFromCep'];
 
     // Alternative: Get extension from history state if not set in constructor
     if (!this.extension) {

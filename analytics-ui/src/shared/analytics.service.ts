@@ -16,37 +16,37 @@ import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   BACKEND_PATH_BASE,
-  CEP_Block,
+  CepBlock,
   CEP_ENDPOINT,
-  CEP_Extension,
-  CEP_ExtensionsMetadata,
+  CepExtension,
+  CepExtensionsMetadata,
   CEP_METADATA_FILE_EXTENSION_1,
   CEP_METADATA_FILE_EXTENSION_2,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_PATH_EN,
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
-  CEPStatusObject,
+  CepStatusObject,
   UploadMode,
 } from './analytics.model';
-import { isCustomCEP_Block, removeFileExtension } from './utils';
+import { isCustomCepBlock, removeFileExtension } from './utils';
 
 /**
- * Custom error class for CEP-related errors
+ * Custom error class for Cep-related errors
  */
-class CEPError extends Error {
+class CepError extends Error {
   constructor(
     message: string,
     public readonly userMessage: string,
     public readonly originalError?: Error
   ) {
     super(message);
-    this.name = 'CEPError';
+    this.name = 'CepError';
   }
 }
 
 /**
- * Service for managing Streaming Analytics (CEP) extensions and blocks
+ * Service for managing Streaming Analytics (Cep) extensions and blocks
  */
 @Injectable({ providedIn: 'root' })
 export class AnalyticsService implements OnDestroy {
@@ -64,8 +64,8 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   private cachedCepOperationObjectId: Promise<string> | null = null;
-  private cachedCepStatus: Promise<CEPStatusObject> | null = null;
-  private cachedDeployedBlocks: Promise<CEP_Block[]> | null = null;
+  private cachedCepStatus: Promise<CepStatusObject> | null = null;
+  private cachedDeployedBlocks: Promise<CepBlock[]> | null = null;
   private cachedDeployedExtensions: Promise<IManagedObject[]> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
 
@@ -203,7 +203,7 @@ export class AnalyticsService implements OnDestroy {
       const result = await this.inventoryBinaryService.create(file, extensionToCreate);
 
       if (!result.res.ok) {
-        throw new CEPError(
+        throw new CepError(
           `Upload failed with status ${result.res.status}`,
           gettext(`Could not upload extension "${extension.name}". Please try again.`)
         );
@@ -219,7 +219,7 @@ export class AnalyticsService implements OnDestroy {
         error,
         `Failed to upload extension ${extension.name}`,
         true,
-        error instanceof CEPError 
+        error instanceof CepError 
           ? error.userMessage 
           : gettext(`Error uploading extension "${extension.name}". Please try again.`)
       );
@@ -282,10 +282,10 @@ export class AnalyticsService implements OnDestroy {
   }
 
   // ============================================================================
-  // Public API - Blocks (CEP Deployed)
+  // Public API - Blocks (Cep Deployed)
   // ============================================================================
 
-  async getDeployedBlocks(): Promise<CEP_Block[]> {
+  async getDeployedBlocks(): Promise<CepBlock[]> {
     if (this.cachedDeployedBlocks) {
       return this.cachedDeployedBlocks;
     }
@@ -325,10 +325,10 @@ export class AnalyticsService implements OnDestroy {
   }
 
   // ============================================================================
-  // Public API - CEP Status & Control
+  // Public API - Cep Status & Control
   // ============================================================================
 
-  async getCepStatus(): Promise<CEPStatusObject> {
+  async getCepStatus(): Promise<CepStatusObject> {
     if (this.cachedCepStatus) {
       return this.cachedCepStatus;
     }
@@ -339,14 +339,14 @@ export class AnalyticsService implements OnDestroy {
         ? `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`
         : `${CEP_PATH_STATUS}`;
 
-      const status = await this.fetchJSON<CEPStatusObject>(url);
+      const status = await this.fetchJSON<CepStatusObject>(url);
       this.cachedCepStatus = Promise.resolve(status);
       return status;
     } catch (error) {
       this.cachedCepStatus = null;
       throw this.handleError(
         error,
-        'Failed to get CEP status',
+        'Failed to get Cep status',
         false // Don't show alert, let caller handle
       );
     }
@@ -368,7 +368,7 @@ export class AnalyticsService implements OnDestroy {
     } catch (error) {
       throw this.handleError(
         error,
-        'Failed to restart CEP engine',
+        'Failed to restart Cep engine',
         true,
         gettext('Failed to restart Streaming Analytics. Please try again.')
       );
@@ -395,24 +395,24 @@ export class AnalyticsService implements OnDestroy {
   }
 
   // ============================================================================
-  // Public API - CEP Metadata (Read-only)
+  // Public API - Cep Metadata (Read-only)
   // ============================================================================
 
-  async getExtensionNamesFromCep(): Promise<CEP_ExtensionsMetadata> {
+  async getExtensionNamesFromCep(): Promise<CepExtensionsMetadata> {
     try {
-      return await this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
+      return await this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
     } catch (error) {
       throw this.handleError(
         error,
-        'Failed to get extension names from CEP',
+        'Failed to get extension names from Cep',
         false
       );
     }
   }
 
-  async getDeployedExtensionDetails(extensionName: string): Promise<CEP_Extension | null> {
+  async getDeployedExtensionDetails(extensionName: string): Promise<CepExtension | null> {
     try {
-      const data = await this.fetchJSON<CEP_Extension>(`${CEP_PATH_EN}/${extensionName}.json`);
+      const data = await this.fetchJSON<CepExtension>(`${CEP_PATH_EN}/${extensionName}.json`);
       return { ...data, name: extensionName };
     } catch (error) {
       console.warn(`Failed to get extension details for ${extensionName}:`, error);
@@ -439,7 +439,7 @@ export class AnalyticsService implements OnDestroy {
       this.showCepUnavailableWarning(isBackendAvailable);
       return undefined;
     } catch (error) {
-      this.handleError(error, 'Failed to get CEP operation object ID', false);
+      this.handleError(error, 'Failed to get Cep operation object ID', false);
       const isBackendAvailable = await this.isBackendServiceAvailable();
       this.showCepUnavailableWarning(isBackendAvailable);
       return undefined;
@@ -464,8 +464,8 @@ export class AnalyticsService implements OnDestroy {
 
   private async addDeploymentStatus(
     extension: IManagedObject,
-    deployedMetadata: CEP_ExtensionsMetadata,
-    diagnostics: CEP_ExtensionsMetadata
+    deployedMetadata: CepExtensionsMetadata,
+    diagnostics: CepExtensionsMetadata
   ): Promise<IManagedObject> {
     const cleanName = removeFileExtension(extension.name);
     const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
@@ -492,17 +492,17 @@ export class AnalyticsService implements OnDestroy {
     };
   }
 
-  private addBlockMetadata(block: any, extensionName: string): CEP_Block {
+  private addBlockMetadata(block: any, extensionName: string): CepBlock {
     return {
       ...block,
-      custom: isCustomCEP_Block(block),
+      custom: isCustomCepBlock(block),
       extension: extensionName
-    } as CEP_Block;
+    } as CepBlock;
   }
 
-  private async getDeployedExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
+  private async getDeployedExtensionsMetadata(): Promise<CepExtensionsMetadata> {
     try {
-      return await this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
+      return await this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
     } catch (error) {
       throw this.handleError(
         error,
@@ -537,7 +537,7 @@ export class AnalyticsService implements OnDestroy {
   }
 
   // ============================================================================
-  // Private Methods - CEP Operation Object
+  // Private Methods - Cep Operation Object
   // ============================================================================
 
   private async fetchOperationIdFromBackend(): Promise<string> {
@@ -557,7 +557,7 @@ export class AnalyticsService implements OnDestroy {
     );
 
     if (!data || data.length !== 1) {
-      throw new CEPError(
+      throw new CepError(
         'Unexpected ctrl-microservice query result',
         gettext('Could not find Streaming Analytics control microservice.')
       );
@@ -607,7 +607,7 @@ export class AnalyticsService implements OnDestroy {
     if (managedObject.c8y_Status?.status === 'Up') {
       this.cachedCepStatus = null;
       this.getCepStatus().catch(err =>
-        console.warn('Failed to refresh CEP status:', err)
+        console.warn('Failed to refresh Cep status:', err)
       );
     }
   }
@@ -640,11 +640,11 @@ export class AnalyticsService implements OnDestroy {
     }
 
     // Return or create appropriate error
-    if (error instanceof CEPError) {
+    if (error instanceof CepError) {
       return error;
     }
 
-    return new CEPError(
+    return new CepError(
       logMessage,
       userMessage || this.getErrorMessage(error),
       error
@@ -655,7 +655,7 @@ export class AnalyticsService implements OnDestroy {
    * Extract user-friendly error message
    */
   private getErrorMessage(error: any): string {
-    if (error instanceof CEPError) {
+    if (error instanceof CepError) {
       return error.userMessage;
     }
 
@@ -694,7 +694,7 @@ export class AnalyticsService implements OnDestroy {
       });
 
       if (!response.ok) {
-        throw new CEPError(
+        throw new CepError(
           `API call failed: ${response.status} ${response.statusText}`,
           gettext(`Network request failed (${response.status}). Please check your connection and try again.`)
         );
@@ -702,11 +702,11 @@ export class AnalyticsService implements OnDestroy {
 
       return await response.json();
     } catch (error) {
-      if (error instanceof CEPError) {
+      if (error instanceof CepError) {
         throw error;
       }
 
-      throw new CEPError(
+      throw new CepError(
         `Failed to fetch from ${url}`,
         gettext('Network error. Please check your connection and try again.'),
         error

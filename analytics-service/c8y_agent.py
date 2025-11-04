@@ -1,5 +1,5 @@
 """
-Cumulocity IoT Agent for managing tenants, repositories, and CEP operations.
+Cumulocity IoT Agent for managing tenants, repositories, and Cep operations.
 """
 
 import json
@@ -104,28 +104,28 @@ class C8YAgent:
 
     def restart_cep(self, request) -> None:
         """
-        Attempt to restart CEP, logging any errors without raising.
+        Attempt to restart Cep, logging any errors without raising.
 
         Args:
             request: Flask request object
         """
         try:
             headers, cookies = self.prepare_header(request)
-            self._logger.info("Attempting to restart CEP...")
+            self._logger.info("Attempting to restart Cep...")
 
             self._get_tenant_instance(headers, cookies).put(
                 resource=self.PATHS["CEP_RESTART"], json={}
             )
-            self._logger.info("CEP restart command sent successfully")
+            self._logger.info("Cep restart command sent successfully")
 
         except Exception as e:
-            self._logger.warning(f"Non-critical error during CEP restart: {e}")
+            self._logger.warning(f"Non-critical error during Cep restart: {e}")
         finally:
-            self._logger.info("CEP restart procedure completed")
+            self._logger.info("Cep restart procedure completed")
 
     def get_cep_operationobject_id(self, request) -> Optional[Dict[str, str]]:
         """
-        Get CEP operation object ID.
+        Get Cep operation object ID.
 
         Args:
             request: Flask request object
@@ -155,13 +155,13 @@ class C8YAgent:
 
         except Exception as e:
             self._logger.error(
-                f"Failed to get CEP operation object ID: {e}", exc_info=True
+                f"Failed to get Cep operation object ID: {e}", exc_info=True
             )
             return None
 
     def get_cep_ctrl_status(self, request) -> Optional[Dict]:
         """
-        Get CEP control status.
+        Get Cep control status.
 
         Args:
             request: Flask request object
@@ -175,7 +175,7 @@ class C8YAgent:
                 resource=self.PATHS["CEP_DIAGNOSTICS"]
             )
         except Exception as e:
-            self._logger.error(f"Failed to get CEP control status: {e}", exc_info=True)
+            self._logger.error(f"Failed to get Cep control status: {e}", exc_info=True)
             return None
 
     def _process_repository_data(

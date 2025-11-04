@@ -25,7 +25,7 @@ import {
 } from 'rxjs/operators';
 import {
   BACKEND_PATH_BASE,
-  CEP_Block,
+  CepBlock,
   DESCRIPTOR_YAML,
   EXTENSION_ENDPOINT,
   Repository,
@@ -604,7 +604,7 @@ export class RepositoryService implements OnDestroy {
 
   private processRepositoryItems(
     repos: Repository[],
-    loaded: CEP_Block[],
+    loaded: CepBlock[],
     hideInstalled: boolean
   ): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
@@ -824,7 +824,7 @@ export class RepositoryService implements OnDestroy {
 
   private addInstallationStatus(
     blocks: RepositoryItem[],
-    loaded: CEP_Block[],
+    loaded: CepBlock[],
     hideInstalled: boolean
   ): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));

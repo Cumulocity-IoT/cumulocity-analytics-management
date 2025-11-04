@@ -1,8 +1,8 @@
 import { inject } from "@angular/core";
 import { ResolveFn } from "@angular/router";
-import { AnalyticsService, CEP_Extension } from "../shared";
+import { AnalyticsService, CepExtension } from "../shared";
 
-export const extensionResolver: ResolveFn<CEP_Extension> = async (route, state) => {
+export const extensionResolver: ResolveFn<CepExtension> = async (route, state) => {
     const analyticsService = inject(AnalyticsService);
     const { name } = route.params;
     return await analyticsService.getDeployedExtensionDetails(name);

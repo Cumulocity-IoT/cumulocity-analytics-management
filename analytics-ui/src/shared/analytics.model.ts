@@ -29,20 +29,20 @@ export enum Category {
   UTILITY = 'UTILITY'
 }
 
-export interface CEP_ExtensionsMetadata {
+export interface CepExtensionsMetadata {
   metadatas: string[];
   messages: string[];
 }
 
-export interface CEP_Extension {
+export interface CepExtension {
   name: string;
-  analytics: CEP_Block[];
+  analytics: CepBlock[];
   version: string;
   loaded: true;
   extensionType?: ExtensionType;
 }
 
-export interface CEP_Block {
+export interface CepBlock {
   id: string;
   name: string;
   file: string;
@@ -156,10 +156,10 @@ export const REPO_SAMPLES = [
 export const DESCRIPTOR_YAML = "extensions.yaml";
 
 
-export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
 
 export type ExtensionType = 'block' | 'zip';
 
-export type CEPStatusObject = any;
+export type CepStatusObject = any;
 
 export type UploadMode = 'add' | 'update';

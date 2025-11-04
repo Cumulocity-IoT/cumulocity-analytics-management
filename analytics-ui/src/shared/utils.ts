@@ -1,4 +1,4 @@
-import { CEP_Block } from './analytics.model';
+import { CepBlock } from './analytics.model';
 
 export function uuidCustom(): string {
   const id = Math.random().toString(36).slice(-6);
@@ -16,7 +16,7 @@ export function getFileExtension(name: string): string {
   return (result || result == null) ? undefined : result[0];
 }
 
-export function isCustomCEP_Block(block: CEP_Block): boolean {
+export function isCustomCepBlock(block: CepBlock): boolean {
   return (
     !block.id.startsWith('apama.analyticsbuilder.blocks') &&
     !block.id.startsWith('apama.analyticskit.blocks.core') &&

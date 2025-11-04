@@ -14,7 +14,7 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { AnalyticsService, CEPEngineStatus } from '../shared';
+import { AnalyticsService, CepEngineStatus } from '../shared';
 import { ActivatedRoute } from '@angular/router';
 
 @Component({
@@ -26,7 +26,7 @@ import { ActivatedRoute } from '@angular/router';
 export class ExtensionGridComponent implements OnInit, OnDestroy {
   // Observables for template
   extensions$: Observable<IManagedObject[]>;
-  cepStatus$: Observable<CEPEngineStatus>;
+  cepStatus$: Observable<CepEngineStatus>;
   isSafeMode$: Observable<boolean>;
 
   // Template bindings
@@ -59,13 +59,13 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     this.reload$.next(true); // Signal reload with cache clear
   }
 
-  async restartCEP(): Promise<void> {
+  async restartCep(): Promise<void> {
     try {
       this.alertService.info(gettext('Initiating restart...'));
       await this.analyticsService.restartCepEngine();
     } catch (error) {
-      console.error('Failed to restart CEP:', error);
-      this.alertService.danger(gettext('Failed to restart CEP'));
+      console.error('Failed to restart Cep:', error);
+      this.alertService.danger(gettext('Failed to restart Cep'));
     }
   }
 
@@ -86,7 +86,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
       .subscribe(() => this.reload());
   }
 
-  getCEPMicroserviceUrl(): string {
+  getCepMicroserviceUrl(): string {
     return `/apps/administration/index.html#/ecosystem/microservice/microservices`;
   }
 
@@ -95,7 +95,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   private initializeStreams(): void {
-    // CEP operation object stream
+    // Cep operation object stream
     const cepObject$ = this.analyticsService.getCepOperationObjectStream$().pipe(
       takeUntil(this.destroy$),
       shareReplay(1)
@@ -103,7 +103,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
     // Extract status
     this.cepStatus$ = cepObject$.pipe(
-      map(mo => (mo?.c8y_Status?.status?.toLowerCase() || 'down') as CEPEngineStatus),
+      map(mo => (mo?.c8y_Status?.status?.toLowerCase() || 'down') as CepEngineStatus),
       distinctUntilChanged(),
       shareReplay(1)
     );

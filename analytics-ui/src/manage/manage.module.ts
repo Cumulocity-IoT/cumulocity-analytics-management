@@ -39,7 +39,7 @@ import { extensionResolver, backendResolver } from './utils';
         {
           path: 'details/:name',
           component: ExtensionDetailsComponent, resolve: {
-            extensionFromCEP: extensionResolver
+            extensionFromCep: extensionResolver
           }
         }
       ]

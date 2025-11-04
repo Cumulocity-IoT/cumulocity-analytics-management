@@ -34,7 +34,7 @@ import {
 import {
   AnalyticsService,
   BooleanRendererComponent,
-  CEP_Block
+  CepBlock
 } from '../shared';
 import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
 
@@ -50,7 +50,7 @@ export class BlockGridComponent implements OnInit {
 
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
-  blocks: CEP_Block[] = [];
+  blocks: CepBlock[] = [];
   actionControls: ActionControl[] = [];
 
   titleBlock: string = 'Analytics Builder blocks';
