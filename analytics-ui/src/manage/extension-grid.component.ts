@@ -15,6 +15,7 @@ import {
   tap
 } from 'rxjs/operators';
 import { AnalyticsService, CEPEngineStatus } from '../shared';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'a17t-extension',
@@ -30,18 +31,21 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
   // Template bindings
   listClass = 'card-group';
+  isBackendServiceAvailable = false;
 
   // Private subjects
   private readonly reload$ = new BehaviorSubject<boolean>(false);
   private readonly destroy$ = new Subject<void>();
 
   constructor(
+    private route: ActivatedRoute,
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
     private readonly wizardModalService: WizardModalService
   ) { }
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
+    this.isBackendServiceAvailable = await this.route.snapshot.data['isBackendServiceAvailable'];
     this.initializeStreams();
   }
 

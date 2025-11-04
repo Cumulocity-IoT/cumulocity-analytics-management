@@ -72,7 +72,7 @@
           </button>
         </li>
         <li>
-          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!extension.build_information">
+          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!extension.build_information || !isBackendServiceAvailable">
             <i c8yIcon="process" class="m-r-4"></i>
             {{ 'Rebuild' | translate }}
           </button>

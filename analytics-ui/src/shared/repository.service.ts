@@ -10,6 +10,7 @@ import {
   combineLatest,
   forkJoin,
   from,
+  lastValueFrom,
   of,
 } from 'rxjs';
 import {
@@ -314,9 +315,8 @@ export class RepositoryService implements OnDestroy {
 
   async refreshRepositories(): Promise<void> {
     try {
-      await this.loadRepositoriesFromBackend()
-        .pipe(take(1))
-        .toPromise();
+      await lastValueFrom(this.loadRepositoriesFromBackend()
+        .pipe(take(1)));
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {

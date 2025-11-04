@@ -17,6 +17,7 @@ import { AnalyticsService, ConfirmationModalComponent } from '../shared';
 })
 export class ExtensionCardComponent implements OnInit {
   @Input() extension: IManagedObject;
+  @Input() isBackendServiceAvailable: boolean;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
   constructor(

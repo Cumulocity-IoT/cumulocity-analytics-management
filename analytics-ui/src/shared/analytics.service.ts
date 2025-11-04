@@ -389,7 +389,7 @@ export class AnalyticsService implements OnDestroy {
       this.cachedBackendAvailability = Promise.resolve(isAvailable);
       return isAvailable;
     } catch (error) {
-      console.warn('Failed to check backend service availability:', error);
+      // console.warn('Failed to check backend service availability:', error);
       return false; // Fail gracefully, don't throw
     }
   }

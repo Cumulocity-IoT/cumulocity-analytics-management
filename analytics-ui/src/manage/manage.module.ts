@@ -8,7 +8,7 @@ import { ExtensionDetailsComponent } from './extension-details.component';
 import { ExtensionGridComponent } from './extension-grid.component';
 import { SharedModule } from '../shared/shared.module';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
-import { extensionResolver } from './utils';
+import { extensionResolver, backendResolver } from './utils';
 
 @NgModule({
   imports: [
@@ -32,7 +32,9 @@ import { extensionResolver } from './utils';
         {
           path: '',
           pathMatch: 'full',
-          component: ExtensionGridComponent
+          component: ExtensionGridComponent, resolve: {
+            isBackendServiceAvailable: backendResolver
+          }
         },
         {
           path: 'details/:name',

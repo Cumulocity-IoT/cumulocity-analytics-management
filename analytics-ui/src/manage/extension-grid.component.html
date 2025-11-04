@@ -93,6 +93,7 @@
          class="col-xs-12 col-sm-4 col-md-3">
       <a17t-extension-card 
         (extensionChanged)="reload()" 
+        [isBackendServiceAvailable]="isBackendServiceAvailable" 
         [extension]="extension" 
         class="d-contents" />
     </div>
