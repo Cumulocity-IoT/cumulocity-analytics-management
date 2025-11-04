@@ -32,7 +32,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   listClass = 'card-group';
 
   // Private subjects
-  private readonly reload$ = new BehaviorSubject<void>(undefined);
+  private readonly reload$ = new BehaviorSubject<boolean>(false);
   private readonly destroy$ = new Subject<void>();
 
   constructor(
@@ -51,7 +51,8 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   reload(): void {
-    this.reload$.next();
+    this.analyticsService.clearAllCaches(); // Clear immediately
+    this.reload$.next(true); // Signal reload with cache clear
   }
 
   async restartCEP(): Promise<void> {
@@ -113,19 +114,22 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     const reload$ = merge(
       this.reload$,
       this.analyticsService.getCacheReloadRequests$()
-    ).pipe(debounceTime(100));
-
-    // Extensions stream
-    this.extensions$ = combineLatest([reload$, this.cepStatus$]).pipe(
-      tap(([clearCache]) => {
+    ).pipe(
+      debounceTime(100),
+      tap(clearCache => {
+        // console.log('Reload triggered, clearCache:', clearCache);
         if (clearCache) {
           this.analyticsService.clearAllCaches();
         }
-      }),
+      })
+    );
+
+    // Extensions stream
+    this.extensions$ = combineLatest([reload$, this.cepStatus$]).pipe(
       switchMap(([_, status]) =>
         status === 'up'
           ? this.loadExtensions$()
-          : []
+          : of([])
       ),
       shareReplay(1)
     );

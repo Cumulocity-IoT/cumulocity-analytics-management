@@ -29,7 +29,7 @@ export class ExtensionCardComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    console.log('Extension loaded:', this.extension);
+    // console.log('Extension loaded:', this.extension);
   }
 
   async detail(): Promise<void> {
@@ -40,9 +40,9 @@ export class ExtensionCardComponent implements OnInit {
           extension: this.extension
         }
       });
-      console.log("Added extension",this.extension);
+      // console.log("Added extension", this.extension);
     } else {
-      console.warn('Extension not loaded yet');
+      // console.warn('Extension not loaded yet');
     }
   }
 
@@ -113,5 +113,10 @@ export class ExtensionCardComponent implements OnInit {
     modalRef.content.onClose.subscribe(() => {
       this.extensionChanged.emit();
     });
+  }
+
+  rebuild(): void {
+    this.alertService.info("This option will be supported in a later release");
+    console.log("Build Information", this.extension.build_information);
   }
 }

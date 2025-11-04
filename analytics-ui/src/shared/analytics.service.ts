@@ -340,7 +340,7 @@ export class AnalyticsService implements OnDestroy {
       this.cachedCepStatus = Promise.resolve(status);
       return status;
     } catch (error) {
-      console.error('Failed to get CEP status:', error);
+      // console.error('Failed to get CEP status:', error);
       throw error;
     }
   }
@@ -602,7 +602,7 @@ export class AnalyticsService implements OnDestroy {
       );
     }
 
-    console.log('CEP operation object updated:', managedObject);
+    // console.log('CEP operation object updated:', managedObject);
   }
 
   // ============================================================================
