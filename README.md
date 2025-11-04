@@ -236,7 +236,7 @@ The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl
 
 Two layouts are proposed to build an extension from a github repository / folder are as follows:
 
-1. Directory is Extension (The Preferred Solution)
+1. Directory is Extension
 This is the preferred because of its simplicity.
 
 Mechanism: 
@@ -247,17 +247,17 @@ Mechanism:
 * If an item is a directory (e.g., Python), an extension is created by packaging all the content within that directory (including subdirectories like venv).
 
 User UI: 
-* The user sees a list of names for each top-level .mon file and top-level directory (e.g., "Difference", "Offset", "Python").
+* The user sees a list of names for each top-level .mon file and top-level directory (e.g., "Difference", "Offset", "Python"). Only one item (either directory or *.mon file) can be selected.
 
 Key Benefit: Retains simple behavior for existing single-file blocks while easily supporting complex blocks that require multiple files and/or directories (like a Python environment).
 
-2. Configuration File `extension.yaml`
+2. Configuration File `extensions.yaml`
 This layout uses a dedicated configuration file to define the extension's contents explicitly.
 
 Mechanism: 
-* The builder recursively inspects the directory for a specific configuration file `extension.yaml`.
+* The builder recursively inspects the directory for a specific configuration file `extensions.yaml`.
 
-* If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include.
+* If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include. Multiple *.mon files can be selected.
 
 * If no config file is present, it defaults to listing simple .mon files as before.
 

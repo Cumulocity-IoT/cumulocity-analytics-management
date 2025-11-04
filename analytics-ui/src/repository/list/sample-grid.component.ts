@@ -26,7 +26,7 @@ import {
   Column,
   ColumnDataType,
   DataGridComponent,
-  Pagination
+  Pagination,
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
@@ -38,10 +38,9 @@ import {
   RepositoryService
 } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
-import { distinctUntilChanged, map, Observable, shareReplay } from 'rxjs';
+import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
-
 
 @Component({
   selector: 'a17t-sample-grid',
@@ -57,7 +56,8 @@ export class SampleGridComponent implements OnInit {
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
   loading: boolean = false;
-  singleSelection: boolean = true;
+  singleSelection: boolean = false;
+  showDataGrid: boolean = true; 
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
 
@@ -78,7 +78,6 @@ export class SampleGridComponent implements OnInit {
       dataType: ColumnDataType.TextLong,
       filterable: true,
       visible: true,
-      // cellRendererComponent: LinkRendererComponent
     },
     {
       name: 'type',
@@ -125,12 +124,29 @@ export class SampleGridComponent implements OnInit {
     public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService
-  ) { }
+  ) {
+    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
+      shareReplay(1),
+      tap(items => {
+        const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
+        console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
+
+        // Only recreate the grid if the selection type actually changes
+        if (this.singleSelection !== isYaml) {
+          console.log("Selection type changed, recreating grid");
+          this.showDataGrid = false;
+          this.singleSelection = isYaml;
+
+          // Recreate the grid on the next change detection cycle
+          setTimeout(() => {
+            this.showDataGrid = true;
+          }, 0);
+        }
+      })
+    );
+  }
 
   ngOnInit() {
-    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
-      shareReplay(1)
-    );
     this.repositoryItems$?.subscribe((samples) => (this.repositoryItems = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
@@ -149,6 +165,7 @@ export class SampleGridComponent implements OnInit {
 
     this.initializeActiveRepository();
   }
+
 
   initializeActiveRepository(): void {
     // Subscribe to repositories$ to find and set the active repository

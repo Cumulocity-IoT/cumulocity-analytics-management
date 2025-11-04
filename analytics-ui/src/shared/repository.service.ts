@@ -367,7 +367,7 @@ export class RepositoryService implements OnDestroy {
   /**
    * Get sections from extension YAML
    */
-  getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
+  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
     return this.getRepositoryItemContent(item, true, false).pipe(
       map(content => this.parseYamlSections(content)),
       catchError(error => {

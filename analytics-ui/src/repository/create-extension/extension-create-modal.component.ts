@@ -4,7 +4,7 @@ import { BehaviorSubject, Subject, from } from 'rxjs';
 import { FormlyFieldConfig } from '@ngx-formly/core';
 import { FormGroup } from '@angular/forms';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, CEP_Block, DESCRIPTOR_YAML, Repository, RepositoryItem } from '../../shared/analytics.model';
+import { APPLICATION_ANALYTICS_BUILDER_SERVICE, Repository, RepositoryItem } from '../../shared/analytics.model';
 import { ExtensionListComponent } from '../list/extension-list.component';
 import { RepositoryService } from 'src/shared';
 
