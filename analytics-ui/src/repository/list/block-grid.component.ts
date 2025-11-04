@@ -131,7 +131,7 @@ export class BlockGridComponent implements OnInit {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
         console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
 
-        const type = isYaml ? 'extension type' : 'configuration type ' ;
+        const type = isYaml ? ' list assets' : ' contains extensions.yaml ' ;
         this.titleSample = `Blocks from repositories (${type})`;
         // Only recreate the grid if the selection type actually changes
         if (this.singleSelection !== isYaml) {

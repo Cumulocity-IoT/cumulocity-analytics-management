@@ -10,7 +10,7 @@ import {
   IResult,
   Realtime,
 } from '@c8y/client';
-import { AlertService, gettext } from '@c8y/ngx-components';
+import { AlertService } from '@c8y/ngx-components';
 import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
   CEP_Block,
@@ -29,6 +29,7 @@ import {
   CEP_METADATA_FILE_EXTENSION_2,
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 /**
  * Service for managing Streaming Analytics (CEP) extensions and blocks
@@ -363,7 +364,7 @@ export class AnalyticsService implements OnDestroy {
         body: '{}'
       });
 
-      this.alertService.success(gettext('CEP restart initiated'));
+     // this.alertService.success(gettext('CEP restart initiated'));
       await this.clearAllCaches();
     } catch (error) {
       console.error('Failed to restart CEP:', error);
@@ -433,6 +434,7 @@ export class AnalyticsService implements OnDestroy {
     }
 
     try {
+      //throw new Error("DUMMY");
       const isBackendAvailable = await this.isBackendServiceAvailable();
       const id = isBackendAvailable
         ? await this.fetchOperationIdFromBackend()

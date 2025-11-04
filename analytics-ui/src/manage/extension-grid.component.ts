@@ -1,18 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { IManagedObject } from '@c8y/client';
-import {
-  AlertService,
-  WizardConfig,
-  WizardModalService
-} from '@c8y/ngx-components';
-import {
-  BehaviorSubject,
-  Observable,
-  Subject,
-  combineLatest,
-  merge,
-  of
-} from 'rxjs';
+import { AlertService, WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { BehaviorSubject, combineLatest, from, merge, Observable, of, Subject } from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -24,15 +14,7 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { AnalyticsService, CEPEngineStatus, CEPStatusObject } from '../shared';
-import { gettext } from '@c8y/ngx-components/gettext';
-
-
-interface ExtensionGridState {
-  status: CEPEngineStatus;
-  cepId: string | null;
-  isSafeMode: boolean;
-}
+import { AnalyticsService, CEPEngineStatus } from '../shared';
 
 @Component({
   selector: 'a17t-extension',
@@ -41,32 +23,26 @@ interface ExtensionGridState {
   standalone: false
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
-  // Observables
-  cepOperationObject$: Observable<IManagedObject>;
+  // Observables for template
   extensions$: Observable<IManagedObject[]>;
-  state$: Observable<ExtensionGridState>;
-
-  // BehaviorSubjects
-  private reload$ = new BehaviorSubject<boolean>(false);
-  private destroy$ = new Subject<void>();
-
-  // Template bindings
-  listClass: string = 'card-group';
-  cepCtrlStatus: CEPStatusObject | null = null;
-  cepId: string | null = null;
-
-  // Computed observables for template
-  cepEngineStatus$: Observable<CEPEngineStatus>;
+  cepStatus$: Observable<CEPEngineStatus>;
   isSafeMode$: Observable<boolean>;
 
+  // Template bindings
+  listClass = 'card-group';
+
+  // Private subjects
+  private readonly reload$ = new BehaviorSubject<void>(undefined);
+  private readonly destroy$ = new Subject<void>();
+
   constructor(
-    private analyticsService: AnalyticsService,
-    private alertService: AlertService,
-    private wizardModalService: WizardModalService
+    private readonly analyticsService: AnalyticsService,
+    private readonly alertService: AlertService,
+    private readonly wizardModalService: WizardModalService
   ) { }
 
   ngOnInit(): void {
-    this.initializeComponent();
+    this.initializeStreams();
   }
 
   ngOnDestroy(): void {
@@ -74,15 +50,14 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadExtensions(): void {
-    this.reload$.next(true);
+  reload(): void {
+    this.reload$.next();
   }
 
   async restartCEP(): Promise<void> {
     try {
       this.alertService.info(gettext('Initiating restart...'));
       await this.analyticsService.restartCepEngine();
-      this.alertService.success(gettext('Restart submitted successfully'));
     } catch (error) {
       console.error('Failed to restart CEP:', error);
       this.alertService.danger(gettext('Failed to restart CEP'));
@@ -90,156 +65,79 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   addExtension(): void {
-    const wizardConfig: WizardConfig = {
-      headerIcon: 'plus'
-    };
-
     const initialState = {
-      wizardConfig,
+      wizardConfig: { headerIcon: 'plus' } as WizardConfig,
       id: 'uploadAnalyticsExtension',
       componentInitialState: {
         mode: 'add' as const,
         headerText: 'Add extension',
-        uploadExtensionHandler: this.analyticsService.uploadExtension.bind(
-          this.analyticsService
-        )
+        uploadExtensionHandler: this.analyticsService.uploadExtension.bind(this.analyticsService)
       }
     };
 
-    const modalRef = this.wizardModalService.show({ initialState });
-
-    modalRef.content.onClose
-      .pipe(take(1))
-      .subscribe(() => this.loadExtensions());
+    this.wizardModalService
+      .show({ initialState })
+      .content.onClose.pipe(take(1))
+      .subscribe(() => this.reload());
   }
 
-  private initializeComponent(): void {
-    this.setupCEPStatusObservables();
-    this.setupExtensionsObservable();
-    this.setupServiceReload();
-
-    // Initial load
-    this.reload$.next(false);
+  getCEPMicroserviceUrl(): string {
+    return `/apps/administration/index.html#/ecosystem/microservice/microservices`;
   }
 
-  private setupCEPStatusObservables(): void {
-    // Get CEP operation object stream
-    this.cepOperationObject$ = this.analyticsService
-      .getCepOperationObjectStream$()
-      .pipe(
-        takeUntil(this.destroy$),
-        shareReplay({ bufferSize: 1, refCount: true })
-      );
+  trackByExtension(_: number, extension: IManagedObject): string {
+    return extension.id;
+  }
 
-    // Extract status from operation object
-    this.cepEngineStatus$ = this.cepOperationObject$.pipe(
-      map(mo => this.extractCEPStatus(mo)),
-      distinctUntilChanged(),
-      shareReplay({ bufferSize: 1, refCount: true })
+  private initializeStreams(): void {
+    // CEP operation object stream
+    const cepObject$ = this.analyticsService.getCepOperationObjectStream$().pipe(
+      takeUntil(this.destroy$),
+      shareReplay(1)
     );
 
-    // Load initial CEP status
-    this.loadInitialCEPStatus();
+    // Extract status
+    this.cepStatus$ = cepObject$.pipe(
+      map(mo => (mo?.c8y_Status?.status?.toLowerCase() || 'down') as CEPEngineStatus),
+      distinctUntilChanged(),
+      shareReplay(1)
+    );
 
-    // Create safe mode observable
-    this.isSafeMode$ = this.cepOperationObject$.pipe(
+    // Extract safe mode
+    this.isSafeMode$ = cepObject$.pipe(
       map(mo => mo?.c8y_Status?.is_safe_mode ?? false),
       distinctUntilChanged()
     );
-  }
 
-  private extractCEPStatus(mo: IManagedObject): CEPEngineStatus {
-    const status = mo?.c8y_Status?.status;
+    // Combined reload trigger
+    const reload$ = merge(
+      this.reload$,
+      this.analyticsService.getCacheReloadRequests$()
+    ).pipe(debounceTime(100));
 
-    if (!status) {
-      return 'down';
-    }
-
-    return status.toLowerCase() as CEPEngineStatus;
-  }
-
-  private async loadInitialCEPStatus(): Promise<void> {
-    try {
-      const status = await this.analyticsService.getCepStatus();
-      this.cepCtrlStatus = status;
-      this.cepId = status?.microservice_application_id as string;
-    } catch (error) {
-      console.error('Failed to load CEP status:', error);
-      this.alertService.warning(
-        gettext('Could not load CEP status information')
-      );
-    }
-  }
-
-  private setupExtensionsObservable(): void {
-    const reloadTrigger$ = merge(
-      this.analyticsService.getCacheReloadRequests$(),
-      this.reload$
-    ).pipe(
-      debounceTime(100), // Prevent rapid successive reloads
-      distinctUntilChanged()
-    );
-
-    this.extensions$ = reloadTrigger$.pipe(
-      tap(clearCache => {
+    // Extensions stream
+    this.extensions$ = combineLatest([reload$, this.cepStatus$]).pipe(
+      tap(([clearCache]) => {
         if (clearCache) {
           this.analyticsService.clearAllCaches();
         }
       }),
-      switchMap(() =>
-        combineLatest([
-          this.cepEngineStatus$,
-          this.loadExtensions$()
-        ])
+      switchMap(([_, status]) =>
+        status === 'up'
+          ? this.loadExtensions$()
+          : []
       ),
-      map(([status, extensions]) => {
-        // Only return extensions if CEP is up
-        return status === 'up' ? extensions : [];
-      }),
-      shareReplay({ bufferSize: 1, refCount: true })
+      shareReplay(1)
     );
   }
 
   private loadExtensions$(): Observable<IManagedObject[]> {
-    return of(null).pipe(
-      tap(() => this.updateLoadingState('loading')),
-      switchMap(() => this.analyticsService.getEnrichedExtensions()),
-      tap(extensions => {
-        const status = extensions?.length ? 'loaded' : 'empty';
-        this.updateLoadingState(status);
-      }),
+    return from(this.analyticsService.getEnrichedExtensions()).pipe(
       catchError(error => {
         console.error('Failed to load extensions:', error);
-        this.updateLoadingState('loadingError');
-        this.alertService.warning(
-          gettext('Failed to load extensions. Please refresh.')
-        );
-        return of([]);
+        this.alertService.warning(gettext('Failed to load extensions. Please refresh.'));
+        return of([]); // Also changed to of([]) instead of just []
       })
     );
-  }
-
-  private updateLoadingState(status: CEPEngineStatus): void {
-    // This is a workaround for showing loading states
-    // In a better architecture, this would be part of the state management
-    // console.log('Extension loading status:', status);
-  }
-
-  private setupServiceReload(): void {
-    this.analyticsService
-      .getCacheReloadRequests$()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(clearCache => {
-        this.reload$.next(clearCache);
-      });
-  }
-
-  // Template helper methods
-  getCEPMicroserviceUrl(): string {
-    return `/apps/administration/index.html#/ecosystem/microservice/microservices/${this.cepId}/properties`;
-  }
-
-  trackByExtension(_index: number, extension: IManagedObject): string {
-    return extension.id;
   }
 }

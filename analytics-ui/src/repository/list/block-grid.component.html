@@ -89,18 +89,19 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
+  <label class="c8y-switch">
+    <input type="checkbox" [(ngModel)]="hideInstalled" (change)="loadSamples()" />
+    <span></span> Hide installed
+  </label>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
   <button class="btn btn-link" title="{{ 'Refresh' | translate }}" (click)="loadSamples()">
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'right'">
-  <label class="c8y-switch">
-    <input type="checkbox" [(ngModel)]="hideInstalled" (change)="loadSamples()" />
-    <span></span> Hide installed
-  </label>
-</c8y-action-bar-item>
 
 <div class="content-fullpage border-top border-bottom">
   <!-- Add showDataGrid condition here -->

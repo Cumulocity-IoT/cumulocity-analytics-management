@@ -67,8 +67,10 @@ export class ExtensionDetailsComponent implements OnInit {
       });
       this.buildInformation.push({
         label: 'Repository Url',
-        type: 'string',
-        value: this.extension['build_information']['repository']['url']
+        type: 'link',
+        value: this.extension['build_information']['repository']['url'],
+        action: (event, link: string) =>
+          window.open(link, "_blank", "noopener,noreferrer"),
       });
     }
     await this.init();

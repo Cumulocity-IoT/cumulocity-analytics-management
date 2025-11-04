@@ -1,95 +1,53 @@
 <c8y-title>{{ 'All extensions' | translate }}</c8y-title>
 
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item 
-    [icon]="'c8y-atom'" 
-    [label]="'Ecosystem' | translate">
-  </c8y-breadcrumb-item>
-  <c8y-breadcrumb-item 
-    [icon]="'c8y-streaming-analytics'" 
-    [label]="'Analytics' | translate">
-  </c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate" />
+  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate" />
   <c8y-breadcrumb-item 
     [icon]="'c8y-modules'" 
     [label]="'Manage extensions' | translate"
-    [path]="'c8y-pkg-analytics-extension/manage'">
-  </c8y-breadcrumb-item>
+    [path]="'c8y-pkg-analytics-extension/manage'" />
 </c8y-breadcrumb>
 
 <!-- Safe Mode Warning -->
-<c8y-action-bar-item 
-  [placement]="'left'" 
-  *ngIf="(isSafeMode$ | async)">
+<c8y-action-bar-item [placement]="'left'" *ngIf="isSafeMode$ | async">
   <a 
     href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup" 
     target="_blank"
-    class="safe-mode-warning"
-    [attr.aria-label]="'Safe Mode Active - Click for more information' | translate">
-    <i 
-      c8yIcon="warning" 
-      class="animated fadeIn infinite" 
-      style="animation-duration: 1.5s"
-      aria-hidden="true">
-    </i>
-    <span class="text-warning p-r-8 p-l-4">
-      {{ 'Safe Mode' | translate }}
-    </span>
+    class="safe-mode-warning">
+    <i c8yIcon="warning" class="animated fadeIn infinite" style="animation-duration: 1.5s" ></i>
+    <span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' | translate }}</span>
   </a>
 </c8y-action-bar-item>
 
-<!-- CEP Status Indicator -->
+<!-- CEP Status -->
 <c8y-action-bar-item [placement]="'right'">
-  <div class="c8y-realtime p-r-8">
-    <ng-container *ngIf="cepEngineStatus$ | async as status">
-      <i 
-        [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"
-        [attr.aria-label]="(status === 'up' ? 'CEP is running' : 'CEP is not running') | translate">
-      </i>
-      <a 
-        [href]="getCEPMicroserviceUrl()" 
-        target="_blank"
-        class="m-l-4">
-        {{ 'Streaming Analytics' | translate }}
-      </a>
-    </ng-container>
+  <div class="c8y-realtime p-r-8" *ngIf="cepStatus$ | async as status">
+    <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
+    <a [href]="getCEPMicroserviceUrl()" target="_blank" class="m-l-4">
+      {{ 'Streaming Analytics' | translate }}
+    </a>
   </div>
 </c8y-action-bar-item>
 
-<!-- Action Buttons -->
+<!-- Actions -->
 <c8y-action-bar-item [placement]="'right'">
-  <button 
-    (click)="addExtension()" 
-    class="btn btn-link" 
-    [title]="'Add extension' | translate"
-    [attr.aria-label]="'Add extension' | translate">
-    <i c8yIcon="plus-circle" aria-hidden="true"></i>
+  <button (click)="addExtension()" class="btn btn-link">
+    <i c8yIcon="plus-circle"></i> 
     {{ 'Add extension' | translate }}
   </button>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button 
-    (click)="restartCEP()" 
-    class="btn btn-link" 
-    [title]="'Restart to deploy extension' | translate"
-    [attr.aria-label]="'Restart CEP to deploy extensions' | translate">
-    <i c8yIcon="c8y-solution-accelerator" aria-hidden="true"></i>
+  <button (click)="restartCEP()" class="btn btn-link">
+    <i c8yIcon="c8y-solution-accelerator" ></i>
     {{ 'Restart to deploy extension' | translate }}
   </button>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button 
-    (click)="loadExtensions()" 
-    class="btn btn-link" 
-    [title]="'Refresh' | translate"
-    [attr.aria-label]="'Refresh extensions list' | translate"
-    [disabled]="(cepEngineStatus$ | async) === 'loading'">
-    <i 
-      [ngClass]="{ 'icon-spin': (cepEngineStatus$ | async) === 'loading' }" 
-      c8yIcon="refresh"
-      aria-hidden="true">
-    </i>
+  <button (click)="reload()" class="btn btn-link">
+    <i c8yIcon="refresh"></i>
     {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
@@ -98,104 +56,45 @@
 <c8y-action-bar-item [placement]="'left'" itemClass="navbar-form hidden-xs">
   <c8y-list-display-switch 
     (onListClassChange)="listClass = $event"
-    [listLength]="(extensions$ | async)?.length || 0">
-  </c8y-list-display-switch>
+    [listLength]="(extensions$ | async)?.length || 0" />
 </c8y-action-bar-item>
 
-<!-- Empty State -->
-<div *ngIf="(cepEngineStatus$ | async) === 'empty'" class="row">
-  <div class="col-lg-4 col-lg-offset-5 text-center">
-    <c8y-ui-empty-state 
-      [icon]="'plugin'" 
-      [title]="'No extensions loaded.' | translate"
-      [subtitle]="'Add your first extension by clicking below.' | translate" 
-      [horizontal]="true">
-      <button 
-        (click)="addExtension()" 
-        class="btn btn-default btn-sm m-t-8" 
-        [title]="'Add extension' | translate">
-        {{ 'Add extension' | translate }}
-      </button>
-    </c8y-ui-empty-state>
+<!-- Content -->
+<ng-container *ngIf="cepStatus$ | async as status">
+  <!-- CEP Down -->
+  <div *ngIf="status === 'down'" class="col-lg-8 col-lg-offset-2 m-b-48 text-center">
+    <h2 class="p-b-24">
+      <span class="label label-primary text-14">
+        {{ 'Streaming Analytics Engine is restarting...' | translate }}
+      </span>
+    </h2>
+    <c8y-loading />
   </div>
-</div>
 
-<!-- Extensions Grid -->
-<ng-container *ngIf="cepEngineStatus$ | async as status">
-  <div 
-    *ngIf="status === 'up' || status === 'loaded'"
-    [ngClass]="listClass" 
-    class="card-group">
-    
-    <!-- Sticky Header -->
-    <div 
-      class="page-sticky-header hidden-xs d-flex" 
-      *ngIf="(extensions$ | async)?.length > 0">
-      <div class="card-block card-column-20 p-l-0">
-        <div class="card-appicon"></div>
-        {{ 'Extension' | translate }}
+  <!-- Extensions Grid -->
+  <div *ngIf="status === 'up'" [ngClass]="listClass">
+    <!-- Empty State -->
+    <div *ngIf="(extensions$ | async)?.length === 0" class="row">
+      <div class="col-lg-4 col-lg-offset-5 text-center">
+        <c8y-ui-empty-state 
+          [icon]="'plugin'" 
+          [title]="'No extensions loaded.' | translate"
+          [subtitle]="'Add your first extension by clicking below.' | translate" 
+          [horizontal]="true">
+          <button (click)="addExtension()" class="btn btn-default btn-sm m-t-8">
+            {{ 'Add extension' | translate }}
+          </button>
+        </c8y-ui-empty-state>
       </div>
-      <div class="card-block card-column-20 p-l-0">
-        {{ 'Loaded' | translate }}
-      </div>
-      <div class="card-block card-column-20 p-l-0">
-        {{ 'Included Blocks' | translate }}
-      </div>
-      <div class="card-block card-column-20 p-l-0">
-        {{ 'Created' | translate }}
-      </div>
-      <div class="card-block card-column-10"></div>
     </div>
 
     <!-- Extension Cards -->
-    <div 
-      *ngFor="let extension of extensions$ | async; trackBy: trackByExtension" 
-      class="col-xs-12 col-sm-4 col-md-3">
+    <div *ngFor="let extension of extensions$ | async; trackBy: trackByExtension" 
+         class="col-xs-12 col-sm-4 col-md-3">
       <a17t-extension-card 
-        (extensionChanged)="loadExtensions()" 
-        [extension]="extension"
-        class="d-contents">
-      </a17t-extension-card>
+        (extensionChanged)="reload()" 
+        [extension]="extension" 
+        class="d-contents" />
     </div>
   </div>
 </ng-container>
-
-<!-- Loading Error State -->
-<div 
-  class="col-lg-8 col-lg-offset-2 m-b-48 text-center status-message" 
-  *ngIf="(cepEngineStatus$ | async) === 'loadingError'">
-  <h2>
-    <span class="label label-warning text-14">
-      {{ 'Failed to load extensions. Please refresh or check the CEP status.' | translate }}
-    </span>
-  </h2>
-  <button 
-    (click)="loadExtensions()" 
-    class="btn btn-primary m-t-16">
-    {{ 'Retry' | translate }}
-  </button>
-</div>
-
-<!-- Loading State -->
-<div 
-  class="col-lg-8 col-lg-offset-2 m-b-48 text-center status-message" 
-  *ngIf="(cepEngineStatus$ | async) === 'loading'">
-  <h2 class="p-b-24">
-    <span class="label label-primary text-14">
-      {{ 'Please stand by until the information about the extension is loaded.' | translate }}
-    </span>
-  </h2>
-  <c8y-loading></c8y-loading>
-</div>
-
-<!-- CEP Down State -->
-<div 
-  class="col-lg-8 col-lg-offset-2 m-b-48 text-center status-message" 
-  *ngIf="(cepEngineStatus$ | async) === 'down'">
-  <h2 class="p-b-24">
-    <span class="label label-primary text-14">
-      {{ 'Streaming Analytics Engine is restarting...' | translate }}
-    </span>
-  </h2>
-  <c8y-loading></c8y-loading>
-</div>
