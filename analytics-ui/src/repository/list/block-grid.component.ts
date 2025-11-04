@@ -44,12 +44,12 @@ import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 
 @Component({
   selector: 'a17t-sample-grid',
-  templateUrl: 'sample-grid.component.html',
-  styleUrls: ['./sample-grid.component.css'],
+  templateUrl: 'block-grid.component.html',
+  styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: false
 })
-export class SampleGridComponent implements OnInit {
+export class BlockGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })
   dataGrid: DataGridComponent;
 
@@ -57,7 +57,7 @@ export class SampleGridComponent implements OnInit {
   hideInstalled: boolean = false;
   loading: boolean = false;
   singleSelection: boolean = false;
-  showDataGrid: boolean = true; 
+  showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
 
@@ -131,6 +131,8 @@ export class SampleGridComponent implements OnInit {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
         console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
 
+        const type = isYaml ? 'extension type' : 'configuration type ' ;
+        this.titleSample = `Blocks from repositories (${type})`;
         // Only recreate the grid if the selection type actually changes
         if (this.singleSelection !== isYaml) {
           console.log("Selection type changed, recreating grid");

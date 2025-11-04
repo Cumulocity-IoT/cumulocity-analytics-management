@@ -3,7 +3,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { CommonModule, CoreModule, hookRoute } from '@c8y/ngx-components';
 import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { SampleGridComponent } from './list/sample-grid.component';
+import { BlockGridComponent } from './list/block-grid.component';
 import { EditorModalComponent } from './editor/editor-modal.component';
 import { SharedModule } from '../shared/shared.module';
 import { EditorComponent } from '@c8y/ngx-components/editor';
@@ -24,7 +24,7 @@ import { RepositoriesDrawerComponent } from './repository/repositories-drawer.co
     EditorComponent,
   ],
   declarations: [
-    SampleGridComponent,
+    BlockGridComponent,
     EditorModalComponent,
     ExtensionCreateComponent,
     ExtensionListComponent,
@@ -34,7 +34,7 @@ import { RepositoriesDrawerComponent } from './repository/repositories-drawer.co
     EplConfigService,
     hookRoute({
       path: 'c8y-pkg-analytics-extension/repository',
-      component: SampleGridComponent
+      component: BlockGridComponent
     }),
     {
       provide: FORMLY_CONFIG,

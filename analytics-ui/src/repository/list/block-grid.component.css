@@ -1,0 +1,13 @@
+button[title="Reload"] {
+  display: none !important;
+}
+
+.popover {
+  max-width: 500px !important; /* Default is 276px */
+}
+
+/* Or target specific popovers */
+.popover.your-custom-class {
+  max-width: 600px !important;
+  width: 600px;
+}
