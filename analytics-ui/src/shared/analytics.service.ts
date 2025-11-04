@@ -11,25 +11,39 @@ import {
   Realtime,
 } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
+  APPLICATION_ANALYTICS_BUILDER_SERVICE,
+  BACKEND_PATH_BASE,
   CEP_Block,
+  CEP_ENDPOINT,
   CEP_Extension,
   CEP_ExtensionsMetadata,
+  CEP_METADATA_FILE_EXTENSION_1,
+  CEP_METADATA_FILE_EXTENSION_2,
+  CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_PATH_EN,
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
-  BACKEND_PATH_BASE,
-  APPLICATION_ANALYTICS_BUILDER_SERVICE,
-  CEP_METADATA_FILE_EXTENSION_1,
-  CEP_ENDPOINT,
   CEPStatusObject,
   UploadMode,
-  CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
-  CEP_METADATA_FILE_EXTENSION_2,
 } from './analytics.model';
 import { isCustomCEP_Block, removeFileExtension } from './utils';
-import { gettext } from '@c8y/ngx-components/gettext';
+
+/**
+ * Custom error class for CEP-related errors
+ */
+class CEPError extends Error {
+  constructor(
+    message: string,
+    public readonly userMessage: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'CEPError';
+  }
+}
 
 /**
  * Service for managing Streaming Analytics (CEP) extensions and blocks
@@ -40,24 +54,9 @@ export class AnalyticsService implements OnDestroy {
   // Public Observables & Events
   // ============================================================================
 
-  /**
-   * Emits when an extension is created, updated, or deleted
-   */
   readonly extensionChanged$ = new EventEmitter<IManagedObject>();
-
-  /**
-   * Upload progress percentage (0-100)
-   */
   readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
-
-  /**
-   * Stream of CEP operation object updates
-   */
   readonly cepOperationObjectStream$ = new ReplaySubject<IManagedObject>(1);
-
-  /**
-   * Trigger for external cache reload requests
-   */
   readonly cacheReloadRequest$ = new Subject<boolean>();
 
   // ============================================================================
@@ -107,68 +106,66 @@ export class AnalyticsService implements OnDestroy {
   // Public API - Cache Management
   // ============================================================================
 
-  /**
-   * Trigger a cache reload from external components
-   * @param clearCache - Whether to clear all caches before reload
-   */
   triggerCacheReload(clearCache: boolean): void {
     this.cacheReloadRequest$.next(clearCache);
   }
 
-  /**
-   * Get observable for cache reload requests
-   */
   getCacheReloadRequests$(): Observable<boolean> {
     return this.cacheReloadRequest$.asObservable();
   }
 
-  /**
-   * Clear all cached data and reinitialize monitoring
-   */
-  async clearAllCaches(): Promise<void> {
+  clearAllCaches(): void {
     this.cachedDeployedBlocks = null;
     this.cachedDeployedExtensions = null;
     this.cachedCepOperationObjectId = null;
     this.cachedCepStatus = null;
-    // Don't clear backend availability cache
-    await this.subscribeToOperationObjectUpdates();
+    // Don't clear backend availability cache as it rarely changes
+  }
+
+  async reinitializeMonitoring(): Promise<void> {
+    try {
+      await this.subscribeToOperationObjectUpdates();
+    } catch (error) {
+      this.handleError(error, 'Failed to reinitialize monitoring', false);
+    }
   }
 
   // ============================================================================
   // Public API - Extensions (Inventory)
   // ============================================================================
 
-  /**
-   * Get all extension metadata from Cumulocity inventory
-   * @returns Array of extension managed objects
-   */
   async getExtensionsFromInventory(): Promise<IManagedObject[]> {
-    const filter = {
-      pageSize: this.DEFAULT_PAGE_SIZE,
-      withTotalPages: true,
-      fragmentType: 'pas_extension'
-    };
+    try {
+      const filter = {
+        pageSize: this.DEFAULT_PAGE_SIZE,
+        withTotalPages: true,
+        fragmentType: 'pas_extension'
+      };
 
-    const { data } = await this.inventoryService.list(filter);
+      const { data } = await this.inventoryService.list(filter);
 
-    if (data.length >= this.DEFAULT_PAGE_SIZE) {
-      console.warn('Extensions may be paginated. Consider implementing full pagination.');
+      if (data.length >= this.DEFAULT_PAGE_SIZE) {
+        console.warn('Extensions may be paginated. Consider implementing full pagination.');
+      }
+
+      return data;
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to fetch extensions from inventory',
+        true,
+        gettext('Could not load extensions. Please try again.')
+      );
     }
-
-    return data;
   }
 
-  /**
-   * Get extensions enriched with deployment status and block counts
-   * @returns Extensions with loaded status and block counts
-   */
   async getEnrichedExtensions(): Promise<IManagedObject[]> {
-    if (!this.cachedDeployedExtensions) {
-      const [
-        inventoryExtensions,
-        deployedExtensionsMetadata,
-        diagnosticsExtensions
-      ] = await Promise.all([
+    if (this.cachedDeployedExtensions) {
+      return this.cachedDeployedExtensions;
+    }
+
+    try {
+      const [inventoryExtensions, deployedMetadata, diagnostics] = await Promise.all([
         this.getExtensionsFromInventory(),
         this.getDeployedExtensionsMetadata(),
         this.getExtensionNamesFromCep()
@@ -176,23 +173,28 @@ export class AnalyticsService implements OnDestroy {
 
       const enriched = await Promise.all(
         inventoryExtensions.map(ext =>
-          this.addDeploymentStatus(ext, deployedExtensionsMetadata, diagnosticsExtensions)
+          this.addDeploymentStatus(ext, deployedMetadata, diagnostics)
         )
       );
 
       this.cachedDeployedExtensions = Promise.resolve(enriched);
+      return enriched;
+    } catch (error) {
+      this.cachedDeployedExtensions = null;
+      throw this.handleError(
+        error,
+        'Failed to enrich extensions with deployment status',
+        true,
+        gettext('Could not load extension details. Please refresh.')
+      );
     }
-    return this.cachedDeployedExtensions;
   }
 
-  /**
-   * Upload a new extension or update existing one
-   */
   async uploadExtension(
     file: File,
     extension: IManagedObject,
     mode: UploadMode
-  ): Promise<IManagedObjectBinary | null> {
+  ): Promise<IManagedObjectBinary> {
     try {
       const extensionToCreate = mode === 'update'
         ? await this.prepareExtensionForUpdate(extension)
@@ -201,25 +203,29 @@ export class AnalyticsService implements OnDestroy {
       const result = await this.inventoryBinaryService.create(file, extensionToCreate);
 
       if (!result.res.ok) {
-        this.alertService.warning(`Could not upload ${extension.name}`);
-        return null;
+        throw new CEPError(
+          `Upload failed with status ${result.res.status}`,
+          gettext(`Could not upload extension "${extension.name}". Please try again.`)
+        );
       }
 
       this.invalidateExtensionCaches();
-      this.alertService.success(`Extension ${extension.name} uploaded successfully`);
+      this.alertService.success(gettext(`Extension "${extension.name}" uploaded successfully`));
       this.extensionChanged$.emit(result.data as IManagedObject);
 
       return result.data;
     } catch (error) {
-      console.error(`Failed to upload extension ${extension.name}:`, error);
-      this.alertService.danger(`Error uploading extension: ${error.message}`);
-      return null;
+      throw this.handleError(
+        error,
+        `Failed to upload extension ${extension.name}`,
+        true,
+        error instanceof CEPError 
+          ? error.userMessage 
+          : gettext(`Error uploading extension "${extension.name}". Please try again.`)
+      );
     }
   }
 
-  /**
-   * Delete an extension from inventory
-   */
   async deleteExtension(
     extension: IManagedObject,
     showSuccessMessage: boolean = true
@@ -230,43 +236,43 @@ export class AnalyticsService implements OnDestroy {
       this.invalidateExtensionCaches();
 
       if (showSuccessMessage) {
-        this.alertService.success(gettext('Extension deleted.'));
+        this.alertService.success(gettext('Extension deleted successfully.'));
       }
 
       this.extensionChanged$.emit(extension);
       return result;
     } catch (error) {
-      this.alertService.danger(gettext('Failed to delete extension.'));
-      throw error;
+      throw this.handleError(
+        error,
+        `Failed to delete extension ${extension.name}`,
+        true,
+        gettext('Failed to delete extension. Please try again.')
+      );
     }
   }
 
-  /**
-   * Download an extension as ArrayBuffer
-   */
   async downloadExtension(extension: IManagedObject): Promise<ArrayBuffer> {
     try {
       const response = await this.inventoryBinaryService.download(extension);
       return await response.arrayBuffer();
     } catch (error) {
-      console.error(`Failed to download extension ${extension.name}:`, error);
-      this.alertService.danger(`Failed to download extension: ${error.message}`);
-      throw error;
+      throw this.handleError(
+        error,
+        `Failed to download extension ${extension.name}`,
+        true,
+        gettext(`Failed to download extension "${extension.name}". Please try again.`)
+      );
     }
   }
 
-  /**
-   * Cancel extension creation (cleanup)
-   */
   cancelExtensionCreation(extension: Partial<IManagedObject>): void {
     if (extension?.id) {
-      this.inventoryBinaryService.delete(extension);
+      this.inventoryBinaryService.delete(extension).catch(error => {
+        console.warn('Failed to cleanup extension:', error);
+      });
     }
   }
 
-  /**
-   * Update upload progress (for progress bar)
-   */
   updateUploadProgress(event: ProgressEvent): void {
     if (event.lengthComputable) {
       const currentProgress = this.uploadProgress$.value || 0;
@@ -279,52 +285,49 @@ export class AnalyticsService implements OnDestroy {
   // Public API - Blocks (CEP Deployed)
   // ============================================================================
 
-  /**
-   * Get all blocks currently deployed in CEP engine
-   * @returns Array of deployed blocks with metadata
-   */
   async getDeployedBlocks(): Promise<CEP_Block[]> {
-    if (!this.cachedDeployedBlocks) {
-      try {
-        const metadata = await this.getDeployedExtensionsMetadata();
-
-        if (!metadata?.metadatas?.length) {
-          this.cachedDeployedBlocks = Promise.resolve([]);
-          return [];
-        }
-
-        const extensions = await Promise.all(
-          metadata.metadatas.map(async (metadataFile) => {
-            const extensionName = removeFileExtension(metadataFile);
-            return this.getDeployedExtensionDetails(extensionName);
-          })
-        );
-
-        const blocks = extensions
-          .filter(ext => ext?.analytics)
-          .flatMap(ext =>
-            ext.analytics.map(block => this.addBlockMetadata(block, ext.name))
-          );
-
-        this.cachedDeployedBlocks = Promise.resolve(blocks);
-      } catch (error) {
-        console.error('Failed to load deployed blocks:', error);
-        this.cachedDeployedBlocks = null;
-        throw error;
-      }
+    if (this.cachedDeployedBlocks) {
+      return this.cachedDeployedBlocks;
     }
 
-    return this.cachedDeployedBlocks;
-  }
+    try {
+      const metadata = await this.getDeployedExtensionsMetadata();
 
+      if (!metadata?.metadatas?.length) {
+        this.cachedDeployedBlocks = Promise.resolve([]);
+        return [];
+      }
+
+      const extensions = await Promise.all(
+        metadata.metadatas.map(async (metadataFile) => {
+          const extensionName = removeFileExtension(metadataFile);
+          return this.getDeployedExtensionDetails(extensionName);
+        })
+      );
+
+      const blocks = extensions
+        .filter(ext => ext?.analytics)
+        .flatMap(ext =>
+          ext.analytics.map(block => this.addBlockMetadata(block, ext.name))
+        );
+
+      this.cachedDeployedBlocks = Promise.resolve(blocks);
+      return blocks;
+    } catch (error) {
+      this.cachedDeployedBlocks = null;
+      throw this.handleError(
+        error,
+        'Failed to load deployed blocks',
+        true,
+        gettext('Could not load deployed blocks. Please refresh.')
+      );
+    }
+  }
 
   // ============================================================================
   // Public API - CEP Status & Control
   // ============================================================================
 
-  /**
-   * Get CEP engine status
-   */
   async getCepStatus(): Promise<CEPStatusObject> {
     if (this.cachedCepStatus) {
       return this.cachedCepStatus;
@@ -340,42 +343,38 @@ export class AnalyticsService implements OnDestroy {
       this.cachedCepStatus = Promise.resolve(status);
       return status;
     } catch (error) {
-      // console.error('Failed to get CEP status:', error);
-      throw error;
+      this.cachedCepStatus = null;
+      throw this.handleError(
+        error,
+        'Failed to get CEP status',
+        false // Don't show alert, let caller handle
+      );
     }
   }
 
-  /**
-   * Get observable stream of CEP operation object updates
-   */
   getCepOperationObjectStream$(): Observable<IManagedObject> {
     return this.cepOperationObjectStream$.asObservable();
   }
 
-  /**
-   * Restart the CEP engine
-   */
   async restartCepEngine(): Promise<void> {
-    const url = '/service/cep/restart';
-
     try {
-      await this.fetchJSON(url, {
+      await this.fetchJSON('/service/cep/restart', {
         method: 'PUT',
         body: '{}'
       });
 
-     // this.alertService.success(gettext('CEP restart initiated'));
-      await this.clearAllCaches();
+      this.clearAllCaches();
+      await this.reinitializeMonitoring();
     } catch (error) {
-      console.error('Failed to restart CEP:', error);
-      this.alertService.danger(gettext('Failed to restart CEP. Please try again.'));
-      throw error;
+      throw this.handleError(
+        error,
+        'Failed to restart CEP engine',
+        true,
+        gettext('Failed to restart Streaming Analytics. Please try again.')
+      );
     }
   }
 
-  /**
-   * Check if backend analytics service is available
-   */
   async isBackendServiceAvailable(): Promise<boolean> {
     if (this.cachedBackendAvailability) {
       return this.cachedBackendAvailability;
@@ -388,11 +387,10 @@ export class AnalyticsService implements OnDestroy {
 
       const isAvailable = result?.data ?? false;
       this.cachedBackendAvailability = Promise.resolve(isAvailable);
-
       return isAvailable;
     } catch (error) {
-      console.error('Failed to check backend service availability:', error);
-      return false;
+      console.warn('Failed to check backend service availability:', error);
+      return false; // Fail gracefully, don't throw
     }
   }
 
@@ -400,41 +398,34 @@ export class AnalyticsService implements OnDestroy {
   // Public API - CEP Metadata (Read-only)
   // ============================================================================
 
-  /**
-   * Get metadata of all deployed extensions from CEP
-   */
-  async getDeployedExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
-    return this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
-  }
-
-  /**
-   * Get extension names from CEP diagnostics
-   */
   async getExtensionNamesFromCep(): Promise<CEP_ExtensionsMetadata> {
-    return this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
+    try {
+      return await this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to get extension names from CEP',
+        false
+      );
+    }
   }
 
-  /**
-   * Get detailed information about a deployed extension
-   * @param extensionName - Name of the extension (without file extension)
-   */
   async getDeployedExtensionDetails(extensionName: string): Promise<CEP_Extension | null> {
     try {
       const data = await this.fetchJSON<CEP_Extension>(`${CEP_PATH_EN}/${extensionName}.json`);
       return { ...data, name: extensionName };
     } catch (error) {
       console.warn(`Failed to get extension details for ${extensionName}:`, error);
-      return null;
+      return null; // Return null instead of throwing for individual extension failures
     }
   }
 
-  public async getCepOperationObjectId(): Promise<string | undefined> {
+  async getCepOperationObjectId(): Promise<string | undefined> {
     if (this.cachedCepOperationObjectId) {
       return this.cachedCepOperationObjectId;
     }
 
     try {
-      //throw new Error("DUMMY");
       const isBackendAvailable = await this.isBackendServiceAvailable();
       const id = isBackendAvailable
         ? await this.fetchOperationIdFromBackend()
@@ -444,12 +435,15 @@ export class AnalyticsService implements OnDestroy {
         this.cachedCepOperationObjectId = Promise.resolve(id);
         return id;
       }
-    } catch (error) {
-      console.error('Failed to get CEP operation object ID:', error);
-    }
 
-    this.showCepUnavailableWarning(await this.isBackendServiceAvailable());
-    return undefined;
+      this.showCepUnavailableWarning(isBackendAvailable);
+      return undefined;
+    } catch (error) {
+      this.handleError(error, 'Failed to get CEP operation object ID', false);
+      const isBackendAvailable = await this.isBackendServiceAvailable();
+      this.showCepUnavailableWarning(isBackendAvailable);
+      return undefined;
+    }
   }
 
   // ============================================================================
@@ -460,7 +454,7 @@ export class AnalyticsService implements OnDestroy {
     try {
       await this.subscribeToOperationObjectUpdates();
     } catch (error) {
-      console.error('Failed to initialize monitoring:', error);
+      this.handleError(error, 'Failed to initialize monitoring', false);
     }
   }
 
@@ -468,9 +462,6 @@ export class AnalyticsService implements OnDestroy {
   // Private Methods - Extension Enrichment
   // ============================================================================
 
-  /**
-   * Add deployment status and block count to extension
-   */
   private async addDeploymentStatus(
     extension: IManagedObject,
     deployedMetadata: CEP_ExtensionsMetadata,
@@ -501,15 +492,24 @@ export class AnalyticsService implements OnDestroy {
     };
   }
 
-  /**
-   * Add metadata to a block (extension name, custom flag)
-   */
   private addBlockMetadata(block: any, extensionName: string): CEP_Block {
     return {
       ...block,
       custom: isCustomCEP_Block(block),
       extension: extensionName
     } as CEP_Block;
+  }
+
+  private async getDeployedExtensionsMetadata(): Promise<CEP_ExtensionsMetadata> {
+    try {
+      return await this.fetchJSON<CEP_ExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to get deployed extensions metadata',
+        false
+      );
+    }
   }
 
   // ============================================================================
@@ -540,7 +540,6 @@ export class AnalyticsService implements OnDestroy {
   // Private Methods - CEP Operation Object
   // ============================================================================
 
-
   private async fetchOperationIdFromBackend(): Promise<string> {
     const data = await this.fetchJSON<{ id: string }>(
       `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`
@@ -548,7 +547,7 @@ export class AnalyticsService implements OnDestroy {
     return data.id;
   }
 
-  private async fetchOperationIdFromCepStatus(): Promise<string | undefined> {
+  private async fetchOperationIdFromCepStatus(): Promise<string> {
     const statusData = await this.fetchJSON<any>(`${CEP_PATH_STATUS}`);
     const { microservice_name, microservice_application_id } = statusData;
 
@@ -558,8 +557,10 @@ export class AnalyticsService implements OnDestroy {
     );
 
     if (!data || data.length !== 1) {
-      console.error('Unexpected ctrl-microservice query result:', statusData, data);
-      throw new Error('Could not find unique ctrl-microservice for Streaming Analytics');
+      throw new CEPError(
+        'Unexpected ctrl-microservice query result',
+        gettext('Could not find Streaming Analytics control microservice.')
+      );
     }
 
     return data[0].id;
@@ -576,13 +577,21 @@ export class AnalyticsService implements OnDestroy {
       return null;
     }
 
-    const { data } = await this.inventoryService.detail(operationObjectId);
-    this.cepOperationObjectStream$.next(data);
+    try {
+      const { data } = await this.inventoryService.detail(operationObjectId);
+      this.cepOperationObjectStream$.next(data);
 
-    return this.realtime.subscribe(
-      `/managedobjects/${operationObjectId}`,
-      this.handleCepOperationObjectUpdate.bind(this)
-    );
+      return this.realtime.subscribe(
+        `/managedobjects/${operationObjectId}`,
+        this.handleCepOperationObjectUpdate.bind(this)
+      );
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to subscribe to operation object updates',
+        false
+      );
+    }
   }
 
   private handleCepOperationObjectUpdate(payload: any): void {
@@ -598,11 +607,63 @@ export class AnalyticsService implements OnDestroy {
     if (managedObject.c8y_Status?.status === 'Up') {
       this.cachedCepStatus = null;
       this.getCepStatus().catch(err =>
-        console.error('Failed to refresh CEP status:', err)
+        console.warn('Failed to refresh CEP status:', err)
       );
     }
+  }
 
-    // console.log('CEP operation object updated:', managedObject);
+  // ============================================================================
+  // Private Methods - Error Handling
+  // ============================================================================
+
+  /**
+   * Centralized error handling
+   * @param error - The error to handle
+   * @param logMessage - Message for console logging
+   * @param showAlert - Whether to show user alert
+   * @param userMessage - Optional custom user message
+   * @returns The error (for re-throwing)
+   */
+  private handleError(
+    error: any,
+    logMessage: string,
+    showAlert: boolean = false,
+    userMessage?: string
+  ): Error {
+    // Log to console
+    console.error(`[AnalyticsService] ${logMessage}:`, error);
+
+    // Show user alert if requested
+    if (showAlert) {
+      const message = userMessage || this.getErrorMessage(error);
+      this.alertService.danger(message);
+    }
+
+    // Return or create appropriate error
+    if (error instanceof CEPError) {
+      return error;
+    }
+
+    return new CEPError(
+      logMessage,
+      userMessage || this.getErrorMessage(error),
+      error
+    );
+  }
+
+  /**
+   * Extract user-friendly error message
+   */
+  private getErrorMessage(error: any): string {
+    if (error instanceof CEPError) {
+      return error.userMessage;
+    }
+
+    if (error?.message) {
+      return error.message;
+    }
+
+    return gettext('An unexpected error occurred. Please try again.');
   }
 
   // ============================================================================
@@ -611,8 +672,8 @@ export class AnalyticsService implements OnDestroy {
 
   private showCepUnavailableWarning(isBackendAvailable: boolean): void {
     const message = isBackendAvailable
-      ? gettext('Streaming Analytics is restarting. Please retry later...')
-      : gettext('The supporting microservice for Analytics Management is not deployed. Not all features are available...');
+      ? gettext('Streaming Analytics is restarting. Please retry later.')
+      : gettext('The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.');
 
     this.alertService.warning(message);
   }
@@ -625,16 +686,31 @@ export class AnalyticsService implements OnDestroy {
     url: string,
     options: Partial<IFetchOptions> = {}
   ): Promise<T> {
-    const response = await this.fetchClient.fetch(url, {
-      headers: this.JSON_HEADERS,
-      method: 'GET',
-      ...options
-    });
+    try {
+      const response = await this.fetchClient.fetch(url, {
+        headers: this.JSON_HEADERS,
+        method: 'GET',
+        ...options
+      });
 
-    if (!response.ok) {
-      throw new Error(`API call failed: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        throw new CEPError(
+          `API call failed: ${response.status} ${response.statusText}`,
+          gettext(`Network request failed (${response.status}). Please check your connection and try again.`)
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (error instanceof CEPError) {
+        throw error;
+      }
+
+      throw new CEPError(
+        `Failed to fetch from ${url}`,
+        gettext('Network error. Please check your connection and try again.'),
+        error
+      );
     }
-
-    return response.json();
   }
 }

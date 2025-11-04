@@ -131,7 +131,7 @@ export class BlockGridComponent implements OnInit {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
         // console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
 
-        const type = isYaml ? ' list assets' : ' contains extensions.yaml ' ;
+        const type = isYaml ? ' list assets' : ' contains extensions.yaml ';
         this.titleSample = `Blocks from repositories (${type})`;
         // Only recreate the grid if the selection type actually changes
         if (this.singleSelection !== isYaml) {
@@ -294,7 +294,29 @@ export class BlockGridComponent implements OnInit {
     }
   }
 
-  async loadSamples() {
+  /**
+ * Reload repository items (clears cache only)
+ */
+  reload(): void {
+    this.repositoryService.reload();
+  }
+
+  /**
+   * Reload repositories and items from backend
+   */
+  async reloadAll(): Promise<void> {
+    this.loading = true;
+    try {
+      await this.repositoryService.reloadAll();
+    } catch (error) {
+      // Error already handled in service
+      console.error('Failed to reload:', error);
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async updateFilter() {
     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
   }
 

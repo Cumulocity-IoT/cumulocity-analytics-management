@@ -1,18 +1,16 @@
 import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Injectable, OnDestroy } from '@angular/core';
 import { FetchClient, IFetchResponse } from '@c8y/client';
-import { AlertService, gettext } from '@c8y/ngx-components';
+import { AlertService } from '@c8y/ngx-components';
 import * as jsyaml from 'js-yaml';
 import {
   BehaviorSubject,
-  EMPTY,
   Observable,
   Subject,
   combineLatest,
   forkJoin,
   from,
   of,
-  throwError
 } from 'rxjs';
 import {
   catchError,
@@ -43,6 +41,21 @@ import {
   removeFileExtension,
   uuidCustom
 } from './utils';
+import { gettext } from '@c8y/ngx-components/gettext';
+
+/**
+ * Custom error class for repository-related errors
+ */
+class RepositoryError extends Error {
+  constructor(
+    message: string,
+    public readonly userMessage: string,
+    public readonly originalError?: Error
+  ) {
+    super(message);
+    this.name = 'RepositoryError';
+  }
+}
 
 interface RepositoryState {
   repositories: Repository[];
@@ -71,7 +84,7 @@ interface CreateExtensionFromYamlRequest extends CreateExtensionRequest {
 })
 export class RepositoryService implements OnDestroy {
   private readonly destroy$ = new Subject<void>();
-  
+
   // State management
   private readonly state$ = new BehaviorSubject<RepositoryState>({
     repositories: [],
@@ -94,7 +107,7 @@ export class RepositoryService implements OnDestroy {
     this.reloadTrigger$,
     this.state$
   ]).pipe(
-    switchMap(([_, state]) => 
+    switchMap(([_, state]) =>
       this.loadRepositoryItemsWithStatus(state.hideInstalled)
     ),
     shareReplay({ bufferSize: 1, refCount: true }),
@@ -126,16 +139,10 @@ export class RepositoryService implements OnDestroy {
   // Public API - Repository Management
   // ============================================================================
 
-  /**
-   * Get current repositories as observable
-   */
   getRepositories(): Observable<Repository[]> {
     return this.repositories$;
   }
 
-  /**
-   * Add a new repository and save to backend
-   */
   async addRepository(repository: Repository): Promise<void> {
     const state = this.state$.value;
     const updated = [...state.repositories, repository];
@@ -149,20 +156,24 @@ export class RepositoryService implements OnDestroy {
       this.invalidateCache();
       this.alertService.success(gettext('Repository added successfully'));
     } catch (error) {
-      this.handleError('Failed to add repository', error);
-      throw error;
+      throw this.handleError(
+        error,
+        'Failed to add repository',
+        true,
+        gettext('Failed to add repository. Please try again.')
+      );
     }
   }
 
-  /**
-   * Update repository details and save to backend
-   */
   async updateRepository(updatedRepository: Repository): Promise<void> {
     const state = this.state$.value;
     const index = state.repositories.findIndex(r => r.id === updatedRepository.id);
 
     if (index === -1) {
-      throw new Error('Repository not found');
+      throw new RepositoryError(
+        'Repository not found',
+        gettext('Repository not found.')
+      );
     }
 
     const updated = [
@@ -180,21 +191,25 @@ export class RepositoryService implements OnDestroy {
       this.invalidateCache();
       this.alertService.success(gettext('Repository updated successfully'));
     } catch (error) {
-      this.handleError('Failed to update repository', error);
-      throw error;
+      throw this.handleError(
+        error,
+        'Failed to update repository',
+        true,
+        gettext('Failed to update repository. Please try again.')
+      );
     }
   }
 
-  /**
-   * Toggle repository enabled status (local only, not saved)
-   * When enabling a repository, disables all others
-   */
   toggleRepositoryEnabled(repositoryId: string): void {
     const state = this.state$.value;
     const targetRepo = state.repositories.find(r => r.id === repositoryId);
 
     if (!targetRepo) {
-      console.error('Repository not found:', repositoryId);
+      this.handleError(
+        new Error('Repository not found'),
+        `Repository not found: ${repositoryId}`,
+        false
+      );
       return;
     }
 
@@ -203,7 +218,6 @@ export class RepositoryService implements OnDestroy {
       if (repo.id === repositoryId) {
         return { ...repo, enabled: newEnabledState };
       }
-      // Disable other repos when enabling target
       if (newEnabledState && repo.enabled) {
         return { ...repo, enabled: false };
       }
@@ -214,9 +228,6 @@ export class RepositoryService implements OnDestroy {
     this.invalidateCache();
   }
 
-  /**
-   * Save all repository states (including enabled status) to backend
-   */
   async saveAllRepositories(): Promise<void> {
     const state = this.state$.value;
 
@@ -227,14 +238,15 @@ export class RepositoryService implements OnDestroy {
       });
       this.alertService.success(gettext('Repositories saved successfully'));
     } catch (error) {
-      this.handleError('Failed to save repositories', error);
-      throw error;
+      throw this.handleError(
+        error,
+        'Failed to save repositories',
+        true,
+        gettext('Failed to save repositories. Please try again.')
+      );
     }
   }
 
-  /**
-   * Check if there are unsaved changes
-   */
   hasUnsavedChanges(state?: RepositoryState): boolean {
     const currentState = state || this.state$.value;
     return currentState.repositories.some(repo => {
@@ -243,9 +255,6 @@ export class RepositoryService implements OnDestroy {
     });
   }
 
-  /**
-   * Revert to last saved state
-   */
   cancelChanges(): void {
     const state = this.state$.value;
     this.updateState({
@@ -254,9 +263,6 @@ export class RepositoryService implements OnDestroy {
     this.invalidateCache();
   }
 
-  /**
-   * Delete a repository and save to backend
-   */
   async deleteRepository(repositoryId: string): Promise<void> {
     const state = this.state$.value;
     const updated = state.repositories.filter(r => r.id !== repositoryId);
@@ -270,14 +276,15 @@ export class RepositoryService implements OnDestroy {
       this.invalidateCache();
       this.alertService.success(gettext('Repository deleted successfully'));
     } catch (error) {
-      this.handleError('Failed to delete repository', error);
-      throw error;
+      throw this.handleError(
+        error,
+        'Failed to delete repository',
+        true,
+        gettext('Failed to delete repository. Please try again.')
+      );
     }
   }
 
-  /**
-   * Test repository connection without saving
-   */
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
     const headers = new HttpHeaders({
       'Accept': 'application/vnd.github.v3.raw',
@@ -297,7 +304,7 @@ export class RepositoryService implements OnDestroy {
 
       return {
         success: true,
-        message: 'Successfully connected to repository',
+        message: gettext('Successfully connected to repository'),
         status: response?.status
       };
     } catch (error) {
@@ -305,9 +312,6 @@ export class RepositoryService implements OnDestroy {
     }
   }
 
-  /**
-   * Reload repositories from backend
-   */
   async refreshRepositories(): Promise<void> {
     try {
       await this.loadRepositoriesFromBackend()
@@ -316,7 +320,34 @@ export class RepositoryService implements OnDestroy {
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
-      this.handleError('Failed to refresh repositories', error);
+      throw this.handleError(
+        error,
+        'Failed to refresh repositories',
+        true,
+        gettext('Failed to refresh repositories. Please try again.')
+      );
+    }
+  }
+
+  // ============================================================================
+  // Public API - Cache and Reload
+  // ============================================================================
+
+  /**
+   * Reload repository items (clears cache and triggers refresh)
+   */
+  reload(): void {
+    this.invalidateCache();
+  }
+
+  /**
+   * Reload repositories and items from backend
+   */
+  async reloadAll(): Promise<void> {
+    try {
+      await this.refreshRepositories();
+    } catch (error) {
+      // Error already handled in refreshRepositories
       throw error;
     }
   }
@@ -325,54 +356,52 @@ export class RepositoryService implements OnDestroy {
   // Public API - Repository Items
   // ============================================================================
 
-  /**
-   * Get filtered repository items
-   */
   getRepositoryItems(): Observable<RepositoryItem[]> {
     return this.repositoryItems$.pipe(
       map(blocks => this.filterRepositoryItems(blocks))
     );
   }
 
-  /**
-   * Get analyzed repository items (with YAML sections processed)
-   */
   getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
     return this.repositoryItems$.pipe(
-      switchMap(items => this.analyzeRepositoryItems(items))
+      switchMap(items => this.analyzeRepositoryItems(items)),
+      catchError(error => {
+        this.handleError(
+          error,
+          'Failed to analyze repository items',
+          true,
+          gettext('Failed to analyze repository items. Please try again.')
+        );
+        return of([]);
+      })
     );
   }
 
-  /**
-   * Update hide installed filter
-   */
   updateHideInstalledFilter(hideInstalled: boolean): void {
     this.updateState({ hideInstalled });
   }
 
-  /**
-   * Get content of a repository item
-   */
   getRepositoryItemContent(
     block: RepositoryItem,
     useBackend: boolean = true,
     extractFQN: boolean = false
   ): Observable<string> {
-    if (useBackend) {
-      return this.getItemContentFromBackend(block, extractFQN);
-    }
-    return this.getItemContentDirectly(block, extractFQN);
-  }
+    const content$ = useBackend
+      ? this.getItemContentFromBackend(block, extractFQN)
+      : this.getItemContentDirectly(block, extractFQN);
 
-  /**
-   * Get sections from extension YAML
-   */
-  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
-    return this.getRepositoryItemContent(item, true, false).pipe(
-      map(content => this.parseYamlSections(content)),
+    return content$.pipe(
       catchError(error => {
-        console.error(`Error processing ${DESCRIPTOR_YAML}:`, error);
-        return of([]);
+        const errorMsg = extractFQN
+          ? gettext('Failed to extract block information')
+          : gettext('Failed to load content');
+
+        throw this.handleError(
+          error,
+          `Failed to get content for ${block.name}`,
+          true,
+          errorMsg
+        );
       })
     );
   }
@@ -381,9 +410,6 @@ export class RepositoryService implements OnDestroy {
   // Public API - Extension Creation
   // ============================================================================
 
-  /**
-   * Create extension from list of monitors
-   */
   async createExtensionFromList(
     name: string,
     monitors: RepositoryItem[],
@@ -399,12 +425,18 @@ export class RepositoryService implements OnDestroy {
       deploy
     };
 
-    return this.createExtension('list', request);
+    try {
+      return await this.createExtension('list', request);
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to create extension from list: ${name}`,
+        true,
+        gettext(`Failed to create extension "${name}". Please try again.`)
+      );
+    }
   }
 
-  /**
-   * Create extension from YAML
-   */
   async createExtensionFromYaml(
     name: string,
     yaml: RepositoryItem,
@@ -422,12 +454,18 @@ export class RepositoryService implements OnDestroy {
       deploy
     };
 
-    return this.createExtension('yaml', request);
+    try {
+      return await this.createExtension('yaml', request);
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to create extension from YAML: ${name}`,
+        true,
+        gettext(`Failed to create extension "${name}". Please try again.`)
+      );
+    }
   }
 
-  /**
-   * Create extension from entire repository
-   */
   async createExtensionFromRepository(
     name: string,
     repository: Repository,
@@ -441,7 +479,16 @@ export class RepositoryService implements OnDestroy {
       deploy
     };
 
-    return this.createExtension('repository', request);
+    try {
+      return await this.createExtension('repository', request);
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to create extension from repository: ${name}`,
+        true,
+        gettext(`Failed to create extension "${name}". Please try again.`)
+      );
+    }
   }
 
   // ============================================================================
@@ -463,26 +510,46 @@ export class RepositoryService implements OnDestroy {
         });
       }),
       catchError(error => {
-        this.handleError('Failed to load repositories', error);
+        this.handleError(
+          error,
+          'Failed to load repositories from backend',
+          true,
+          gettext('Failed to load repositories. Please refresh the page.')
+        );
         return of([]);
       })
     );
   }
 
   private async fetchRepositoriesFromBackend(): Promise<Repository[]> {
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
-      {
-        headers: { 'content-type': 'application/json' },
-        method: 'GET'
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
+        {
+          headers: { 'content-type': 'application/json' },
+          method: 'GET'
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new RepositoryError(
+          `Failed to fetch repositories: ${response.status}`,
+          gettext('Failed to load repositories from server.')
+        );
       }
-    );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch repositories');
+      return response.json();
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        throw error;
+      }
+      throw new RepositoryError(
+        'Failed to fetch repositories',
+        gettext('Failed to connect to server. Please check your connection.'),
+        error
+      );
     }
-
-    return response.json();
   }
 
   // ============================================================================
@@ -505,8 +572,8 @@ export class RepositoryService implements OnDestroy {
 
   private areRepositoriesEqual(a: Repository[], b: Repository[]): boolean {
     if (a.length !== b.length) return false;
-    return a.every((repo, index) => 
-      repo.id === b[index].id && 
+    return a.every((repo, index) =>
+      repo.id === b[index].id &&
       repo.enabled === b[index].enabled &&
       repo.name === b[index].name &&
       repo.url === b[index].url
@@ -522,9 +589,14 @@ export class RepositoryService implements OnDestroy {
   ): Observable<RepositoryItem[]> {
     return combineLatest([
       this.repositories$,
-      from(this.analyticsService.getDeployedBlocks())
+      from(this.analyticsService.getDeployedBlocks()).pipe(
+        catchError(error => {
+          console.warn('Failed to get deployed blocks:', error);
+          return of([]);
+        })
+      )
     ]).pipe(
-      switchMap(([repos, loaded]) => 
+      switchMap(([repos, loaded]) =>
         this.processRepositoryItems(repos, loaded, hideInstalled)
       )
     );
@@ -536,7 +608,7 @@ export class RepositoryService implements OnDestroy {
     hideInstalled: boolean
   ): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
-    
+
     if (!enabledRepos.length) {
       return of([]);
     }
@@ -544,9 +616,18 @@ export class RepositoryService implements OnDestroy {
     return forkJoin(
       enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
     ).pipe(
-      map(blocks => 
+      map(blocks =>
         this.addInstallationStatus(blocks.flat(), loaded, hideInstalled)
-      )
+      ),
+      catchError(error => {
+        this.handleError(
+          error,
+          'Failed to process repository items',
+          true,
+          gettext('Failed to load repository items. Please try again.')
+        );
+        return of([]);
+      })
     );
   }
 
@@ -568,31 +649,50 @@ export class RepositoryService implements OnDestroy {
     return from(this.getGitHubContent(repository)).pipe(
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
-        this.handleError(`Failed to fetch items from ${repository.name}`, error);
-        return EMPTY;
+        this.handleError(
+          error,
+          `Failed to fetch items from repository: ${repository.name}`,
+          true,
+          gettext(`Failed to load items from repository "${repository.name}".`)
+        );
+        return of([]);
       })
     );
   }
 
   private async getGitHubContent(repository: Repository): Promise<any[]> {
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
-      {
-        headers: { 'content-type': 'application/json' },
-        params: {
-          url: encodeURIComponent(repository.url),
-          repository_id: repository.id
-        },
-        method: 'GET'
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
+        {
+          headers: { 'content-type': 'application/json' },
+          params: {
+            url: encodeURIComponent(repository.url),
+            repository_id: repository.id
+          },
+          method: 'GET'
+        }
+      );
+
+      if (!response.ok) {
+        const errorMessage = await this.extractErrorMessage(response);
+        throw new RepositoryError(
+          `Failed to get GitHub content: ${response.status}`,
+          errorMessage
+        );
       }
-    );
 
-    if (!response.ok) {
-      const errorMessage = await this.extractErrorMessage(response);
-      throw new Error(errorMessage);
+      return response.json();
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        throw error;
+      }
+      throw new RepositoryError(
+        'Failed to fetch GitHub content',
+        gettext('Failed to connect to GitHub. Please check your connection and repository settings.'),
+        error
+      );
     }
-
-    return response.json();
   }
 
   private async extractErrorMessage(response: IFetchResponse): Promise<string> {
@@ -600,7 +700,7 @@ export class RepositoryService implements OnDestroy {
       const errorData = await response.json();
       return errorData.message || errorData.error || JSON.stringify(errorData);
     } catch {
-      return await response.text();
+      return await response.text() || gettext('Unknown error occurred');
     }
   }
 
@@ -608,19 +708,31 @@ export class RepositoryService implements OnDestroy {
     data: any,
     repository: Repository
   ): Observable<RepositoryItem[]> {
-    const items = Object.values(data)
-      .filter((item: any) => getFileExtension(item.name) !== '.json')
-      .map((item: any) => this.createRepositoryItem(item, repository));
+    try {
+      const items = Object.values(data)
+        .filter((item: any) => getFileExtension(item.name) !== '.json')
+        .map((item: any) => this.createRepositoryItem(item, repository));
 
-    return forkJoin(
-      items.map(item => this.enrichRepositoryItem(item))
-    );
+      return forkJoin(
+        items.map(item => this.enrichRepositoryItem(item))
+      );
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to process GitHub content',
+        false
+      );
+    }
   }
 
   private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
     if (item.type === 'file' && item.file.endsWith('.mon')) {
       return this.getRepositoryItemContent(item, true, true).pipe(
-        map(fqn => ({ ...item, id: fqn }))
+        map(fqn => ({ ...item, id: fqn })),
+        catchError(error => {
+          console.warn(`Failed to enrich item ${item.name}:`, error);
+          return of({ ...item, id: item.file });
+        })
       );
     }
     return of({ ...item, id: item.file });
@@ -628,7 +740,10 @@ export class RepositoryService implements OnDestroy {
 
   private createRepositoryItem(item: any, repository: Repository): RepositoryItem {
     if (!item.name || !item.url) {
-      throw new Error('Missing required properties in GitHub item');
+      throw new RepositoryError(
+        'Invalid GitHub item structure',
+        gettext('Invalid repository item data received.')
+      );
     }
 
     return {
@@ -646,27 +761,27 @@ export class RepositoryService implements OnDestroy {
 
   private filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
     const hasExtensionsYaml = blocks.some(
-      block => block.type !== 'dir' && 
-               block.file?.toLowerCase() === DESCRIPTOR_YAML
+      block => block.type !== 'dir' &&
+        block.file?.toLowerCase() === DESCRIPTOR_YAML
     );
 
     if (hasExtensionsYaml) {
       return blocks.filter(
-        block => block.type !== 'dir' && 
-                 block.file?.toLowerCase() === DESCRIPTOR_YAML
+        block => block.type !== 'dir' &&
+          block.file?.toLowerCase() === DESCRIPTOR_YAML
       );
     }
 
     return blocks.filter(
       block => (block.type === 'dir' && !block.file.startsWith('.')) ||
-               (block.file?.toLowerCase().endsWith('.mon'))
+        (block.file?.toLowerCase().endsWith('.mon'))
     );
   }
 
   private analyzeRepositoryItems(items: RepositoryItem[]): Observable<RepositoryItem[]> {
     const yamlItems = items.filter(
-      block => block.type !== 'dir' && 
-               block.file?.toLowerCase() === DESCRIPTOR_YAML
+      block => block.type !== 'dir' &&
+        block.file?.toLowerCase() === DESCRIPTOR_YAML
     );
 
     if (yamlItems.length > 0) {
@@ -679,8 +794,18 @@ export class RepositoryService implements OnDestroy {
     return of(
       items.filter(
         item => (item.type === 'dir' && !item.file.startsWith('.')) ||
-                (item.file?.toLowerCase().endsWith('.mon'))
+          (item.file?.toLowerCase().endsWith('.mon'))
       )
+    );
+  }
+
+  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
+    return this.getRepositoryItemContent(item, true, false).pipe(
+      map(content => this.parseYamlSections(content)),
+      catchError(error => {
+        console.warn(`Error processing ${DESCRIPTOR_YAML}:`, error);
+        return of([]);
+      })
     );
   }
 
@@ -703,11 +828,11 @@ export class RepositoryService implements OnDestroy {
     hideInstalled: boolean
   ): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));
-    
+
     if (hideInstalled) {
       return blocks.filter(block => !loadedIds.has(block.id));
     }
-    
+
     return blocks.map(block => ({
       ...block,
       installed: loadedIds.has(block.id)
@@ -735,7 +860,15 @@ export class RepositoryService implements OnDestroy {
           },
           method: 'GET'
         }
-      ).then(resp => resp.text())
+      ).then(resp => {
+        if (!resp.ok) {
+          throw new RepositoryError(
+            `Failed to fetch content: ${resp.status}`,
+            gettext('Failed to load content from server.')
+          );
+        }
+        return resp.text();
+      })
     );
   }
 
@@ -750,34 +883,49 @@ export class RepositoryService implements OnDestroy {
       },
       responseType: 'text'
     }).pipe(
-      map(content => extractFQN ? this.extractFQN(content, block) : content)
+      map(content => extractFQN ? this.extractFQN(content, block) : content),
+      catchError(error => {
+        throw new RepositoryError(
+          'Failed to fetch content directly',
+          gettext('Failed to download content from GitHub.'),
+          error
+        );
+      })
     );
   }
 
   private extractFQN(content: string, block: RepositoryItem): string {
     const regex = /(?<=^package\s)(.*?)(?=;)/gm;
     const match = content.match(regex);
+
     if (match && match[0]) {
       const packageName = match[0].trim();
       const className = block.name.slice(0, -4);
       return `${packageName}.${className}`;
     }
-    throw new Error('Could not extract FQN from content');
+
+    throw new RepositoryError(
+      'Could not extract FQN from content',
+      gettext('Failed to extract block information from file.')
+    );
   }
 
   private parseYamlSections(content: string): string[] {
     try {
       const yamlContent = jsyaml.load(content);
-      
+
       if (yamlContent && typeof yamlContent === 'object') {
         return Object.keys(yamlContent);
       }
-      
+
       console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
       return [];
     } catch (error) {
-      console.error(`Error parsing ${DESCRIPTOR_YAML}:`, error);
-      return [];
+      throw new RepositoryError(
+        `Error parsing ${DESCRIPTOR_YAML}`,
+        gettext(`Failed to parse ${DESCRIPTOR_YAML}. Invalid format.`),
+        error
+      );
     }
   }
 
@@ -788,21 +936,35 @@ export class RepositoryService implements OnDestroy {
   private async saveRepositoriesToBackend(
     repositories: Repository[]
   ): Promise<void> {
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(repositories),
-        method: 'POST'
-      }
-    );
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(repositories),
+          method: 'POST'
+        }
+      );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || 'Failed to save repositories');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new RepositoryError(
+          `Failed to save repositories: ${response.status}`,
+          errorText || gettext('Failed to save repositories to server.')
+        );
+      }
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        throw error;
+      }
+      throw new RepositoryError(
+        'Failed to save repositories',
+        gettext('Failed to connect to server. Please check your connection.'),
+        error
+      );
     }
   }
 
@@ -811,29 +973,83 @@ export class RepositoryService implements OnDestroy {
     request: any
   ): Promise<IFetchResponse> {
     console.log(`Creating extension from ${endpoint}:`, request.extension_name);
-    
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/${endpoint}`,
-      {
-        headers: {
-          accept: 'application/json',
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify(request),
-        method: 'POST',
-        responseType: 'blob'
+
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/${endpoint}`,
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json'
+          },
+          body: JSON.stringify(request),
+          method: 'POST',
+          responseType: 'blob'
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new RepositoryError(
+          `Failed to create extension: ${response.status}`,
+          errorText || gettext('Failed to create extension on server.')
+        );
       }
-    );
+
+      return response;
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        throw error;
+      }
+      throw new RepositoryError(
+        'Failed to create extension',
+        gettext('Failed to create extension. Please try again.'),
+        error
+      );
+    }
   }
 
   // ============================================================================
   // Private Methods - Error Handling
   // ============================================================================
 
-  private handleError(message: string, error: any): void {
-    const errorMessage = error?.message || error?.toString() || 'Unknown error';
-    console.error(message, error);
-    this.alertService.danger(`${message}: ${errorMessage}`);
+  /**
+   * Centralized error handling
+   */
+  private handleError(
+    error: any,
+    logMessage: string,
+    showAlert: boolean = false,
+    userMessage?: string
+  ): Error {
+    console.error(`[RepositoryService] ${logMessage}:`, error);
+
+    if (showAlert) {
+      const message = userMessage || this.getErrorMessage(error);
+      this.alertService.danger(message);
+    }
+
+    if (error instanceof RepositoryError) {
+      return error;
+    }
+
+    return new RepositoryError(
+      logMessage,
+      userMessage || this.getErrorMessage(error),
+      error
+    );
+  }
+
+  private getErrorMessage(error: any): string {
+    if (error instanceof RepositoryError) {
+      return error.userMessage;
+    }
+
+    if (error?.message) {
+      return error.message;
+    }
+
+    return gettext('An unexpected error occurred. Please try again.');
   }
 
   private handleTestError(error: any): RepositoryTestResult {
@@ -842,19 +1058,25 @@ export class RepositoryService implements OnDestroy {
         case 401:
           return {
             success: false,
-            message: 'Authentication failed. Please check your access token.',
+            message: gettext('Authentication failed. Please check your access token.'),
             status: error.status
           };
         case 404:
           return {
             success: false,
-            message: 'Repository not found. Please check the URL.',
+            message: gettext('Repository not found. Please check the URL.'),
+            status: error.status
+          };
+        case 403:
+          return {
+            success: false,
+            message: gettext('Access denied. Please check your permissions.'),
             status: error.status
           };
         default:
           return {
             success: false,
-            message: `Failed to connect. Status: ${error.status}`,
+            message: gettext(`Connection failed (Status: ${error.status}). Please try again.`),
             status: error.status
           };
       }
@@ -862,7 +1084,7 @@ export class RepositoryService implements OnDestroy {
 
     return {
       success: false,
-      message: 'Failed to connect. Please check your connection and try again.'
+      message: gettext('Failed to connect to repository. Please check your connection and try again.')
     };
   }
 }
