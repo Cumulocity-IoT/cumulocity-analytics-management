@@ -49,7 +49,7 @@ mkdir -p "$DIST_DIR"
 
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
-cp ./flask_wrapper.py "$BUILD_DIR"
+cp ./app.py "$BUILD_DIR"
 cp ./solution_utils.py "$BUILD_DIR"
 cp ./c8y_agent.py "$BUILD_DIR"
 sed -e "s/{VERSION}/$VERSION/g" ./cumulocity.json > "$BUILD_DIR/cumulocity.json"

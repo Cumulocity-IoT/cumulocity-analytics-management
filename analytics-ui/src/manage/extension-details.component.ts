@@ -20,7 +20,7 @@
 
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { gettext } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 import { AnalyticsService, CepExtension } from '../shared';
 
 @Component({

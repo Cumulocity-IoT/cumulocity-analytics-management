@@ -22,7 +22,7 @@ RUN pip3 install --upgrade pip
 RUN pip3 install -r requirements.txt
 
 # Copy application files
-COPY flask_wrapper.py c8y_agent.py solution_utils.py /apama_work/
+COPY app.py c8y_agent.py solution_utils.py /apama_work/
 
 # Set the default command
-CMD ["python3", "flask_wrapper.py"]
+CMD ["python3", "app.py"]

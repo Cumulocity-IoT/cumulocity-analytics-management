@@ -69,6 +69,7 @@ interface CreateExtensionRequest {
   upload: boolean;
   deploy: boolean;
   repository: Repository;
+  rebuild: boolean;
 }
 
 interface CreateExtensionFromListRequest extends CreateExtensionRequest {
@@ -415,14 +416,16 @@ export class RepositoryService implements OnDestroy {
     monitors: RepositoryItem[],
     repository: Repository,
     upload: boolean = false,
-    deploy: boolean = false
+    deploy: boolean = false,
+    rebuild: boolean = false
   ): Promise<IFetchResponse> {
     const request: CreateExtensionFromListRequest = {
       extension_name: name,
       monitors,
       repository,
       upload,
-      deploy
+      deploy,
+      rebuild
     };
 
     try {
@@ -443,7 +446,8 @@ export class RepositoryService implements OnDestroy {
     sections: string[],
     repository: Repository,
     upload: boolean = false,
-    deploy: boolean = false
+    deploy: boolean = false,
+    rebuild: boolean = false
   ): Promise<IFetchResponse> {
     const request: CreateExtensionFromYamlRequest = {
       extension_name: name,
@@ -451,7 +455,8 @@ export class RepositoryService implements OnDestroy {
       sections,
       repository,
       upload,
-      deploy
+      deploy,
+      rebuild
     };
 
     try {
@@ -470,13 +475,15 @@ export class RepositoryService implements OnDestroy {
     name: string,
     repository: Repository,
     upload: boolean = false,
-    deploy: boolean = false
+    deploy: boolean = false,
+    rebuild: boolean = false
   ): Promise<IFetchResponse> {
     const request: CreateExtensionRequest = {
       extension_name: name,
       repository,
       upload,
-      deploy
+      deploy,
+      rebuild
     };
 
     try {

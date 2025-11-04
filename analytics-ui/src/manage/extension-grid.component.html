@@ -24,7 +24,7 @@
 <c8y-action-bar-item [placement]="'right'">
   <div class="c8y-realtime p-r-8" *ngIf="cepStatus$ | async as status">
     <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
-    <a [href]="getCEPMicroserviceUrl()" target="_blank" class="m-l-4">
+    <a [href]="getCepMicroserviceUrl()" target="_blank" class="m-l-4">
       {{ 'Streaming Analytics' | translate }}
     </a>
   </div>

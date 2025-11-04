@@ -1,6 +1,6 @@
 import { Component, Input, OnInit, Output } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
-import { gettext } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 

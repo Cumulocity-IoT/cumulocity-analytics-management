@@ -21,11 +21,11 @@
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 import {
   ConfirmModalComponent,
-  gettext,
   ModalLabels,
   Status,
   StatusType
 } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 import { TranslateService } from '@ngx-translate/core';
 import { Subject } from 'rxjs';
 
