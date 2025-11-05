@@ -90,6 +90,10 @@ The modal dialog provides the option:
 
 ![Create extension](resources/images/extension-create-extension-modal.png)
 
+If an extension is build using the backend additional build information it added to this extension. IN this case the extension can be rebuild from the same repository.
+
+![Build information](resources/images/extension-manage-build-information.png)
+
 ## Monitoring
 
 On the monitoring tab you can view the latest alarms and events for the Streaming Analytics Engine. This is especially helpful if after an upload of a new extension no extension is loaded. 
