@@ -8,7 +8,17 @@ import {
 } from '@c8y/ngx-components';
 import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
-import { AnalyticsService, ConfirmationModalComponent } from '../shared';
+import { AnalyticsService, ConfirmationModalComponent, Repository, RepositoryService } from '../shared';
+
+interface BuildInformation {
+  build_type: 'repository' | 'list' | 'yaml';
+  repository: Repository;
+  monitors?: any[];
+  yaml?: any;
+  sections?: string[];
+  section_name?: string;
+  files?: string[];
+}
 
 @Component({
   selector: 'a17t-extension-card',
@@ -22,6 +32,7 @@ export class ExtensionCardComponent implements OnInit {
 
   constructor(
     private readonly analyticsService: AnalyticsService,
+    private readonly repositoryService: RepositoryService,
     private readonly alertService: AlertService,
     private readonly router: Router,
     private readonly activatedRoute: ActivatedRoute,
@@ -41,9 +52,6 @@ export class ExtensionCardComponent implements OnInit {
           extension: this.extension
         }
       });
-      // console.log("Added extension", this.extension);
-    } else {
-      // console.warn('Extension not loaded yet');
     }
   }
 
@@ -116,8 +124,147 @@ export class ExtensionCardComponent implements OnInit {
     });
   }
 
-  rebuild(): void {
-    this.alertService.info("This option will be supported in a later release");
-    console.log("Build Information", this.extension.build_information);
+  async rebuild(): Promise<void> {
+    const buildInfo = this.extension.build_information as BuildInformation;
+
+    // Validate build information exists
+    if (!buildInfo) {
+      this.alertService.warning(
+        'Cannot rebuild: No build information found for this extension. ' +
+        'This extension may have been created manually or with an older version.'
+      );
+      console.warn('No build information:', this.extension);
+      return;
+    }
+
+    // Validate repository information
+    if (!buildInfo.repository || !buildInfo.repository.id) {
+      this.alertService.warning(
+        'Cannot rebuild: Repository information is missing or incomplete.'
+      );
+      console.error('Invalid repository information:', buildInfo);
+      return;
+    }
+
+    // Show confirmation dialog
+    const initialState = {
+      title: 'Rebuild extension',
+      message: `You are about to rebuild and deploy the extension "${this.extension.name}" from the repository "${buildInfo.repository.name}". This will replace the current version. Do you want to proceed?`,
+      labels: {
+        ok: 'Rebuild',
+        cancel: 'Cancel'
+      }
+    };
+
+    const confirmRebuildModalRef: BsModalRef = this.bsModalService.show(
+      ConfirmationModalComponent,
+      { initialState }
+    );
+
+    confirmRebuildModalRef.content.closeSubject.subscribe(
+      async (result: boolean) => {
+        if (result) {
+          try {
+            await this.performRebuild(buildInfo);
+          } catch (ex) {
+            if (ex) {
+              this.alertService.addServerFailure(ex);
+            }
+          }
+        }
+        confirmRebuildModalRef.hide();
+      }
+    );
+  }
+
+  private async performRebuild(buildInfo: BuildInformation): Promise<void> {
+    this.alertService.info(`Rebuilding extension "${this.extension.name}"...`);
+
+    try {
+      switch (buildInfo.build_type) {
+        case 'repository':
+          await this.rebuildFromRepository(buildInfo);
+          break;
+
+        case 'list':
+          await this.rebuildFromList(buildInfo);
+          break;
+
+        case 'yaml':
+          await this.rebuildFromYaml(buildInfo);
+          break;
+
+        default:
+          throw new Error(`Unknown build type: ${buildInfo.build_type}`);
+      }
+
+      this.alertService.success(
+        `Extension "${this.extension.name}" rebuilt successfully`
+      );
+      this.extensionChanged.emit();
+
+    } catch (error) {
+      console.error('Rebuild failed:', error);
+      
+      // Check if it's a 404 error (extension not found for rebuild)
+      if (error?.status === 404 || error?.message?.includes('no existing extension')) {
+        this.alertService.danger(
+          `Rebuild failed: The extension "${this.extension.name}" was not found in Cumulocity. ` +
+          'It may have been deleted. Please create it again instead.'
+        );
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  private async rebuildFromRepository(buildInfo: BuildInformation): Promise<void> {
+    console.log('Rebuilding from repository:', buildInfo);
+
+    await this.repositoryService.createExtensionFromRepository(
+      this.extension.name,
+      buildInfo.repository,
+      true,  // upload
+      true, // deploy
+      true   // rebuild
+    );
+  }
+
+  private async rebuildFromList(buildInfo: BuildInformation): Promise<void> {
+    console.log('Rebuilding from list:', buildInfo);
+
+    if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
+      throw new Error('No monitors information found in build information');
+    }
+
+    await this.repositoryService.createExtensionFromList(
+      this.extension.name,
+      buildInfo.monitors,
+      buildInfo.repository,
+      true,  // upload
+      true, // deploy
+      true   // rebuild
+    );
+  }
+
+  private async rebuildFromYaml(buildInfo: BuildInformation): Promise<void> {
+    console.log('Rebuilding from YAML:', buildInfo);
+
+    if (!buildInfo.yaml) {
+      throw new Error('No YAML information found in build information');
+    }
+
+    // For YAML builds, we need to rebuild just the specific section
+    const sections = buildInfo.section_name ? [buildInfo.section_name] : [];
+
+    await this.repositoryService.createExtensionFromYaml(
+      this.extension.name,
+      buildInfo.yaml,
+      sections,
+      buildInfo.repository,
+      true,  // upload
+      true, // deploy
+      true   // rebuild
+    );
   }
 }

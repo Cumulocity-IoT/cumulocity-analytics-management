@@ -1,5 +1,16 @@
 """
 Flask API for managing Cumulocity extensions and repositories.
+
+This API provides endpoints for:
+- Managing GitHub repositories for Apama Analytics Builder extensions
+- Building and deploying extensions from repository sources
+- Managing CEP (Complex Event Processing) engine status
+- CRUD operations on extensions
+
+Architecture:
+- Flask app handles HTTP requests
+- C8YAgent handles Cumulocity platform interactions
+- Extension building uses Apama Analytics Builder SDK
 """
 
 import io
@@ -43,14 +54,43 @@ agent = C8YAgent()
 
 @app.route("/health")
 def health():
-    """Health check endpoint."""
+    """
+    Health check endpoint.
+    
+    Returns:
+        200: Service is healthy
+        
+    Response Body:
+        {
+            "status": "UP"
+        }
+    
+    Example:
+        GET /health
+    """
     return jsonify({"status": "UP"}), 200
 
 
 @app.route("/cep/id", methods=["GET"])
 @handle_errors
 def get_cep_operationobject_id():
-    """Get CEP operation object ID."""
+    """
+    Get the Cumulocity managed object ID of the CEP (Apama) microservice.
+    
+    This ID is used to monitor the CEP engine status and subscribe to updates.
+    
+    Returns:
+        200: Success with operation object ID
+        404: CEP operation object not found
+        
+    Response Body:
+        {
+            "id": "12345678"
+        }
+    
+    Example:
+        GET /cep/id
+    """
     result = agent.get_cep_operationobject_id(request)
     if result is None:
         return create_error_response("CEP operation object not found", 404)
@@ -60,7 +100,31 @@ def get_cep_operationobject_id():
 @app.route("/cep/status", methods=["GET"])
 @handle_errors
 def get_cep_ctrl_status():
-    """Get CEP control status."""
+    """
+    Get the current status of the CEP (Apama) engine.
+    
+    Returns detailed information about the CEP engine including:
+    - Engine status (Up/Down)
+    - Safe mode status
+    - Microservice application ID
+    - Version information
+    
+    Returns:
+        200: Success with status information
+        404: CEP control status not available
+        
+    Response Body:
+        {
+            "status": "Up",
+            "is_safe_mode": false,
+            "microservice_application_id": "123",
+            "microservice_name": "apama-ctrl-starter",
+            ...
+        }
+    
+    Example:
+        GET /cep/status
+    """
     result = agent.get_cep_ctrl_status(request)
     if result is None:
         return create_error_response("CEP control status not found", 404)
@@ -75,7 +139,30 @@ def get_cep_ctrl_status():
 @app.route("/repository/configuration", methods=["GET"])
 @handle_errors
 def load_repositories():
-    """Load all configured repositories."""
+    """
+    Load all configured GitHub repositories.
+    
+    Returns a list of all repositories configured for this tenant.
+    Access tokens are replaced with dummy values for security.
+    
+    Returns:
+        200: Success with list of repositories
+        
+    Response Body:
+        [
+            {
+                "id": "repo-1",
+                "name": "My Repository",
+                "url": "https://github.com/user/repo/tree/main/path",
+                "accessToken": "_DUMMY_ACCESS_CODE_",
+                "enabled": true
+            },
+            ...
+        ]
+    
+    Example:
+        GET /repository/configuration
+    """
     result = agent.load_repositories(request)
     return jsonify(result), 200
 
@@ -83,7 +170,39 @@ def load_repositories():
 @app.route("/repository/configuration", methods=["POST"])
 @handle_errors
 def update_repositories():
-    """Update repository configurations."""
+    """
+    Update repository configurations.
+    
+    Creates, updates, or deletes repositories. Repositories not in the request
+    body will be deleted.
+    
+    Request Body:
+        [
+            {
+                "id": "repo-1",
+                "name": "My Repository",
+                "url": "https://github.com/user/repo/tree/main/path",
+                "accessToken": "ghp_xxxxx",  // Optional, use _DUMMY_ACCESS_CODE_ to keep existing
+                "enabled": true
+            },
+            ...
+        ]
+    
+    Returns:
+        200: Repositories updated successfully
+        400: Invalid request body
+        
+    Response Body:
+        {
+            "message": "Repositories updated successfully"
+        }
+    
+    Example:
+        POST /repository/configuration
+        Content-Type: application/json
+        
+        [{"id": "repo-1", "name": "Test", "url": "https://...", "enabled": true}]
+    """
     repositories = request.get_json()
 
     if not isinstance(repositories, list):
@@ -107,7 +226,25 @@ def update_repositories():
 @app.route("/repository/contentList", methods=["GET"])
 @handle_errors
 def get_content_list():
-    """Retrieve repository content list from GitHub."""
+    """
+    Retrieve the content list from a GitHub repository path.
+    
+    Converts a GitHub web URL to the API format and fetches the directory/file listing.
+    
+    Query Parameters:
+        url (required): URL-encoded GitHub path
+        repository_id (optional): Repository ID for authentication
+    
+    Returns:
+        200: Success with content list
+        400: Missing URL parameter
+        
+    Response:
+        JSON array of files and directories from GitHub API
+    
+    Example:
+        GET /repository/contentList?url=https%3A%2F%2Fgithub.com%2Fuser%2Frepo%2Ftree%2Fmain%2Fblocks&repository_id=repo-1
+    """
     encoded_url = request.args.get("url")
     repository_id = request.args.get("repository_id")
 
@@ -129,7 +266,28 @@ def get_content_list():
 @app.route("/repository/content", methods=["GET"])
 @handle_errors
 def get_content():
-    """Download content from GitHub repository."""
+    """
+    Download file content from a GitHub repository.
+    
+    Can optionally extract the Fully Qualified Name (FQN) from an Apama monitor file.
+    
+    Query Parameters:
+        url (required): URL-encoded GitHub file URL
+        repository_id (optional): Repository ID for authentication
+        extract_fqn_cep_block (optional): Set to "true" to extract FQN
+        cep_block_name (required if extract_fqn_cep_block=true): Block name for FQN extraction
+    
+    Returns:
+        200: Success with file content or FQN
+        400: Missing required parameters
+        
+    Response:
+        - If extract_fqn_cep_block=false: Raw file content
+        - If extract_fqn_cep_block=true: FQN string (e.g., "com.example.blocks.MyBlock")
+    
+    Example:
+        GET /repository/content?url=https%3A%2F%2Fraw.githubusercontent.com%2F...%2FMyBlock.mon&extract_fqn_cep_block=true&cep_block_name=MyBlock&repository_id=repo-1
+    """
     encoded_url = request.args.get("url")
     cep_block_name = request.args.get("cep_block_name")
     repository_id = request.args.get("repository_id")
@@ -163,7 +321,53 @@ def get_content():
 @app.route("/extension/repository", methods=["POST"])
 @handle_errors
 def create_extension_from_repository():
-    """Create extension from entire repository."""
+    """
+    Create an Apama extension from an entire GitHub repository.
+    
+    Downloads all contents from the repository path, builds it into an extension,
+    and optionally uploads it to Cumulocity.
+    
+    Request Body:
+        {
+            "extension_name": "MyExtension",     // Required: Name for the extension
+            "repository": {                       // Required: Repository configuration
+                "id": "repo-1"
+            },
+            "upload": false,                      // Optional: Upload to Cumulocity (default: false)
+            "deploy": false,                      // Optional: Restart CEP after upload (default: false)
+            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+        }
+    
+    Behavior:
+        - If upload=false: Returns the .zip file for download
+        - If upload=true: Uploads to Cumulocity and returns extension ID
+        - If rebuild=true: Deletes existing extension(s) with same name before building
+          - If no existing extension found, returns 404 error
+        - If deploy=true: Restarts CEP engine after successful upload
+    
+    Returns:
+        200: Success (download mode) - Returns .zip file
+        201: Success (upload mode) - Extension uploaded
+        400: Invalid request or build failed
+        404: Repository not found OR rebuild requested but no existing extension found
+        
+    Response Body (upload mode):
+        {
+            "id": "12345678",
+            "message": "Extension uploaded"
+        }
+    
+    Example:
+        POST /extension/repository
+        Content-Type: application/json
+        
+        {
+            "extension_name": "MyBlocks",
+            "repository": {"id": "repo-1"},
+            "upload": true,
+            "deploy": true
+        }
+    """
     data = request.get_json()
     extension_name = data.get("extension_name")
     repository = data.get("repository")
@@ -186,10 +390,19 @@ def create_extension_from_repository():
             deleted_count = agent.delete_extension(
                 request, extension_name=extension_name
             )
+            if deleted_count == 0:
+                error_msg = (
+                    f"Rebuild requested but no existing extension named '{extension_name}' "
+                    "was found to delete. Cannot proceed with rebuild."
+                )
+                logger.error(error_msg)
+                return create_error_response(error_msg, 404)
+            
             logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
         except C8YAgentError as e:
-            logger.warning(f"Failed to delete existing extensions during rebuild: {e}")
-            # Continue with build even if delete fails
+            error_msg = f"Failed to delete existing extension during rebuild: {e}"
+            logger.error(error_msg)
+            return create_error_response(error_msg, 400)
 
     return _build_and_process_extension(
         extension_name=extension_name,
@@ -206,7 +419,59 @@ def create_extension_from_repository():
 @app.route("/extension/list", methods=["POST"])
 @handle_errors
 def create_extension_from_list():
-    """Create extension from list of files."""
+    """
+    Create an Apama extension from a single file or directory.
+    
+    Downloads a specific file (.mon) or directory from the repository and builds it
+    into an extension.
+    
+    Request Body:
+        {
+            "extension_name": "MyExtension",     // Required: Name for the extension
+            "monitors": [                         // Required: Array with exactly one item
+                {
+                    "url": "https://api.github.com/repos/.../MyBlock.mon",
+                    "name": "MyBlock",
+                    "type": "file"  // or "dir"
+                }
+            ],
+            "repository": {                       // Required: Repository configuration
+                "id": "repo-1"
+            },
+            "upload": false,                      // Optional: Upload to Cumulocity (default: false)
+            "deploy": false,                      // Optional: Restart CEP after upload (default: false)
+            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+        }
+    
+    Behavior:
+        - monitors must contain exactly one item (file or directory)
+        - If type="file": Downloads single .mon file
+        - If type="dir": Downloads entire directory recursively
+        - rebuild behavior same as /extension/repository
+    
+    Returns:
+        200: Success (download mode)
+        201: Success (upload mode)
+        400: Invalid request (wrong number of monitors, build failed)
+        404: Repository not found OR rebuild requested but no existing extension found
+        
+    Response Body (upload mode):
+        {
+            "id": "12345678",
+            "message": "Extension uploaded"
+        }
+    
+    Example:
+        POST /extension/list
+        Content-Type: application/json
+        
+        {
+            "extension_name": "MyBlock",
+            "monitors": [{"url": "https://...", "name": "MyBlock", "type": "file"}],
+            "repository": {"id": "repo-1"},
+            "upload": true
+        }
+    """
     data = request.get_json()
     extension_name = data.get("extension_name")
     monitors = data.get("monitors", [])
@@ -232,9 +497,19 @@ def create_extension_from_list():
             deleted_count = agent.delete_extension(
                 request, extension_name=extension_name
             )
+            if deleted_count == 0:
+                error_msg = (
+                    f"Rebuild requested but no existing extension named '{extension_name}' "
+                    "was found to delete. Cannot proceed with rebuild."
+                )
+                logger.error(error_msg)
+                return create_error_response(error_msg, 404)
+            
             logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
         except C8YAgentError as e:
-            logger.warning(f"Failed to delete existing extensions during rebuild: {e}")
+            error_msg = f"Failed to delete existing extension during rebuild: {e}"
+            logger.error(error_msg)
+            return create_error_response(error_msg, 400)
 
     return _build_and_process_extension(
         extension_name=extension_name,
@@ -252,7 +527,109 @@ def create_extension_from_list():
 @app.route("/extension/yaml", methods=["POST"])
 @handle_errors
 def create_extension_from_yaml():
-    """Create extensions from YAML specification."""
+    """
+    Create one or more Apama extensions from a YAML specification file.
+    
+    This endpoint is used for complex repositories that contain multiple extensions
+    defined in a YAML file (typically named 'extensions.yaml' or similar).
+    
+    YAML File Structure Example:
+        Python:
+          files:
+            - plugin.yaml
+            - Python.mon
+            - pythonBlockPlugin.py
+            - venv/
+        
+        Offset:
+          files:
+            - Offset.mon
+        
+        Difference:
+          files:
+            - Difference.mon
+    
+    The YAML file defines "sections" (top-level keys like "Python", "Offset", "Difference"),
+    each specifying which files to include in that extension.
+    
+    Request Body:
+        {
+            "yaml": {                             // Required: YAML file reference
+                "url": "https://raw.githubusercontent.com/.../extensions.yaml"
+            },
+            "sections": ["Python", "Offset"],     // Optional: Which sections to build
+                                                  // If empty/null: builds ALL sections
+            "repository": {                       // Required: Repository configuration
+                "id": "repo-1"
+            },
+            "upload": false,                      // Optional: Upload to Cumulocity (default: false)
+            "deploy": false,                      // Optional: Restart CEP after last upload (default: false)
+            "rebuild": false                      // Optional: Delete existing extensions first (default: false)
+        }
+    
+    Sections Parameter Explained:
+        - If sections = []: Builds ALL sections found in YAML
+        - If sections = ["Python", "Offset"]: Builds only these two sections
+        - Each section becomes a separate extension with that section name
+        - Files for each section are downloaded relative to repository base URL
+    
+    Behavior:
+        - Parses YAML file to get section definitions
+        - For each section (or selected sections):
+          1. Downloads all files listed in section.files
+          2. Builds extension named after the section
+          3. Optionally uploads to Cumulocity
+        - If rebuild=true: Deletes existing extension for each section before building
+          - If any section's extension doesn't exist, that section fails but others continue
+        - If deploy=true: Restarts CEP only after ALL sections are processed
+    
+    Returns:
+        200: Success (download mode) - Returns first section's .zip
+        201: Success (upload mode) - All sections uploaded
+        207: Partial success (upload mode) - Some sections failed
+        400: Invalid YAML structure or all sections failed
+        404: Repository not found
+        
+    Response Body (upload mode - all success):
+        {
+            "uploaded_extensions": [
+                {"name": "Python", "id": "12345"},
+                {"name": "Offset", "id": "67890"}
+            ]
+        }
+    
+    Response Body (upload mode - partial success):
+        {
+            "uploaded_extensions": [
+                {"name": "Python", "id": "12345"}
+            ],
+            "failed_sections": [
+                {
+                    "section": "Offset",
+                    "error": "Rebuild requested but no existing extension named 'Offset' was found..."
+                }
+            ],
+            "message": "Partially completed: 1 succeeded, 1 failed"
+        }
+    
+    Example:
+        POST /extension/yaml
+        Content-Type: application/json
+        
+        {
+            "yaml": {"url": "https://raw.githubusercontent.com/.../extensions.yaml"},
+            "sections": ["Python"],  // Build only Python section
+            "repository": {"id": "repo-1"},
+            "upload": true,
+            "deploy": true
+        }
+    
+    Use Cases:
+        1. Build all extensions: sections = []
+        2. Build specific extensions: sections = ["Python", "Offset"]
+        3. Build and deploy: upload = true, deploy = true
+        4. Replace existing: rebuild = true, upload = true
+    """
     data = request.get_json()
     yaml_data = data.get("yaml", {})
     sections = data.get("sections", [])
@@ -284,13 +661,22 @@ def create_extension_from_yaml():
 @handle_errors
 def delete_extension_by_id(extension_id):
     """
-    Delete a specific extension by ID.
-
+    Delete a specific extension by its Cumulocity managed object ID.
+    
     Path Parameters:
-        extension_id: Extension ID to delete
-
+        extension_id: Cumulocity managed object ID of the extension
+    
+    Returns:
+        200: Extension deleted successfully
+        404: Extension not found
+        
+    Response Body:
+        {
+            "message": "Extension deleted successfully"
+        }
+    
     Example:
-        DELETE /extension/12345
+        DELETE /extension/12345678
     """
     try:
         agent.delete_extension(request, extension_id=extension_id)
@@ -303,11 +689,24 @@ def delete_extension_by_id(extension_id):
 @handle_errors
 def delete_extensions_by_name():
     """
-    Delete extension(s) by name (may delete multiple).
-
+    Delete one or more extensions by name.
+    
+    This can delete multiple extensions if they share the same name.
+    
     Query Parameters:
-        name: Extension name (required)
-
+        name (required): Extension name to search for and delete
+    
+    Returns:
+        200: Extension(s) deleted successfully
+        400: Missing name parameter
+        404: No extensions found with that name
+        
+    Response Body:
+        {
+            "message": "Successfully deleted 2 extension(s)",
+            "deleted_count": 2
+        }
+    
     Example:
         DELETE /extension?name=MyExtension
     """
@@ -546,6 +945,7 @@ def _process_yaml_sections(
         return create_error_response(f"Failed to process YAML: {e}", 400)
 
     uploaded_extensions = []
+    failed_sections = []
 
     for idx, section_name in enumerate(sections_to_process):
         section_data = yaml_structure[section_name]
@@ -561,15 +961,33 @@ def _process_yaml_sections(
                 deleted_count = agent.delete_extension(
                     request, extension_name=section_name
                 )
+                if deleted_count == 0:
+                    error_msg = (
+                        f"Rebuild requested but no existing extension named '{section_name}' "
+                        "was found to delete. Cannot proceed with rebuild for this section."
+                    )
+                    logger.error(error_msg)
+                    failed_sections.append({
+                        "section": section_name,
+                        "error": error_msg
+                    })
+                    continue
+                
                 logger.info(
                     f"Deleted {deleted_count} existing extension(s) "
                     f"for section '{section_name}' rebuild"
                 )
             except C8YAgentError as e:
-                logger.warning(
-                    f"Failed to delete existing extensions for section "
+                error_msg = (
+                    f"Failed to delete existing extension for section "
                     f"'{section_name}' during rebuild: {e}"
                 )
+                logger.error(error_msg)
+                failed_sections.append({
+                    "section": section_name,
+                    "error": str(e)
+                })
+                continue
 
         def fetch_section_files(work_dir, headers):
             base_url = repository["url"]
@@ -580,32 +998,53 @@ def _process_yaml_sections(
                     api_url, headers, work_dir, skip_root_folder=False
                 )
 
-        result = _build_and_process_extension(
-            extension_name=section_name,
-            repository=repository,
-            upload=upload,
-            deploy=deploy and (idx == len(sections_to_process) - 1),
-            build_type="yaml",
-            build_info_extra={
-                "yaml": yaml_data,
-                "sections": sections,
-                "section_name": section_name,
-                "files": files,
-            },
-            source_fetcher=fetch_section_files,
-        )
+        try:
+            result = _build_and_process_extension(
+                extension_name=section_name,
+                repository=repository,
+                upload=upload,
+                deploy=deploy and (idx == len(sections_to_process) - 1),
+                build_type="yaml",
+                build_info_extra={
+                    "yaml": yaml_data,
+                    "sections": sections,
+                    "section_name": section_name,
+                    "files": files,
+                },
+                source_fetcher=fetch_section_files,
+            )
 
-        if upload:
-            # Extract ID from result
-            if isinstance(result, tuple):
-                response_data = result[0].get_json()
-                ext_id = response_data.get("id")
-                uploaded_extensions.append({"name": section_name, "id": ext_id})
-        elif idx == 0:
-            return result
+            if upload:
+                # Extract ID from result
+                if isinstance(result, tuple):
+                    response_data = result[0].get_json()
+                    ext_id = response_data.get("id")
+                    uploaded_extensions.append({"name": section_name, "id": ext_id})
+            elif idx == 0:
+                return result
+        except Exception as e:
+            error_msg = f"Failed to build section '{section_name}': {e}"
+            logger.error(error_msg)
+            failed_sections.append({
+                "section": section_name,
+                "error": str(e)
+            })
 
     if upload:
-        return jsonify({"uploaded_extensions": uploaded_extensions}), 201
+        if failed_sections:
+            return jsonify({
+                "uploaded_extensions": uploaded_extensions,
+                "failed_sections": failed_sections,
+                "message": f"Partially completed: {len(uploaded_extensions)} succeeded, {len(failed_sections)} failed"
+            }), 207  # Multi-Status
+        
+        if uploaded_extensions:
+            return jsonify({"uploaded_extensions": uploaded_extensions}), 201
+        
+        return create_error_response(
+            "All sections failed to build. See details in failed_sections.",
+            400
+        )
 
     return create_error_response("No valid sections found", 400)
 

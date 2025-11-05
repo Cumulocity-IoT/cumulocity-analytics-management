@@ -9,6 +9,7 @@ import {
     RepositoryService,
     uuidCustom
 } from '../../shared';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Component({
     selector: 'a17t-name-repositories-drawer',
@@ -482,4 +483,40 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.isAddingNew = false;
         this.originalFormValues = null;
     }
+
+    /**
+ * Open the full GitHub URL in a new browser window
+ */
+openInGitHub(): void {
+    const urlValue = this.repositoryForm.get('url').value;
+    
+    if (!urlValue || urlValue.trim() === '') {
+        this.alertService.warning(gettext('Please enter a repository URL first'));
+        return;
+    }
+
+    // Construct the full GitHub URL
+    const fullUrl = this.GITHUB_URL + urlValue.trim();
+    
+    // Validate the URL before opening
+    try {
+        new URL(fullUrl);
+        
+        // Open in new window/tab
+        const newWindow = window.open(fullUrl, '_blank', 'noopener,noreferrer');
+        
+        // Check if popup was blocked
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+            this.alertService.warning(
+                gettext('Pop-up blocked. Please allow pop-ups for this site and try again.')
+            );
+        } else {
+            this.alertService.success(gettext('Repository opened in new tab'));
+        }
+    } catch (error) {
+        this.alertService.danger(
+            gettext('Invalid URL. Please check the repository URL format.')
+        );
+    }
+}
 }
