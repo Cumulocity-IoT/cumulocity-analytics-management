@@ -506,13 +506,13 @@ openInGitHub(): void {
         const newWindow = window.open(fullUrl, '_blank', 'noopener,noreferrer');
         
         // Check if popup was blocked
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-            this.alertService.warning(
-                gettext('Pop-up blocked. Please allow pop-ups for this site and try again.')
-            );
-        } else {
-            this.alertService.success(gettext('Repository opened in new tab'));
-        }
+        // if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+        //     this.alertService.warning(
+        //         gettext('Pop-up blocked. Please allow pop-ups for this site and try again.')
+        //     );
+        // } else {
+        //     this.alertService.success(gettext('Repository opened in new tab'));
+        // }
     } catch (error) {
         this.alertService.danger(
             gettext('Invalid URL. Please check the repository URL format.')
