@@ -17,6 +17,7 @@ import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import JSZip from 'jszip';
 
 interface UploadState {
   isLoading: boolean;
@@ -25,6 +26,24 @@ interface UploadState {
   file: File | null;
   extension: Partial<IManagedObject> | null;
   requiresUpdate: boolean;
+}
+
+interface MonitorMetadata {
+  custom: boolean;
+  file: string;
+  id: string;
+  name: string;
+  type: string;
+  category?: string;
+  description?: string;
+  inputs?: any[];
+  outputs?: any[];
+  parameters?: any[];
+}
+
+interface BuildInformation {
+  build_type: string;
+  monitors: MonitorMetadata[];
 }
 
 @Component({
@@ -74,7 +93,6 @@ export class ExtensionAddComponent implements OnDestroy {
     return this.analyticsService.uploadProgress$;
   }
 
-  // Getters for template
   get isLoading(): boolean {
     return this.state.isLoading;
   }
@@ -108,10 +126,19 @@ export class ExtensionAddComponent implements OnDestroy {
       const extensionName = this.extractExtensionName(file.name);
       const existingExtension = await this.findExistingExtension(extensionName);
 
+      // Analyze ZIP content
+      const buildInformation = await this.analyzeZipContent(file);
+
       this.state.extension = existingExtension || {
         pas_extension: extensionName,
-        name: extensionName
+        name: extensionName,
+        build_information: buildInformation
       };
+
+      // Add build_information to existing extension as well
+      if (existingExtension) {
+        this.state.extension.build_information = buildInformation;
+      }
 
       this.state.requiresUpdate = !!existingExtension;
 
@@ -124,6 +151,115 @@ export class ExtensionAddComponent implements OnDestroy {
       this.handleUploadError(error);
     } finally {
       this.finalizeUpload();
+    }
+  }
+
+  /**
+   * Analyzes the ZIP file content to extract monitor information
+   */
+  private async analyzeZipContent(file: File): Promise<BuildInformation> {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const monitors: MonitorMetadata[] = [];
+
+      // Find all .mon files
+      const monitorFiles: string[] = [];
+      zip.forEach((relativePath, zipEntry) => {
+        if (relativePath.endsWith('.mon') && !zipEntry.dir) {
+          monitorFiles.push(relativePath);
+        }
+      });
+
+      // Process each monitor file
+      for (const monitorPath of monitorFiles) {
+        const monitorName = this.extractMonitorName(monitorPath);
+        const metadataPath = `events/${monitorName}_metadata.evt`;
+
+        // Try to find corresponding metadata file
+        const metadataFile = zip.file(metadataPath);
+        
+        const monitorMetadata: MonitorMetadata = {
+          custom: true,
+          file: monitorPath.split('/').pop()!,
+          id: `apamax.analyticsbuilder.custom.${monitorName}`,
+          name: monitorName,
+          type: 'file'
+        };
+
+        // Parse metadata if available
+        if (metadataFile) {
+          try {
+            const metadataContent = await metadataFile.async('text');
+            const parsedMetadata = this.parseEventMetadata(metadataContent);
+            
+            if (parsedMetadata) {
+              monitorMetadata.category = parsedMetadata.category;
+              monitorMetadata.description = parsedMetadata.description;
+              monitorMetadata.inputs = parsedMetadata.inputs;
+              monitorMetadata.outputs = parsedMetadata.outputs;
+              monitorMetadata.parameters = parsedMetadata.parameters;
+              
+              // Use the ID from metadata if available
+              if (parsedMetadata.id) {
+                monitorMetadata.id = parsedMetadata.id;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to parse metadata for ${monitorName}:`, error);
+          }
+        }
+
+        monitors.push(monitorMetadata);
+      }
+
+      return {
+        build_type: 'external',
+        monitors: monitors
+      };
+    } catch (error) {
+      console.error('Failed to analyze ZIP content:', error);
+      throw new Error('Failed to analyze extension package');
+    }
+  }
+
+  /**
+   * Extracts monitor name from file path
+   * e.g., "monitors/BasicAnomalyDetection.mon" -> "BasicAnomalyDetection"
+   */
+  private extractMonitorName(filePath: string): string {
+    const fileName = filePath.split('/').pop() || '';
+    return fileName.replace('.mon', '');
+  }
+
+  /**
+   * Parses the .evt metadata file content
+   * Format: "analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("Name", "EN", "{...json...}")
+   */
+  private parseEventMetadata(content: string): any | null {
+    try {
+      // Extract JSON from the metadata format
+      const jsonMatch = content.match(/BlockMetadata\([^,]+,\s*"[^"]+",\s*"({.*})"\)/);
+      
+      if (!jsonMatch || !jsonMatch[1]) {
+        return null;
+      }
+
+      // Unescape the JSON string
+      const jsonString = jsonMatch[1]
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+
+      const metadata = JSON.parse(jsonString);
+      
+      // Extract analytics information (first element in analytics array)
+      if (metadata.analytics && metadata.analytics.length > 0) {
+        return metadata.analytics[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to parse event metadata:', error);
+      return null;
     }
   }
 
@@ -166,7 +302,7 @@ export class ExtensionAddComponent implements OnDestroy {
         this.handleUploadFailure();
       }
     } catch (error) {
-      throw error; // Re-throw to be caught by outer try-catch
+      throw error;
     }
   }
 

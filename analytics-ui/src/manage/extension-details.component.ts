@@ -32,7 +32,7 @@ import { AnalyticsService, CepExtension } from '../shared';
 export class ExtensionDetailsComponent implements OnInit {
   extensionFromCep: CepExtension;
   extension: CepExtension;
-  extensionContent: any;
+  extensionContent: any[] = [];
   buildInformation: any[] = [];
   breadcrumbConfig: { icon: string; label: string; path: string };
 
@@ -46,7 +46,6 @@ export class ExtensionDetailsComponent implements OnInit {
     this.extension = navigation?.extras?.state?.['extension'];
     // console.log("Navigation", navigation?.extras);
   }
-
   async ngOnInit(): Promise<void> {
     this.extensionFromCep = await this.route.snapshot.data['extensionFromCep'];
 
@@ -54,37 +53,59 @@ export class ExtensionDetailsComponent implements OnInit {
     if (!this.extension) {
       this.extension = history.state.extension;
     }
-    if (this.extension['build_information']) {
-      this.buildInformation.push({
-        label: 'Build Type',
-        type: 'string',
-        value: this.extension['build_information']['build_type']
-      });
-      this.buildInformation.push({
-        label: 'Repository Name',
-        type: 'string',
-        value: this.extension['build_information']['repository']['name']
-      });
-      this.buildInformation.push({
-        label: 'Repository Url',
-        type: 'link',
-        value: this.extension['build_information']['repository']['url'],
-        action: (event, link: string) =>
-          window.open(link, "_blank", "noopener,noreferrer"),
-      });
+
+    const buildInfo = this.extension?.['build_information'];
+
+    if (buildInfo) {
+      // Add Build Type
+      if (buildInfo.build_type) {
+        this.buildInformation.push({
+          label: 'Build Type',
+          type: 'string',
+          value: buildInfo.build_type
+        });
+      }
+
+      // Add Repository information if available
+      const repo = buildInfo.repository;
+      if (repo?.name) {
+        this.buildInformation.push({
+          label: 'Repository Name',
+          type: 'string',
+          value: repo.name
+        });
+      }
+
+      if (repo?.url) {
+        this.buildInformation.push({
+          label: 'Repository Url',
+          type: 'link',
+          value: repo.url,
+          action: (event, link: string) =>
+            window.open(link, "_blank", "noopener,noreferrer"),
+        });
+      }
     }
+
     await this.init();
   }
 
   async init() {
     this.setBreadcrumbConfig();
     const { name } = this.route.snapshot.params;
-    const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
-    const key = `${name}.zip`;
-    this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
-      return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
-    }) || [];
-    // console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
+    if (this.extensionFromCep) {
+      const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
+      const key = `${name}.zip`;
+      this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
+        return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
+      }) || [];
+    } else {
+      this.extension['build_information']['monitors'].forEach(monitor => {
+         this.extensionContent.push(monitor['file']);
+      });
+     
+    }
+     console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
   }
 
   private setBreadcrumbConfig() {

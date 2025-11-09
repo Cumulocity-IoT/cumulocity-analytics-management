@@ -25,7 +25,7 @@
             : 'label label-info'
         ">
         {{
-        extension.build_information ? 'Build Information' : ('No Build Information' | translate)
+        `Build type: ${getBuildType()}`
         }}</span>
     </div>
 
@@ -66,13 +66,13 @@
       </button>
       <ul *dropdownMenu class="dropdown-menu dropdown-menu-right">
         <li>
-          <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!extension.loaded">
+          <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!hasBuildInformation()">
             <i c8yIcon="info" class="m-r-4"></i>
             {{ 'Details' | translate }}
           </button>
         </li>
         <li>
-          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!extension.build_information || !isBackendServiceAvailable">
+          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!isBuildInternally() || !isBackendServiceAvailable">
             <i c8yIcon="process" class="m-r-4"></i>
             {{ 'Rebuild' | translate }}
           </button>

@@ -18,7 +18,7 @@
  ~ @authors Christof Strack
   -->
 
-<c8y-title>Details {{ extensionFromCEP?.name }}</c8y-title>
+<c8y-title>Details {{ extensionFromCep?.name }}</c8y-title>
 
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
@@ -26,7 +26,7 @@
   <c8y-breadcrumb-item [icon]="'c8y-modules'" [label]="'Manage extensions' | translate"
     [path]="'c8y-pkg-analytics-extension/manage'">
   </c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [label]="extensionFromCEP?.name"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
 <div class="row p-l-24 p-r-24 p-b-24">
@@ -48,16 +48,16 @@
           </thead>
           <tbody>
             <!-- Empty state row properly inside tbody -->
-            <tr *ngIf="!extensionFromCEP || extensionFromCEP?.analytics?.length == 0">
+            <tr *ngIf="!extensionFromCep || extensionFromCep?.analytics?.length == 0">
               <td></td>
               <td colspan="2">
                 <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
-                  [title]="'This extension contains no .mon files .' | translate" [horizontal]="false">
+                  [title]="'This extension contains no .mon files or extension is not loaded.' | translate" [horizontal]="false">
                 </c8y-ui-empty-state>
               </td>
             </tr>
 
-            <tr *ngFor="let block of extensionFromCEP?.analytics">
+            <tr *ngFor="let block of extensionFromCep?.analytics">
               <td [title]="block.id">{{ block.id }}</td>
               <td [title]="block.category">{{ block.category }}</td>
               <td [title]="block.description">{{ block.description }}</td>

@@ -45,14 +45,24 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   async detail(): Promise<void> {
-    if (this.extension?.loaded) {
-      await this.router.navigate(['details', this.extension.name], {
-        relativeTo: this.activatedRoute,
-        state: {
-          extension: this.extension
-        }
-      });
-    }
+    await this.router.navigate(['details', this.extension.name], {
+      relativeTo: this.activatedRoute,
+      state: {
+        extension: this.extension
+      }
+    });
+  }
+
+  isBuildInternally(): boolean {
+    return this.extension?.build_information && (this.extension?.build_information.build_type == 'list' || this.extension?.build_information.build_type == 'yaml' || this.extension?.build_information.build_type == 'repository')
+  }
+
+  hasBuildInformation(): boolean {
+    return this.extension?.build_information;
+  }
+
+  getBuildType(): string {
+    return this.extension?.build_information ? this.extension?.build_information.build_type : 'Unknown';
   }
 
   async delete(): Promise<void> {
@@ -205,7 +215,7 @@ export class ExtensionCardComponent implements OnInit {
 
     } catch (error) {
       console.error('Rebuild failed:', error);
-      
+
       // Check if it's a 404 error (extension not found for rebuild)
       if (error?.status === 404 || error?.message?.includes('no existing extension')) {
         this.alertService.danger(
