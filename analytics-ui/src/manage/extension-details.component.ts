@@ -100,12 +100,18 @@ export class ExtensionDetailsComponent implements OnInit {
         return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
       }) || [];
     } else {
-      this.extension['build_information']['monitors'].forEach(monitor => {
-         this.extensionContent.push(monitor['file']);
-      });
-     
+      if (this.extension['build_information']['monitors']) {
+        this.extension['build_information']['monitors'].forEach(monitor => {
+          this.extensionContent.push(monitor['file']);
+        });
+      }
+      if (this.extension['build_information']['files']) {
+        this.extension['build_information']['files'].forEach(monitor => {
+          this.extensionContent.push(monitor['file']);
+        });
+      }
     }
-     console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
+    console.log("Content", this.extensionContent, this.extension?.analytics?.length);
   }
 
   private setBreadcrumbConfig() {

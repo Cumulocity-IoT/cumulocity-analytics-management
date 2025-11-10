@@ -41,9 +41,17 @@ interface MonitorMetadata {
   parameters?: any[];
 }
 
+interface FileMetadata {
+  custom: boolean;
+  file: string;
+  name: string;
+  type: string;
+}
+
 interface BuildInformation {
   build_type: string;
   monitors: MonitorMetadata[];
+  files: FileMetadata[];
 }
 
 @Component({
@@ -81,7 +89,7 @@ export class ExtensionAddComponent implements OnDestroy {
     private alertService: AlertService,
     private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
-  ) {}
+  ) { }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -161,12 +169,17 @@ export class ExtensionAddComponent implements OnDestroy {
     try {
       const zip = await JSZip.loadAsync(file);
       const monitors: MonitorMetadata[] = [];
+      const files: FileMetadata[] = [];
+
+      // Track processed files to avoid duplicates
+      const processedFiles = new Set<string>();
 
       // Find all .mon files
       const monitorFiles: string[] = [];
       zip.forEach((relativePath, zipEntry) => {
         if (relativePath.endsWith('.mon') && !zipEntry.dir) {
           monitorFiles.push(relativePath);
+          processedFiles.add(relativePath);
         }
       });
 
@@ -178,6 +191,11 @@ export class ExtensionAddComponent implements OnDestroy {
         // Try to find corresponding metadata file
         const metadataFile = zip.file(metadataPath);
         
+        // Mark metadata file as processed
+        if (metadataFile) {
+          processedFiles.add(metadataPath);
+        }
+
         const monitorMetadata: MonitorMetadata = {
           custom: true,
           file: monitorPath.split('/').pop()!,
@@ -191,14 +209,14 @@ export class ExtensionAddComponent implements OnDestroy {
           try {
             const metadataContent = await metadataFile.async('text');
             const parsedMetadata = this.parseEventMetadata(metadataContent);
-            
+
             if (parsedMetadata) {
               monitorMetadata.category = parsedMetadata.category;
               monitorMetadata.description = parsedMetadata.description;
               monitorMetadata.inputs = parsedMetadata.inputs;
               monitorMetadata.outputs = parsedMetadata.outputs;
               monitorMetadata.parameters = parsedMetadata.parameters;
-              
+
               // Use the ID from metadata if available
               if (parsedMetadata.id) {
                 monitorMetadata.id = parsedMetadata.id;
@@ -208,18 +226,91 @@ export class ExtensionAddComponent implements OnDestroy {
             console.warn(`Failed to parse metadata for ${monitorName}:`, error);
           }
         }
-
+        
         monitors.push(monitorMetadata);
       }
 
+      // Process all other files (excluding monitors and their metadata)
+      zip.forEach((relativePath, zipEntry) => {
+        // Skip directories and already processed files
+        if (zipEntry.dir || processedFiles.has(relativePath)) {
+          return;
+        }
+
+        // Skip common metadata/config files that shouldn't be listed
+        const skipPatterns = [
+          /^__MACOSX\//,
+          /\.DS_Store$/,
+          /^\.git\//,
+          /^node_modules\//
+        ];
+
+        if (skipPatterns.some(pattern => pattern.test(relativePath))) {
+          return;
+        }
+
+        const fileName = relativePath.split('/').pop() || relativePath;
+        const extension = this.getFileExtension(fileName);
+
+        const fileMetadata: FileMetadata = {
+          custom: true,
+          file: relativePath,
+          name: fileName,
+          type: this.mapFileType(extension)
+        };
+
+        files.push(fileMetadata);
+      });
+
       return {
         build_type: 'external',
-        monitors: monitors
+        monitors,
+        files
       };
     } catch (error) {
       console.error('Failed to analyze ZIP content:', error);
       throw new Error('Failed to analyze extension package');
     }
+  }
+
+  /**
+   * Extracts file extension from filename
+   */
+  private getFileExtension(fileName: string): string {
+    const parts = fileName.split('.');
+    return parts.length > 1 ? parts.pop()!.toLowerCase() : '';
+  }
+
+  /**
+   * Maps file extension to a type category
+   */
+  private mapFileType(extension: string): string {
+    const typeMap: { [key: string]: string } = {
+      'json': 'config',
+      'xml': 'config',
+      'yaml': 'config',
+      'yml': 'config',
+      'txt': 'text',
+      'md': 'documentation',
+      'pdf': 'documentation',
+      'evt': 'event',
+      'mon': 'monitor',
+      'jar': 'library',
+      'js': 'script',
+      'ts': 'script',
+      'py': 'script',
+      'sh': 'script',
+      'bat': 'script',
+      'html': 'web',
+      'css': 'web',
+      'png': 'image',
+      'jpg': 'image',
+      'jpeg': 'image',
+      'gif': 'image',
+      'svg': 'image'
+    };
+
+    return typeMap[extension] || 'file';
   }
 
   /**
@@ -239,7 +330,7 @@ export class ExtensionAddComponent implements OnDestroy {
     try {
       // Extract JSON from the metadata format
       const jsonMatch = content.match(/BlockMetadata\([^,]+,\s*"[^"]+",\s*"({.*})"\)/);
-      
+
       if (!jsonMatch || !jsonMatch[1]) {
         return null;
       }
@@ -250,7 +341,7 @@ export class ExtensionAddComponent implements OnDestroy {
         .replace(/\\\\/g, '\\');
 
       const metadata = JSON.parse(jsonString);
-      
+
       // Extract analytics information (first element in analytics array)
       if (metadata.analytics && metadata.analytics.length > 0) {
         return metadata.analytics[0];
@@ -308,7 +399,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private handleUploadSuccess(mode: UploadMode): void {
     const action = mode === 'update' ? 'Updated' : 'Uploaded';
-    this.alertService.success(`${action} extension successfully.`);
+    this.alertService.success(`${action} extension ${this.state.extension.name} successfully.`);
     this.state.isComplete = true;
     this.progress.next(100);
   }
@@ -321,9 +412,9 @@ export class ExtensionAddComponent implements OnDestroy {
   private handleUploadError(error: any): void {
     this.cleanup();
     this.dropAreaComponent?.onDelete();
-    
+
     this.state.errorMessage = ERROR_MESSAGES[error?.message] || null;
-    
+
     if (!this.state.errorMessage && error) {
       this.alertService.addServerFailure(error);
     }
@@ -379,7 +470,7 @@ export class ExtensionAddComponent implements OnDestroy {
     if (this.state.extension && !this.state.isComplete) {
       this.analyticsService.cancelExtensionCreation(this.state.extension);
     }
-    
+
     if (this.modalRef) {
       this.modalRef.hide();
       this.modalRef = null;

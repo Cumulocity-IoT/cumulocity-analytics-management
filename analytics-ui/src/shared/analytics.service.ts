@@ -210,7 +210,6 @@ export class AnalyticsService implements OnDestroy {
       }
 
       this.invalidateExtensionCaches();
-      this.alertService.success(gettext(`Extension "${extension.name}" uploaded successfully`));
       this.extensionChanged$.emit(result.data as IManagedObject);
 
       return result.data;
