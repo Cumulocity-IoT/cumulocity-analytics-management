@@ -367,6 +367,10 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private extractExtensionName(fileName: string): string {
+    // Remove .zip extension if present, otherwise remove the last extension
+    if (fileName.toLowerCase().endsWith('.zip')) {
+      return fileName.slice(0, -4);
+    }
     return fileName.split('.').slice(0, -1).join('.');
   }
 

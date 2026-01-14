@@ -46,7 +46,7 @@ export class ExtensionCardComponent implements OnInit {
   ) { }
 
   ngOnInit(): void {
-    // console.log('Extension loaded:', this.extension);
+    console.log('Extension loaded:', this.extension);
   }
 
   async detail(): Promise<void> {
