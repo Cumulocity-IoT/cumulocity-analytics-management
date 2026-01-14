@@ -12,7 +12,6 @@ import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscrip
 import { ExtensionAddWizardComponent } from './shared/wizard/extension-add-wizard.component';
 import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factory';
 import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
-import { HttpClientModule } from '@angular/common/http';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { FORMLY_CONFIG } from '@ngx-formly/core';
 
@@ -36,7 +35,6 @@ import { extensionResolver, backendResolver } from './manage/utils';
     ReactiveFormsModule,
     BinaryFileDownloadModule,
     DefaultSubscriptionsModule,
-    HttpClientModule,
     PopoverModule,
     // Import standalone components
     BlockGridComponentBlock,

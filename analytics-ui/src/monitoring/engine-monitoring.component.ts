@@ -20,7 +20,7 @@ import { CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-component
   templateUrl: './engine-monitoring.component.html',
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, FormsModule, CoreModule, HumanizePipe]
+  imports: [CommonModule, FormsModule, CoreModule]
 })
 export class EngineMonitoringComponent implements OnInit {
   cepOperationObjectId: string;

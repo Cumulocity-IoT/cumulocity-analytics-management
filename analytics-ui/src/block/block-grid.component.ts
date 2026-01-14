@@ -46,7 +46,7 @@ import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, CoreModule, BooleanRendererComponent, LabelRendererComponent]
+  imports: [CommonModule, CoreModule]
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;
