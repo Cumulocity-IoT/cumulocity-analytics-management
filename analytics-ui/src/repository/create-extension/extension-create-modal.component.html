@@ -9,7 +9,9 @@
         <formly-form [form]="configFormly" [fields]="configFormlyFields" [model]="configuration"></formly-form>
       </div>
     </div>
-    <div *ngIf="loading"><c8y-loading></c8y-loading></div>
+    @if (loading) {
+      <div><c8y-loading></c8y-loading></div>
+    }
     <div class="modal-footer">
       <button class="btn btn-default" title="{{ 'Create extension' | translate }}" (click)="createExtension()" [disabled]="
                 (backendDeployed$ | async) === false || !configFormly.valid

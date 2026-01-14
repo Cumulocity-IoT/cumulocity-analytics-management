@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } from '@angular/core';
-import { AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { AlertService } from '@c8y/ngx-components';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
+import { AlertService, CoreModule } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable } from 'rxjs';
 import {
@@ -10,12 +11,14 @@ import {
     uuidCustom
 } from '../../shared';
 import { gettext } from '@c8y/ngx-components/gettext';
+import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
     selector: 'a17t-name-repositories-drawer',
     templateUrl: './repositories-drawer.component.html',
     encapsulation: ViewEncapsulation.None,
-    standalone: false
+    standalone: true,
+    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule]
 })
 export class RepositoriesDrawerComponent implements OnInit {
     @Input() hideInstalled: boolean = false;

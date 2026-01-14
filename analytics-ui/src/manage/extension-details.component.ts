@@ -19,7 +19,9 @@
  */
 
 import { Component, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
+import { CoreModule } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { AnalyticsService, CepExtension } from '../shared';
 
@@ -27,7 +29,8 @@ import { AnalyticsService, CepExtension } from '../shared';
   selector: 'a17t-extension-details',
   templateUrl: './extension-details.component.html',
   styleUrls: ['./extension-details.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule]
 })
 export class ExtensionDetailsComponent implements OnInit {
   extensionFromCep: CepExtension;

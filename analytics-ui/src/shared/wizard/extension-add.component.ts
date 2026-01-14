@@ -4,9 +4,11 @@ import {
   ViewChild,
   OnDestroy
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
 import {
   AlertService,
+  CoreModule,
   DropAreaComponent,
   WizardComponent
 } from '@c8y/ngx-components';
@@ -57,7 +59,8 @@ interface BuildInformation {
 @Component({
   selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html',
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule]
 })
 export class ExtensionAddComponent implements OnDestroy {
   @Input() headerText: string;

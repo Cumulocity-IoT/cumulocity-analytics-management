@@ -1,6 +1,6 @@
 {
   "name": "analytics-extension",
-  "version": "2.6.1",
+  "version": "2.6.2",
   "description": "Cumulocity plugin to manage custom Analytics Builder Blocks as extensions.",
   "repository": {
     "type": "git",

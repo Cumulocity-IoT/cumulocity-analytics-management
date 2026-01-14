@@ -1,184 +1,205 @@
 <div class="card content-fullpage p-48 split-view--4-8 grid__row--single">
-    <!-- Left Panel: Repository List -->
-    <div class="inner-scroll split-view__list bg-level-1">
-        <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
-            <div class="input-group input-group-search">
-                <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
-                    [(ngModel)]="searchTerm" (keyup)="searchRepositories($event)" />
-                <span class="input-group-btn">
-                    <button class="btn btn-clean" [title]="'Filter repositories…' | translate"
-                        [attr.aria-label]="'Filter repositories' | translate"
-                        *ngIf="!searchTerm || searchTerm.length === 0">
-                        <i c8yIcon="search"></i>
-                    </button>
-                    <button class="btn btn-clean" [title]="'Clear' | translate" [attr.aria-label]="'Clear' | translate"
-                        type="button" *ngIf="searchTerm && searchTerm.length > 0" (click)="clearSearch()">
-                        <i c8yIcon="times"></i>
-                    </button>
-                </span>
-            </div>
-        </div>
+  <!-- Left Panel: Repository List -->
+  <div class="inner-scroll split-view__list bg-level-1">
+    <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
+      <div class="input-group input-group-search">
+        <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
+          [(ngModel)]="searchTerm" (keyup)="searchRepositories($event)" />
+        <span class="input-group-btn">
+          @if (!searchTerm || searchTerm.length === 0) {
+            <button class="btn btn-clean" [title]="'Filter repositories…' | translate"
+              [attr.aria-label]="'Filter repositories' | translate"
+              >
+              <i c8yIcon="search"></i>
+            </button>
+          }
+          @if (searchTerm && searchTerm.length > 0) {
+            <button class="btn btn-clean" [title]="'Clear' | translate" [attr.aria-label]="'Clear' | translate"
+              type="button" (click)="clearSearch()">
+              <i c8yIcon="times"></i>
+            </button>
+          }
+        </span>
+      </div>
+    </div>
 
-        <div class="flex-grow">
-            <c8y-ui-empty-state *ngIf="!filteredDisplayList.length && !searchTerm" icon="plugin" [horizontal]="true"
-                [title]="'No repositories defined.' | translate"
-                [subtitle]="'Add a repository using the button below.' | translate"
-                class="d-block"></c8y-ui-empty-state>
+    <div class="flex-grow">
+      @if (!filteredDisplayList.length && !searchTerm) {
+        <c8y-ui-empty-state icon="plugin" [horizontal]="true"
+          [title]="'No repositories defined.' | translate"
+          [subtitle]="'Add a repository using the button below.' | translate"
+        class="d-block"></c8y-ui-empty-state>
+      }
 
-            <c8y-ui-empty-state *ngIf="!filteredDisplayList.length && searchTerm" icon="search" [horizontal]="true"
-                [title]="'No matching repositories found.' | translate"
-                [subtitle]="'Try different search terms.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+      @if (!filteredDisplayList.length && searchTerm) {
+        <c8y-ui-empty-state icon="search" [horizontal]="true"
+          [title]="'No matching repositories found.' | translate"
+        [subtitle]="'Try different search terms.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+      }
 
-            <div class="c8y-nav-stacked" *ngIf="filteredDisplayList.length">
-                <button *ngFor="let repository of filteredDisplayList; let i = index" class="c8y-stacked-item"
+      @if (filteredDisplayList.length) {
+        <div class="c8y-nav-stacked">
+          @for (repository of filteredDisplayList; track repository; let i = $index) {
+            <button class="c8y-stacked-item"
                     [ngClass]="{ 
                 active: displayList.indexOf(repository) === selectedRepositoryIndex,
                 'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
             }" (click)="onEditRepository(repository, i)" [title]="repository.name">
-                    <i c8yIcon="plugin" class="m-r-4"></i>
-                    <span class="m-r-8 text-truncate">{{ repository.name }}</span>
-                    <span class="m-l-auto label m-r-16"
-                        [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
-                        *ngIf="!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)">
-                        {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
-                    </span>
-                    <span class="m-l-auto label label-default m-r-16"
-                        *ngIf="isAddingNew && tempNewRepository && repository.id === tempNewRepository.id">
-                        {{ 'Not saved' | translate }}
-                    </span>
-                </button>
-            </div>
-            <div class="ff-scroll-fix"></div>
-        </div>
-
-        <div class="card-footer large-padding separator sticky-bottom">
-            <button type="button" [title]="'Add repository' | translate" class="btn btn-default"
-                (click)="createCustomRepository()">
-                <i c8yIcon="plus-circle" class="m-r-4"></i>
-                {{ 'Add repository' | translate }}
+              <i c8yIcon="plugin" class="m-r-4"></i>
+              <span class="m-r-8 text-truncate">{{ repository.name }}</span>
+              @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {
+                <span class="m-l-auto label m-r-16"
+                  [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
+                  >
+                  {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
+                </span>
+              }
+              @if (isAddingNew && tempNewRepository && repository.id === tempNewRepository.id) {
+                <span class="m-l-auto label label-default m-r-16"
+                  >
+                  {{ 'Not saved' | translate }}
+                </span>
+              }
             </button>
+          }
         </div>
+      }
+      <div class="ff-scroll-fix"></div>
     </div>
 
-    <!-- Right Panel: Repository Details -->
-    <div class="inner-scroll split-view__detail" cdkScrollable
-        [ngClass]="{ 'split-view__detail--selected': showAddRepository }">
-        <div class="p-l-24 p-r-24 flex-grow" *ngIf="!showAddRepository">
-            <c8y-ui-empty-state icon="plugin" [horizontal]="true" [title]="'No repository selected.' | translate"
-                [subtitle]="'Add or select a repository.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
-        </div>
-
-        <div *ngIf="showAddRepository" class="p-l-24 p-r-24 p-t-24 flex-grow">
-            <h4 class="m-b-24">
-                {{ isAddingNew ? ('Add Repository' | translate) : ('Edit ' + repositoryForm.value.name) }}
-            </h4>
-
-            <form [formGroup]="repositoryForm" autocomplete="off">
-                <fieldset>
-                    <input type="hidden" formControlName="id" />
-
-                    <c8y-form-group>
-                        <label for="name">{{ 'Name' | translate }}</label>
-                        <input type="text" id="name" formControlName="name" class="form-control"
-                            (change)="warnAboutPATReset()" [placeholder]="'Repository name' | translate" />
-                    </c8y-form-group>
-
-                    <c8y-form-group>
-                        <label for="url">
-                            <span>{{ 'Repository URL' | translate }}</span>
-                            <button type="button" placement="right" [popover]="popRepositoryUrl" class="btn-help"
-                                aria-label="Help content"></button>
-                        </label>
-                        <div class="input-group">
-                            <span class="input-group-addon">{{ GITHUB_URL }}</span>
-                            <input type="text" id="url" #urlInput autocomplete="off" formControlName="url"
-                                (change)="warnAboutPATReset()"
-                                [placeholder]="'apama-analytics-builder-block-sdk/tree/main/samples/blocks' | translate"
-                                class="form-control" />
-                            <span class="input-group-btn">
-                                <button type="button" class="btn btn-default" [title]="'Open in GitHub' | translate"
-                                    [attr.aria-label]="'Open repository in GitHub' | translate" (click)="openInGitHub()"
-                                    [disabled]="!repositoryForm.get('url').value || repositoryForm.get('url').value.trim() === ''">
-                                    <i c8yIcon="external-link"></i>
-                                </button>
-                            </span>
-                        </div>
-                        <small class="help-block text-muted">
-                            {{ 'Click the button to open this repository in GitHub' | translate }}
-                        </small>
-                    </c8y-form-group>
-
-                    <c8y-form-group>
-                        <label for="accessToken">
-                            <span>{{ 'Personal Access Token' | translate }}</span>
-                            <button type="button" placement="right" [popover]="popupPAT" class="btn-help"
-                                aria-label="Help content" [outsideClick]="true"></button>
-                            <ng-template #popupPAT>
-                                <p class="m-b-8">
-                                    Enter Personal Access Token (PAT) created <a
-                                        href="https://github.com/settings/tokens/new" target="_blank">here</a>. <br />
-                                    Select
-                                    the scope <code>public_repo</code> and enable SSO for the token
-                                </p>
-                            </ng-template>
-                        </label>
-                        <input type="password" id="accessToken" formControlName="accessToken" required="true"
-                            [placeholder]="'e.g.: your github Personal Access Token (PAT)' | translate"
-                            class="form-control" />
-
-                        <!-- Warning message displayed under the input -->
-                        <c8y-messages *ngIf="showPATWarning" class="m-t-8 m-b-8">
-                            <c8y-message class="text-warning">
-                                {{ 'Changing the URL or name resets the PAT token. Enter the token again.' | translate
-                                }}
-                            </c8y-message>
-                        </c8y-messages>
-                    </c8y-form-group>
-
-                    <div class="btn-toolbar">
-                        <button (click)="testRepository()" class="btn btn-default" style="min-width:100px;"
-                            [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN">
-                            {{ 'Test' | translate }}
-                        </button>
-                        <button type="button" placement="right"
-                            [popover]="'Enter you PAT access token to test' | translate" [outsideClick]="true"
-                            class="btn-help" aria-label="Help content"></button>
-                    </div>
-                </fieldset>
-                <!-- Repository Status Section - Only show when editing, not when adding new -->
-                <div class="m-t-24" *ngIf="!isAddingNew && selectedRepositoryIndex !== -1">
-                    <fieldset>
-                        <legend class="form-block">{{ 'Repository Status' | translate }}</legend>
-                        <div class="flex-row">
-                            <label class="c8y-switch">
-                                <input type="checkbox" [checked]="repositoryForm.value.enabled"
-                                    formControlName="enabled"
-                                    (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
-                                <span></span>
-                                <span class="m-l-8">{{ 'Enable this repository' | translate }}</span>
-                            </label>
-                        </div>
-                    </fieldset>
-                </div>
-            </form>
-
-        </div>
-
-        <div class="ff-scroll-fix"></div>
-
-        <div class="card-footer separator-top sticky-bottom" *ngIf="showAddRepository">
-            <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
-                {{ 'Cancel' | translate }}
-            </button>
-            <button type="button" [title]="'Delete' | translate" class="btn btn-danger"
-                *ngIf="!isAddingNew && selectedRepositoryIndex !== -1" (click)="deleteButtonClicked()"
-                [disabled]="deleteDisabled">
-                {{ 'Delete' | translate }}
-            </button>
-            <button type="button" [title]="'Save' | translate" class="btn btn-primary" (click)="onSave()"
-                [disabled]="isSaveDisabled">
-                {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
-            </button>
-        </div>
+    <div class="card-footer large-padding separator sticky-bottom">
+      <button type="button" [title]="'Add repository' | translate" class="btn btn-default"
+        (click)="createCustomRepository()">
+        <i c8yIcon="plus-circle" class="m-r-4"></i>
+        {{ 'Add repository' | translate }}
+      </button>
     </div>
+  </div>
+
+  <!-- Right Panel: Repository Details -->
+  <div class="inner-scroll split-view__detail" cdkScrollable
+    [ngClass]="{ 'split-view__detail--selected': showAddRepository }">
+    @if (!showAddRepository) {
+      <div class="p-l-24 p-r-24 flex-grow">
+        <c8y-ui-empty-state icon="plugin" [horizontal]="true" [title]="'No repository selected.' | translate"
+        [subtitle]="'Add or select a repository.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+      </div>
+    }
+
+    @if (showAddRepository) {
+      <div class="p-l-24 p-r-24 p-t-24 flex-grow">
+        <h4 class="m-b-24">
+          {{ isAddingNew ? ('Add Repository' | translate) : ('Edit ' + repositoryForm.value.name) }}
+        </h4>
+        <form [formGroup]="repositoryForm" autocomplete="off">
+          <fieldset>
+            <input type="hidden" formControlName="id" />
+            <c8y-form-group>
+              <label for="name">{{ 'Name' | translate }}</label>
+              <input type="text" id="name" formControlName="name" class="form-control"
+                (change)="warnAboutPATReset()" [placeholder]="'Repository name' | translate" />
+            </c8y-form-group>
+            <c8y-form-group>
+              <label for="url">
+                <span>{{ 'Repository URL' | translate }}</span>
+                <button type="button" placement="right" [popover]="popRepositoryUrl" class="btn-help"
+                aria-label="Help content"></button>
+              </label>
+              <div class="input-group">
+                <span class="input-group-addon">{{ GITHUB_URL }}</span>
+                <input type="text" id="url" #urlInput autocomplete="off" formControlName="url"
+                  (change)="warnAboutPATReset()"
+                  [placeholder]="'apama-analytics-builder-block-sdk/tree/main/samples/blocks' | translate"
+                  class="form-control" />
+                <span class="input-group-btn">
+                  <button type="button" class="btn btn-default" [title]="'Open in GitHub' | translate"
+                    [attr.aria-label]="'Open repository in GitHub' | translate" (click)="openInGitHub()"
+                    [disabled]="!repositoryForm.get('url').value || repositoryForm.get('url').value.trim() === ''">
+                    <i c8yIcon="external-link"></i>
+                  </button>
+                </span>
+              </div>
+              <small class="help-block text-muted">
+                {{ 'Click the button to open this repository in GitHub' | translate }}
+              </small>
+            </c8y-form-group>
+            <c8y-form-group>
+              <label for="accessToken">
+                <span>{{ 'Personal Access Token' | translate }}</span>
+                <button type="button" placement="right" [popover]="popupPAT" class="btn-help"
+                aria-label="Help content" [outsideClick]="true"></button>
+                <ng-template #popupPAT>
+                  <p class="m-b-8">
+                    Enter Personal Access Token (PAT) created <a
+                  href="https://github.com/settings/tokens/new" target="_blank">here</a>. <br />
+                  Select
+                  the scope <code>public_repo</code> and enable SSO for the token
+                </p>
+              </ng-template>
+            </label>
+            <input type="password" id="accessToken" formControlName="accessToken" required="true"
+              [placeholder]="'e.g.: your github Personal Access Token (PAT)' | translate"
+              class="form-control" />
+            <!-- Warning message displayed under the input -->
+            @if (showPATWarning) {
+              <c8y-messages class="m-t-8 m-b-8">
+                <c8y-message class="text-warning">
+                  {{ 'Changing the URL or name resets the PAT token. Enter the token again.' | translate
+                  }}
+                </c8y-message>
+              </c8y-messages>
+            }
+          </c8y-form-group>
+          <div class="btn-toolbar">
+            <button (click)="testRepository()" class="btn btn-default" style="min-width:100px;"
+              [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN">
+              {{ 'Test' | translate }}
+            </button>
+            <button type="button" placement="right"
+              [popover]="'Enter you PAT access token to test' | translate" [outsideClick]="true"
+            class="btn-help" aria-label="Help content"></button>
+          </div>
+        </fieldset>
+        <!-- Repository Status Section - Only show when editing, not when adding new -->
+        @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+          <div class="m-t-24">
+            <fieldset>
+              <legend class="form-block">{{ 'Repository Status' | translate }}</legend>
+              <div class="flex-row">
+                <label class="c8y-switch">
+                  <input type="checkbox" [checked]="repositoryForm.value.enabled"
+                    formControlName="enabled"
+                    (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
+                  <span></span>
+                  <span class="m-l-8">{{ 'Enable this repository' | translate }}</span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+        }
+      </form>
+    </div>
+  }
+
+  <div class="ff-scroll-fix"></div>
+
+  @if (showAddRepository) {
+    <div class="card-footer separator-top sticky-bottom">
+      <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
+        {{ 'Cancel' | translate }}
+      </button>
+      @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+        <button type="button" [title]="'Delete' | translate" class="btn btn-danger"
+          (click)="deleteButtonClicked()"
+          [disabled]="deleteDisabled">
+          {{ 'Delete' | translate }}
+        </button>
+      }
+      <button type="button" [title]="'Save' | translate" class="btn btn-primary" (click)="onSave()"
+        [disabled]="isSaveDisabled">
+        {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
+      </button>
+    </div>
+  }
+</div>
 </div>

@@ -3,37 +3,41 @@
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate" />
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate" />
-  <c8y-breadcrumb-item 
-    [icon]="'c8y-modules'" 
+  <c8y-breadcrumb-item
+    [icon]="'c8y-modules'"
     [label]="'Manage extensions' | translate"
     [path]="'c8y-pkg-analytics-extension/manage'" />
 </c8y-breadcrumb>
 
 <!-- Safe Mode Warning -->
-<c8y-action-bar-item [placement]="'left'" *ngIf="isSafeMode$ | async">
-  <a 
-    href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup" 
-    target="_blank"
-    class="safe-mode-warning">
-    <i c8yIcon="warning" class="animated fadeIn infinite" style="animation-duration: 1.5s" ></i>
-    <span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' | translate }}</span>
-  </a>
-</c8y-action-bar-item>
+@if (isSafeMode$ | async) {
+  <c8y-action-bar-item [placement]="'left'">
+    <a
+      href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+      target="_blank"
+      class="safe-mode-warning">
+      <i c8yIcon="warning" class="animated fadeIn infinite" style="animation-duration: 1.5s" ></i>
+      <span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' | translate }}</span>
+    </a>
+  </c8y-action-bar-item>
+}
 
 <!-- CEP Status -->
 <c8y-action-bar-item [placement]="'right'">
-  <div class="c8y-realtime p-r-8" *ngIf="cepStatus$ | async as status">
-    <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
-    <a [href]="getCepMicroserviceUrl()" target="_blank" class="m-l-4">
-      {{ 'Streaming Analytics' | translate }}
-    </a>
-  </div>
+  @if (cepStatus$ | async; as status) {
+    <div class="c8y-realtime p-r-8">
+      <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
+      <a [href]="getCepMicroserviceUrl()" target="_blank" class="m-l-4">
+        {{ 'Streaming Analytics' | translate }}
+      </a>
+    </div>
+  }
 </c8y-action-bar-item>
 
 <!-- Actions -->
 <c8y-action-bar-item [placement]="'right'">
   <button (click)="addExtension()" class="btn btn-link">
-    <i c8yIcon="plus-circle"></i> 
+    <i c8yIcon="plus-circle"></i>
     {{ 'Add extension' | translate }}
   </button>
 </c8y-action-bar-item>
@@ -54,48 +58,54 @@
 
 <!-- List Display Switch -->
 <c8y-action-bar-item [placement]="'left'" itemClass="navbar-form hidden-xs">
-  <c8y-list-display-switch 
+  <c8y-list-display-switch
     (onListClassChange)="listClass = $event"
     [listLength]="(extensions$ | async)?.length || 0" />
 </c8y-action-bar-item>
 
 <!-- Content -->
-<ng-container *ngIf="cepStatus$ | async as status">
+@if (cepStatus$ | async; as status) {
   <!-- CEP Down -->
-  <div *ngIf="status === 'down'" class="col-lg-8 col-lg-offset-2 m-b-48 text-center">
-    <h2 class="p-b-24">
-      <span class="label label-primary text-14">
-        {{ 'Streaming Analytics Engine is restarting...' | translate }}
-      </span>
-    </h2>
-    <c8y-loading />
-  </div>
-
+  @if (status === 'down') {
+    <div class="col-lg-8 col-lg-offset-2 m-b-48 text-center">
+      <h2 class="p-b-24">
+        <span class="label label-primary text-14">
+          {{ 'Streaming Analytics Engine is restarting...' | translate }}
+        </span>
+      </h2>
+      <c8y-loading />
+    </div>
+  }
   <!-- Extensions Grid -->
-  <div *ngIf="status === 'up'" [ngClass]="listClass">
-    <!-- Empty State -->
-    <div *ngIf="(extensions$ | async)?.length === 0" class="row">
-      <div class="col-lg-4 col-lg-offset-5 text-center">
-        <c8y-ui-empty-state 
-          [icon]="'plugin'" 
-          [title]="'No extensions loaded.' | translate"
-          [subtitle]="'Add your first extension by clicking below.' | translate" 
-          [horizontal]="true">
-          <button (click)="addExtension()" class="btn btn-default btn-sm m-t-8">
-            {{ 'Add extension' | translate }}
-          </button>
-        </c8y-ui-empty-state>
-      </div>
+  @if (status === 'up') {
+    <div [ngClass]="listClass">
+      <!-- Empty State -->
+      @if ((extensions$ | async)?.length === 0) {
+        <div class="row">
+          <div class="col-lg-4 col-lg-offset-5 text-center">
+            <c8y-ui-empty-state
+              [icon]="'plugin'"
+              [title]="'No extensions loaded.' | translate"
+              [subtitle]="'Add your first extension by clicking below.' | translate"
+              [horizontal]="true">
+              <button (click)="addExtension()" class="btn btn-default btn-sm m-t-8">
+                {{ 'Add extension' | translate }}
+              </button>
+            </c8y-ui-empty-state>
+          </div>
+        </div>
+      }
+      <!-- Extension Cards -->
+      @for (extension of extensions$ | async; track trackByExtension($index, extension)) {
+        <div
+          class="col-xs-12 col-sm-4 col-md-3">
+          <a17t-extension-card
+            (extensionChanged)="reload()"
+            [isBackendServiceAvailable]="isBackendServiceAvailable"
+            [extension]="extension"
+            class="d-contents" />
+        </div>
+      }
     </div>
-
-    <!-- Extension Cards -->
-    <div *ngFor="let extension of extensions$ | async; trackBy: trackByExtension" 
-         class="col-xs-12 col-sm-4 col-md-3">
-      <a17t-extension-card 
-        (extensionChanged)="reload()" 
-        [isBackendServiceAvailable]="isBackendServiceAvailable" 
-        [extension]="extension" 
-        class="d-contents" />
-    </div>
-  </div>
-</ng-container>
+  }
+}

@@ -1,4 +1,6 @@
 import { Component, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   AlarmService,
   AlarmStatus,
@@ -11,13 +13,14 @@ import { BsModalRef } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
 import { AnalyticsService } from '../shared';
-import { HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
+import { CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 
 @Component({
   selector: 'a17t-engine-monitoring',
   templateUrl: './engine-monitoring.component.html',
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, FormsModule, CoreModule, HumanizePipe]
 })
 export class EngineMonitoringComponent implements OnInit {
   cepOperationObjectId: string;

@@ -24,11 +24,13 @@ import {
   OnInit,
   ViewEncapsulation
 } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import {
   ActionControl,
   AlertService,
   Column,
   ColumnDataType,
+  CoreModule,
   Pagination
 } from '@c8y/ngx-components';
 import {
@@ -43,7 +45,8 @@ import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule, BooleanRendererComponent, LabelRendererComponent]
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;

@@ -1,13 +1,17 @@
 import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
 import {
   AlertService,
+  CoreModule,
   WizardConfig,
   WizardModalService
 } from '@c8y/ngx-components';
 import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
+import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
+import { PopoverModule } from 'ngx-bootstrap/popover';
 import { AnalyticsService, ConfirmationModalComponent, Repository, RepositoryService } from '../shared';
 
 interface BuildInformation {
@@ -23,7 +27,8 @@ interface BuildInformation {
 @Component({
   selector: 'a17t-extension-card',
   templateUrl: './extension-card.component.html',
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
 })
 export class ExtensionCardComponent implements OnInit {
   @Input() extension: IManagedObject;

@@ -1,6 +1,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
-import { AlertService, WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { BehaviorSubject, combineLatest, from, merge, Observable, of, Subject } from 'rxjs';
 import {
@@ -16,12 +17,14 @@ import {
 } from 'rxjs/operators';
 import { AnalyticsService, CepEngineStatus } from '../shared';
 import { ActivatedRoute } from '@angular/router';
+import { ExtensionCardComponent } from './extension-card.component';
 
 @Component({
   selector: 'a17t-extension',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
   // Observables for template
