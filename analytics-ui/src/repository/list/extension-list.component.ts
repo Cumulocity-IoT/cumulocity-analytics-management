@@ -1,31 +1,40 @@
 // extension-list.component.ts
 import { Component } from '@angular/core';
-import { FieldType } from '@ngx-formly/core';
+import { CommonModule } from '@angular/common';
+import { FieldType, FormlyModule } from '@ngx-formly/core';
 
 @Component({
   selector: 'app-extension-list',
   template: `
-    <div class="extension-list-container" *ngIf="!to.hidden">
-      <!-- <div class="extension-list-description" *ngIf="to.description">
+    @if (!to.hidden) {
+      <div class="extension-list-container">
+        <!-- <div class="extension-list-description" *ngIf="to.description">
         {{ to.description }}
       </div> -->
-      <div class="extension-list" *ngIf="to.extensionNames?.length > 0">
-        <table class="extension-table">
-          <tbody>
-            <tr *ngFor="let extension of to.extensionNames; let i = index" class="extension-row">
-              <td class="number-cell">{{ i + 1 }}</td>
-              <td class="extension-cell">
-                <i class="fa fa-cube mr-2"></i> {{ extension }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="no-extensions" *ngIf="!to.extensionNames || to.extensionNames.length === 0">
-        <em>No extensions found in the package.</em>
-      </div>
+      @if (to.extensionNames?.length > 0) {
+        <div class="extension-list">
+          <table class="extension-table">
+            <tbody>
+              @for (extension of to.extensionNames; track extension; let i = $index) {
+                <tr class="extension-row">
+                  <td class="number-cell">{{ i + 1 }}</td>
+                  <td class="extension-cell">
+                    <i class="fa fa-cube mr-2"></i> {{ extension }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+      @if (!to.extensionNames || to.extensionNames.length === 0) {
+        <div class="no-extensions">
+          <em>No extensions found in the package.</em>
+        </div>
+      }
     </div>
-  `,
+    }
+    `,
   styles: [`
     .extension-list-container {
       margin-bottom: 1rem;
@@ -61,7 +70,8 @@ import { FieldType } from '@ngx-formly/core';
       color: #6c757d;
     }
   `],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, FormlyModule]
 })
 export class ExtensionListComponent extends FieldType {
   // The base FieldType provides access to field properties

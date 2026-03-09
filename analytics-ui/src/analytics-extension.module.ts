@@ -3,6 +3,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
   CoreModule,
   hookNavigator,
+  hookRoute,
   hookTab,
   hookWizard
 } from '@c8y/ngx-components';
@@ -11,13 +12,21 @@ import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscrip
 import { ExtensionAddWizardComponent } from './shared/wizard/extension-add-wizard.component';
 import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factory';
 import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
-import { HttpClientModule } from '@angular/common/http';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { RepositoryModule } from './repository/repository.module';
-import { MonitoringModule } from './monitoring/monitoring.module';
-import { ManageModule } from './manage/manage.module';
-import { BlockModule } from './block/block.module';
-import { ExtensionAddComponent } from './shared';
+import { FORMLY_CONFIG } from '@ngx-formly/core';
+
+// Import standalone components
+import { BlockGridComponent as BlockGridComponentBlock } from './block/block-grid.component';
+import { EngineMonitoringComponent } from './monitoring/engine-monitoring.component';
+import { ExtensionGridComponent } from './manage/extension-grid.component';
+import { ExtensionCardComponent } from './manage/extension-card.component';
+import { ExtensionDetailsComponent } from './manage/extension-details.component';
+import { BlockGridComponent as BlockGridComponentRepository } from './repository/list/block-grid.component';
+import { ExtensionListComponent } from './repository/list/extension-list.component';
+import { CustomSwitchField } from './shared/component/custom-switch-field';
+
+// Import resolvers
+import { extensionResolver, backendResolver } from './manage/utils';
 
 @NgModule({
   imports: [
@@ -26,23 +35,80 @@ import { ExtensionAddComponent } from './shared';
     ReactiveFormsModule,
     BinaryFileDownloadModule,
     DefaultSubscriptionsModule,
-    HttpClientModule,
     PopoverModule,
-    RepositoryModule,
-    MonitoringModule,
-    ManageModule,
-    BlockModule
+    // Import standalone components
+    BlockGridComponentBlock,
+    EngineMonitoringComponent,
+    ExtensionGridComponent,
+    ExtensionCardComponent,
+    ExtensionDetailsComponent,
+    BlockGridComponentRepository,
+    ExtensionAddWizardComponent,
+    ExtensionListComponent,
+    CustomSwitchField
   ],
-  declarations: [ExtensionAddWizardComponent, ExtensionAddComponent],
   providers: [
+    // Navigation and tab hooks
     hookNavigator(AnalyticsNavigationFactory),
+    hookTab(AnalyticsTabFactory),
+
+    // Wizard hook
     hookWizard({
       wizardId: 'uploadAnalyticsExtension',
       component: ExtensionAddWizardComponent,
       name: 'Upload analytics extension',
       c8yIcon: 'upload'
     }),
-    hookTab(AnalyticsTabFactory)
+
+    // Route hooks from all modules
+    hookRoute({
+      path: 'c8y-pkg-analytics-extension/block',
+      component: BlockGridComponentBlock
+    }),
+    hookRoute({
+      path: 'c8y-pkg-analytics-extension/monitoring',
+      component: EngineMonitoringComponent
+    }),
+    hookRoute({
+      path: 'c8y-pkg-analytics-extension/repository',
+      component: BlockGridComponentRepository
+    }),
+    hookRoute({
+      path: 'c8y-pkg-analytics-extension/manage',
+      children: [
+        {
+          path: '',
+          pathMatch: 'full',
+          component: ExtensionGridComponent,
+          resolve: {
+            isBackendServiceAvailable: backendResolver
+          }
+        },
+        {
+          path: 'details/:name',
+          component: ExtensionDetailsComponent,
+          resolve: {
+            extensionFromCep: extensionResolver
+          }
+        }
+      ]
+    }),
+
+    // Formly configuration for custom field types
+    {
+      provide: FORMLY_CONFIG,
+      multi: true,
+      useValue: {
+        types: [
+          { name: 'a17t-custom-switch', component: CustomSwitchField },
+          {
+            name: 'extension-list',
+            component: ExtensionListComponent,
+            wrappers: ['c8y-form-field']
+          }
+        ]
+      }
+    }
   ]
 })
 export class AnalyticsExtensionModule {

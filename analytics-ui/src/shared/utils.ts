@@ -6,6 +6,10 @@ export function uuidCustom(): string {
 }
 
 export function removeFileExtension(name: string): string {
+  // Remove .zip extension if present, otherwise remove the last extension
+  if (name.toLowerCase().endsWith('.zip')) {
+    return name.slice(0, -4);
+  }
   const result = name.replace(/\.[^.]*$/, '');
   return result;
 }

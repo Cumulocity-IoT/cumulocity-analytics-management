@@ -1,4 +1,4 @@
-import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, OnDestroy } from '@angular/core';
 import { FetchClient, IFetchResponse } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
@@ -125,7 +125,6 @@ export class RepositoryService implements OnDestroy {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
-    private readonly httpClient: HttpClient,
     private readonly fetchClient: FetchClient
   ) {
     this.initializeRepositories();
@@ -288,21 +287,16 @@ export class RepositoryService implements OnDestroy {
   }
 
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
-    const headers = new HttpHeaders({
-      'Accept': 'application/vnd.github.v3.raw',
-      'Authorization': `Bearer ${repository.accessToken}`
-    });
-
     const testUrl = githubWebUrlToContentApi(repository.url);
 
     try {
-      const response = await this.httpClient
-        .get(testUrl, {
-          headers,
-          observe: 'response',
-          responseType: 'text'
-        })
-        .toPromise();
+      const response = await fetch(testUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/vnd.github.v3.raw',
+          'Authorization': `Bearer ${repository.accessToken}`
+        }
+      });
 
       return {
         success: true,
@@ -883,13 +877,23 @@ export class RepositoryService implements OnDestroy {
     block: RepositoryItem,
     extractFQN: boolean
   ): Observable<string> {
-    return this.httpClient.get(block.downloadUrl, {
-      headers: {
-        'Content-type': 'application/text',
-        Accept: 'application/vnd.github.raw'
-      },
-      responseType: 'text'
-    }).pipe(
+    return from(
+      fetch(block.downloadUrl, {
+        method: 'GET',
+        headers: {
+          'Content-type': 'application/text',
+          'Accept': 'application/vnd.github.raw'
+        }
+      }).then(async response => {
+        if (!response.ok) {
+          throw new RepositoryError(
+            `Failed to fetch content: ${response.status}`,
+            gettext('Failed to download content from GitHub.')
+          );
+        }
+        return response.text();
+      })
+    ).pipe(
       map(content => extractFQN ? this.extractFQN(content, block) : content),
       catchError(error => {
         throw new RepositoryError(

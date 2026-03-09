@@ -466,7 +466,8 @@ export class AnalyticsService implements OnDestroy {
     deployedMetadata: CepExtensionsMetadata,
     diagnostics: CepExtensionsMetadata
   ): Promise<IManagedObject> {
-    const cleanName = removeFileExtension(extension.name);
+    // Use the name directly - it's already clean (no .zip extension) when stored in inventory
+    const cleanName = extension.name;
     const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
     const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
 

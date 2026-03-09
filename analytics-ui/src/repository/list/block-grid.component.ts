@@ -19,12 +19,15 @@
  */
 
 import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import {
   ActionControl,
   AlertService,
   BulkActionControl,
   Column,
   ColumnDataType,
+  CoreModule,
   DataGridComponent,
   Pagination,
 } from '@c8y/ngx-components';
@@ -41,13 +44,16 @@ import { EditorModalComponent } from '../editor/editor-modal.component';
 import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
+import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
   selector: 'a17t-sample-grid',
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
 })
 export class BlockGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })

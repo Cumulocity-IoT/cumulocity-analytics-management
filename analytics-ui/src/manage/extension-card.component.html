@@ -16,7 +16,7 @@
         ">
         {{
         extension.loaded === true ? 'Loaded' : ('Unknown' | translate)
-        }}</span>
+      }}</span>
     </div>
     <div class="text-center">
       <span [class]="
@@ -26,26 +26,33 @@
         ">
         {{
         `Build type: ${getBuildType()}`
-        }}</span>
+      }}</span>
     </div>
 
-    <div class="text-center" *ngIf="extension.loaded !== true">
-      <span>
-        {{
-        'This extension is not loaded'
+    @if (extension.loaded !== true) {
+      <div class="text-center">
+        <span>
+          {{
+          'This extension is not loaded'
         }}</span>
-    </div>
+      </div>
+    }
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
-    <div class="text-center" *ngIf="extension.loaded">
-      <span *ngIf="extension.extensionType !== 'zip'">{{ extension.blocksCount }}&nbsp;{{
-        extension.blocksCount === 1 ? 'Block' : 'Blocks'
-        }}</span>
-
-      <span class="label label-info" *ngIf="extension.extensionType === 'zip'">{{
-        'Code Extension'
-        }}</span>
-    </div>
+    @if (extension.loaded) {
+      <div class="text-center">
+        @if (extension.extensionType !== 'zip') {
+          <span>{{ extension.blocksCount }}&nbsp;{{
+            extension.blocksCount === 1 ? 'Block' : 'Blocks'
+          }}</span>
+        }
+        @if (extension.extensionType === 'zip') {
+          <span class="label label-info">{{
+            'Code Extension'
+          }}</span>
+        }
+      </div>
+    }
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
     <div class="text-center">

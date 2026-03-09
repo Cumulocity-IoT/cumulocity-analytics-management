@@ -19,8 +19,10 @@
  */
 
 import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import {
   ConfirmModalComponent,
+  CoreModule,
   ModalLabels,
   Status,
   StatusType
@@ -32,7 +34,8 @@ import { Subject } from 'rxjs';
 @Component({
   selector: 'a17t-confirmation-modal',
   templateUrl: './confirmation-modal.component.html',
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule]
 })
 export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   @Input() title: string;

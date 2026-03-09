@@ -1,17 +1,20 @@
 import { Component, Input, OnInit, Output } from '@angular/core';
-import { AlertService, ModalLabels } from '@c8y/ngx-components';
+import { CommonModule } from '@angular/common';
+import { ReactiveFormsModule, FormGroup } from '@angular/forms';
+import { AlertService, CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject, from } from 'rxjs';
-import { FormlyFieldConfig } from '@ngx-formly/core';
-import { FormGroup } from '@angular/forms';
+import { FormlyFieldConfig, FormlyModule } from '@ngx-formly/core';
 import { AnalyticsService } from '../../shared/analytics.service';
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE, Repository, RepositoryItem } from '../../shared/analytics.model';
 import { ExtensionListComponent } from '../list/extension-list.component';
 import { RepositoryService } from 'src/shared';
+import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
   selector: 'a17t-extension-create-modal',
   templateUrl: './extension-create-modal.component.html',
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, ReactiveFormsModule, CoreModule, FormlyModule, PopoverModule]
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<any> = new Subject();

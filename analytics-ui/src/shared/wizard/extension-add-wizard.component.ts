@@ -1,8 +1,10 @@
 import { Component, Input, OnInit, Output } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
+import { ExtensionAddComponent } from './extension-add.component';
 
 @Component({
   selector: 'a17t-extension-add-wizard',
@@ -13,7 +15,8 @@ import { UploadMode } from '../analytics.model';
     [uploadExtensionHandler]="uploadExtensionHandler"
     [mode]="mode"
   ></a17t-extension-add>`,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, ExtensionAddComponent]
 })
 export class ExtensionAddWizardComponent implements OnInit {
   @Input() mode: UploadMode;

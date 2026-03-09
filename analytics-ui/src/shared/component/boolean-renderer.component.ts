@@ -20,11 +20,13 @@
 
 import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
+import { CoreModule } from '@c8y/ngx-components';
 
 @Component({
   selector: 'a17t-boolean',
   template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> ',
-  standalone: false
+  standalone: true,
+  imports: [CoreModule]
 })
 export class BooleanRendererComponent {
   constructor(public context: CellRendererContext) {

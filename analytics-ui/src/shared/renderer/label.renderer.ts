@@ -19,6 +19,7 @@
  */
 
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
@@ -29,7 +30,8 @@ import { CellRendererContext } from '@c8y/ngx-components';
         >
     </div>
   `,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule]
 })
 export class LabelRendererComponent {
     constructor(public context: CellRendererContext) {

@@ -7,7 +7,8 @@ import {
   ViewChild,
   ViewEncapsulation
 } from '@angular/core';
-import { ModalLabels } from '@c8y/ngx-components';
+import { CommonModule } from '@angular/common';
+import { CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { Observable, Subject } from 'rxjs';
 import { EditorComponent } from '@c8y/ngx-components/editor';
 import { EplConfigService } from './epl-config.service';
@@ -19,7 +20,8 @@ let initializedMonaco = false;
   styleUrls: ['./editor-modal.component.css'],
   templateUrl: './editor-modal.component.html',
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule, EditorComponent]
 })
 export class EditorModalComponent implements OnInit {
 
