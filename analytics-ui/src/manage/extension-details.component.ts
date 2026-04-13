@@ -114,7 +114,6 @@ export class ExtensionDetailsComponent implements OnInit {
         });
       }
     }
-    console.log("Content", this.extensionContent, this.extension?.analytics?.length);
   }
 
   private setBreadcrumbConfig() {

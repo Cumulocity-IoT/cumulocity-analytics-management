@@ -11,12 +11,6 @@ from urllib.parse import urlparse, parse_qs
 from flask import Response
 from requests.exceptions import HTTPError
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
-    datefmt="%d/%b/%Y %H:%M:%S",
-)
 logger = logging.getLogger(__name__)
 
 DEFAULT_BRANCH = "main"

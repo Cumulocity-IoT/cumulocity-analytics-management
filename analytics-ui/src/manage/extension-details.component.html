@@ -34,7 +34,7 @@
     <div class="card">
       <div class="card-header">
         <h4 class="card-title d-flex">
-          <span class="m-t-8">Blocks</span>
+          <span class="m-t-8">{{ 'Blocks' | translate }}</span>
         </h4>
       </div>
       <div class="card-block">
@@ -75,41 +75,34 @@
     <div class="card">
       <div class="card-header">
         <h4 class="card-title d-flex">
-          <span class="m-t-8">Files</span>
+          <span class="m-t-8">{{ 'Files' | translate }}</span>
         </h4>
       </div>
       <div class="card-block">
-        <table class="table _table-striped">
+        <table class="table table-striped">
           <thead>
             <tr>
-              <th style="width: 5%"># </th>
-              <th style="width: 95%">File Name</th>
+              <th style="width: 5%">#</th>
+              <th style="width: 95%">{{ 'File Name' | translate }}</th>
             </tr>
           </thead>
           <tbody>
-            @for (file of extensionContent ; track file; let i = $index) {
+            @for (file of extensionContent; track file; let i = $index) {
               <tr>
-                <td>{{i }}</td>
-                <td>{{file }}</td>
+                <td>{{ i + 1 }}</td>
+                <td>{{ file }}</td>
               </tr>
             }
           </tbody>
-
-          <!-- <div class="c8y-empty-state" *ngIf="extensionContent?.length == 0">
-          <h1 [c8yIcon]="'monitoring'"></h1>
-          <p>
-            <strong>Extension contains no file information.</strong><br />
-          </p>
-        </div> -->
-      </table>
+        </table>
     </div>
   </div>
 </div>
-<div class=" col-lg-6">
+<div class="col-lg-6">
   <div class="card">
     <div class="card-header">
       <h4 class="card-title d-flex">
-        <span class="m-t-8">Build information</span>
+        <span class="m-t-8">{{ 'Build information' | translate }}</span>
       </h4>
     </div>
     <div class="card-block">

@@ -117,10 +117,11 @@ class C8YAgent:
                 # Delete by name - find all matching extensions
                 query = f"name eq '{extension_name}' and has(pas_extension)"
                 extensions = tenant.inventory.select(query=query)
-                
+
                 extensions_list = list(extensions)
                 if not extensions_list:
-                    raise C8YAgentError(f"No extensions found with name '{extension_name}'")
+                    # Return 0 so callers can distinguish "not found" from errors
+                    return 0
                 
                 for extension in extensions_list:
                     try:

@@ -66,14 +66,11 @@
   }
 
   @if (loading) {
-    <div style="padding-top: 48px">
+    <div class="p-t-48">
       <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
-        <h2>
-          <span class="label label-primary text-center text-14">
-            Please stand by until the blocks metadata is loaded
-            successfully. This may take a short while ...
-          </span>
-        </h2>
+        <p class="lead text-muted">
+          {{ 'Please stand by until the blocks metadata is loaded successfully. This may take a short while...' | translate }}
+        </p>
       </div>
       <c8y-loading></c8y-loading>
     </div>

@@ -45,9 +45,7 @@ export class ExtensionCardComponent implements OnInit {
     private readonly wizardModalService: WizardModalService
   ) { }
 
-  ngOnInit(): void {
-    console.log('Extension loaded:', this.extension);
-  }
+  ngOnInit(): void { }
 
   async detail(): Promise<void> {
     await this.router.navigate(['details', this.extension.name], {
@@ -148,7 +146,6 @@ export class ExtensionCardComponent implements OnInit {
         'Cannot rebuild: No build information found for this extension. ' +
         'This extension may have been created manually or with an older version.'
       );
-      console.warn('No build information:', this.extension);
       return;
     }
 
@@ -157,7 +154,6 @@ export class ExtensionCardComponent implements OnInit {
       this.alertService.warning(
         'Cannot rebuild: Repository information is missing or incomplete.'
       );
-      console.error('Invalid repository information:', buildInfo);
       return;
     }
 
@@ -219,8 +215,6 @@ export class ExtensionCardComponent implements OnInit {
       this.extensionChanged.emit();
 
     } catch (error) {
-      console.error('Rebuild failed:', error);
-
       // Check if it's a 404 error (extension not found for rebuild)
       if (error?.status === 404 || error?.message?.includes('no existing extension')) {
         this.alertService.danger(
@@ -234,8 +228,6 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   private async rebuildFromRepository(buildInfo: BuildInformation): Promise<void> {
-    console.log('Rebuilding from repository:', buildInfo);
-
     await this.repositoryService.createExtensionFromRepository(
       this.extension.name,
       buildInfo.repository,
@@ -246,7 +238,6 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   private async rebuildFromList(buildInfo: BuildInformation): Promise<void> {
-    console.log('Rebuilding from list:', buildInfo);
 
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
@@ -263,7 +254,6 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   private async rebuildFromYaml(buildInfo: BuildInformation): Promise<void> {
-    console.log('Rebuilding from YAML:', buildInfo);
 
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');

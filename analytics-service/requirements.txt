@@ -1,4 +1,5 @@
 c8y_api
 flask
-PyGithub
 python-dotenv
+pyyaml
+requests

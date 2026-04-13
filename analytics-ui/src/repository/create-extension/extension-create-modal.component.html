@@ -13,7 +13,7 @@
       <div><c8y-loading></c8y-loading></div>
     }
     <div class="modal-footer">
-      <button class="btn btn-default" title="{{ 'Create extension' | translate }}" (click)="createExtension()" [disabled]="
+      <button class="btn btn-primary" title="{{ 'Create extension' | translate }}" (click)="createExtension()" [disabled]="
                 (backendDeployed$ | async) === false || !configFormly.valid
               ">
         <i c8yIcon="plugin"></i>

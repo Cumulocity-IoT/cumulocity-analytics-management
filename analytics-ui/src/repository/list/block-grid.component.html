@@ -32,8 +32,8 @@
     <i c8yIcon="change-theme"></i>
     {{ "Repositories" | translate }}
   </button>
-  <button type="button" placement="right" [popover]="popupPAT" triggers="focus" class="btn-help" placement="bottom"
-  aria-label="Help content" container="body"></button>
+  <button type="button" [popover]="popupPAT" triggers="focus" placement="bottom"
+    class="btn-help" aria-label="Help content" container="body"></button>
   <ng-template #popupPAT>
     <p class="text-14 text-bold">Extension Builder Layouts</p>
     <br />
@@ -120,14 +120,11 @@
   }
 
   @if (loading) {
-    <div style="padding-top: 48px">
+    <div class="p-t-48">
       <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
-        <h2>
-          <span class="label label-primary text-center text-14 ">
-            Please stand by until the samples are scanned for meta information.
-            This may take a short while ...
-          </span>
-        </h2>
+        <p class="lead text-muted">
+          {{ 'Please stand by until the samples are scanned for meta information. This may take a short while...' | translate }}
+        </p>
       </div>
       <c8y-loading></c8y-loading>
     </div>

@@ -13,9 +13,11 @@ Architecture:
 - Extension building uses Apama Analytics Builder SDK
 """
 
+import base64
 import io
 import logging
 import os
+import pathlib
 import re
 import subprocess
 import tempfile
@@ -375,8 +377,9 @@ def create_extension_from_repository():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
-    if not extension_name:
-        return create_error_response("Parameter extension_name is required", 400)
+    name_error = _validate_extension_name(extension_name)
+    if name_error:
+        return create_error_response(name_error, 400)
     if not repository or not repository.get("id"):
         return create_error_response("Parameter repository with id is required", 400)
 
@@ -480,8 +483,9 @@ def create_extension_from_list():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
-    if not extension_name:
-        return create_error_response("Parameter extension_name is required", 400)
+    name_error = _validate_extension_name(extension_name)
+    if name_error:
+        return create_error_response(name_error, 400)
     if len(monitors) != 1:
         return create_error_response("Exactly one monitor is required", 400)
     if not repository or not repository.get("id"):
@@ -720,18 +724,35 @@ def delete_extensions_by_name():
             request, extension_name=extension_name
         )
 
+        if deleted_count == 0:
+            return create_error_response(
+                f"No extensions found with name '{extension_name}'", 404
+            )
+
         return jsonify({
             "message": f"Successfully deleted {deleted_count} extension(s)",
             "deleted_count": deleted_count,
         }), 200
 
     except C8YAgentError as e:
-        return create_error_response(str(e), 404)
+        return create_error_response(str(e), 500)
 
 
 # ============================================================================
 # Private Helper Functions
 # ============================================================================
+
+
+_VALID_EXTENSION_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
+
+
+def _validate_extension_name(name: str) -> Optional[str]:
+    """Return an error message if the name is invalid, otherwise None."""
+    if not name:
+        return "Extension name must not be empty"
+    if not _VALID_EXTENSION_NAME_RE.match(name):
+        return "Extension name may only contain letters, digits, hyphens and underscores"
+    return None
 
 
 def _get_repository_headers(repository_id: Optional[str] = None) -> Dict[str, str]:
@@ -761,6 +782,22 @@ def _download_full_repository(url: str, headers: Dict, work_dir: str) -> None:
     _download_github_content(api_url, headers, work_dir)
 
 
+def _safe_join(work_dir: str, relative_path: str) -> str:
+    """
+    Resolve the destination path and verify it stays within work_dir.
+
+    Raises ValueError if the resolved path would escape the work directory
+    (e.g. via ``../`` sequences or absolute paths supplied by the remote).
+    """
+    base = pathlib.Path(work_dir).resolve()
+    candidate = (base / relative_path).resolve()
+    if not str(candidate).startswith(str(base) + os.sep) and candidate != base:
+        raise ValueError(
+            f"Path traversal attempt detected: '{relative_path}' resolves outside work directory"
+        )
+    return str(candidate)
+
+
 def _download_github_content(
     url: str,
     headers: Dict,
@@ -788,7 +825,7 @@ def _download_github_content(
         except ValueError:
             # Single file response
             file_name = extract_raw_path(url)
-            full_path = os.path.join(work_dir, file_name)
+            full_path = _safe_join(work_dir, file_name)
             with open(full_path, "wb") as f:
                 f.write(response.content)
             return
@@ -797,7 +834,7 @@ def _download_github_content(
     relative_path = (
         remove_root_folders(item["path"], 1) if skip_root_folder else item["path"]
     )
-    full_path = os.path.join(work_dir, relative_path)
+    full_path = _safe_join(work_dir, relative_path)
 
     if item["type"] == "file":
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
@@ -830,8 +867,6 @@ def _download_file(item: Dict, headers: Dict, full_path: str) -> None:
     try:
         content_data = response.json()
         if isinstance(content_data, dict) and "content" in content_data:
-            import base64
-
             content = base64.b64decode(content_data["content"])
         else:
             content = response.content
@@ -948,6 +983,12 @@ def _process_yaml_sections(
     failed_sections = []
 
     for idx, section_name in enumerate(sections_to_process):
+        name_error = _validate_extension_name(section_name)
+        if name_error:
+            logger.warning(f"Skipping section '{section_name}': {name_error}")
+            failed_sections.append({"section": section_name, "error": name_error})
+            continue
+
         section_data = yaml_structure[section_name]
         files = section_data.get("files", [])
 
