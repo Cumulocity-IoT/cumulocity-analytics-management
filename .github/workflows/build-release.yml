@@ -42,6 +42,14 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref_name }}
 
+      - name: Sync package.json version with tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Strip leading "v" — tag "v2.8.0-rc.1" becomes version "2.8.0-rc.1"
+          REF_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Setting package.json version to ${REF_VERSION}"
+          npm version "${REF_VERSION}" --no-git-tag-version --allow-same-version
+
       - name: Save Version
         id: save-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
