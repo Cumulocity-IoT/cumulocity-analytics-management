@@ -25,8 +25,8 @@ let initializedMonaco = false;
 })
 export class EditorModalComponent implements OnInit {
 
-  @Input() source$: Observable<string>;
-  @Input() monitorName: string;
+  @Input() source$!: Observable<string>;
+  @Input() monitorName!: string;
   @Output() closeSubject: Subject<any> = new Subject();
 
   @ViewChild(EditorComponent) editorComponent!: EditorComponent;
@@ -38,12 +38,12 @@ export class EditorModalComponent implements OnInit {
     language: this.configService.getLanguageName(),
     theme: this.configService.getThemeName()
   };
-  sourceEditor: ElementRef;
-  source: string;
+  @ViewChild('sourceEditor') sourceEditor!: ElementRef;
+  source!: string;
 
   constructor(private configService: EplConfigService) {}
 
-  onClose(event) {
+  onClose(_event: any) {
     console.log('Save');
     this.closeSubject.next(true);
   }
@@ -54,7 +54,7 @@ export class EditorModalComponent implements OnInit {
       if (this.editorComponent.monaco) {
         initializedMonaco = true;
         this.editorComponent.monaco.languages.register(this.configService.getCustomLangExtensionPoint());
-        this.editorComponent.monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders());
+        this.editorComponent.monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
         this.editorComponent.monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
         this.editorComponent.monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
       }

@@ -17,7 +17,7 @@ export function removeFileExtension(name: string): string {
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);
-  return (result || result == null) ? undefined : result[0];
+  return (result && result != null) ? result[0] : '';
 }
 
 export function isCustomCepBlock(block: CepBlock): boolean {

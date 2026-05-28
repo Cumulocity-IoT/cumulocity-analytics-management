@@ -57,7 +57,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
 })
 export class BlockGridComponent implements OnInit {
   @ViewChild('dataGrid', { static: false })
-  dataGrid: DataGridComponent;
+  @ViewChild(DataGridComponent) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
@@ -67,9 +67,9 @@ export class BlockGridComponent implements OnInit {
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
 
-  activeRepository: Repository;
-  repositoryItems$: Observable<RepositoryItem[]>;
-  repositoryItems: RepositoryItem[];
+  activeRepository!: Repository;
+  repositoryItems$!: Observable<RepositoryItem[]>;
+  repositoryItems!: RepositoryItem[];
 
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
@@ -188,7 +188,7 @@ export class BlockGridComponent implements OnInit {
       )
     ).subscribe(enabledRepository => {
       // Set the active repository
-      this.activeRepository = enabledRepository || null;
+      this.activeRepository = enabledRepository || ({} as Repository);
 
       // You can perform additional actions here when active repository changes
       // console.log('Active repository changed:', this.activeRepository);
@@ -217,7 +217,7 @@ export class BlockGridComponent implements OnInit {
   checkSelection(ids: string[]) {
     // console.log("Selected items", ids);
     let errorSelection = false;
-    let errorItem;
+    let errorItem: RepositoryItem | undefined;
     this.repositoryItems.forEach((sample) => {
       if (ids.includes(sample.id) && sample.installed) {
         this.alertService.warning(
@@ -278,10 +278,12 @@ export class BlockGridComponent implements OnInit {
         initialState
       });
 
-      modalRef.content.closeSubject.subscribe(() => {
-        this.dataGrid.cancel()
-        modalRef.hide()
-      });
+      if (modalRef.content) {
+        modalRef.content.closeSubject.subscribe(() => {
+          this.dataGrid.cancel()
+          modalRef.hide()
+        });
+      }
 
     } else {
       const initialState = {
@@ -294,10 +296,12 @@ export class BlockGridComponent implements OnInit {
         initialState
       });
 
-      modalRef.content.closeSubject.subscribe(() => {
-        this.dataGrid.cancel()
-        modalRef.hide()
-      });
+      if (modalRef.content) {
+        modalRef.content.closeSubject.subscribe(() => {
+          this.dataGrid.cancel()
+          modalRef.hide()
+        });
+      }
     }
   }
 
@@ -331,7 +335,7 @@ export class BlockGridComponent implements OnInit {
     this.showConfigRepositories = true;
   }
 
-  onRepositoryCommit(repository: Repository): void {
+  onRepositoryCommit(): void {
     // console.log('Repository saved:', repository);
     this.showConfigRepositories = false;
     // Handle the saved repository

@@ -533,7 +533,6 @@ export class RepositoryService implements OnDestroy {
       );
 
       if (!response.ok) {
-        const errorText = await response.text();
         throw new RepositoryError(
           `Failed to fetch repositories: ${response.status}`,
           gettext('Failed to load repositories from server.')
@@ -706,16 +705,42 @@ export class RepositoryService implements OnDestroy {
   }
 
   private processGitHubContent(
-    data: any,
+    data: unknown,
     repository: Repository
   ): Observable<RepositoryItem[]> {
     try {
-      const items = Object.values(data)
-        .filter((item: any) => getFileExtension(item.name) !== '.json')
-        .map((item: any) => this.createRepositoryItem(item, repository));
+      // Safely extract items from data
+      const items: RepositoryItem[] = [];
+      
+      if (data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>;
+        Object.values(dataObj).forEach((item: unknown) => {
+          if (item && typeof item === 'object') {
+            const itemObj = item as Record<string, unknown>;
+            const name = itemObj.name as string | undefined;
+            if (name && getFileExtension(name) !== '.json') {
+              items.push(this.createRepositoryItem(item, repository));
+            }
+          }
+        });
+      }
 
       return forkJoin(
-        items.map(item => this.enrichRepositoryItem(item))
+        items.length > 0 
+          ? items.map(item => this.enrichRepositoryItem(item)) 
+          : [of([] as RepositoryItem[])]
+      ).pipe(
+        map((results: any[]) => {
+          const flattened: RepositoryItem[] = [];
+          results.forEach(result => {
+            if (Array.isArray(result)) {
+              flattened.push(...result);
+            } else {
+              flattened.push(result);
+            }
+          });
+          return flattened;
+        })
       );
     } catch (error) {
       throw this.handleError(
@@ -739,8 +764,19 @@ export class RepositoryService implements OnDestroy {
     return of({ ...item, id: item.file });
   }
 
-  private createRepositoryItem(item: any, repository: Repository): RepositoryItem {
-    if (!item.name || !item.url) {
+  private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
+    if (!item || typeof item !== 'object') {
+      throw new RepositoryError(
+        'Invalid GitHub item structure',
+        gettext('Invalid repository item data received.')
+      );
+    }
+
+    const itemObj = item as Record<string, unknown>;
+    const name = itemObj.name as string | undefined;
+    const url = itemObj.url as string | undefined;
+    
+    if (!name || !url) {
       throw new RepositoryError(
         'Invalid GitHub item structure',
         gettext('Invalid repository item data received.')
@@ -751,12 +787,12 @@ export class RepositoryService implements OnDestroy {
       id: '',
       repositoryName: repository.name,
       repositoryId: repository.id,
-      name: removeFileExtension(item.name),
-      file: item.name,
-      type: item.type,
+      name: removeFileExtension(name),
+      file: name,
+      type: (itemObj.type as string) || 'file',
       custom: true,
-      downloadUrl: item.download_url,
-      url: item.url
+      downloadUrl: (itemObj.download_url as string) || url,
+      url: url
     } as RepositoryItem;
   }
 
@@ -981,9 +1017,20 @@ export class RepositoryService implements OnDestroy {
 
   private async createExtension(
     endpoint: string,
-    request: any
+    request: unknown
   ): Promise<IFetchResponse> {
-    console.log(`Creating extension from ${endpoint}:`, request.extension_name);
+    // Type narrowing for request
+    if (!request || typeof request !== 'object') {
+      throw new RepositoryError(
+        'Invalid extension request',
+        gettext('Invalid extension data provided.')
+      );
+    }
+
+    const requestObj = request as Record<string, unknown>;
+    const extensionName = requestObj.extension_name as string | undefined;
+    
+    console.log(`Creating extension from ${endpoint}:`, extensionName);
 
     try {
       const response = await this.fetchClient.fetch(
@@ -1028,7 +1075,7 @@ export class RepositoryService implements OnDestroy {
    * Centralized error handling
    */
   private handleError(
-    error: any,
+    error: unknown,
     logMessage: string,
     showAlert: boolean = false,
     userMessage?: string
@@ -1047,23 +1094,27 @@ export class RepositoryService implements OnDestroy {
     return new RepositoryError(
       logMessage,
       userMessage || this.getErrorMessage(error),
-      error
+      error instanceof Error ? error : undefined
     );
   }
 
-  private getErrorMessage(error: any): string {
+  private getErrorMessage(error: unknown): string {
     if (error instanceof RepositoryError) {
       return error.userMessage;
     }
 
-    if (error?.message) {
-      return error.message;
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorObj = error as Record<string, unknown>;
+      const message = errorObj.message;
+      if (typeof message === 'string') {
+        return message;
+      }
     }
 
     return gettext('An unexpected error occurred. Please try again.');
   }
 
-  private handleTestError(error: any): RepositoryTestResult {
+  private handleTestError(error: unknown): RepositoryTestResult {
     if (error instanceof HttpErrorResponse) {
       switch (error.status) {
         case 401:

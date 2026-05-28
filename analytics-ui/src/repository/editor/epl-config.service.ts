@@ -121,10 +121,8 @@ export class EplConfigService {
 	 * This object defines the rules for syntax highlighting.
 	 */
 
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	public getCustomLangTokenProviders(): any {
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		return <any>eplTokenProvider;
+	public getCustomLangTokenProviders(): Record<string, unknown> {
+		return eplTokenProvider as unknown as Record<string, unknown>;
 	}
 
 	/**

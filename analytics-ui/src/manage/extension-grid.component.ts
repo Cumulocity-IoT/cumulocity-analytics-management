@@ -28,9 +28,9 @@ import { ExtensionCardComponent } from './extension-card.component';
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
   // Observables for template
-  extensions$: Observable<IManagedObject[]>;
-  cepStatus$: Observable<CepEngineStatus>;
-  isSafeMode$: Observable<boolean>;
+  extensions$!: Observable<IManagedObject[]>;
+  cepStatus$!: Observable<CepEngineStatus>;
+  isSafeMode$!: Observable<boolean>;
 
   // Template bindings
   listClass = 'card-group';
@@ -85,7 +85,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
     this.wizardModalService
       .show({ initialState })
-      .content.onClose.pipe(take(1))
+      .content?.onClose.pipe(take(1))
       .subscribe(() => this.reload());
   }
 

@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, Output } from '@angular/core';
+import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -19,10 +19,10 @@ import { ExtensionAddComponent } from './extension-add.component';
   imports: [CommonModule, ExtensionAddComponent]
 })
 export class ExtensionAddWizardComponent implements OnInit {
-  @Input() mode: UploadMode;
-  @Input() extensionToReplace: IManagedObject;
-  @Input() headerText: string;
-  @Output() refresh;
+  @Input() mode!: UploadMode;
+  @Input() extensionToReplace!: IManagedObject;
+  @Input() headerText!: string;
+  @Output() refresh = new EventEmitter<void>();
   successText: string = gettext('Extension created');
 
   constructor(private analyticsService: AnalyticsService) { }

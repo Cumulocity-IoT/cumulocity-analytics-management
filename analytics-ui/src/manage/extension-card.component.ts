@@ -17,8 +17,8 @@ import { AnalyticsService, ConfirmationModalComponent, Repository, RepositorySer
 interface BuildInformation {
   build_type: 'repository' | 'list' | 'yaml';
   repository: Repository;
-  monitors?: any[];
-  yaml?: any;
+  monitors?: Record<string, unknown>[];
+  yaml?: Record<string, unknown>;
   sections?: string[];
   section_name?: string;
   files?: string[];
@@ -31,8 +31,8 @@ interface BuildInformation {
   imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
 })
 export class ExtensionCardComponent implements OnInit {
-  @Input() extension: IManagedObject;
-  @Input() isBackendServiceAvailable: boolean;
+  @Input() extension!: IManagedObject;
+  @Input() isBackendServiceAvailable!: boolean;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
   constructor(
@@ -119,7 +119,7 @@ export class ExtensionCardComponent implements OnInit {
       headerIcon: 'upload'
     };
 
-    const initialState: any = {
+    const initialState: Record<string, unknown> = {
       wizardConfig,
       id: 'uploadAnalyticsExtension',
       componentInitialState: {
@@ -132,9 +132,11 @@ export class ExtensionCardComponent implements OnInit {
     const modalOptions: ModalOptions = { initialState };
 
     const modalRef = this.wizardModalService.show(modalOptions);
-    modalRef.content.onClose.subscribe(() => {
-      this.extensionChanged.emit();
-    });
+    if (modalRef.content) {
+      modalRef.content.onClose.subscribe(() => {
+        this.extensionChanged.emit();
+      });
+    }
   }
 
   async rebuild(): Promise<void> {
@@ -237,7 +239,7 @@ export class ExtensionCardComponent implements OnInit {
     );
   }
 
-  private async rebuildFromList(buildInfo: BuildInformation): Promise<void> {
+  private async rebuildFromList(buildInfo: any): Promise<void> {
 
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
@@ -253,7 +255,7 @@ export class ExtensionCardComponent implements OnInit {
     );
   }
 
-  private async rebuildFromYaml(buildInfo: BuildInformation): Promise<void> {
+  private async rebuildFromYaml(buildInfo: any): Promise<void> {
 
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');

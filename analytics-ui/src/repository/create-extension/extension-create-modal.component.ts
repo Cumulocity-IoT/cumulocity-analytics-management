@@ -17,11 +17,11 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   imports: [CommonModule, ReactiveFormsModule, CoreModule, FormlyModule, PopoverModule]
 })
 export class ExtensionCreateComponent implements OnInit {
-  @Output() closeSubject: Subject<any> = new Subject();
-  @Input() monitors: RepositoryItem[];
-  @Input() sections: string[];
-  @Input() activeRepository: Repository;
-  configuration: any = {};
+  @Output() closeSubject: Subject<unknown> = new Subject();
+  @Input() monitors!: RepositoryItem[];
+  @Input() sections!: string[];
+  @Input() activeRepository!: Repository;
+  configuration: Record<string, unknown> = {};
 
   configFormlyFields: FormlyFieldConfig[] = [];
   configFormly: FormGroup = new FormGroup({});
@@ -31,7 +31,7 @@ export class ExtensionCreateComponent implements OnInit {
     false
   );
 
-  configurationIsExtension: boolean;
+  configurationIsExtension!: boolean;
 
   constructor(
     public analyticsService: AnalyticsService,
@@ -104,7 +104,7 @@ export class ExtensionCreateComponent implements OnInit {
     ];
   }
 
-  onDismiss(event) {
+  onDismiss(_event: any) {
     console.log(`Dismiss ${event}`);
     this.closeSubject.next(undefined);
   }
@@ -123,39 +123,40 @@ export class ExtensionCreateComponent implements OnInit {
   async createExtension() {
     this.loading = true;
     let response;
+    const configName = String((this.configuration as any)?.name || 'extension');
 
     if (this.monitors && this.monitors.length > 0) {
       if (this.sections && this.sections.length > 0) {
         response = await this.repositoryService.createExtensionFromYaml(
-          this.configuration.name,
+          configName,
           this.monitors[0],
           this.sections,
           this.activeRepository,
           true,
-          this.configuration.deploy,
+          (this.configuration as any).deploy,
         );
       } else {
         response = await this.repositoryService.createExtensionFromList(
-          this.configuration.name,
+          configName,
           this.monitors,
           this.activeRepository,
           true,
-          this.configuration.deploy,
+          (this.configuration as any).deploy,
         );
       }
     } else {
       response = await this.repositoryService.createExtensionFromRepository(
-        this.configuration.name,
+        configName,
         this.activeRepository,
         true,
-        this.configuration.deploy,
+        (this.configuration as any).deploy,
       );
     }
     if (response.status < 400) {
       this.loading = false;
-      if (this.configuration.deploy) {
+      if ((this.configuration as any).deploy) {
         this.alertService.success(
-          `Created extension ${this.configuration.name}.zip has been uploaded and Streaming Analytics Engine is restarting ...`
+          `Created extension ${configName}.zip has been uploaded and Streaming Analytics Engine is restarting ...`
         );
       } else {
         this.alertService.success(

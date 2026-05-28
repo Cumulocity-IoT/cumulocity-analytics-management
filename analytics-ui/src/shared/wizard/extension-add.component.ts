@@ -63,17 +63,17 @@ interface BuildInformation {
   imports: [CommonModule, CoreModule]
 })
 export class ExtensionAddComponent implements OnDestroy {
-  @Input() headerText: string;
-  @Input() headerIcon: string;
-  @Input() successText: string;
-  @Input() uploadExtensionHandler: (
+  @Input() headerText!: string;
+  @Input() headerIcon!: string;
+  @Input() successText!: string;
+  @Input() uploadExtensionHandler!: (
     file: File,
     extension: Partial<IManagedObject>,
     mode: UploadMode
   ) => Promise<any>;
-  @Input() mode: UploadMode;
+  @Input() mode!: UploadMode;
 
-  @ViewChild(DropAreaComponent) dropAreaComponent: DropAreaComponent;
+  @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
   state: UploadState = {
     isLoading: false,
@@ -100,7 +100,7 @@ export class ExtensionAddComponent implements OnDestroy {
     this.cleanup();
   }
 
-  get progress(): BehaviorSubject<number> {
+  get progress(): BehaviorSubject<number | null> {
     return this.analyticsService.uploadProgress$;
   }
 
@@ -159,7 +159,7 @@ export class ExtensionAddComponent implements OnDestroy {
         await this.performUpload(this.mode);
       }
     } catch (error) {
-      this.handleUploadError(error);
+      this.handleCreationFailure(error);
     } finally {
       this.finalizeUpload();
     }
@@ -406,7 +406,8 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private handleUploadSuccess(mode: UploadMode): void {
     const action = mode === 'update' ? 'Updated' : 'Uploaded';
-    this.alertService.success(`${action} extension ${this.state.extension.name} successfully.`);
+    const extensionName = this.state.extension?.name || 'Extension';
+    this.alertService.success(`${action} extension ${extensionName} successfully.`);
     this.state.isComplete = true;
     this.progress.next(100);
   }
@@ -416,11 +417,12 @@ export class ExtensionAddComponent implements OnDestroy {
     this.state.isComplete = false;
   }
 
-  private handleUploadError(error: any): void {
+  private handleCreationFailure(error: unknown): void {
     this.cleanup();
     this.dropAreaComponent?.onDelete();
 
-    this.state.errorMessage = ERROR_MESSAGES[error?.message] || null;
+    const errorMessage = this.getErrorMessage(error);
+    this.state.errorMessage = errorMessage;
 
     if (!this.state.errorMessage && error) {
       this.alertService.addServerFailure(error);
@@ -493,5 +495,25 @@ export class ExtensionAddComponent implements OnDestroy {
       extension: null,
       requiresUpdate: false
     };
+  }
+
+  private getErrorMessage(error: unknown): string | null {
+    if (!error) {
+      return null;
+    }
+
+    // Handle error object with message property
+    if (typeof error === 'object' && 'message' in error) {
+      const errorObj = error as Record<string, unknown>;
+      const message = errorObj.message as string;
+      return ERROR_MESSAGES[message as keyof typeof ERROR_MESSAGES] || message || null;
+    }
+
+    // Handle string errors
+    if (typeof error === 'string') {
+      return ERROR_MESSAGES[error as keyof typeof ERROR_MESSAGES] || error;
+    }
+
+    return null;
   }
 }

@@ -3,3 +3,8 @@ flask
 python-dotenv
 pyyaml
 requests
+psutil
+pytest
+pytest-cov
+pytest-mock
+pydantic

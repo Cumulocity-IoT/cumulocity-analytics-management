@@ -21,7 +21,7 @@
 import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
-import { Observable, from, map, merge, mergeAll, of, toArray } from 'rxjs';
+import { Observable, from, filter, map, merge, mergeAll, of, toArray } from 'rxjs';
 import { AnalyticsService } from './analytics.service';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
@@ -61,7 +61,9 @@ export class AnalyticsTabFactory implements TabFactory {
               orientation: 'horizontal'
             } as Tab;
           }
-        })
+          return null;
+        }),
+        filter((tab): tab is Tab => tab !== null)
       );
       tabs.push({
         path: 'c8y-pkg-analytics-extension/monitoring',

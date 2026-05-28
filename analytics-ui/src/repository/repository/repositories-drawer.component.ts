@@ -25,11 +25,11 @@ export class RepositoriesDrawerComponent implements OnInit {
     @Output() cancel = new EventEmitter<void>();
     @Output() commit = new EventEmitter<Repository>();
 
-    repositories$: Observable<Repository[]>;
+    repositories$!: Observable<Repository[]>;
     repositoriesList: Repository[] = [];
     displayList: Repository[] = [];
     filteredDisplayList: Repository[] = [];
-    activeRepository: Repository;
+    activeRepository!: Repository;
     repositoryForm: FormGroup;
     selectedRepositoryIndex: number = -1;
     isAddingNew: boolean = false;
@@ -73,12 +73,15 @@ export class RepositoriesDrawerComponent implements OnInit {
         });
 
         // Subscribe to form changes to update the temporary repository name
-        this.repositoryForm.get('name').valueChanges.subscribe(name => {
+        const nameControl = this.repositoryForm.get('name');
+        if (nameControl) {
+          nameControl.valueChanges.subscribe(name => {
             if (this.isAddingNew && this.tempNewRepository) {
-                this.tempNewRepository.name = name || 'New repository';
-                this.updateDisplayList();
+              this.tempNewRepository.name = name || 'New repository';
+              this.updateDisplayList();
             }
-        });
+          });
+        }
     }
 
     urlValidator = (control: AbstractControl): ValidationErrors | null => {
@@ -96,11 +99,14 @@ export class RepositoriesDrawerComponent implements OnInit {
 
         this.repositories$.subscribe(repos => {
             this.repositoriesList = repos;
-            this.activeRepository = repos.find(r => r.enabled);
+            const enabledRepo = repos.find(r => r.enabled);
+            if (enabledRepo) {
+              this.activeRepository = enabledRepo;
+            }
             this.updateDisplayList();
 
             if (this.isAddingNew && this.tempNewRepository) {
-                const addedRepo = repos.find(r => r.name === this.tempNewRepository.name);
+                const addedRepo = repos.find(r => r.name === this.tempNewRepository?.name);
                 if (addedRepo) {
                     this.isAddingNew = false;
                     this.tempNewRepository = null;
@@ -210,7 +216,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         return this.hasFormChanges() || this.repositoryService.hasUnsavedChanges();
     }
 
-    onEditRepository(repository: Repository, index: number): void {
+    onEditRepository(repository: Repository): void {
         if (this.isAddingNew && this.tempNewRepository && repository.id === this.tempNewRepository.id) {
             return;
         }
@@ -243,7 +249,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     setIndex(index: number): void {
         if (index < this.displayList.length) {
             const repository = this.displayList[index];
-            this.onEditRepository(repository, index);
+            this.onEditRepository(repository);
         }
     }
 
@@ -280,9 +286,9 @@ export class RepositoriesDrawerComponent implements OnInit {
     warnAboutPATReset(): void {
         // Show warning if URL or name is changed and there's an existing token
         if (!this.isAddingNew && this.originalFormValues) {
-            const currentUrl = this.GITHUB_URL + this.repositoryForm.get('url').value;
+            const currentUrl = this.GITHUB_URL + (this.repositoryForm.get('url')?.value || '');
             const originalUrl = this.originalFormValues.url;
-            const currentName = this.repositoryForm.get('name').value;
+            const currentName = this.repositoryForm.get('name')?.value || '';
             const originalName = this.originalFormValues.name;
 
             if (currentUrl !== originalUrl || currentName !== originalName) {
@@ -346,9 +352,9 @@ export class RepositoriesDrawerComponent implements OnInit {
             testedRepository.url = this.GITHUB_URL + testedRepository.url;
             const result = await this.repositoryService.testRepository(testedRepository);
             if (result.success) {
-                this.alertService.success(result.message);
+                this.alertService.success(result.message || 'Operation successful');
             } else {
-                this.alertService.danger(result.message);
+                this.alertService.danger(result.message || 'Operation failed');
             }
         }
     }
@@ -491,7 +497,7 @@ export class RepositoriesDrawerComponent implements OnInit {
  * Open the full GitHub URL in a new browser window
  */
 openInGitHub(): void {
-    const urlValue = this.repositoryForm.get('url').value;
+    const urlValue = this.repositoryForm.get('url')?.value || '';
     
     if (!urlValue || urlValue.trim() === '') {
         this.alertService.warning(gettext('Please enter a repository URL first'));
@@ -506,7 +512,7 @@ openInGitHub(): void {
         new URL(fullUrl);
         
         // Open in new window/tab
-        const newWindow = window.open(fullUrl, '_blank', 'noopener,noreferrer');
+        window.open(fullUrl, '_blank', 'noopener,noreferrer');
         
         // Check if popup was blocked
         // if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {

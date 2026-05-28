@@ -300,15 +300,17 @@ export class AnalyticsService implements OnDestroy {
       const extensions = await Promise.all(
         metadata.metadatas.map(async (metadataFile) => {
           const extensionName = removeFileExtension(metadataFile);
-          return this.getDeployedExtensionDetails(extensionName);
+          const ext = await this.getDeployedExtensionDetails(extensionName);
+          if (ext && ext.analytics) {
+            return ext.analytics.map(block => this.addBlockMetadata(block, ext.name));
+          }
+          return [];
         })
       );
 
       const blocks = extensions
-        .filter(ext => ext?.analytics)
-        .flatMap(ext =>
-          ext.analytics.map(block => this.addBlockMetadata(block, ext.name))
-        );
+        .filter((ext: any) => Array.isArray(ext) && ext.length > 0)
+        .flatMap(ext => ext);
 
       this.cachedDeployedBlocks = Promise.resolve(blocks);
       return blocks;
@@ -492,12 +494,30 @@ export class AnalyticsService implements OnDestroy {
     };
   }
 
-  private addBlockMetadata(block: any, extensionName: string): CepBlock {
+  private addBlockMetadata(block: unknown, extensionName: string): CepBlock {
+    // Ensure block is an object with required CepBlock properties
+    if (!block || typeof block !== 'object') {
+      throw new Error('Invalid block object');
+    }
+    
+    const blockObj = block as Partial<CepBlock>;
     return {
-      ...block,
-      custom: isCustomCepBlock(block),
-      extension: extensionName
-    } as CepBlock;
+      id: blockObj.id || '',
+      name: blockObj.name || '',
+      file: blockObj.file || '',
+      type: blockObj.type || '',
+      installed: blockObj.installed,
+      producesOutput: blockObj.producesOutput,
+      description: blockObj.description,
+      url: blockObj.url || '',
+      downloadUrl: blockObj.downloadUrl || '',
+      path: blockObj.path,
+      custom: isCustomCepBlock(blockObj as CepBlock),
+      extension: extensionName,
+      resultingExtension: blockObj.resultingExtension,
+      repositoryName: blockObj.repositoryName || '',
+      repositoryId: blockObj.repositoryId || ''
+    };
   }
 
   private async getDeployedExtensionsMetadata(): Promise<CepExtensionsMetadata> {
@@ -594,17 +614,32 @@ export class AnalyticsService implements OnDestroy {
     }
   }
 
-  private handleCepOperationObjectUpdate(payload: any): void {
-    const managedObject = payload?.data?.data;
+  private handleCepOperationObjectUpdate(payload: unknown): void {
+    let managedObject: unknown;
+
+    // Navigate nested data structure safely
+    if (payload && typeof payload === 'object') {
+      const payloadObj = payload as Record<string, unknown>;
+      const dataObj = payloadObj.data as Record<string, unknown> | undefined;
+      managedObject = dataObj?.data;
+    }
 
     if (!managedObject) {
       console.warn('Received invalid operation object update:', payload);
       return;
     }
 
-    this.cepOperationObjectStream$.next(managedObject);
+    // Type narrowing for managedObject
+    if (typeof managedObject !== 'object' || managedObject === null) {
+      console.warn('Received invalid operation object update:', payload);
+      return;
+    }
 
-    if (managedObject.c8y_Status?.status === 'Up') {
+    this.cepOperationObjectStream$.next(managedObject as IManagedObject);
+
+    const managedObjTyped = managedObject as Record<string, unknown>;
+    const c8yStatus = managedObjTyped.c8y_Status as Record<string, unknown> | undefined;
+    if (c8yStatus?.status === 'Up') {
       this.cachedCepStatus = null;
       this.getCepStatus().catch(err =>
         console.warn('Failed to refresh Cep status:', err)
@@ -625,7 +660,7 @@ export class AnalyticsService implements OnDestroy {
    * @returns The error (for re-throwing)
    */
   private handleError(
-    error: any,
+    error: unknown,
     logMessage: string,
     showAlert: boolean = false,
     userMessage?: string
@@ -647,20 +682,24 @@ export class AnalyticsService implements OnDestroy {
     return new CepError(
       logMessage,
       userMessage || this.getErrorMessage(error),
-      error
+      error instanceof Error ? error : undefined
     );
   }
 
   /**
    * Extract user-friendly error message
    */
-  private getErrorMessage(error: any): string {
+  private getErrorMessage(error: unknown): string {
     if (error instanceof CepError) {
       return error.userMessage;
     }
 
-    if (error?.message) {
-      return error.message;
+    if (error && typeof error === 'object' && 'message' in error) {
+      const errorObj = error as Record<string, unknown>;
+      const message = errorObj.message;
+      if (typeof message === 'string') {
+        return message;
+      }
     }
 
     return gettext('An unexpected error occurred. Please try again.');

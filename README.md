@@ -2,6 +2,7 @@
 
 ## Content
 - [Overview](#overview)
+- [Documentation](#documentation)
 - [Manage custom extension](#manage-custom-extension)
   - [Upload custom extension](#upload-custom-extension)
   - [Build custom extension](#build-custom-extension)
@@ -14,6 +15,21 @@
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 - [Troubleshooting](#troubleshooting)
 - [Repository Layout](#repository-layout)
+
+## Documentation
+
+**Start here for project overview and contribution:**
+- [AGENT.md](AGENT.md) - System overview, architecture, how to run
+- [IMPROVEMENTS.md](IMPROVEMENTS.md) - Comprehensive improvement roadmap
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Architecture Decision Records (ADRs)
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines and development workflow
+- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Latest improvements implemented
+- [analytics-service/API.md](analytics-service/API.md) - Backend API documentation
+
+**For developers:**
+- Run tests: `npm test` (frontend) or `pytest` (backend)
+- Code quality: `npm run lint` and `npm run format` (frontend)
+- Development setup: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Overview
 
@@ -132,8 +148,14 @@ Finally, you should see the new application in your App-Switcher.
 **Prerequisites to build plugin:**
   
 * Git 
-* NodeJS (release builds are currently built with `v18.19.0`)
+* NodeJS (v18+ or v20+ recommended; release builds are currently built with `v18.19.0`)
 * NPM (Included with NodeJS)
+
+**Current Dependencies:**
+* Angular 20.3.0
+* Cumulocity 1023.82.4
+* TypeScript 5.9.2
+* RxJS 7.8.2
 
 **Instructions**
 
@@ -143,16 +165,19 @@ Make sure you set the environments url, username, password before starting.
 ```
 git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
 ```
-2. Change directory:
-  ```cd cumulocity-analytics-management```
-3. run npm i command to install all library files specified in source code
-  ```npm i ``` 
+2. Change directory to analytics-ui:
+  ```cd cumulocity-analytics-management/analytics-ui```
+3. Install dependencies:
+  ```npm install``` 
 4. (Optional) Local development server:
   ```npm start```
-6. Build the app:
+5. Build the app:
   ```npm run build```
-7. Deploy the app:
+6. Deploy the app:
   ```npm run deploy```
+7. (Optional) Format and lint code:
+  ```npm run format``` - Formats TypeScript files with Prettier
+  ```npm run lint``` - Runs ESLint with auto-fix
 
 ## Analytics Builder Extension Backend
 
@@ -162,8 +187,9 @@ git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
  The microservice is multi tenant ready.
 
 ## Prerequisites to build/deploy the microservice
+* Python 3.8+ 
 * Docker host/client 
-* [c8y-go-cli](https://goc8ycli.netlify.app)
+* [c8y-go-cli](https://goc8ycli.netlify.app) or c8y CLI
 
 ## Local debugging using Vscode/Devcontainer
 To run and debug the microservice locally you an use Vscode and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin (Administrative Credentials to fetch BootStrap Credentials) file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). The get_service_creds.py fetch the credentials and create the .env file containing the bootstrap credentials. 
