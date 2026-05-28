@@ -139,22 +139,27 @@ jobs:
         with:
           files: |
             ./analytics-service/*.zip
-          tag_name: v${{ needs.build_ui.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Download build artifact UI
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ui
           path: |
-           ./analytics-ui 
-      - name: Rename file 
-        run: | 
-          mv ./analytics-ui/build.zip  ./analytics-ui/c8y-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+           ./analytics-ui
+      - name: Rename file
+        run: |
+          # Strip leading "v" from the triggering tag to produce a clean asset name,
+          # e.g. tag "v2.8.0-rc.1" -> "c8y-pkg-analytics-extension-2.8.0-rc.1.zip"
+          REF_VERSION="${GITHUB_REF_NAME#v}"
+          mv ./analytics-ui/build.zip ./analytics-ui/c8y-pkg-analytics-extension-${REF_VERSION}.zip
           ls -lah ./analytics-ui
           pwd
       - name: Release UI
         uses: softprops/action-gh-release@v1
         with:
-          files: 
+          files:
             ./analytics-ui/*.zip
-          tag_name: v${{ needs.build_ui.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
