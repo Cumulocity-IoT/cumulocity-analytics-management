@@ -206,7 +206,7 @@ export class AnalyticsService implements OnDestroy {
       if (!result.res.ok) {
         throw new CepError(
           `Upload failed with status ${result.res.status}`,
-          gettext(`Could not upload extension "${extension.name}". Please try again.`)
+          gettext(`Could not upload extension "${extension['name']}". Please try again.`)
         );
       }
 
@@ -217,11 +217,11 @@ export class AnalyticsService implements OnDestroy {
     } catch (error) {
       throw this.handleError(
         error,
-        `Failed to upload extension ${extension.name}`,
+        `Failed to upload extension ${extension['name']}`,
         true,
         error instanceof CepError 
           ? error.userMessage 
-          : gettext(`Error uploading extension "${extension.name}". Please try again.`)
+          : gettext(`Error uploading extension "${extension['name']}". Please try again.`)
       );
     }
   }
@@ -244,7 +244,7 @@ export class AnalyticsService implements OnDestroy {
     } catch (error) {
       throw this.handleError(
         error,
-        `Failed to delete extension ${extension.name}`,
+        `Failed to delete extension ${extension['name']}`,
         true,
         gettext('Failed to delete extension. Please try again.')
       );
@@ -258,9 +258,9 @@ export class AnalyticsService implements OnDestroy {
     } catch (error) {
       throw this.handleError(
         error,
-        `Failed to download extension ${extension.name}`,
+        `Failed to download extension ${extension['name']}`,
         true,
-        gettext(`Failed to download extension "${extension.name}". Please try again.`)
+        gettext(`Failed to download extension "${extension['name']}". Please try again.`)
       );
     }
   }
@@ -470,7 +470,7 @@ export class AnalyticsService implements OnDestroy {
     diagnostics: CepExtensionsMetadata
   ): Promise<IManagedObject> {
     // Use the name directly - it's already clean (no .zip extension) when stored in inventory
-    const cleanName = extension.name;
+    const cleanName = extension['name'];
     const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
     const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
 
@@ -588,8 +588,8 @@ export class AnalyticsService implements OnDestroy {
     await this.deleteExtension(extension, false);
 
     return {
-      name: extension.name,
-      pas_extension: extension.name
+      name: extension['name'],
+      pas_extension: extension['name']
     };
   }
 
@@ -666,8 +666,8 @@ export class AnalyticsService implements OnDestroy {
     // Navigate nested data structure safely
     if (payload && typeof payload === 'object') {
       const payloadObj = payload as Record<string, unknown>;
-      const dataObj = payloadObj.data as Record<string, unknown> | undefined;
-      managedObject = dataObj?.data;
+      const dataObj = payloadObj['data'] as Record<string, unknown> | undefined;
+      managedObject = dataObj?.['data'];
     }
 
     if (!managedObject) {
@@ -684,8 +684,8 @@ export class AnalyticsService implements OnDestroy {
     this.cepOperationObjectStream$.next(managedObject as IManagedObject);
 
     const managedObjTyped = managedObject as Record<string, unknown>;
-    const c8yStatus = managedObjTyped.c8y_Status as Record<string, unknown> | undefined;
-    if (c8yStatus?.status === 'Up') {
+    const c8yStatus = managedObjTyped['c8y_Status'] as Record<string, unknown> | undefined;
+    if (c8yStatus?.['status'] === 'Up') {
       this.cachedCepStatus = null;
       this.getCepStatus().catch(err =>
         console.warn('Failed to refresh Cep status:', err)
@@ -742,7 +742,7 @@ export class AnalyticsService implements OnDestroy {
 
     if (error && typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj.message;
+      const message = errorObj['message'];
       if (typeof message === 'string') {
         return message;
       }

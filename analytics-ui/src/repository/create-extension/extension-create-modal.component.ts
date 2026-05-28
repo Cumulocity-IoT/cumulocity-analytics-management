@@ -105,7 +105,6 @@ export class ExtensionCreateComponent implements OnInit {
   }
 
   onDismiss(_event: any) {
-    console.log(`Dismiss ${event}`);
     this.closeSubject.next(undefined);
   }
 
@@ -165,7 +164,7 @@ export class ExtensionCreateComponent implements OnInit {
       }
     } else {
       this.alertService.warning(
-        `Uploaded extension ${this.configuration.name}.zip was not successful`
+        `Uploaded extension ${this.configuration['name']}.zip was not successful`
       );
     }
     this.closeSubject.next(true);

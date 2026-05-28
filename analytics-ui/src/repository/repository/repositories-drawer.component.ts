@@ -84,6 +84,11 @@ export class RepositoriesDrawerComponent implements OnInit {
         }
     }
 
+    private stripGithubPrefix(url: string | undefined | null): string {
+        if (!url) return '';
+        return url.replace(/^https?:\/\/(www\.)?github\.com\//i, '');
+    }
+
     urlValidator = (control: AbstractControl): ValidationErrors | null => {
         try {
             const url = this.GITHUB_URL + control.value;
@@ -170,8 +175,8 @@ export class RepositoriesDrawerComponent implements OnInit {
 
         const currentValues = this.repositoryForm.value;
 
-        // Get the full URL with prefix for comparison
-        const currentUrl = this.GITHUB_URL + (currentValues.url || '');
+        // Both compared in form-normalized (prefix-stripped) form
+        const currentUrl = currentValues.url || '';
         const originalUrl = this.originalFormValues.url;
 
         // Check name change
@@ -228,13 +233,13 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.showPATWarning = false;
 
         const rep = { ...repository };
-        rep.url = rep.url.replace(this.GITHUB_URL, '');
+        rep.url = this.stripGithubPrefix(rep.url);
 
-        // Store original values for change detection
+        // Store original values for change detection (URL stored in form-normalized form)
         this.originalFormValues = {
             id: rep.id,
             name: rep.name,
-            url: repository.url, // Keep full URL for comparison
+            url: rep.url,
             accessToken: rep.accessToken || '',
             enabled: rep.enabled
         };
@@ -286,7 +291,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     warnAboutPATReset(): void {
         // Show warning if URL or name is changed and there's an existing token
         if (!this.isAddingNew && this.originalFormValues) {
-            const currentUrl = this.GITHUB_URL + (this.repositoryForm.get('url')?.value || '');
+            const currentUrl = this.repositoryForm.get('url')?.value || '';
             const originalUrl = this.originalFormValues.url;
             const currentName = this.repositoryForm.get('name')?.value || '';
             const originalName = this.originalFormValues.name;
@@ -470,9 +475,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                     if (result) {
                         // Revert form changes
                         if (this.originalFormValues) {
-                            const revertValues = { ...this.originalFormValues };
-                            revertValues.url = revertValues.url.replace(this.GITHUB_URL, '');
-                            this.repositoryForm.patchValue(revertValues);
+                            this.repositoryForm.patchValue(this.originalFormValues);
                         }
                         // Revert enabled changes
                         this.repositoryService.cancelChanges();

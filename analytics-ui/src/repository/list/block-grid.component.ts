@@ -18,7 +18,8 @@
  * @authors Christof Strack
  */
 
-import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -40,11 +41,11 @@ import {
   RepositoryItem,
   RepositoryService
 } from '../../shared';
-import { EditorModalComponent } from '../editor/editor-modal.component';
 import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { EditorModalComponent } from '../editor/editor-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
@@ -125,6 +126,8 @@ export class BlockGridComponent implements OnInit {
     currentPage: 1
   };
 
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     public repositoryService: RepositoryService,
     public alertService: AlertService,
@@ -155,7 +158,8 @@ export class BlockGridComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.repositoryItems$?.subscribe((samples) => (this.repositoryItems = samples));
+    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((samples) => (this.repositoryItems = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
@@ -184,7 +188,8 @@ export class BlockGridComponent implements OnInit {
       // Only emit when the enabled repository changes
       distinctUntilChanged((prev, curr) =>
         prev?.id === curr?.id && prev?.enabled === curr?.enabled
-      )
+      ),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(enabledRepository => {
       // Set the active repository
       this.activeRepository = enabledRepository || ({} as Repository);
@@ -214,37 +219,39 @@ export class BlockGridComponent implements OnInit {
 
 
   checkSelection(ids: string[]) {
-    // console.log("Selected items", ids);
-    let errorSelection = false;
-    let errorItem: RepositoryItem | undefined;
+    const idSet = new Set(ids);
+    const invalid: RepositoryItem[] = [];
+    let hasInvalidType = false;
     this.repositoryItems.forEach((sample) => {
-      if (ids.includes(sample.id) && sample.installed) {
+      if (!idSet.has(sample.id)) return;
+      if (sample.installed) {
         this.alertService.warning(
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
         );
-        errorSelection = true;
-        errorItem = sample;
+        invalid.push(sample);
+        return;
       }
-      if (ids.includes(sample.id) && sample.type == "file") {
-        if (!sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
-          errorSelection = true;
-          errorItem = sample;
-        }
+      if (sample.type == "file" && !sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
+        invalid.push(sample);
+        hasInvalidType = true;
       }
     });
-    if (errorSelection) {
+    if (invalid.length > 0) {
       setTimeout(() => {
-        this.dataGrid.setItemsSelected([errorItem], false);
-        this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!")
+        this.dataGrid.setItemsSelected(invalid, false);
+        if (hasInvalidType) {
+          this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!");
+        }
       }, 0);
     }
   }
 
   async createExtension(ids: string[]) {
+    const idSet = new Set(ids);
     const selectedSections: string[] = [];
     const selectedMonitors: RepositoryItem[] = [];
     this.repositoryItems.forEach((sample) => {
-      if (ids.includes(sample.id) && !sample.installed) {
+      if (idSet.has(sample.id) && !sample.installed) {
         if (sample.extensionsYamlItem) {
           selectedSections.push(sample.name);
           selectedMonitors[0] = sample.extensionsYamlItem;

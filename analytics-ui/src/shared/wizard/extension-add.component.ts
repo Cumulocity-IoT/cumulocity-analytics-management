@@ -149,7 +149,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
       // Add build_information to existing extension as well
       if (existingExtension) {
-        this.state.extension.build_information = buildInformation;
+        this.state.extension['build_information'] = buildInformation;
       }
 
       this.state.requiresUpdate = !!existingExtension;
@@ -379,7 +379,7 @@ export class ExtensionAddComponent implements OnDestroy {
     name: string
   ): Promise<IManagedObject | null> {
     const extensions = await this.analyticsService.getExtensionsFromInventory();
-    return extensions.find(ext => ext.name === name) || null;
+    return extensions.find(ext => ext['name'] === name) || null;
   }
 
   private handleUpdateRequired(): void {
@@ -407,7 +407,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private handleUploadSuccess(mode: UploadMode): void {
     const action = mode === 'update' ? 'Updated' : 'Uploaded';
-    const extensionName = this.state.extension?.name || 'Extension';
+    const extensionName = this.state.extension?.['name'] || 'Extension';
     this.alertService.success(`${action} extension ${extensionName} successfully.`);
     this.state.isComplete = true;
     this.progress.next(100);
@@ -438,7 +438,7 @@ export class ExtensionAddComponent implements OnDestroy {
   private showUpdateConfirmation(): void {
     const initialState = {
       title: 'Update extension',
-      message: `Extension "${this.state.extension!.name}" already exists. Do you want to update it?`,
+      message: `Extension "${this.state.extension!['name']}" already exists. Do you want to update it?`,
       labels: {
         ok: 'Update',
         cancel: 'Cancel'
@@ -506,7 +506,7 @@ export class ExtensionAddComponent implements OnDestroy {
     // Handle error object with message property
     if (typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj.message as string;
+      const message = errorObj['message'] as string;
       return ERROR_MESSAGES[message as keyof typeof ERROR_MESSAGES] || message || null;
     }
 

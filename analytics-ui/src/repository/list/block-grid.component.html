@@ -23,7 +23,7 @@
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'test'" [label]="'Repositories' | translate"
-    [path]="'c8y-pkg-analytics-extension/sample'">
+    [path]="'c8y-pkg-analytics-extension/repository'">
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
@@ -33,7 +33,7 @@
     {{ "Repositories" | translate }}
   </button>
   <button type="button" [popover]="popupPAT" triggers="focus" placement="bottom"
-    class="btn-help" aria-label="Help content" container="body"></button>
+    class="btn-help btn-help--sm" aria-label="Help content" container="body"></button>
   <ng-template #popupPAT>
     <p class="text-14 text-bold">Extension Builder Layouts</p>
     <br />

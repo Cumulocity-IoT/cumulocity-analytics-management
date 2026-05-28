@@ -18,9 +18,6 @@
  * @authors Christof Strack
  */
 import './i18n';
-import { initializeMonacoEnvironment } from '@c8y/ngx-components/editor';
-
-initializeMonacoEnvironment();
 
 const barHolder: HTMLElement | null = document.querySelector('body > .init-load');
 export const removeProgress = () => barHolder?.parentNode?.removeChild(barHolder);

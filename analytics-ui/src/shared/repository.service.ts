@@ -717,7 +717,7 @@ export class RepositoryService implements OnDestroy {
         Object.values(dataObj).forEach((item: unknown) => {
           if (item && typeof item === 'object') {
             const itemObj = item as Record<string, unknown>;
-            const name = itemObj.name as string | undefined;
+            const name = itemObj['name'] as string | undefined;
             if (name && getFileExtension(name) !== '.json') {
               items.push(this.createRepositoryItem(item, repository));
             }
@@ -773,8 +773,8 @@ export class RepositoryService implements OnDestroy {
     }
 
     const itemObj = item as Record<string, unknown>;
-    const name = itemObj.name as string | undefined;
-    const url = itemObj.url as string | undefined;
+    const name = itemObj['name'] as string | undefined;
+    const url = itemObj['url'] as string | undefined;
     
     if (!name || !url) {
       throw new RepositoryError(
@@ -789,9 +789,9 @@ export class RepositoryService implements OnDestroy {
       repositoryId: repository.id,
       name: removeFileExtension(name),
       file: name,
-      type: (itemObj.type as string) || 'file',
+      type: (itemObj['type'] as string) || 'file',
       custom: true,
-      downloadUrl: (itemObj.download_url as string) || url,
+      downloadUrl: (itemObj['download_url'] as string) || url,
       url: url
     } as RepositoryItem;
   }
@@ -1028,7 +1028,7 @@ export class RepositoryService implements OnDestroy {
     }
 
     const requestObj = request as Record<string, unknown>;
-    const extensionName = requestObj.extension_name as string | undefined;
+    const extensionName = requestObj['extension_name'] as string | undefined;
     
     console.log(`Creating extension from ${endpoint}:`, extensionName);
 
@@ -1105,7 +1105,7 @@ export class RepositoryService implements OnDestroy {
 
     if (error && typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj.message;
+      const message = errorObj['message'];
       if (typeof message === 'string') {
         return message;
       }

@@ -1,8 +1,6 @@
 import {
   Component,
-  ElementRef,
   Input,
-  OnInit,
   Output,
   ViewChild,
   ViewEncapsulation
@@ -25,7 +23,7 @@ let initializedMonaco = false;
   imports: [CommonModule, FormsModule, CoreModule, EditorComponent],
   providers: [EplConfigService]
 })
-export class EditorModalComponent implements OnInit {
+export class EditorModalComponent {
 
   @Input() source$!: Observable<string>;
   @Input() monitorName!: string;
@@ -35,8 +33,6 @@ export class EditorModalComponent implements OnInit {
 
   labels: ModalLabels = { ok: 'Close' };
   editorOptions!: EditorComponent['editorOptions'];
-  @ViewChild('sourceEditor') sourceEditor!: ElementRef;
-  source!: string;
 
   constructor(private configService: EplConfigService) {
     this.editorOptions = {
@@ -48,27 +44,20 @@ export class EditorModalComponent implements OnInit {
   }
 
   onClose(_event: any) {
-    console.log('Save');
     this.closeSubject.next(true);
   }
 
   assignSchema() {
-    // console.log("Editor found:", this.editorComponent, this.editorComponent.monaco);
-    if (!initializedMonaco) {
-      if (this.editorComponent.monaco) {
-        initializedMonaco = true;
-        this.editorComponent.monaco.languages.register(this.configService.getCustomLangExtensionPoint());
-        this.editorComponent.monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
-        this.editorComponent.monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
-        this.editorComponent.monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
-      }
+    if (initializedMonaco || !this.editorComponent.monaco) return;
+    const monaco = this.editorComponent.monaco;
+    try {
+      monaco.languages.register(this.configService.getCustomLangExtensionPoint());
+      monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
+      monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
+      monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
+      initializedMonaco = true;
+    } catch (err) {
+      console.error('Failed to register EPL language with Monaco:', err);
     }
-  }
-
-  async ngOnInit(): Promise<void> {
-    this.source$?.subscribe(cont => {
-      console.log('EditorModal source:', cont);
-      this.source = cont;
-    });
   }
 }

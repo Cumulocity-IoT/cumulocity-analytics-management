@@ -106,14 +106,14 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
     // Extract status
     this.cepStatus$ = cepObject$.pipe(
-      map(mo => (mo?.c8y_Status?.status?.toLowerCase() || 'down') as CepEngineStatus),
+      map(mo => (mo?.['c8y_Status']?.['status']?.toLowerCase() || 'down') as CepEngineStatus),
       distinctUntilChanged(),
       shareReplay(1)
     );
 
     // Extract safe mode
     this.isSafeMode$ = cepObject$.pipe(
-      map(mo => mo?.c8y_Status?.is_safe_mode ?? false),
+      map(mo => mo?.['c8y_Status']?.['is_safe_mode'] ?? false),
       distinctUntilChanged()
     );
 

@@ -67,7 +67,7 @@ export const packageProperties: PropertiesListItem[] = [
     transform: (repository: unknown) => {
       if (repository && typeof repository === 'object') {
         const repo = repository as Record<string, unknown>;
-        return repo.url ? repo.url : repository;
+        return repo['url'] ? repo['url'] : repository;
       }
       return repository;
     },
