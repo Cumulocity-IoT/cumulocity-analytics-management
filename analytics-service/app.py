@@ -249,11 +249,12 @@ def get_content_list():
     """
     encoded_url = request.args.get("url")
     repository_id = request.args.get("repository_id")
+    access_token = request.headers.get("X-Repository-Access-Token")
 
     if not encoded_url:
         return create_error_response("URL parameter is required", 400)
 
-    headers = _get_repository_headers(repository_id)
+    headers = _get_repository_headers(repository_id, access_token)
     decoded_url = urllib.parse.unquote(encoded_url)
     content_url = github_web_url_to_content_api(decoded_url)
 
@@ -293,12 +294,13 @@ def get_content():
     encoded_url = request.args.get("url")
     cep_block_name = request.args.get("cep_block_name")
     repository_id = request.args.get("repository_id")
+    access_token = request.headers.get("X-Repository-Access-Token")
     extract_fqn = parse_boolean(request.args.get("extract_fqn_cep_block", False))
 
     if not encoded_url:
         return create_error_response("URL parameter is required", 400)
 
-    headers = _get_repository_headers(repository_id)
+    headers = _get_repository_headers(repository_id, access_token)
     decoded_url = urllib.parse.unquote(encoded_url)
 
     response = requests.get(decoded_url, headers=headers, timeout=30)
@@ -755,9 +757,24 @@ def _validate_extension_name(name: str) -> Optional[str]:
     return None
 
 
-def _get_repository_headers(repository_id: Optional[str] = None) -> Dict[str, str]:
-    """Get headers for GitHub API requests with authentication."""
+def _get_repository_headers(
+    repository_id: Optional[str] = None,
+    access_token: Optional[str] = None,
+) -> Dict[str, str]:
+    """Get headers for GitHub API requests with authentication.
+
+    Resolution order for the PAT:
+      1. ``access_token`` argument (typically sourced from the ``X-Repository-Access-Token``
+         request header — used by the "Test connection" flow to validate a draft
+         repository before it is saved). Header-based delivery keeps the PAT out
+         of HTTP access logs and browser history.
+      2. The PAT stored against ``repository_id`` (resolved via ``agent.load_repository``).
+    """
     headers = {"Accept": "application/vnd.github.v3.raw"}
+
+    if access_token:
+        headers["Authorization"] = f"Bearer {access_token}"
+        return headers
 
     if repository_id:
         repo_config = agent.load_repository(request, repository_id, replace_access_token=False)

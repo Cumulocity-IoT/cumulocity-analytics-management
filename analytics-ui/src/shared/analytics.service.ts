@@ -64,11 +64,12 @@ export class AnalyticsService implements OnDestroy {
   // Private State - Cached Promises
   // ============================================================================
 
-  private cachedCepOperationObjectId: Promise<string> | null = null;
+  private cachedCepOperationObjectId: Promise<string | undefined> | null = null;
   private cachedCepStatus: Promise<CepStatusObject> | null = null;
   private cachedDeployedBlocks: Promise<CepBlock[]> | null = null;
   private cachedDeployedExtensions: Promise<IManagedObject[]> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
+  private cachedExtensionDetails = new Map<string, Promise<CepExtension | null>>();
 
   // ============================================================================
   // Private Dependencies
@@ -120,6 +121,7 @@ export class AnalyticsService implements OnDestroy {
     this.cachedDeployedExtensions = null;
     this.cachedCepOperationObjectId = null;
     this.cachedCepStatus = null;
+    this.cachedExtensionDetails.clear();
     // Don't clear backend availability cache as it rarely changes
   }
 
@@ -137,19 +139,25 @@ export class AnalyticsService implements OnDestroy {
 
   async getExtensionsFromInventory(): Promise<IManagedObject[]> {
     try {
-      const filter = {
-        pageSize: this.DEFAULT_PAGE_SIZE,
-        withTotalPages: true,
-        fragmentType: 'pas_extension'
-      };
+      const all: IManagedObject[] = [];
+      let currentPage = 1;
 
-      const { data } = await this.inventoryService.list(filter);
+      while (true) {
+        const { data, paging } = await this.inventoryService.list({
+          pageSize: this.DEFAULT_PAGE_SIZE,
+          withTotalPages: true,
+          fragmentType: 'pas_extension',
+          currentPage
+        });
 
-      if (data.length >= this.DEFAULT_PAGE_SIZE) {
-        console.warn('Extensions may be paginated. Consider implementing full pagination.');
+        all.push(...data);
+
+        // Stop when the server indicates no further page, or when a short page comes back
+        if (!paging?.nextPage || data.length < this.DEFAULT_PAGE_SIZE) break;
+        currentPage++;
       }
 
-      return data;
+      return all;
     } catch (error) {
       throw this.handleError(
         error,
@@ -161,34 +169,32 @@ export class AnalyticsService implements OnDestroy {
   }
 
   async getEnrichedExtensions(): Promise<IManagedObject[]> {
-    if (this.cachedDeployedExtensions) {
-      return this.cachedDeployedExtensions;
+    if (!this.cachedDeployedExtensions) {
+      this.cachedDeployedExtensions = this.loadEnrichedExtensions().catch(error => {
+        this.cachedDeployedExtensions = null;
+        throw this.handleError(
+          error,
+          'Failed to enrich extensions with deployment status',
+          true,
+          gettext('Could not load extension details. Please refresh.')
+        );
+      });
     }
+    return this.cachedDeployedExtensions;
+  }
 
-    try {
-      const [inventoryExtensions, deployedMetadata, diagnostics] = await Promise.all([
-        this.getExtensionsFromInventory(),
-        this.getDeployedExtensionsMetadata(),
-        this.getExtensionNamesFromCep()
-      ]);
+  private async loadEnrichedExtensions(): Promise<IManagedObject[]> {
+    const [inventoryExtensions, deployedMetadata, diagnostics] = await Promise.all([
+      this.getExtensionsFromInventory(),
+      this.getDeployedExtensionsMetadata(),
+      this.getExtensionNamesFromCep()
+    ]);
 
-      const enriched = await Promise.all(
-        inventoryExtensions.map(ext =>
-          this.addDeploymentStatus(ext, deployedMetadata, diagnostics)
-        )
-      );
-
-      this.cachedDeployedExtensions = Promise.resolve(enriched);
-      return enriched;
-    } catch (error) {
-      this.cachedDeployedExtensions = null;
-      throw this.handleError(
-        error,
-        'Failed to enrich extensions with deployment status',
-        true,
-        gettext('Could not load extension details. Please refresh.')
-      );
-    }
+    return Promise.all(
+      inventoryExtensions.map(ext =>
+        this.addDeploymentStatus(ext, deployedMetadata, diagnostics)
+      )
+    );
   }
 
   async uploadExtension(
@@ -274,11 +280,10 @@ export class AnalyticsService implements OnDestroy {
   }
 
   updateUploadProgress(event: ProgressEvent): void {
-    if (event.lengthComputable) {
-      const currentProgress = this.uploadProgress$.value || 0;
-      const newProgress = currentProgress + (event.loaded / event.total) * (95 - currentProgress);
-      this.uploadProgress$.next(newProgress);
-    }
+    if (!event.lengthComputable || event.total === 0) return;
+    // Cap at 95% so the final 5% can be reserved for server-side processing
+    const progress = Math.min(95, (event.loaded / event.total) * 95);
+    this.uploadProgress$.next(progress);
   }
 
   // ============================================================================
@@ -286,44 +291,35 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   async getDeployedBlocks(): Promise<CepBlock[]> {
-    if (this.cachedDeployedBlocks) {
-      return this.cachedDeployedBlocks;
+    if (!this.cachedDeployedBlocks) {
+      this.cachedDeployedBlocks = this.loadDeployedBlocks().catch(error => {
+        this.cachedDeployedBlocks = null;
+        throw this.handleError(
+          error,
+          'Failed to load deployed blocks',
+          true,
+          gettext('Could not load deployed blocks. Please refresh.')
+        );
+      });
     }
+    return this.cachedDeployedBlocks;
+  }
 
-    try {
-      const metadata = await this.getDeployedExtensionsMetadata();
+  private async loadDeployedBlocks(): Promise<CepBlock[]> {
+    const metadata = await this.getDeployedExtensionsMetadata();
+    if (!metadata?.metadatas?.length) return [];
 
-      if (!metadata?.metadatas?.length) {
-        this.cachedDeployedBlocks = Promise.resolve([]);
-        return [];
-      }
+    const perExtensionBlocks = await Promise.all(
+      metadata.metadatas.map(async (metadataFile) => {
+        const extensionName = removeFileExtension(metadataFile);
+        // Shares the per-name memo with addDeploymentStatus — no duplicate HTTP fetch
+        const ext = await this.getDeployedExtensionDetails(extensionName);
+        if (!ext?.analytics?.length) return [];
+        return ext.analytics.map(block => this.addBlockMetadata(block, ext.name));
+      })
+    );
 
-      const extensions = await Promise.all(
-        metadata.metadatas.map(async (metadataFile) => {
-          const extensionName = removeFileExtension(metadataFile);
-          const ext = await this.getDeployedExtensionDetails(extensionName);
-          if (ext && ext.analytics) {
-            return ext.analytics.map(block => this.addBlockMetadata(block, ext.name));
-          }
-          return [];
-        })
-      );
-
-      const blocks = extensions
-        .filter((ext: any) => Array.isArray(ext) && ext.length > 0)
-        .flatMap(ext => ext);
-
-      this.cachedDeployedBlocks = Promise.resolve(blocks);
-      return blocks;
-    } catch (error) {
-      this.cachedDeployedBlocks = null;
-      throw this.handleError(
-        error,
-        'Failed to load deployed blocks',
-        true,
-        gettext('Could not load deployed blocks. Please refresh.')
-      );
-    }
+    return perExtensionBlocks.flat();
   }
 
   // ============================================================================
@@ -331,27 +327,21 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   async getCepStatus(): Promise<CepStatusObject> {
-    if (this.cachedCepStatus) {
-      return this.cachedCepStatus;
+    if (!this.cachedCepStatus) {
+      this.cachedCepStatus = this.loadCepStatus().catch(error => {
+        this.cachedCepStatus = null;
+        throw this.handleError(error, 'Failed to get Cep status', false);
+      });
     }
+    return this.cachedCepStatus;
+  }
 
-    try {
-      const isBackendAvailable = await this.isBackendServiceAvailable();
-      const url = isBackendAvailable
-        ? `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`
-        : `${CEP_PATH_STATUS}`;
-
-      const status = await this.fetchJSON<CepStatusObject>(url);
-      this.cachedCepStatus = Promise.resolve(status);
-      return status;
-    } catch (error) {
-      this.cachedCepStatus = null;
-      throw this.handleError(
-        error,
-        'Failed to get Cep status',
-        false // Don't show alert, let caller handle
-      );
-    }
+  private async loadCepStatus(): Promise<CepStatusObject> {
+    const isBackendAvailable = await this.isBackendServiceAvailable();
+    const url = isBackendAvailable
+      ? `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`
+      : `${CEP_PATH_STATUS}`;
+    return this.fetchJSON<CepStatusObject>(url);
   }
 
   getCepOperationObjectStream$(): Observable<IManagedObject> {
@@ -378,22 +368,17 @@ export class AnalyticsService implements OnDestroy {
   }
 
   async isBackendServiceAvailable(): Promise<boolean> {
-    if (this.cachedBackendAvailability) {
-      return this.cachedBackendAvailability;
+    if (!this.cachedBackendAvailability) {
+      this.cachedBackendAvailability = this.applicationService
+        .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
+        .then(result => result?.data ?? false)
+        .catch(() => {
+          // Allow retry on next call
+          this.cachedBackendAvailability = null;
+          return false;
+        });
     }
-
-    try {
-      const result = await this.applicationService.isAvailable(
-        APPLICATION_ANALYTICS_BUILDER_SERVICE
-      );
-
-      const isAvailable = result?.data ?? false;
-      this.cachedBackendAvailability = Promise.resolve(isAvailable);
-      return isAvailable;
-    } catch (error) {
-      // console.warn('Failed to check backend service availability:', error);
-      return false; // Fail gracefully, don't throw
-    }
+    return this.cachedBackendAvailability;
   }
 
   // ============================================================================
@@ -413,39 +398,51 @@ export class AnalyticsService implements OnDestroy {
   }
 
   async getDeployedExtensionDetails(extensionName: string): Promise<CepExtension | null> {
-    try {
-      const data = await this.fetchJSON<CepExtension>(`${CEP_PATH_EN}/${extensionName}.json`);
-      return { ...data, name: extensionName };
-    } catch (error) {
-      console.warn(`Failed to get extension details for ${extensionName}:`, error);
-      return null; // Return null instead of throwing for individual extension failures
-    }
+    const cached = this.cachedExtensionDetails.get(extensionName);
+    if (cached) return cached;
+
+    const inflight = (async () => {
+      try {
+        const data = await this.fetchJSON<CepExtension>(`${CEP_PATH_EN}/${extensionName}.json`);
+        return { ...data, name: extensionName };
+      } catch (error) {
+        console.warn(`Failed to get extension details for ${extensionName}:`, error);
+        // Evict failed result so a future call can retry
+        this.cachedExtensionDetails.delete(extensionName);
+        return null;
+      }
+    })();
+
+    this.cachedExtensionDetails.set(extensionName, inflight);
+    return inflight;
   }
 
   async getCepOperationObjectId(): Promise<string | undefined> {
-    if (this.cachedCepOperationObjectId) {
-      return this.cachedCepOperationObjectId;
+    if (!this.cachedCepOperationObjectId) {
+      this.cachedCepOperationObjectId = this.loadCepOperationObjectId().catch(async error => {
+        this.handleError(error, 'Failed to get Cep operation object ID', false);
+        // Don't cache failures — clear so a later call can retry
+        this.cachedCepOperationObjectId = null;
+        const isBackendAvailable = await this.isBackendServiceAvailable();
+        this.showCepUnavailableWarning(isBackendAvailable);
+        return undefined;
+      });
     }
+    return this.cachedCepOperationObjectId;
+  }
 
-    try {
-      const isBackendAvailable = await this.isBackendServiceAvailable();
-      const id = isBackendAvailable
-        ? await this.fetchOperationIdFromBackend()
-        : await this.fetchOperationIdFromCepStatus();
+  private async loadCepOperationObjectId(): Promise<string | undefined> {
+    const isBackendAvailable = await this.isBackendServiceAvailable();
+    const id = isBackendAvailable
+      ? await this.fetchOperationIdFromBackend()
+      : await this.fetchOperationIdFromCepStatus();
 
-      if (id) {
-        this.cachedCepOperationObjectId = Promise.resolve(id);
-        return id;
-      }
+    if (id) return id;
 
-      this.showCepUnavailableWarning(isBackendAvailable);
-      return undefined;
-    } catch (error) {
-      this.handleError(error, 'Failed to get Cep operation object ID', false);
-      const isBackendAvailable = await this.isBackendServiceAvailable();
-      this.showCepUnavailableWarning(isBackendAvailable);
-      return undefined;
-    }
+    // Treat missing id as a non-cacheable miss
+    this.cachedCepOperationObjectId = null;
+    this.showCepUnavailableWarning(isBackendAvailable);
+    return undefined;
   }
 
   // ============================================================================
@@ -474,10 +471,13 @@ export class AnalyticsService implements OnDestroy {
     const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
     const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
 
+    // Direction-agnostic match: handles entries returned as either "foo.json"
+    // (exact) or "foo" (extension stripped). Matching only one direction is
+    // fragile against API drift; this catches both shapes explicitly.
     const isDeployedViaMetadata = deployedMetadata?.metadatas?.some(
-      name => metadataKey.includes(name)
+      name => name === metadataKey || removeFileExtension(name) === cleanName
     );
-    const isDeployedViaDiagnostics = diagnostics?.hasOwnProperty(diagnosticsKey);
+    const isDeployedViaDiagnostics = !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
     const isDeployed = isDeployedViaMetadata || isDeployedViaDiagnostics;
 
     let blockCount = 0;
@@ -522,47 +522,22 @@ export class AnalyticsService implements OnDestroy {
     };
   }
 
+  // Order matters: first match wins. UTILITY also serves as the default fallback.
+  private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> = [
+    [Category.INPUT,             ['input', 'trigger', 'measurement', 'event']],
+    [Category.OUTPUT,            ['output', 'send', 'http', 'email', 'alarm']],
+    [Category.AGGREGATE,         ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']],
+    [Category.CALCULATION,       ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']],
+    [Category.LOGIC,             ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
+    [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
+    [Category.UTILITY,           ['random', 'generator', 'constant', 'noise', 'walk']],
+  ];
+
   private determineBlockCategory(block: Partial<CepBlock>): Category {
-    const name = (block.name || '').toLowerCase();
-    const description = (block.description || '').toLowerCase();
-    const combined = `${name} ${description}`;
-
-    // INPUT blocks - source or data input blocks
-    if (combined.includes('input') || combined.includes('trigger') || combined.includes('measurement') || combined.includes('event')) {
-      return Category.INPUT;
+    const text = `${block.name ?? ''} ${block.description ?? ''}`.toLowerCase();
+    for (const [category, keywords] of AnalyticsService.CATEGORY_KEYWORDS) {
+      if (keywords.some(kw => text.includes(kw))) return category;
     }
-
-    // OUTPUT blocks - output or sink blocks
-    if (combined.includes('output') || combined.includes('send') || combined.includes('http') || combined.includes('email') || combined.includes('alarm')) {
-      return Category.OUTPUT;
-    }
-
-    // AGGREGATE blocks - sum, count, average, statistics
-    if (combined.includes('sum') || combined.includes('count') || combined.includes('average') || combined.includes('mean') || combined.includes('aggregate') || combined.includes('statistics') || combined.includes('discrete')) {
-      return Category.AGGREGATE;
-    }
-
-    // CALCULATION blocks - math operations, transformations
-    if (combined.includes('math') || combined.includes('calculation') || combined.includes('operation') || combined.includes('base') || combined.includes('multiply') || combined.includes('divide') || combined.includes('limit')) {
-      return Category.CALCULATION;
-    }
-
-    // LOGIC blocks - conditional, comparison, filter
-    if (combined.includes('if') || combined.includes('compare') || combined.includes('filter') || combined.includes('logic') || combined.includes('condition') || combined.includes('anomaly')) {
-      return Category.LOGIC;
-    }
-
-    // FLOW_MANIPULATION blocks - delay, rate limit, state machine
-    if (combined.includes('delay') || combined.includes('rate') || combined.includes('throttle') || combined.includes('flow') || combined.includes('state')) {
-      return Category.FLOW_MANIPULATION;
-    }
-
-    // UTILITY blocks - random, generator, utility
-    if (combined.includes('random') || combined.includes('generator') || combined.includes('constant') || combined.includes('noise') || combined.includes('walk')) {
-      return Category.UTILITY;
-    }
-
-    // Default to UTILITY
     return Category.UTILITY;
   }
 
@@ -600,6 +575,7 @@ export class AnalyticsService implements OnDestroy {
   private invalidateExtensionCaches(): void {
     this.cachedDeployedExtensions = null;
     this.cachedDeployedBlocks = null;
+    this.cachedExtensionDetails.clear();
   }
 
   // ============================================================================

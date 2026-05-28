@@ -1,4 +1,3 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Injectable, OnDestroy } from '@angular/core';
 import { FetchClient, IFetchResponse } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
@@ -38,7 +37,6 @@ import {
 import { AnalyticsService } from './analytics.service';
 import {
   getFileExtension,
-  githubWebUrlToContentApi,
   removeFileExtension,
   uuidCustom
 } from './utils';
@@ -96,6 +94,7 @@ export class RepositoryService implements OnDestroy {
 
   // Cache management
   private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
+  private readonly fqnCache = new Map<string, Observable<string>>();
   private readonly reloadTrigger$ = new BehaviorSubject<void>(undefined);
 
   // Public observables
@@ -287,24 +286,51 @@ export class RepositoryService implements OnDestroy {
   }
 
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
-    const testUrl = githubWebUrlToContentApi(repository.url);
-
+    // Route through the backend so the request honors tenant CSP and reuses the
+    // existing content-list proxy. The PAT is passed in a custom header (not a
+    // query param) so it doesn't land in HTTP access logs or browser history;
+    // this also lets draft (unsaved) repositories be tested before persisting.
     try {
-      const response = await fetch(testUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/vnd.github.v3.raw',
-          'Authorization': `Bearer ${repository.accessToken}`
-        }
-      });
+      const headers: Record<string, string> = { 'content-type': 'application/json' };
+      if (repository.accessToken) {
+        headers['X-Repository-Access-Token'] = repository.accessToken;
+      }
 
-      return {
-        success: true,
-        message: gettext('Successfully connected to repository'),
-        status: response?.status
-      };
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
+        {
+          headers,
+          params: {
+            url: encodeURIComponent(repository.url),
+            repository_id: repository.id
+          },
+          method: 'GET'
+        }
+      );
+
+      if (response.ok) {
+        return {
+          success: true,
+          message: gettext('Successfully connected to repository'),
+          status: response.status
+        };
+      }
+      return this.mapTestStatusToResult(response.status);
     } catch (error) {
       return this.handleTestError(error);
+    }
+  }
+
+  private mapTestStatusToResult(status: number): RepositoryTestResult {
+    switch (status) {
+      case 401:
+        return { success: false, status, message: gettext('Authentication failed. Please check your access token.') };
+      case 403:
+        return { success: false, status, message: gettext('Access denied. Please check your permissions.') };
+      case 404:
+        return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
+      default:
+        return { success: false, status, message: gettext(`Connection failed (status: ${status}). Please try again.`) };
     }
   }
 
@@ -338,13 +364,8 @@ export class RepositoryService implements OnDestroy {
   /**
    * Reload repositories and items from backend
    */
-  async reloadAll(): Promise<void> {
-    try {
-      await this.refreshRepositories();
-    } catch (error) {
-      // Error already handled in refreshRepositories
-      throw error;
-    }
+  reloadAll(): Promise<void> {
+    return this.refreshRepositories();
   }
 
   // ============================================================================
@@ -568,6 +589,7 @@ export class RepositoryService implements OnDestroy {
 
   private clearCache(): void {
     this.blockCache.clear();
+    this.fqnCache.clear();
   }
 
   private areRepositoriesEqual(a: Repository[], b: Repository[]): boolean {
@@ -709,39 +731,21 @@ export class RepositoryService implements OnDestroy {
     repository: Repository
   ): Observable<RepositoryItem[]> {
     try {
-      // Safely extract items from data
       const items: RepositoryItem[] = [];
-      
+
       if (data && typeof data === 'object') {
         const dataObj = data as Record<string, unknown>;
-        Object.values(dataObj).forEach((item: unknown) => {
-          if (item && typeof item === 'object') {
-            const itemObj = item as Record<string, unknown>;
-            const name = itemObj['name'] as string | undefined;
-            if (name && getFileExtension(name) !== '.json') {
-              items.push(this.createRepositoryItem(item, repository));
-            }
+        for (const item of Object.values(dataObj)) {
+          if (!item || typeof item !== 'object') continue;
+          const name = (item as Record<string, unknown>)['name'] as string | undefined;
+          if (name && getFileExtension(name) !== '.json') {
+            items.push(this.createRepositoryItem(item, repository));
           }
-        });
+        }
       }
 
-      return forkJoin(
-        items.length > 0 
-          ? items.map(item => this.enrichRepositoryItem(item)) 
-          : [of([] as RepositoryItem[])]
-      ).pipe(
-        map((results: any[]) => {
-          const flattened: RepositoryItem[] = [];
-          results.forEach(result => {
-            if (Array.isArray(result)) {
-              flattened.push(...result);
-            } else {
-              flattened.push(result);
-            }
-          });
-          return flattened;
-        })
-      );
+      if (items.length === 0) return of([]);
+      return forkJoin(items.map(item => this.enrichRepositoryItem(item)));
     } catch (error) {
       throw this.handleError(
         error,
@@ -752,16 +756,25 @@ export class RepositoryService implements OnDestroy {
   }
 
   private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
-    if (item.type === 'file' && item.file.endsWith('.mon')) {
-      return this.getRepositoryItemContent(item, true, true).pipe(
-        map(fqn => ({ ...item, id: fqn })),
+    if (item.type !== 'file' || !item.file.endsWith('.mon')) {
+      return of({ ...item, id: item.file });
+    }
+
+    const cacheKey = `${item.repositoryId}::${item.url}`;
+    let fqn$ = this.fqnCache.get(cacheKey);
+    if (!fqn$) {
+      fqn$ = this.getRepositoryItemContent(item, true, true).pipe(
         catchError(error => {
           console.warn(`Failed to enrich item ${item.name}:`, error);
-          return of({ ...item, id: item.file });
-        })
+          this.fqnCache.delete(cacheKey); // allow retry
+          return of(item.file);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false })
       );
+      this.fqnCache.set(cacheKey, fqn$);
     }
-    return of({ ...item, id: item.file });
+
+    return fqn$.pipe(map(fqn => ({ ...item, id: fqn })));
   }
 
   private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
@@ -1027,11 +1040,6 @@ export class RepositoryService implements OnDestroy {
       );
     }
 
-    const requestObj = request as Record<string, unknown>;
-    const extensionName = requestObj['extension_name'] as string | undefined;
-    
-    console.log(`Creating extension from ${endpoint}:`, extensionName);
-
     try {
       const response = await this.fetchClient.fetch(
         `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/${endpoint}`,
@@ -1114,36 +1122,9 @@ export class RepositoryService implements OnDestroy {
     return gettext('An unexpected error occurred. Please try again.');
   }
 
-  private handleTestError(error: unknown): RepositoryTestResult {
-    if (error instanceof HttpErrorResponse) {
-      switch (error.status) {
-        case 401:
-          return {
-            success: false,
-            message: gettext('Authentication failed. Please check your access token.'),
-            status: error.status
-          };
-        case 404:
-          return {
-            success: false,
-            message: gettext('Repository not found. Please check the URL.'),
-            status: error.status
-          };
-        case 403:
-          return {
-            success: false,
-            message: gettext('Access denied. Please check your permissions.'),
-            status: error.status
-          };
-        default:
-          return {
-            success: false,
-            message: gettext(`Connection failed (Status: ${error.status}). Please try again.`),
-            status: error.status
-          };
-      }
-    }
-
+  private handleTestError(_error: unknown): RepositoryTestResult {
+    // fetch() only rejects on network errors (DNS, CORS, abort); status-code mapping
+    // happens in mapTestStatusToResult against response.status.
     return {
       success: false,
       message: gettext('Failed to connect to repository. Please check your connection and try again.')

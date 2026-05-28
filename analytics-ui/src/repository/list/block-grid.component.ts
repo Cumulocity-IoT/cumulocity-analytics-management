@@ -46,6 +46,7 @@ import { ExtensionCreateComponent } from '../create-extension/extension-create-m
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
+import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
@@ -339,6 +340,15 @@ export class BlockGridComponent implements OnInit {
 
   openRepositoriesDrawer(): void {
     this.showConfigRepositories = true;
+  }
+
+  openLayoutHelp(): void {
+    const modalRef = this.bsModalService.show(ExtensionLayoutHelpModalComponent, {
+      class: 'modal-lg',
+      ariaLabelledBy: 'modal-title',
+      ignoreBackdropClick: false
+    });
+    modalRef.content?.closeSubject.subscribe(() => modalRef.hide());
   }
 
   onRepositoryCommit(): void {
