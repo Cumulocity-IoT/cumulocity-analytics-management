@@ -59,8 +59,9 @@ interface BuildInformation {
 @Component({
   selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html',
+  styleUrls: ['./extension-add.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule]
+  imports: [CommonModule, CoreModule, ConfirmationModalComponent]
 })
 export class ExtensionAddComponent implements OnDestroy {
   @Input() headerText!: string;

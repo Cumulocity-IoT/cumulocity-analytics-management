@@ -24,6 +24,10 @@ import { ExtensionDetailsComponent } from './manage/extension-details.component'
 import { BlockGridComponent as BlockGridComponentRepository } from './repository/list/block-grid.component';
 import { ExtensionListComponent } from './repository/list/extension-list.component';
 import { CustomSwitchField } from './shared/component/custom-switch-field';
+import { ConfirmationModalComponent } from './shared/component/confirmation-modal.component';
+import { EditorModalComponent } from './repository/editor/editor-modal.component';
+import { ExtensionCreateComponent } from './repository/create-extension/extension-create-modal.component';
+import { RepositoriesDrawerComponent } from './repository/repository/repositories-drawer.component';
 
 // Import resolvers
 import { extensionResolver, backendResolver } from './manage/utils';
@@ -45,7 +49,12 @@ import { extensionResolver, backendResolver } from './manage/utils';
     BlockGridComponentRepository,
     ExtensionAddWizardComponent,
     ExtensionListComponent,
-    CustomSwitchField
+    CustomSwitchField,
+    // Modal components
+    ConfirmationModalComponent,
+    EditorModalComponent,
+    ExtensionCreateComponent,
+    RepositoriesDrawerComponent
   ],
   providers: [
     // Navigation and tab hooks

@@ -8,8 +8,7 @@
     @if (!isComplete) {
       <c8y-form-group
         [hasError]="!!errorMessage"
-        class="m-auto"
-        style="max-width: 250px"
+        class="m-auto form-group-upload"
         >
         <c8y-drop-area
           (dropped)="onFileDroppedEvent($event)"

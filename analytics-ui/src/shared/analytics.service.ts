@@ -16,6 +16,7 @@ import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
   APPLICATION_ANALYTICS_BUILDER_SERVICE,
   BACKEND_PATH_BASE,
+  Category,
   CepBlock,
   CEP_ENDPOINT,
   CepExtension,
@@ -516,8 +517,53 @@ export class AnalyticsService implements OnDestroy {
       extension: extensionName,
       resultingExtension: blockObj.resultingExtension,
       repositoryName: blockObj.repositoryName || '',
-      repositoryId: blockObj.repositoryId || ''
+      repositoryId: blockObj.repositoryId || '',
+      category: blockObj.category || this.determineBlockCategory(blockObj)
     };
+  }
+
+  private determineBlockCategory(block: Partial<CepBlock>): Category {
+    const name = (block.name || '').toLowerCase();
+    const description = (block.description || '').toLowerCase();
+    const combined = `${name} ${description}`;
+
+    // INPUT blocks - source or data input blocks
+    if (combined.includes('input') || combined.includes('trigger') || combined.includes('measurement') || combined.includes('event')) {
+      return Category.INPUT;
+    }
+
+    // OUTPUT blocks - output or sink blocks
+    if (combined.includes('output') || combined.includes('send') || combined.includes('http') || combined.includes('email') || combined.includes('alarm')) {
+      return Category.OUTPUT;
+    }
+
+    // AGGREGATE blocks - sum, count, average, statistics
+    if (combined.includes('sum') || combined.includes('count') || combined.includes('average') || combined.includes('mean') || combined.includes('aggregate') || combined.includes('statistics') || combined.includes('discrete')) {
+      return Category.AGGREGATE;
+    }
+
+    // CALCULATION blocks - math operations, transformations
+    if (combined.includes('math') || combined.includes('calculation') || combined.includes('operation') || combined.includes('base') || combined.includes('multiply') || combined.includes('divide') || combined.includes('limit')) {
+      return Category.CALCULATION;
+    }
+
+    // LOGIC blocks - conditional, comparison, filter
+    if (combined.includes('if') || combined.includes('compare') || combined.includes('filter') || combined.includes('logic') || combined.includes('condition') || combined.includes('anomaly')) {
+      return Category.LOGIC;
+    }
+
+    // FLOW_MANIPULATION blocks - delay, rate limit, state machine
+    if (combined.includes('delay') || combined.includes('rate') || combined.includes('throttle') || combined.includes('flow') || combined.includes('state')) {
+      return Category.FLOW_MANIPULATION;
+    }
+
+    // UTILITY blocks - random, generator, utility
+    if (combined.includes('random') || combined.includes('generator') || combined.includes('constant') || combined.includes('noise') || combined.includes('walk')) {
+      return Category.UTILITY;
+    }
+
+    // Default to UTILITY
+    return Category.UTILITY;
   }
 
   private async getDeployedExtensionsMetadata(): Promise<CepExtensionsMetadata> {

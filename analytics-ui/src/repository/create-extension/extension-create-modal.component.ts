@@ -14,7 +14,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   selector: 'a17t-extension-create-modal',
   templateUrl: './extension-create-modal.component.html',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, CoreModule, FormlyModule, PopoverModule]
+  imports: [CommonModule, ReactiveFormsModule, CoreModule, FormlyModule, PopoverModule, ExtensionListComponent]
 })
 export class ExtensionCreateComponent implements OnInit {
   @Output() closeSubject: Subject<unknown> = new Subject();

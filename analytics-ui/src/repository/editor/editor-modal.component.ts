@@ -8,6 +8,7 @@ import {
   ViewEncapsulation
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { Observable, Subject } from 'rxjs';
 import { EditorComponent } from '@c8y/ngx-components/editor';
@@ -21,7 +22,8 @@ let initializedMonaco = false;
   templateUrl: './editor-modal.component.html',
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, CoreModule, EditorComponent]
+  imports: [CommonModule, FormsModule, CoreModule, EditorComponent],
+  providers: [EplConfigService]
 })
 export class EditorModalComponent implements OnInit {
 
@@ -32,16 +34,18 @@ export class EditorModalComponent implements OnInit {
   @ViewChild(EditorComponent) editorComponent!: EditorComponent;
 
   labels: ModalLabels = { ok: 'Close' };
-  editorOptions: EditorComponent['editorOptions'] = {
-    minimap: { enabled: false },
-    renderValidationDecorations: "off",
-    language: this.configService.getLanguageName(),
-    theme: this.configService.getThemeName()
-  };
+  editorOptions!: EditorComponent['editorOptions'];
   @ViewChild('sourceEditor') sourceEditor!: ElementRef;
   source!: string;
 
-  constructor(private configService: EplConfigService) {}
+  constructor(private configService: EplConfigService) {
+    this.editorOptions = {
+      minimap: { enabled: false },
+      renderValidationDecorations: "off",
+      language: this.configService.getLanguageName(),
+      theme: this.configService.getThemeName()
+    };
+  }
 
   onClose(_event: any) {
     console.log('Save');
@@ -62,6 +66,9 @@ export class EditorModalComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    this.source$?.subscribe(cont => this.source = cont)
+    this.source$?.subscribe(cont => {
+      console.log('EditorModal source:', cont);
+      this.source = cont;
+    });
   }
 }

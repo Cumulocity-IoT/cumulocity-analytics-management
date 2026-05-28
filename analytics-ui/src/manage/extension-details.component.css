@@ -1,23 +1,20 @@
-.text-center {
-    text-align: center !important;
-  }
-  
-  /* Try targeting the specific case with a more specific selector */
-  .table tr td.text-center c8y-ui-empty-state {
-    margin: 0 auto;
-    display: block;
-  }
+/* Align center content in table cells */
+.table tr td.text-center c8y-ui-empty-state {
+  margin: 0 auto;
+  display: block;
+}
 
+/* Custom centered cell styling */
+.custom-center-cell {
+  text-align: center;
+  position: relative;
+}
 
-  .custom-center-cell {
-    text-align: center !important;
-    position: relative !important;
-  }
-  
-  .custom-center-wrapper {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 100% !important;
-  }
+/* Custom wrapper for centered content */
+.custom-center-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+}

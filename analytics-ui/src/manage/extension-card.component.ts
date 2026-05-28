@@ -12,7 +12,8 @@ import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { AnalyticsService, ConfirmationModalComponent, Repository, RepositoryService } from '../shared';
+import { AnalyticsService, Repository, RepositoryService } from '../shared';
+import { ConfirmationModalComponent } from '../shared/component/confirmation-modal.component';
 
 interface BuildInformation {
   build_type: 'repository' | 'list' | 'yaml';
@@ -27,8 +28,9 @@ interface BuildInformation {
 @Component({
   selector: 'a17t-extension-card',
   templateUrl: './extension-card.component.html',
+  styleUrls: ['./extension-card.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
+  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule, ConfirmationModalComponent]
 })
 export class ExtensionCardComponent implements OnInit {
   @Input() extension!: IManagedObject;

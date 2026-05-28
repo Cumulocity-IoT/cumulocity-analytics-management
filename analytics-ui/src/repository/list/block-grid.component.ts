@@ -56,8 +56,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
 })
 export class BlockGridComponent implements OnInit {
-  @ViewChild('dataGrid', { static: false })
-  @ViewChild(DataGridComponent) dataGrid!: DataGridComponent;
+  @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;

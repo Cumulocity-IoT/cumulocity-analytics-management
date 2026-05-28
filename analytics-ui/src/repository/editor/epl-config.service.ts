@@ -7,7 +7,7 @@
 
 import { Injectable } from '@angular/core';
 import eplTokenProvider from './epl-token.provider';
-import * as monaco from 'monaco-editor';
+import type * as monaco from 'monaco-editor';
 @Injectable()
 export class EplConfigService {
 

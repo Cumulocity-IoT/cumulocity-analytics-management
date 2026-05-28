@@ -5,11 +5,11 @@ import { AlertService, CoreModule } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable } from 'rxjs';
 import {
-    ConfirmationModalComponent,
     Repository,
     RepositoryService,
     uuidCustom
 } from '../../shared';
+import { ConfirmationModalComponent } from '../../shared/component/confirmation-modal.component';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
@@ -18,7 +18,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
     templateUrl: './repositories-drawer.component.html',
     encapsulation: ViewEncapsulation.None,
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule]
+    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule, ConfirmationModalComponent]
 })
 export class RepositoriesDrawerComponent implements OnInit {
     @Input() hideInstalled: boolean = false;
