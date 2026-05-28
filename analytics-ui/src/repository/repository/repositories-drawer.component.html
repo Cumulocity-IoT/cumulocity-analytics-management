@@ -76,47 +76,40 @@
       }
       <div class="ff-scroll-fix"></div>
     </div>
-
-    <div class="card-footer large-padding separator sticky-bottom">
-      <button type="button" [title]="'Add repository' | translate" class="btn btn-default"
-        (click)="createCustomRepository()">
-        <i c8yIcon="plus-circle" class="m-r-4"></i>
-        {{ 'Add repository' | translate }}
-      </button>
-    </div>
   </div>
 
   <!-- Right Panel: Repository Details -->
   <div class="inner-scroll split-view__detail" cdkScrollable
     [ngClass]="{ 'split-view__detail--selected': showAddRepository }">
     @if (!showAddRepository) {
-      <div class="p-l-24 p-r-24 flex-grow">
+      <div class="p-l-24 p-r-24 flex-grow text-center">
         <c8y-ui-empty-state icon="plugin" [horizontal]="true" [title]="'No repository selected.' | translate"
         [subtitle]="'Add or select a repository.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+        <button type="button" class="btn btn-primary m-t-16" [title]="'Add repository' | translate"
+          (click)="createCustomRepository()">
+          <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
+        </button>
       </div>
     }
 
     @if (showAddRepository) {
       <div class="p-l-24 p-r-24 p-t-24 flex-grow">
-        <div class="d-flex j-c-between a-i-center m-b-24">
-          <h4 class="m-b-0 text-truncate">
-            {{ isAddingNew ? ('Add Repository' | translate) : ('Edit ' + repositoryForm.value.name) }}
-          </h4>
-          @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-            <label class="c8y-switch m-l-16 flex-no-shrink" [formGroup]="repositoryForm">
-              <input type="checkbox" formControlName="enabled"
-                (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
-              <span></span>
-              <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
-            </label>
-          }
-        </div>
         <form [formGroup]="repositoryForm" autocomplete="off">
           <fieldset>
             <input type="hidden" formControlName="id" />
             <c8y-form-group>
-              <label for="name">{{ 'Name' | translate }}</label>
-              <input type="text" id="name" formControlName="name" class="form-control"
+              <div class="d-flex j-c-between a-i-center">
+                <label for="name" class="m-b-0">{{ 'Name' | translate }}</label>
+                @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+                  <label class="c8y-switch flex-no-shrink m-b-0">
+                    <input type="checkbox" formControlName="enabled"
+                      (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
+                    <span></span>
+                    <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
+                  </label>
+                }
+              </div>
+              <input type="text" id="name" formControlName="name" class="form-control m-t-8"
                 (change)="warnAboutPATReset()" [placeholder]="'Repository name' | translate" />
             </c8y-form-group>
             <c8y-form-group>
@@ -167,12 +160,23 @@
               </c8y-messages>
             }
           </c8y-form-group>
-          <div class="btn-toolbar">
-            <button (click)="testRepository()" class="btn btn-default" style="min-width:100px;"
+          <div class="btn-toolbar d-flex" style="gap: 8px;">
+            <button (click)="testRepository()" class="btn btn-default" style="min-width:120px;"
               [title]="'Enter your PAT access token to test' | translate"
               [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN">
               {{ 'Test connection' | translate }}
             </button>
+            <button type="button" class="btn btn-default" [title]="'Add repository' | translate"
+              (click)="createCustomRepository()">
+              <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
+            </button>
+            @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+              <button type="button" [title]="'Delete repository' | translate" class="btn btn-danger"
+                (click)="deleteButtonClicked()"
+                [disabled]="deleteDisabled">
+                <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+              </button>
+            }
           </div>
         </fieldset>
       </form>
@@ -183,16 +187,9 @@
 </div>
 </div>
 
-    <!-- Outer card footer: action buttons centered, Delete grouped at the left of the same row -->
+    <!-- Outer card footer: form actions centered -->
     @if (showAddRepository) {
       <div class="card-footer separator p-24 flex-no-shrink text-center">
-        @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-          <button type="button" [title]="'Delete repository' | translate" class="btn btn-danger m-r-16"
-            (click)="deleteButtonClicked()"
-            [disabled]="deleteDisabled">
-            <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
-          </button>
-        }
         <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
           {{ 'Cancel' | translate }}
         </button>
