@@ -3,12 +3,13 @@ import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
 import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
-import { BehaviorSubject, combineLatest, from, merge, Observable, of, Subject } from 'rxjs';
+import { BehaviorSubject, combineLatest, defer, from, merge, Observable, of, Subject, timer } from 'rxjs';
 import {
   catchError,
   debounceTime,
   distinctUntilChanged,
   map,
+  retry,
   shareReplay,
   switchMap,
   take,
@@ -40,6 +41,13 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   private readonly reload$ = new BehaviorSubject<boolean>(false);
   private readonly destroy$ = new Subject<void>();
 
+  // Just after the engine reports "up", its diagnostics endpoints can still
+  // return 502 for a few seconds. Retry transient load failures with a short
+  // backoff so the extensions appear once the engine is fully ready.
+  private readonly MAX_LOAD_RETRIES = 6;
+  private readonly LOAD_RETRY_STEP = 1500;
+  private readonly MAX_LOAD_RETRY_DELAY = 6000;
+
   constructor(
     private route: ActivatedRoute,
     private readonly analyticsService: AnalyticsService,
@@ -64,11 +72,12 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
   async restartCep(): Promise<void> {
     try {
-      this.alertService.info(gettext('Initiating restart...'));
+      // The service drives the user-facing restart lifecycle toast
+      // (restarting -> in progress -> success/failure), so we only need to
+      // swallow the error here to avoid an unhandled rejection.
       await this.analyticsService.restartCepEngine();
     } catch (error) {
       console.error('Failed to restart Cep:', error);
-      this.alertService.danger(gettext('Failed to restart Cep'));
     }
   }
 
@@ -143,11 +152,36 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   private loadExtensions$(): Observable<IManagedObject[]> {
-    return from(this.analyticsService.getEnrichedExtensions()).pipe(
+    // defer() so each retry re-invokes getEnrichedExtensions() (which re-fetches,
+    // since it clears its cache on failure) rather than replaying a settled promise.
+    return defer(() => from(this.analyticsService.getEnrichedExtensions())).pipe(
+      retry({
+        count: this.MAX_LOAD_RETRIES,
+        delay: (error, retryCount) => {
+          // The engine status flips to "up" slightly before its diagnostics
+          // endpoints serve, so a fresh restart briefly 502s. Retry those
+          // transient failures with a short backoff until the engine is ready.
+          if (this.analyticsService.isExpectedTransientError(error)) {
+            return timer(Math.min(retryCount * this.LOAD_RETRY_STEP, this.MAX_LOAD_RETRY_DELAY));
+          }
+          // Non-transient: stop retrying and surface it via catchError.
+          throw error;
+        }
+      }),
       catchError(error => {
-        console.error('Failed to load extensions:', error);
-        this.alertService.warning(gettext('Failed to load extensions. Please refresh.'));
-        return of([]); // Also changed to of([]) instead of just []
+        // Still failing after the retries are exhausted (or a non-transient
+        // error): keep transient cases quiet, alert only on genuine failures.
+        if (this.analyticsService.isExpectedTransientError(error)) {
+          console.warn('Failed to load extensions after retries (engine still unavailable):', error);
+        } else {
+          console.error('Failed to load extensions:', error);
+          this.alertService.add({
+            text: gettext('Failed to load extensions. Please refresh.'),
+            type: 'warning',
+            timeout: 8000
+          });
+        }
+        return of([]);
       })
     );
   }

@@ -10,7 +10,7 @@ import {
   IResult,
   Realtime,
 } from '@c8y/client';
-import { AlertService } from '@c8y/ngx-components';
+import { Alert, AlertService, AlertType } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { BehaviorSubject, Observable, ReplaySubject, Subject } from 'rxjs';
 import {
@@ -39,7 +39,8 @@ class CepError extends Error {
   constructor(
     message: string,
     public readonly userMessage: string,
-    public readonly originalError?: Error
+    public readonly originalError?: Error,
+    public readonly status?: number
   ) {
     super(message);
     this.name = 'CepError';
@@ -59,6 +60,8 @@ export class AnalyticsService implements OnDestroy {
   readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
   readonly cepOperationObjectStream$ = new ReplaySubject<IManagedObject>(1);
   readonly cacheReloadRequest$ = new Subject<boolean>();
+  /** Emits true while a CEP/Apama restart is known to be in progress. */
+  readonly restarting$ = new BehaviorSubject<boolean>(false);
 
   // ============================================================================
   // Private State - Cached Promises
@@ -70,6 +73,17 @@ export class AnalyticsService implements OnDestroy {
   private cachedDeployedExtensions: Promise<IManagedObject[]> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
   private cachedExtensionDetails = new Map<string, Promise<CepExtension | null>>();
+
+  // The single, self-replacing toast used for CEP lifecycle/availability status.
+  // Keeping a reference lets us update the status in place instead of stacking
+  // a new toast for every phase (restarting -> in progress -> done/failed).
+  private cepStatusAlert: Alert | null = null;
+  private restartSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+  // Wall-clock time until which restart-related transient errors are suppressed.
+  private suppressErrorsUntil = 0;
+  // Whether the engine has been observed going down since the restart began.
+  // Guards against treating the stale pre-restart 'Up' event as completion.
+  private restartSawEngineDown = false;
 
   // ============================================================================
   // Private Dependencies
@@ -83,6 +97,16 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   private readonly DEFAULT_PAGE_SIZE = 100;
+  // Auto-dismiss timeout (ms) for transient CEP warning/error toasts.
+  private readonly ERROR_TIMEOUT = 8000;
+  // Safety net: clear the "restarting" state even if no 'Up' event arrives.
+  private readonly RESTART_MAX_DURATION = 90000;
+  // Keep suppressing transient errors for a moment after a restart finishes:
+  // late 500/502 responses from in-flight status polls can still land.
+  private readonly RESTART_GRACE_PERIOD = 10000;
+  // Gateway statuses meaning "engine unreachable / still starting" — transient,
+  // self-recovering, and not worth alarming the user over.
+  private readonly TRANSIENT_GATEWAY_STATUSES = new Set([502, 503, 504]);
   private readonly JSON_HEADERS = {
     accept: 'application/json',
     'content-type': 'application/json'
@@ -102,6 +126,10 @@ export class AnalyticsService implements OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.restartSafetyTimer) {
+      clearTimeout(this.restartSafetyTimer);
+      this.restartSafetyTimer = null;
+    }
   }
 
   // ============================================================================
@@ -114,6 +142,11 @@ export class AnalyticsService implements OnDestroy {
 
   getCacheReloadRequests$(): Observable<boolean> {
     return this.cacheReloadRequest$.asObservable();
+  }
+
+  /** Whether a CEP/Apama restart is currently known to be in progress. */
+  isRestarting(): boolean {
+    return this.restarting$.value;
   }
 
   clearAllCaches(): void {
@@ -172,11 +205,13 @@ export class AnalyticsService implements OnDestroy {
     if (!this.cachedDeployedExtensions) {
       this.cachedDeployedExtensions = this.loadEnrichedExtensions().catch(error => {
         this.cachedDeployedExtensions = null;
+        // Don't surface a toast here: the caller (extension grid) owns a single,
+        // restart-aware, auto-dismissing message so we don't stack two alerts
+        // for one failure.
         throw this.handleError(
           error,
           'Failed to enrich extensions with deployment status',
-          true,
-          gettext('Could not load extension details. Please refresh.')
+          false
         );
       });
     }
@@ -349,6 +384,7 @@ export class AnalyticsService implements OnDestroy {
   }
 
   async restartCepEngine(): Promise<void> {
+    this.beginRestart();
     try {
       await this.fetchJSON('/service/cep/restart', {
         method: 'PUT',
@@ -357,14 +393,86 @@ export class AnalyticsService implements OnDestroy {
 
       this.clearAllCaches();
       await this.reinitializeMonitoring();
+
+      // The "restarting…" toast from beginRestart() stays visible;
+      // handleCepOperationObjectUpdate replaces it with a success toast once
+      // the engine reports 'Up' again. No intermediate message in between.
     } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to restart Cep engine',
-        true,
-        gettext('Failed to restart Streaming Analytics. Please try again.')
+      this.endRestart();
+      this.setCepStatusAlert(
+        gettext('Failed to restart Streaming Analytics. Please try again.'),
+        'danger',
+        this.ERROR_TIMEOUT
       );
+      // Alert already surfaced above; just log and propagate.
+      throw this.handleError(error, 'Failed to restart Cep engine', false);
     }
+  }
+
+  private beginRestart(): void {
+    this.restarting$.next(true);
+    // Reset down-detection: we must see the engine actually go down before a
+    // later 'Up' counts as the restart completing.
+    this.restartSawEngineDown = false;
+    // A single, persistent "in progress" toast that stays until the engine
+    // reports 'Up' (replaced by a success toast) — no intermediate messages.
+    this.setCepStatusAlert(
+      gettext('Streaming Analytics is restarting. This may take a moment.'),
+      'info'
+    );
+
+    // Safety net: if the engine never reports 'Up' (e.g. realtime update missed),
+    // drop out of the restarting state and clear the lingering toast so it
+    // doesn't hang forever.
+    if (this.restartSafetyTimer) {
+      clearTimeout(this.restartSafetyTimer);
+    }
+    this.restartSafetyTimer = setTimeout(() => {
+      this.endRestart();
+      if (this.cepStatusAlert) {
+        this.alertService.remove(this.cepStatusAlert);
+        this.cepStatusAlert = null;
+      }
+    }, this.RESTART_MAX_DURATION);
+  }
+
+  private endRestart(): void {
+    if (this.restartSafetyTimer) {
+      clearTimeout(this.restartSafetyTimer);
+      this.restartSafetyTimer = null;
+    }
+    if (this.restarting$.value) {
+      this.restarting$.next(false);
+      // Keep suppressing for a short grace period: in-flight status polls that
+      // were fired while the engine was down can still resolve with 500/502
+      // just after we flip back to "up".
+      this.suppressErrorsUntil = Date.now() + this.RESTART_GRACE_PERIOD;
+    }
+  }
+
+  /**
+   * Whether we are in the restart window — actively restarting, or within the
+   * grace period right after. Transient backend errors (500/502, missing
+   * operation object, unavailable microservice) are expected here and should
+   * not raise toasts or console errors.
+   */
+  isRestartWindow(): boolean {
+    return this.isRestarting() || Date.now() < this.suppressErrorsUntil;
+  }
+
+  /**
+   * Whether an error is an expected, self-recovering backend condition that
+   * should be logged quietly without alarming the user: either we are in a
+   * restart window, or the engine returned a transient gateway error
+   * (502/503/504) because the streaming-analytics microservice is unreachable
+   * or still starting up.
+   */
+  isExpectedTransientError(error: unknown): boolean {
+    return this.isRestartWindow() || this.isTransientGatewayError(error);
+  }
+
+  private isTransientGatewayError(error: unknown): boolean {
+    return error instanceof CepError && this.TRANSIENT_GATEWAY_STATUSES.has(error.status ?? 0);
   }
 
   async isBackendServiceAvailable(): Promise<boolean> {
@@ -661,11 +769,29 @@ export class AnalyticsService implements OnDestroy {
 
     const managedObjTyped = managedObject as Record<string, unknown>;
     const c8yStatus = managedObjTyped['c8y_Status'] as Record<string, unknown> | undefined;
-    if (c8yStatus?.['status'] === 'Up') {
+    const rawStatus = c8yStatus?.['status'];
+    const isUp = typeof rawStatus === 'string' && rawStatus.toLowerCase() === 'up';
+
+    if (isUp) {
       this.cachedCepStatus = null;
       this.getCepStatus().catch(err =>
         console.warn('Failed to refresh Cep status:', err)
       );
+    }
+
+    if (this.isRestarting()) {
+      if (!isUp) {
+        // The engine has gone down as part of the restart. Only after we've
+        // observed this can a subsequent 'Up' be trusted as "restart complete".
+        this.restartSawEngineDown = true;
+      } else if (this.restartSawEngineDown) {
+        // Genuine down -> up transition: the restart really finished.
+        this.endRestart();
+        this.setCepStatusAlert(
+          gettext('Streaming Analytics restarted successfully.'),
+          'success'
+        );
+      }
     }
   }
 
@@ -687,13 +813,19 @@ export class AnalyticsService implements OnDestroy {
     showAlert: boolean = false,
     userMessage?: string
   ): Error {
-    // Log to console
-    console.error(`[AnalyticsService] ${logMessage}:`, error);
+    // Expected, self-recovering backend conditions (mid-restart, or a transient
+    // 502/503/504 because the engine is unreachable / still starting) are kept
+    // out of the error stream and don't raise user-facing alerts.
+    if (this.isExpectedTransientError(error)) {
+      console.warn(`[AnalyticsService] ${logMessage} (transient backend unavailable):`, error);
+    } else {
+      console.error(`[AnalyticsService] ${logMessage}:`, error);
 
-    // Show user alert if requested
-    if (showAlert) {
-      const message = userMessage || this.getErrorMessage(error);
-      this.alertService.danger(message);
+      // Show user alert if requested
+      if (showAlert) {
+        const message = userMessage || this.getErrorMessage(error);
+        this.alertService.danger(message);
+      }
     }
 
     // Return or create appropriate error
@@ -732,11 +864,42 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   private showCepUnavailableWarning(isBackendAvailable: boolean): void {
+    // During (and just after) a restart, transient unavailability is expected
+    // and the lifecycle toast already covers it. Suppress both the "restarting"
+    // and the "not deployed" warnings here — mid-restart the availability probe
+    // can briefly report the microservice as down even though it is only
+    // restarting, which would otherwise show a misleading "not deployed" toast.
+    if (this.isRestartWindow()) {
+      return;
+    }
+
     const message = isBackendAvailable
-      ? gettext('Streaming Analytics is restarting. Please retry later.')
+      ? gettext('Streaming Analytics is restarting. Please retry in a moment.')
       : gettext('The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.');
 
-    this.alertService.warning(message);
+    this.setCepStatusAlert(message, 'warning', this.ERROR_TIMEOUT);
+  }
+
+  /**
+   * Shows a CEP lifecycle/availability toast in a single, self-replacing slot.
+   * Replacing the previous status toast (instead of adding a new one) keeps the
+   * user looking at one coherent message that updates in place, and an optional
+   * timeout lets transient states clear themselves.
+   */
+  private setCepStatusAlert(
+    text: string,
+    type: AlertType,
+    timeout = 0
+  ): void {
+    // Remove the previous status toast; remove() is a no-op if it already
+    // auto-dismissed, so this is always safe.
+    if (this.cepStatusAlert) {
+      this.alertService.remove(this.cepStatusAlert);
+    }
+
+    const alert: Alert = timeout ? { text, type, timeout } : { text, type };
+    this.alertService.add(alert);
+    this.cepStatusAlert = alert;
   }
 
   // ============================================================================
@@ -757,7 +920,9 @@ export class AnalyticsService implements OnDestroy {
       if (!response.ok) {
         throw new CepError(
           `API call failed: ${response.status} ${response.statusText}`,
-          gettext(`Network request failed (${response.status}). Please check your connection and try again.`)
+          gettext(`Network request failed (${response.status}). Please check your connection and try again.`),
+          undefined,
+          response.status
         );
       }
 

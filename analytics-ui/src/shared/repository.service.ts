@@ -49,7 +49,8 @@ class RepositoryError extends Error {
   constructor(
     message: string,
     public readonly userMessage: string,
-    public readonly originalError?: Error
+    public readonly originalError?: Error,
+    public readonly status?: number
   ) {
     super(message);
     this.name = 'RepositoryError';
@@ -532,6 +533,15 @@ export class RepositoryService implements OnDestroy {
         });
       }),
       catchError(error => {
+        // A 404 means the analytics backend microservice is not deployed.
+        // This is an expected condition, not a failure: degrade silently so
+        // the rest of the UI keeps working without surfacing an error.
+        if (error instanceof RepositoryError && error.status === 404) {
+          console.warn(
+            '[RepositoryService] Repository backend not deployed (404); continuing without repositories.'
+          );
+          return of([]);
+        }
         this.handleError(
           error,
           'Failed to load repositories from backend',
@@ -556,7 +566,9 @@ export class RepositoryService implements OnDestroy {
       if (!response.ok) {
         throw new RepositoryError(
           `Failed to fetch repositories: ${response.status}`,
-          gettext('Failed to load repositories from server.')
+          gettext('Failed to load repositories from server.'),
+          undefined,
+          response.status
         );
       }
 
