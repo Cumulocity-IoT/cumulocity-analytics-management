@@ -1,7 +1,4 @@
+/* Hide reload button */
 button[title="Reload"] {
-  display: none !important;
-}
-
-.align-center {
-  
+  display: none;
 }

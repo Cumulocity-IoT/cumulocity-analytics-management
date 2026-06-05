@@ -1,0 +1,40 @@
+<c8y-modal title="Extension Builder Layouts" (onClose)="onClose()" [labels]="labels"
+  [headerClasses]="'modal-header dialog-header'">
+  <ng-container c8y-modal-title>
+    <span [c8yIcon]="'info'"></span>
+  </ng-container>
+
+  <div class="p-24">
+    <p>Two layouts of GitHub repositories are supported to build an extension:</p>
+
+    <h5 class="m-t-24 m-b-8">1. Directory is Extension</h5>
+
+    <p class="text-muted m-b-4"><strong>Mechanism</strong></p>
+    <ul>
+      <li>The extension builder inspects the top-level items in the configured repository path.</li>
+      <li>If an item is a <code>.mon</code> file (e.g.&nbsp;<code>Difference.mon</code>), a single-file extension is created from just that file.</li>
+      <li>If an item is a directory (e.g.&nbsp;<code>Python</code>), an extension is created by packaging all the content within that directory (including subdirectories like <code>venv</code>).</li>
+    </ul>
+
+    <p class="text-muted m-b-4 m-t-16"><strong>User UI</strong></p>
+    <ul>
+      <li>The user sees a list of names for each top-level <code>.mon</code> file and top-level directory (e.g.&nbsp;&quot;Difference&quot;, &quot;Offset&quot;, &quot;Python&quot;). Only one item (either a directory or a <code>*.mon</code> file) can be selected.</li>
+    </ul>
+
+    <h5 class="m-t-24 m-b-8">2. Configuration File <code>extensions.yaml</code></h5>
+
+    <p>This layout uses a dedicated configuration file to define the extension's contents explicitly.</p>
+
+    <p class="text-muted m-b-4 m-t-16"><strong>Mechanism</strong></p>
+    <ul>
+      <li>The builder recursively inspects the directory for a configuration file <code>extensions.yaml</code>.</li>
+      <li>If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include. Multiple <code>*.mon</code> files can be selected.</li>
+      <li>If no config file is present, it defaults to listing simple <code>.mon</code> files as before.</li>
+    </ul>
+
+    <p class="text-muted m-b-4 m-t-16"><strong>User UI</strong></p>
+    <ul>
+      <li>If the config file is present, the UI only shows the top-level keys defined in the file, not the embedded files or directories.</li>
+    </ul>
+  </div>
+</c8y-modal>

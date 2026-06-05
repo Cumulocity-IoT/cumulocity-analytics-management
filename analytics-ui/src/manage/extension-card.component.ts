@@ -12,13 +12,14 @@ import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { AnalyticsService, ConfirmationModalComponent, Repository, RepositoryService } from '../shared';
+import { AnalyticsService, Repository, RepositoryService } from '../shared';
+import { ConfirmationModalComponent } from '../shared/component/confirmation-modal.component';
 
 interface BuildInformation {
   build_type: 'repository' | 'list' | 'yaml';
   repository: Repository;
-  monitors?: any[];
-  yaml?: any;
+  monitors?: Record<string, unknown>[];
+  yaml?: Record<string, unknown>;
   sections?: string[];
   section_name?: string;
   files?: string[];
@@ -27,12 +28,13 @@ interface BuildInformation {
 @Component({
   selector: 'a17t-extension-card',
   templateUrl: './extension-card.component.html',
+  styleUrls: ['./extension-card.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
+  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule, ConfirmationModalComponent]
 })
 export class ExtensionCardComponent implements OnInit {
-  @Input() extension: IManagedObject;
-  @Input() isBackendServiceAvailable: boolean;
+  @Input() extension!: IManagedObject;
+  @Input() isBackendServiceAvailable!: boolean;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
 
   constructor(
@@ -48,7 +50,7 @@ export class ExtensionCardComponent implements OnInit {
   ngOnInit(): void { }
 
   async detail(): Promise<void> {
-    await this.router.navigate(['details', this.extension.name], {
+    await this.router.navigate(['details', this.extension['name']], {
       relativeTo: this.activatedRoute,
       state: {
         extension: this.extension
@@ -57,21 +59,21 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   isBuildInternally(): boolean {
-    return this.extension?.build_information && (this.extension?.build_information.build_type == 'list' || this.extension?.build_information.build_type == 'yaml' || this.extension?.build_information.build_type == 'repository')
+    return this.extension?.['build_information'] && (this.extension?.['build_information'].build_type == 'list' || this.extension?.['build_information'].build_type == 'yaml' || this.extension?.['build_information'].build_type == 'repository')
   }
 
   hasBuildInformation(): boolean {
-    return this.extension?.build_information;
+    return this.extension?.['build_information'];
   }
 
   getBuildType(): string {
-    return this.extension?.build_information ? this.extension?.build_information.build_type : 'Unknown';
+    return this.extension?.['build_information'] ? this.extension?.['build_information'].build_type : 'Unknown';
   }
 
   async delete(): Promise<void> {
     const initialState = {
       title: 'Delete extension',
-      message: `You are about to delete the extension "${this.extension.name}". Do you want to proceed?`,
+      message: `You are about to delete the extension "${this.extension['name']}". Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'
@@ -106,7 +108,7 @@ export class ExtensionCardComponent implements OnInit {
         this.extension
       );
       const blob = new Blob([bin], { type: 'application/zip' });
-      saveAs(blob, `${this.extension.name}.zip`);
+      saveAs(blob, `${this.extension['name']}.zip`);
     } catch (ex) {
       if (ex) {
         this.alertService.addServerFailure(ex);
@@ -119,7 +121,7 @@ export class ExtensionCardComponent implements OnInit {
       headerIcon: 'upload'
     };
 
-    const initialState: any = {
+    const initialState: Record<string, unknown> = {
       wizardConfig,
       id: 'uploadAnalyticsExtension',
       componentInitialState: {
@@ -132,13 +134,15 @@ export class ExtensionCardComponent implements OnInit {
     const modalOptions: ModalOptions = { initialState };
 
     const modalRef = this.wizardModalService.show(modalOptions);
-    modalRef.content.onClose.subscribe(() => {
-      this.extensionChanged.emit();
-    });
+    if (modalRef.content) {
+      modalRef.content.onClose.subscribe(() => {
+        this.extensionChanged.emit();
+      });
+    }
   }
 
   async rebuild(): Promise<void> {
-    const buildInfo = this.extension.build_information as BuildInformation;
+    const buildInfo = this.extension['build_information'] as BuildInformation;
 
     // Validate build information exists
     if (!buildInfo) {
@@ -160,7 +164,7 @@ export class ExtensionCardComponent implements OnInit {
     // Show confirmation dialog
     const initialState = {
       title: 'Rebuild extension',
-      message: `You are about to rebuild and deploy the extension "${this.extension.name}" from the repository "${buildInfo.repository.name}". This will replace the current version. Do you want to proceed?`,
+      message: `You are about to rebuild and deploy the extension "${this.extension['name']}" from the repository "${buildInfo.repository.name}". This will replace the current version. Do you want to proceed?`,
       labels: {
         ok: 'Rebuild',
         cancel: 'Cancel'
@@ -189,7 +193,7 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   private async performRebuild(buildInfo: BuildInformation): Promise<void> {
-    this.alertService.info(`Rebuilding extension "${this.extension.name}"...`);
+    this.alertService.info(`Rebuilding extension "${this.extension['name']}"...`);
 
     try {
       switch (buildInfo.build_type) {
@@ -210,7 +214,7 @@ export class ExtensionCardComponent implements OnInit {
       }
 
       this.alertService.success(
-        `Extension "${this.extension.name}" rebuilt successfully`
+        `Extension "${this.extension['name']}" rebuilt successfully`
       );
       this.extensionChanged.emit();
 
@@ -218,7 +222,7 @@ export class ExtensionCardComponent implements OnInit {
       // Check if it's a 404 error (extension not found for rebuild)
       if (error?.status === 404 || error?.message?.includes('no existing extension')) {
         this.alertService.danger(
-          `Rebuild failed: The extension "${this.extension.name}" was not found in Cumulocity. ` +
+          `Rebuild failed: The extension "${this.extension['name']}" was not found in Cumulocity. ` +
           'It may have been deleted. Please create it again instead.'
         );
       } else {
@@ -229,7 +233,7 @@ export class ExtensionCardComponent implements OnInit {
 
   private async rebuildFromRepository(buildInfo: BuildInformation): Promise<void> {
     await this.repositoryService.createExtensionFromRepository(
-      this.extension.name,
+      this.extension['name'],
       buildInfo.repository,
       true,  // upload
       true, // deploy
@@ -237,14 +241,14 @@ export class ExtensionCardComponent implements OnInit {
     );
   }
 
-  private async rebuildFromList(buildInfo: BuildInformation): Promise<void> {
+  private async rebuildFromList(buildInfo: any): Promise<void> {
 
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
     }
 
     await this.repositoryService.createExtensionFromList(
-      this.extension.name,
+      this.extension['name'],
       buildInfo.monitors,
       buildInfo.repository,
       true,  // upload
@@ -253,7 +257,7 @@ export class ExtensionCardComponent implements OnInit {
     );
   }
 
-  private async rebuildFromYaml(buildInfo: BuildInformation): Promise<void> {
+  private async rebuildFromYaml(buildInfo: any): Promise<void> {
 
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');
@@ -263,7 +267,7 @@ export class ExtensionCardComponent implements OnInit {
     const sections = buildInfo.section_name ? [buildInfo.section_name] : [];
 
     await this.repositoryService.createExtensionFromYaml(
-      this.extension.name,
+      this.extension['name'],
       buildInfo.yaml,
       sections,
       buildInfo.repository,

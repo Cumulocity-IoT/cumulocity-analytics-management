@@ -18,7 +18,8 @@
  * @authors Christof Strack
  */
 
-import { Component, OnInit, ViewChild, ViewEncapsulation } from '@angular/core';
+import { Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
@@ -34,17 +35,17 @@ import {
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
-  CepBlock,
   DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
   RepositoryService
 } from '../../shared';
-import { EditorModalComponent } from '../editor/editor-modal.component';
 import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { EditorModalComponent } from '../editor/editor-modal.component';
+import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
@@ -56,8 +57,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
 })
 export class BlockGridComponent implements OnInit {
-  @ViewChild('dataGrid', { static: false })
-  dataGrid: DataGridComponent;
+  @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
@@ -67,9 +67,9 @@ export class BlockGridComponent implements OnInit {
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
 
-  activeRepository: Repository;
-  repositoryItems$: Observable<RepositoryItem[]>;
-  repositoryItems: RepositoryItem[];
+  activeRepository!: Repository;
+  repositoryItems$!: Observable<RepositoryItem[]>;
+  repositoryItems!: RepositoryItem[];
 
   actionControls: ActionControl[] = [];
   bulkActionControls: BulkActionControl[] = [];
@@ -126,6 +126,8 @@ export class BlockGridComponent implements OnInit {
     currentPage: 1
   };
 
+  private destroyRef = inject(DestroyRef);
+
   constructor(
     public repositoryService: RepositoryService,
     public alertService: AlertService,
@@ -156,7 +158,8 @@ export class BlockGridComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.repositoryItems$?.subscribe((samples) => (this.repositoryItems = samples));
+    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((samples) => (this.repositoryItems = samples));
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
@@ -185,17 +188,18 @@ export class BlockGridComponent implements OnInit {
       // Only emit when the enabled repository changes
       distinctUntilChanged((prev, curr) =>
         prev?.id === curr?.id && prev?.enabled === curr?.enabled
-      )
+      ),
+      takeUntilDestroyed(this.destroyRef)
     ).subscribe(enabledRepository => {
       // Set the active repository
-      this.activeRepository = enabledRepository || null;
+      this.activeRepository = enabledRepository || ({} as Repository);
 
       // You can perform additional actions here when active repository changes
       // console.log('Active repository changed:', this.activeRepository);
     });
   }
 
-  viewMonitor(block: CepBlock) {
+  viewMonitor(block: RepositoryItem) {
     const initialState = {
       source$: this.repositoryService.getRepositoryItemContent(
         block,
@@ -215,37 +219,39 @@ export class BlockGridComponent implements OnInit {
 
 
   checkSelection(ids: string[]) {
-    // console.log("Selected items", ids);
-    let errorSelection = false;
-    let errorItem;
+    const idSet = new Set(ids);
+    const invalid: RepositoryItem[] = [];
+    let hasInvalidType = false;
     this.repositoryItems.forEach((sample) => {
-      if (ids.includes(sample.id) && sample.installed) {
+      if (!idSet.has(sample.id)) return;
+      if (sample.installed) {
         this.alertService.warning(
           `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
         );
-        errorSelection = true;
-        errorItem = sample;
+        invalid.push(sample);
+        return;
       }
-      if (ids.includes(sample.id) && sample.type == "file") {
-        if (!sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
-          errorSelection = true;
-          errorItem = sample;
-        }
+      if (sample.type == "file" && !sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
+        invalid.push(sample);
+        hasInvalidType = true;
       }
     });
-    if (errorSelection) {
+    if (invalid.length > 0) {
       setTimeout(() => {
-        this.dataGrid.setItemsSelected([errorItem], false);
-        this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!")
+        this.dataGrid.setItemsSelected(invalid, false);
+        if (hasInvalidType) {
+          this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!");
+        }
       }, 0);
     }
   }
 
   async createExtension(ids: string[]) {
+    const idSet = new Set(ids);
     const selectedSections: string[] = [];
     const selectedMonitors: RepositoryItem[] = [];
     this.repositoryItems.forEach((sample) => {
-      if (ids.includes(sample.id) && !sample.installed) {
+      if (idSet.has(sample.id) && !sample.installed) {
         if (sample.extensionsYamlItem) {
           selectedSections.push(sample.name);
           selectedMonitors[0] = sample.extensionsYamlItem;
@@ -278,10 +284,12 @@ export class BlockGridComponent implements OnInit {
         initialState
       });
 
-      modalRef.content.closeSubject.subscribe(() => {
-        this.dataGrid.cancel()
-        modalRef.hide()
-      });
+      if (modalRef.content) {
+        modalRef.content.closeSubject.subscribe(() => {
+          this.dataGrid.cancel()
+          modalRef.hide()
+        });
+      }
 
     } else {
       const initialState = {
@@ -294,10 +302,12 @@ export class BlockGridComponent implements OnInit {
         initialState
       });
 
-      modalRef.content.closeSubject.subscribe(() => {
-        this.dataGrid.cancel()
-        modalRef.hide()
-      });
+      if (modalRef.content) {
+        modalRef.content.closeSubject.subscribe(() => {
+          this.dataGrid.cancel()
+          modalRef.hide()
+        });
+      }
     }
   }
 
@@ -331,7 +341,16 @@ export class BlockGridComponent implements OnInit {
     this.showConfigRepositories = true;
   }
 
-  onRepositoryCommit(repository: Repository): void {
+  openLayoutHelp(): void {
+    const modalRef = this.bsModalService.show(ExtensionLayoutHelpModalComponent, {
+      class: 'modal-lg',
+      ariaLabelledBy: 'modal-title',
+      ignoreBackdropClick: false
+    });
+    modalRef.content?.closeSubject.subscribe(() => modalRef.hide());
+  }
+
+  onRepositoryCommit(): void {
     // console.log('Repository saved:', repository);
     this.showConfigRepositories = false;
     // Handle the saved repository

@@ -17,14 +17,15 @@ export function removeFileExtension(name: string): string {
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);
-  return (result || result == null) ? undefined : result[0];
+  return (result && result != null) ? result[0] : '';
 }
 
-export function isCustomCepBlock(block: CepBlock): boolean {
+export function isCustomCepBlock(block: Pick<CepBlock, 'id'>): boolean {
+  const id = block.id ?? '';
   return (
-    !block.id.startsWith('apama.analyticsbuilder.blocks') &&
-    !block.id.startsWith('apama.analyticskit.blocks.core') &&
-    !block.id.startsWith('apama.analyticskit.blocks.cumulocity')
+    !id.startsWith('apama.analyticsbuilder.blocks') &&
+    !id.startsWith('apama.analyticskit.blocks.core') &&
+    !id.startsWith('apama.analyticskit.blocks.cumulocity')
   );
 }
 
@@ -79,7 +80,7 @@ export /**
 
     return contentApiUrl;
   } catch (error) {
-    throw new Error(`Failed to convert GitHub URL: ${error.message}`);
+    throw new Error(`Failed to convert GitHub URL: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

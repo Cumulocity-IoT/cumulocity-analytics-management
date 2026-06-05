@@ -33,6 +33,7 @@
             ],
             "scripts": [],
             "aot": false,
+            "buildOptimizer": false,
             "allowedCommonJsDependencies": [
               "regenerator-runtime/runtime",
               "@cordobo/qrcode",
@@ -58,12 +59,9 @@
               "buildOptimizer": false
             },
             "development": {
-              "buildOptimizer": false,
               "optimization": false,
-              "vendorChunk": true,
               "extractLicenses": false,
-              "sourceMap": true,
-              "namedChunks": true
+              "sourceMap": true
             }
           },
           "defaultConfiguration": "production"

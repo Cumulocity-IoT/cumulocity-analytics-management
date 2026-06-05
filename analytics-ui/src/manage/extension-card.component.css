@@ -1,0 +1,56 @@
+/* Extension Card Styling */
+
+/* Data elements font sizing */
+.card-block span:not(.text-medium) {
+  font-size: 1.25rem;
+  line-height: 1.2;
+}
+
+/* Labels (status, build type, etc.) */
+.label {
+  font-size: 1.1875rem;
+  padding: 0.3rem 0.5rem;
+}
+
+/* Date display */
+.card-block .text-center span {
+  font-size: 1.1875rem;
+}
+
+/* Increase bottom margin on card - MORE SPACE BETWEEN CARDS */
+.card--d-col {
+  margin-bottom: 2.5rem;
+}
+
+/* Reduce spacing within card blocks - TIGHTER LINES */
+.card-block {
+  padding: 0.25rem 0;
+}
+
+/* NO SPACE between Build type and Code Extension */
+.card-block:nth-child(2) {
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Minimal spacing for Code Extension & Date */
+.card-block:nth-child(3) {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.card-block:nth-child(4) {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+/* Extension name font size */
+.text-medium {
+  font-size: 1.375rem;
+}
+
+/* NO spacing between card-block elements */
+.card-block + .card-block {
+  margin-top: 0 !important;
+}
+}

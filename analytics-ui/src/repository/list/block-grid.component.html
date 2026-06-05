@@ -23,7 +23,7 @@
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'test'" [label]="'Repositories' | translate"
-    [path]="'c8y-pkg-analytics-extension/sample'">
+    [path]="'c8y-pkg-analytics-extension/repository'">
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
@@ -32,59 +32,9 @@
     <i c8yIcon="change-theme"></i>
     {{ "Repositories" | translate }}
   </button>
-  <button type="button" [popover]="popupPAT" triggers="focus" placement="bottom"
-    class="btn-help" aria-label="Help content" container="body"></button>
-  <ng-template #popupPAT>
-    <p class="text-14 text-bold">Extension Builder Layouts</p>
-    <br />
-
-    <p>Two layouts of github repositories are supported to build an extension:</p>
-    <br />
-
-    <p class="text-14 text-bold">1. Directory is Extension</p>
-    <br />
-    <p class="_text-12">Mechanism:</p>
-    <ul>
-      <li>The extension builder inspects the top-level items in the configured
-      repository path.</li>
-      <li>If an item is a <code>.mon</code> file (e.g., <code>Difference.mon</code>),
-    a single-file extension is created from just that file.</li>
-    <li>If an item is a directory (e.g., <code>Python</code>), an extension is
-    created by packaging all the content within that directory (including
-    subdirectories like <code>venv</code>).</li>
-  </ul>
-
-  <p class="_text-12">User UI:</p>
-  <ul>
-    <li>The user sees a list of names for each top-level <code>.mon</code> file and
-    top-level directory (e.g., "Difference", "Offset", "Python"). Only one item
-    (either directory or <code>*.mon</code> file) can be selected.</li>
-  </ul>
-
-  <p class="text-14 text-bold">2. Configuration File <code>extensions.yaml</code></p>
-  <br />
-  <p>This layout uses a dedicated configuration file to define the extension's
-  contents explicitly.</p>
-
-  <p class="_text-12">Mechanism:</p>
-  <ul>
-    <li>The builder recursively inspects the directory for a specific configuration
-      file <code>extensions.yaml</code>.</li>
-      <li>If the file exists, the builder reads it for the extension's metadata and a
-        list of files/contents to include. Multiple <code>*.mon</code> files can be
-      selected.</li>
-      <li>If no config file is present, it defaults to listing simple
-        <code>.mon</code> files as before.
-      </li>
-    </ul>
-
-    <p class="_text-12">User UI:</p>
-    <ul>
-      <li>If the config file is present, the UI should read it and only show the
-        top-level keys defined in the file, not the embedded files or directories.
-      </li>
-    </ul>
-  </ng-template>
+  <button type="button" class="btn-help btn-help--sm" aria-label="Help content"
+    [title]="'Extension Builder Layouts' | translate"
+    (click)="openLayoutHelp()"></button>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">

@@ -33,11 +33,11 @@ import { AnalyticsService, CepExtension } from '../shared';
   imports: [CommonModule, CoreModule]
 })
 export class ExtensionDetailsComponent implements OnInit {
-  extensionFromCep: CepExtension;
-  extension: CepExtension;
-  extensionContent: any[] = [];
+  extensionFromCep!: CepExtension;
+  extension!: CepExtension;
+  extensionContent: string[] = [];
   buildInformation: any[] = [];
-  breadcrumbConfig: { icon: string; label: string; path: string };
+  breadcrumbConfig!: { icon: string; label: string; path: string };
 
   constructor(
     private route: ActivatedRoute,
@@ -57,7 +57,7 @@ export class ExtensionDetailsComponent implements OnInit {
       this.extension = history.state.extension;
     }
 
-    const buildInfo = this.extension?.['build_information'];
+    const buildInfo = (this.extension as any)?.['build_information'];
 
     if (buildInfo) {
       // Add Build Type
@@ -84,7 +84,7 @@ export class ExtensionDetailsComponent implements OnInit {
           label: 'Repository Url',
           type: 'link',
           value: repo.url,
-          action: (event, link: string) =>
+          action: (_event: any, link: string) =>
             window.open(link, "_blank", "noopener,noreferrer"),
         });
       }
@@ -99,17 +99,17 @@ export class ExtensionDetailsComponent implements OnInit {
     if (this.extensionFromCep) {
       const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
       const key = `${name}.zip`;
-      this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
+      this.extensionContent = (extensionNames as any)[key]?.contents?.map((fileName: string) => {
         return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
       }) || [];
     } else {
-      if (this.extension['build_information']['monitors']) {
-        this.extension['build_information']['monitors'].forEach(monitor => {
+      if (((this.extension as any)['build_information'] as any)['monitors']) {
+        ((this.extension as any)['build_information'] as any)['monitors'].forEach((monitor: any) => {
           this.extensionContent.push(monitor['file']);
         });
       }
-      if (this.extension['build_information']['files']) {
-        this.extension['build_information']['files'].forEach(monitor => {
+      if (((this.extension as any)['build_information'] as any)['files']) {
+        ((this.extension as any)['build_information'] as any)['files'].forEach((monitor: any) => {
           this.extensionContent.push(monitor['file']);
         });
       }

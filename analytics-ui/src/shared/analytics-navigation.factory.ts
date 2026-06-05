@@ -29,12 +29,11 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
       // id running in 
       if (this.as['options'].contextPath == 'streaminganalytics'){
         // console.log('AppState contextPath', this.as['options'].contextPath);
-        delete this.extensionsNode['parent'];
         this.extensionsNode['label'] = gettext('Extensions');
       }
       return this.extensionsNode;
     }
-    return;
+    return this.extensionsNode;
   }
 
   canActivate(): boolean {

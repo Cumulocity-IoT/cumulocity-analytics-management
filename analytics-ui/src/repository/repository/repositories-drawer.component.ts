@@ -5,11 +5,11 @@ import { AlertService, CoreModule } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable } from 'rxjs';
 import {
-    ConfirmationModalComponent,
     Repository,
     RepositoryService,
     uuidCustom
 } from '../../shared';
+import { ConfirmationModalComponent } from '../../shared/component/confirmation-modal.component';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
@@ -18,18 +18,18 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
     templateUrl: './repositories-drawer.component.html',
     encapsulation: ViewEncapsulation.None,
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule]
+    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule, ConfirmationModalComponent]
 })
 export class RepositoriesDrawerComponent implements OnInit {
     @Input() hideInstalled: boolean = false;
     @Output() cancel = new EventEmitter<void>();
     @Output() commit = new EventEmitter<Repository>();
 
-    repositories$: Observable<Repository[]>;
+    repositories$!: Observable<Repository[]>;
     repositoriesList: Repository[] = [];
     displayList: Repository[] = [];
     filteredDisplayList: Repository[] = [];
-    activeRepository: Repository;
+    activeRepository!: Repository;
     repositoryForm: FormGroup;
     selectedRepositoryIndex: number = -1;
     isAddingNew: boolean = false;
@@ -73,12 +73,20 @@ export class RepositoriesDrawerComponent implements OnInit {
         });
 
         // Subscribe to form changes to update the temporary repository name
-        this.repositoryForm.get('name').valueChanges.subscribe(name => {
+        const nameControl = this.repositoryForm.get('name');
+        if (nameControl) {
+          nameControl.valueChanges.subscribe(name => {
             if (this.isAddingNew && this.tempNewRepository) {
-                this.tempNewRepository.name = name || 'New repository';
-                this.updateDisplayList();
+              this.tempNewRepository.name = name || 'New repository';
+              this.updateDisplayList();
             }
-        });
+          });
+        }
+    }
+
+    private stripGithubPrefix(url: string | undefined | null): string {
+        if (!url) return '';
+        return url.replace(/^https?:\/\/(www\.)?github\.com\//i, '');
     }
 
     urlValidator = (control: AbstractControl): ValidationErrors | null => {
@@ -96,11 +104,14 @@ export class RepositoriesDrawerComponent implements OnInit {
 
         this.repositories$.subscribe(repos => {
             this.repositoriesList = repos;
-            this.activeRepository = repos.find(r => r.enabled);
+            const enabledRepo = repos.find(r => r.enabled);
+            if (enabledRepo) {
+              this.activeRepository = enabledRepo;
+            }
             this.updateDisplayList();
 
             if (this.isAddingNew && this.tempNewRepository) {
-                const addedRepo = repos.find(r => r.name === this.tempNewRepository.name);
+                const addedRepo = repos.find(r => r.name === this.tempNewRepository?.name);
                 if (addedRepo) {
                     this.isAddingNew = false;
                     this.tempNewRepository = null;
@@ -164,8 +175,8 @@ export class RepositoriesDrawerComponent implements OnInit {
 
         const currentValues = this.repositoryForm.value;
 
-        // Get the full URL with prefix for comparison
-        const currentUrl = this.GITHUB_URL + (currentValues.url || '');
+        // Both compared in form-normalized (prefix-stripped) form
+        const currentUrl = currentValues.url || '';
         const originalUrl = this.originalFormValues.url;
 
         // Check name change
@@ -210,7 +221,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         return this.hasFormChanges() || this.repositoryService.hasUnsavedChanges();
     }
 
-    onEditRepository(repository: Repository, index: number): void {
+    onEditRepository(repository: Repository): void {
         if (this.isAddingNew && this.tempNewRepository && repository.id === this.tempNewRepository.id) {
             return;
         }
@@ -222,13 +233,13 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.showPATWarning = false;
 
         const rep = { ...repository };
-        rep.url = rep.url.replace(this.GITHUB_URL, '');
+        rep.url = this.stripGithubPrefix(rep.url);
 
-        // Store original values for change detection
+        // Store original values for change detection (URL stored in form-normalized form)
         this.originalFormValues = {
             id: rep.id,
             name: rep.name,
-            url: repository.url, // Keep full URL for comparison
+            url: rep.url,
             accessToken: rep.accessToken || '',
             enabled: rep.enabled
         };
@@ -243,7 +254,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     setIndex(index: number): void {
         if (index < this.displayList.length) {
             const repository = this.displayList[index];
-            this.onEditRepository(repository, index);
+            this.onEditRepository(repository);
         }
     }
 
@@ -280,9 +291,9 @@ export class RepositoriesDrawerComponent implements OnInit {
     warnAboutPATReset(): void {
         // Show warning if URL or name is changed and there's an existing token
         if (!this.isAddingNew && this.originalFormValues) {
-            const currentUrl = this.GITHUB_URL + this.repositoryForm.get('url').value;
+            const currentUrl = this.repositoryForm.get('url')?.value || '';
             const originalUrl = this.originalFormValues.url;
-            const currentName = this.repositoryForm.get('name').value;
+            const currentName = this.repositoryForm.get('name')?.value || '';
             const originalName = this.originalFormValues.name;
 
             if (currentUrl !== originalUrl || currentName !== originalName) {
@@ -346,9 +357,9 @@ export class RepositoriesDrawerComponent implements OnInit {
             testedRepository.url = this.GITHUB_URL + testedRepository.url;
             const result = await this.repositoryService.testRepository(testedRepository);
             if (result.success) {
-                this.alertService.success(result.message);
+                this.alertService.success(result.message || 'Operation successful');
             } else {
-                this.alertService.danger(result.message);
+                this.alertService.danger(result.message || 'Operation failed');
             }
         }
     }
@@ -464,9 +475,7 @@ export class RepositoriesDrawerComponent implements OnInit {
                     if (result) {
                         // Revert form changes
                         if (this.originalFormValues) {
-                            const revertValues = { ...this.originalFormValues };
-                            revertValues.url = revertValues.url.replace(this.GITHUB_URL, '');
-                            this.repositoryForm.patchValue(revertValues);
+                            this.repositoryForm.patchValue(this.originalFormValues);
                         }
                         // Revert enabled changes
                         this.repositoryService.cancelChanges();
@@ -491,7 +500,7 @@ export class RepositoriesDrawerComponent implements OnInit {
  * Open the full GitHub URL in a new browser window
  */
 openInGitHub(): void {
-    const urlValue = this.repositoryForm.get('url').value;
+    const urlValue = this.repositoryForm.get('url')?.value || '';
     
     if (!urlValue || urlValue.trim() === '') {
         this.alertService.warning(gettext('Please enter a repository URL first'));
@@ -506,7 +515,7 @@ openInGitHub(): void {
         new URL(fullUrl);
         
         // Open in new window/tab
-        const newWindow = window.open(fullUrl, '_blank', 'noopener,noreferrer');
+        window.open(fullUrl, '_blank', 'noopener,noreferrer');
         
         // Check if popup was blocked
         // if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {

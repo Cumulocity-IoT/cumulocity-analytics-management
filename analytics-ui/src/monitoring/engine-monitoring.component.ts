@@ -23,22 +23,22 @@ import { CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-component
   imports: [CommonModule, FormsModule, CoreModule]
 })
 export class EngineMonitoringComponent implements OnInit {
-  cepOperationObjectId: string;
+  cepOperationObjectId!: string;
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
     new BehaviorSubject<PropertiesListItem[]>([]);
   @Output() closeSubject: Subject<void> = new Subject();
-  alarms$: Observable<IResultList<IAlarm>>;
-  events$: Observable<IResultList<IEvent>>;
+  alarms$!: Observable<IResultList<IAlarm>>;
+  events$!: Observable<IResultList<IEvent>>;
   nextPageAlarm$: BehaviorSubject<any> = new BehaviorSubject({ direction: 0 });
   nextPageEvent$: BehaviorSubject<any> = new BehaviorSubject({ direction: 0 });
   currentPageAlarm: number = 1;
   currentPageEvent: number = 1;
-  searchString: string;
-  status: typeof AlarmStatus;
+  searchString!: string;
+  status!: typeof AlarmStatus;
   AlarmStatus = AlarmStatus;
   isAlarmExpanded: boolean = true;
   isEventExpanded: boolean = false;
-  cepCtrlStatus: any = {};
+  cepCtrlStatus: Record<string, unknown> = {};
 
   constructor(
     private alarmService: AlarmService,
@@ -51,10 +51,10 @@ export class EngineMonitoringComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
-    this.cepOperationObjectId =
-      await this.analyticsService.getCepOperationObjectId();
+    const operationObjectId = await this.analyticsService.getCepOperationObjectId();
+    this.cepOperationObjectId = operationObjectId || '';
     const cepCtrlStatus = await this.analyticsService.getCepStatus();
-    const cepCtrlStatusLabels = [];
+    const cepCtrlStatusLabels: any[] = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
       if (
         ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
@@ -65,7 +65,7 @@ export class EngineMonitoringComponent implements OnInit {
             type: 'link',
             value: cepCtrlStatus[key].toString(),
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            action:  (e, link: string) =>
+            action:  (_e: any) =>
               window.open(
                 'https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode',
                 '_blank',
@@ -83,13 +83,13 @@ export class EngineMonitoringComponent implements OnInit {
     });
     this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
 
-    const filterAlarm: object = {
+    let filterAlarm: any = {
       pageSize: 5,
       source: this.cepOperationObjectId,
       currentPage: 1,
       withTotalPages: true
     };
-    const filterEvent: object = {
+    let filterEvent: any = {
       pageSize: 5,
       source: this.cepOperationObjectId,
       currentPage: 1,
@@ -100,10 +100,10 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageAlarm = this.currentPageAlarm + options.direction;
           if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
-          filterAlarm['currentPage'] = this.currentPageAlarm;
+          filterAlarm = { currentPage: this.currentPageAlarm };
         }
         if (options.status) {
-          filterAlarm['status'] = options.status;
+          (filterAlarm as any)['status'] = options.status;
         }
       }),
       switchMap(() => this.alarmService.list(filterAlarm)),
@@ -114,7 +114,7 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageEvent = this.currentPageEvent + options.direction;
           if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterEvent['currentPage'] = this.currentPageEvent;
+          filterEvent = { currentPage: this.currentPageEvent };
         }
       }),
       switchMap(() => this.eventService.list(filterEvent)),
@@ -125,8 +125,8 @@ export class EngineMonitoringComponent implements OnInit {
   }
 
   private async init() {
-    this.cepOperationObjectId =
-      await this.analyticsService.getCepOperationObjectId();
+    const operationObjectId = await this.analyticsService.getCepOperationObjectId();
+    this.cepOperationObjectId = operationObjectId || '';
   }
 
   nextPageAlarm(direction: number) {
