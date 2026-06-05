@@ -28,6 +28,7 @@ import {
   CEP_PATH_METADATA_EN,
   CEP_PATH_STATUS,
   CepStatusObject,
+  RawCepBlock,
   UploadMode,
 } from './analytics.model';
 import { isCustomCepBlock, removeFileExtension } from './utils';
@@ -71,6 +72,8 @@ export class AnalyticsService implements OnDestroy {
   private cachedCepStatus: Promise<CepStatusObject> | null = null;
   private cachedDeployedBlocks: Promise<CepBlock[]> | null = null;
   private cachedDeployedExtensions: Promise<IManagedObject[]> | null = null;
+  private cachedDeployedExtensionsMetadata: Promise<CepExtensionsMetadata> | null = null;
+  private cachedExtensionNames: Promise<CepExtensionsMetadata> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
   private cachedExtensionDetails = new Map<string, Promise<CepExtension | null>>();
 
@@ -136,6 +139,33 @@ export class AnalyticsService implements OnDestroy {
   // Public API - Cache Management
   // ============================================================================
 
+  /**
+   * Memoize an in-flight/resolved promise in a single-slot cache, evicting the
+   * slot on failure so the next call retries. Concurrent callers share the same
+   * in-flight promise. `onError` maps/handles the rejection and the returned (or
+   * rethrown) error propagates to every awaiter.
+   *
+   * Only used by getters that reject on failure. The recovering getters
+   * (`getCepOperationObjectId`, `isBackendServiceAvailable`) resolve to a
+   * fallback value instead of rejecting, so they keep their bespoke caching.
+   */
+  private memoizeOnce<T>(
+    get: () => Promise<T> | null,
+    set: (value: Promise<T> | null) => void,
+    loader: () => Promise<T>,
+    onError: (error: unknown) => Error
+  ): Promise<T> {
+    const existing = get();
+    if (existing) return existing;
+
+    const created = loader().catch(error => {
+      set(null);
+      throw onError(error);
+    });
+    set(created);
+    return created;
+  }
+
   triggerCacheReload(clearCache: boolean): void {
     this.cacheReloadRequest$.next(clearCache);
   }
@@ -152,6 +182,8 @@ export class AnalyticsService implements OnDestroy {
   clearAllCaches(): void {
     this.cachedDeployedBlocks = null;
     this.cachedDeployedExtensions = null;
+    this.cachedDeployedExtensionsMetadata = null;
+    this.cachedExtensionNames = null;
     this.cachedCepOperationObjectId = null;
     this.cachedCepStatus = null;
     this.cachedExtensionDetails.clear();
@@ -202,20 +234,15 @@ export class AnalyticsService implements OnDestroy {
   }
 
   async getEnrichedExtensions(): Promise<IManagedObject[]> {
-    if (!this.cachedDeployedExtensions) {
-      this.cachedDeployedExtensions = this.loadEnrichedExtensions().catch(error => {
-        this.cachedDeployedExtensions = null;
-        // Don't surface a toast here: the caller (extension grid) owns a single,
-        // restart-aware, auto-dismissing message so we don't stack two alerts
-        // for one failure.
-        throw this.handleError(
-          error,
-          'Failed to enrich extensions with deployment status',
-          false
-        );
-      });
-    }
-    return this.cachedDeployedExtensions;
+    return this.memoizeOnce(
+      () => this.cachedDeployedExtensions,
+      value => (this.cachedDeployedExtensions = value),
+      () => this.loadEnrichedExtensions(),
+      // Don't surface a toast here: the caller (extension grid) owns a single,
+      // restart-aware, auto-dismissing message so we don't stack two alerts
+      // for one failure.
+      error => this.handleError(error, 'Failed to enrich extensions with deployment status', false)
+    );
   }
 
   private async loadEnrichedExtensions(): Promise<IManagedObject[]> {
@@ -326,31 +353,37 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   async getDeployedBlocks(): Promise<CepBlock[]> {
-    if (!this.cachedDeployedBlocks) {
-      this.cachedDeployedBlocks = this.loadDeployedBlocks().catch(error => {
-        this.cachedDeployedBlocks = null;
-        throw this.handleError(
-          error,
-          'Failed to load deployed blocks',
-          true,
-          gettext('Could not load deployed blocks. Please refresh.')
-        );
-      });
-    }
-    return this.cachedDeployedBlocks;
+    return this.memoizeOnce(
+      () => this.cachedDeployedBlocks,
+      value => (this.cachedDeployedBlocks = value),
+      () => this.loadDeployedBlocks(),
+      error => this.handleError(
+        error,
+        'Failed to load deployed blocks',
+        true,
+        gettext('Could not load deployed blocks. Please refresh.')
+      )
+    );
   }
 
   private async loadDeployedBlocks(): Promise<CepBlock[]> {
     const metadata = await this.getDeployedExtensionsMetadata();
     if (!metadata?.metadatas?.length) return [];
 
+    // The metadata list can carry both "<name>.json" and "<name>.zip" entries
+    // for the same extension; collapse them so each extension is fetched and
+    // mapped once (otherwise its blocks would appear twice).
+    const extensionNames = [...new Set(metadata.metadatas.map(removeFileExtension))];
+
     const perExtensionBlocks = await Promise.all(
-      metadata.metadatas.map(async (metadataFile) => {
-        const extensionName = removeFileExtension(metadataFile);
+      extensionNames.map(async (extensionName) => {
         // Shares the per-name memo with addDeploymentStatus — no duplicate HTTP fetch
         const ext = await this.getDeployedExtensionDetails(extensionName);
         if (!ext?.analytics?.length) return [];
-        return ext.analytics.map(block => this.addBlockMetadata(block, ext.name));
+        // Drop malformed blocks instead of failing the whole load.
+        return ext.analytics
+          .map(block => this.addBlockMetadata(block, ext.name))
+          .filter((block): block is CepBlock => block !== null);
       })
     );
 
@@ -362,21 +395,32 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   async getCepStatus(): Promise<CepStatusObject> {
-    if (!this.cachedCepStatus) {
-      this.cachedCepStatus = this.loadCepStatus().catch(error => {
-        this.cachedCepStatus = null;
-        throw this.handleError(error, 'Failed to get Cep status', false);
-      });
-    }
-    return this.cachedCepStatus;
+    return this.memoizeOnce(
+      () => this.cachedCepStatus,
+      value => (this.cachedCepStatus = value),
+      () => this.loadCepStatus(),
+      error => this.handleError(error, 'Failed to get Cep status', false)
+    );
   }
 
   private async loadCepStatus(): Promise<CepStatusObject> {
+    return this.fetchJSON<CepStatusObject>(await this.resolveCepStatusUrl());
+  }
+
+  /**
+   * Resolve which endpoint serves CEP status / operation-object data.
+   *
+   * Path selection across this service follows one rule: status and
+   * operation-object reads go through the backend microservice when it is
+   * deployed, and fall back to the CEP correlator diagnostics endpoints when it
+   * is not. (Deployed-block and extension-metadata reads, by contrast, always
+   * hit the CEP correlator directly — they have no backend equivalent.)
+   */
+  private async resolveCepStatusUrl(): Promise<string> {
     const isBackendAvailable = await this.isBackendServiceAvailable();
-    const url = isBackendAvailable
+    return isBackendAvailable
       ? `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`
       : `${CEP_PATH_STATUS}`;
-    return this.fetchJSON<CepStatusObject>(url);
   }
 
   getCepOperationObjectStream$(): Observable<IManagedObject> {
@@ -494,15 +538,12 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   async getExtensionNamesFromCep(): Promise<CepExtensionsMetadata> {
-    try {
-      return await this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`);
-    } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to get extension names from Cep',
-        false
-      );
-    }
+    return this.memoizeOnce(
+      () => this.cachedExtensionNames,
+      value => (this.cachedExtensionNames = value),
+      () => this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES}`),
+      error => this.handleError(error, 'Failed to get extension names from Cep', false)
+    );
   }
 
   async getDeployedExtensionDetails(extensionName: string): Promise<CepExtension | null> {
@@ -603,30 +644,36 @@ export class AnalyticsService implements OnDestroy {
     };
   }
 
-  private addBlockMetadata(block: unknown, extensionName: string): CepBlock {
-    // Ensure block is an object with required CepBlock properties
-    if (!block || typeof block !== 'object') {
-      throw new Error('Invalid block object');
+  /**
+   * Normalize a raw correlator block into a {@link CepBlock}, or return `null`
+   * if it is unusable. A block without an `id` and `name` is meaningless (and
+   * would crash `isCustomCepBlock`), so it is skipped rather than defaulted to
+   * empty strings. `repositoryName`/`repositoryId` are intentionally omitted:
+   * deployed blocks have no originating repository.
+   */
+  private addBlockMetadata(block: RawCepBlock | null | undefined, extensionName: string): CepBlock | null {
+    const id = block?.id?.trim() ?? '';
+    const name = block?.name?.trim() ?? '';
+    if (!block || typeof block !== 'object' || !id || !name) {
+      console.warn('Skipping deployed block with missing id/name:', block);
+      return null;
     }
-    
-    const blockObj = block as Partial<CepBlock>;
+
     return {
-      id: blockObj.id || '',
-      name: blockObj.name || '',
-      file: blockObj.file || '',
-      type: blockObj.type || '',
-      installed: blockObj.installed,
-      producesOutput: blockObj.producesOutput,
-      description: blockObj.description,
-      url: blockObj.url || '',
-      downloadUrl: blockObj.downloadUrl || '',
-      path: blockObj.path,
-      custom: isCustomCepBlock(blockObj as CepBlock),
+      id,
+      name,
+      file: block.file ?? '',
+      type: block.type ?? '',
+      installed: block.installed,
+      producesOutput: block.producesOutput,
+      description: block.description,
+      url: block.url ?? '',
+      downloadUrl: block.downloadUrl ?? '',
+      path: block.path,
+      custom: isCustomCepBlock({ id }),
       extension: extensionName,
-      resultingExtension: blockObj.resultingExtension,
-      repositoryName: blockObj.repositoryName || '',
-      repositoryId: blockObj.repositoryId || '',
-      category: blockObj.category || this.determineBlockCategory(blockObj)
+      resultingExtension: block.resultingExtension,
+      category: block.category ?? this.determineBlockCategory(block)
     };
   }
 
@@ -650,15 +697,15 @@ export class AnalyticsService implements OnDestroy {
   }
 
   private async getDeployedExtensionsMetadata(): Promise<CepExtensionsMetadata> {
-    try {
-      return await this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`);
-    } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to get deployed extensions metadata',
-        false
-      );
-    }
+    // Memoized because both loadEnrichedExtensions() and loadDeployedBlocks()
+    // need it; without the cache a screen showing both grids fetches
+    // block-metadata.json twice.
+    return this.memoizeOnce(
+      () => this.cachedDeployedExtensionsMetadata,
+      value => (this.cachedDeployedExtensionsMetadata = value),
+      () => this.fetchJSON<CepExtensionsMetadata>(`/${CEP_PATH_METADATA_EN}`),
+      error => this.handleError(error, 'Failed to get deployed extensions metadata', false)
+    );
   }
 
   // ============================================================================
@@ -683,6 +730,8 @@ export class AnalyticsService implements OnDestroy {
   private invalidateExtensionCaches(): void {
     this.cachedDeployedExtensions = null;
     this.cachedDeployedBlocks = null;
+    this.cachedDeployedExtensionsMetadata = null;
+    this.cachedExtensionNames = null;
     this.cachedExtensionDetails.clear();
   }
 

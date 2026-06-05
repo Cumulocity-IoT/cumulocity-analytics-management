@@ -56,8 +56,31 @@ export interface CepBlock {
   custom: boolean;
   extension?: string;
   resultingExtension?: string;
-  repositoryName: string;
-  repositoryId: string;
+  // Only populated for repository-sourced blocks; deployed blocks read back from
+  // the CEP correlator have no originating repository, so these stay undefined.
+  repositoryName?: string;
+  repositoryId?: string;
+  category?: Category;
+}
+
+/**
+ * Raw block payload as returned by the CEP correlator
+ * (`service/cep/apamacorrelator/en/<extension>.json` → `analytics[]`).
+ * Every field is optional/untrusted; `addBlockMetadata` normalizes it into a
+ * {@link CepBlock}.
+ */
+export interface RawCepBlock {
+  id?: string;
+  name?: string;
+  file?: string;
+  type?: string;
+  installed?: boolean;
+  producesOutput?: string;
+  description?: string;
+  url?: string;
+  downloadUrl?: string;
+  path?: string;
+  resultingExtension?: string;
   category?: Category;
 }
 
@@ -160,6 +183,22 @@ export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 
 
 export type ExtensionType = 'block' | 'zip';
 
-export type CepStatusObject = any;
+/**
+ * Status payload for the CEP/Apama engine. Sourced either from the backend
+ * microservice (`.../cep/status`) or, when it is unavailable, directly from the
+ * CEP correlator diagnostics (`CEP_PATH_STATUS`). Only the fields the UI relies
+ * on are typed; the index signature keeps the remaining diagnostic fields
+ * accessible (e.g. the engine-monitoring view iterates all keys).
+ */
+export interface CepStatusObject {
+  status?: string;
+  is_safe_mode?: boolean;
+  microservice_name?: string;
+  microservice_application_id?: string;
+  number_extensions?: number;
+  // Remaining diagnostic fields are untyped; the engine-monitoring view iterates
+  // and renders them generically.
+  [key: string]: any;
+}
 
 export type UploadMode = 'add' | 'update';

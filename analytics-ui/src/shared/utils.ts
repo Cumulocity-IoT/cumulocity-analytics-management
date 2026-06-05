@@ -20,11 +20,12 @@ export function getFileExtension(name: string): string {
   return (result && result != null) ? result[0] : '';
 }
 
-export function isCustomCepBlock(block: CepBlock): boolean {
+export function isCustomCepBlock(block: Pick<CepBlock, 'id'>): boolean {
+  const id = block.id ?? '';
   return (
-    !block.id.startsWith('apama.analyticsbuilder.blocks') &&
-    !block.id.startsWith('apama.analyticskit.blocks.core') &&
-    !block.id.startsWith('apama.analyticskit.blocks.cumulocity')
+    !id.startsWith('apama.analyticsbuilder.blocks') &&
+    !id.startsWith('apama.analyticskit.blocks.core') &&
+    !id.startsWith('apama.analyticskit.blocks.cumulocity')
   );
 }
 

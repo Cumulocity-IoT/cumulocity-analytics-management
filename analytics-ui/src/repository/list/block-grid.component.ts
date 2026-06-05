@@ -35,7 +35,6 @@ import {
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
-  CepBlock,
   DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
@@ -200,7 +199,7 @@ export class BlockGridComponent implements OnInit {
     });
   }
 
-  viewMonitor(block: CepBlock) {
+  viewMonitor(block: RepositoryItem) {
     const initialState = {
       source$: this.repositoryService.getRepositoryItemContent(
         block,

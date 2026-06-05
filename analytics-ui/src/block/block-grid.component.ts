@@ -100,7 +100,7 @@ export class BlockGridComponent implements OnInit {
       name: 'extension',
       path: 'extension',
       gridTrackSize: '15%',
-      cellRendererComponent: LabelRendererComponent,
+      // cellRendererComponent: LabelRendererComponent,
       filterable: true,
       sortable: true
     }
