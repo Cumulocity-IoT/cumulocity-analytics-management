@@ -1,8 +1,15 @@
+/* Widen the dialog for the source-code editor. Scoped via :has() to this
+   modal only (its host renders inside the .modal-dialog wrapper) so other
+   modals keep their default width. */
+.modal-dialog:has(a17t-name-extension-modal) {
+  max-width: 90vw;
+  width: 1100px;
+}
+
 /* Editor sizes with the viewport but stays well within it so the modal
    header (title) and footer (Close button) remain visible without scrolling. */
 .editor-half-height {
   display: block;
-  height: 55vh;
+  height: 70vh;
   min-height: 18rem;
-  max-height: 32rem;
 }

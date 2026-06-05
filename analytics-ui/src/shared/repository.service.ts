@@ -316,7 +316,14 @@ export class RepositoryService implements OnDestroy {
           status: response.status
         };
       }
-      return this.mapTestStatusToResult(response.status);
+      // Prefer the backend's specific reason (e.g. SSO authorization required,
+      // rate limit, bad credentials) over the generic status-based message.
+      const backendMessage = await this.extractErrorMessage(response);
+      return {
+        success: false,
+        status: response.status,
+        message: backendMessage || this.mapTestStatusToResult(response.status).message
+      };
     } catch (error) {
       return this.handleTestError(error);
     }
@@ -325,9 +332,10 @@ export class RepositoryService implements OnDestroy {
   private mapTestStatusToResult(status: number): RepositoryTestResult {
     switch (status) {
       case 401:
-        return { success: false, status, message: gettext('Authentication failed. Please check your access token.') };
+        return { success: false, status, message: gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).') };
       case 403:
-        return { success: false, status, message: gettext('Access denied. Please check your permissions.') };
+      case 429:
+        return { success: false, status, message: gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.') };
       case 404:
         return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
       default:
@@ -683,11 +691,16 @@ export class RepositoryService implements OnDestroy {
     return from(this.getGitHubContent(repository)).pipe(
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
+        // Surface the backend's specific reason (e.g. GitHub rate limit / bad
+        // token) instead of a generic message, so the cause is diagnosable.
+        const detail = error instanceof RepositoryError ? error.userMessage : '';
         this.handleError(
           error,
           `Failed to fetch items from repository: ${repository.name}`,
           true,
-          gettext(`Failed to load items from repository "${repository.name}".`)
+          detail
+            ? gettext(`Failed to load items from "${repository.name}": ${detail}`)
+            : gettext(`Failed to load items from repository "${repository.name}".`)
         );
         return of([]);
       })

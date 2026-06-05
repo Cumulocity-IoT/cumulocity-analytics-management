@@ -115,8 +115,11 @@
             <c8y-form-group>
               <label for="url">
                 <span>{{ 'Repository URL' | translate }}</span>
-                <button type="button" placement="right" [popover]="popRepositoryUrl" class="btn-help"
+                <button type="button" placement="right" [popover]="popRepositoryUrlTpl" class="btn-help"
                 aria-label="Help content"></button>
+                <ng-template #popRepositoryUrlTpl>
+                  Enter the last parts to a github repository. If no branch name is given, the default branch <code>main</code> is assumed.
+                </ng-template>
               </label>
               <div class="input-group">
                 <span class="input-group-addon">{{ GITHUB_URL }}</span>
@@ -140,15 +143,15 @@
                 aria-label="Help content" [outsideClick]="true"></button>
                 <ng-template #popupPAT>
                   <p class="m-b-8">
-                    Enter Personal Access Token (PAT) created <a
+                    Optional for public repositories. For private repositories, enter a Personal Access Token (PAT) created <a
                   href="https://github.com/settings/tokens/new" target="_blank">here</a>. <br />
                   Select
                   the scope <code>public_repo</code> and enable SSO for the token
                 </p>
               </ng-template>
             </label>
-            <input type="password" id="accessToken" formControlName="accessToken" required="true"
-              [placeholder]="'e.g.: your github Personal Access Token (PAT)' | translate"
+            <input type="password" id="accessToken" formControlName="accessToken"
+              [placeholder]="'e.g.: your github Personal Access Token (PAT) — optional for public repositories' | translate"
               class="form-control" />
             <!-- Warning message displayed under the input -->
             @if (showPATWarning) {
@@ -162,8 +165,8 @@
           </c8y-form-group>
           <div class="btn-toolbar d-flex" style="gap: 8px;">
             <button (click)="testRepository()" class="btn btn-default" style="min-width:120px;"
-              [title]="'Enter your PAT access token to test' | translate"
-              [disabled]="!repositoryForm.value.accessToken || repositoryForm.value.accessToken === '' || repositoryForm.value.accessToken === DUMMY_ACCESS_TOKEN">
+              [title]="'Test the connection (PAT optional for public repositories)' | translate"
+              [disabled]="repositoryForm.get('url')?.invalid || isSaving">
               {{ 'Test connection' | translate }}
             </button>
             <button type="button" class="btn btn-default" [title]="'Add repository' | translate"

@@ -40,7 +40,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     originalFormValues: any = null;
 
     popupPAT = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
-    popRepositoryUrl = `Enter the last parts to a github repository. If no branch name is given, the default branch <code>main</code> is assumed.`;
+
     GITHUB_API = 'https://api.github.com/repos/';
     GITHUB_URL = 'https://github.com/';
     DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";
@@ -189,12 +189,17 @@ export class RepositoriesDrawerComponent implements OnInit {
             return true;
         }
 
-        // Check access token change
-        // Only consider it changed if there's a new non-empty value that's not the dummy token
-        const hasNewToken = currentValues.accessToken &&
-            currentValues.accessToken !== '' &&
-            currentValues.accessToken !== this.DUMMY_ACCESS_TOKEN;
-        if (hasNewToken) {
+        // Check access token change. An existing token is loaded as the masked
+        // DUMMY_ACCESS_TOKEN, so detect two kinds of change:
+        const originalToken = this.originalFormValues.accessToken || '';
+        const currentToken = currentValues.accessToken || '';
+
+        // 1. A new, real token was entered (non-empty and not the masked dummy)
+        const enteredNewToken = currentToken !== '' && currentToken !== this.DUMMY_ACCESS_TOKEN;
+        // 2. An existing token was cleared (had one before, now empty) — needed to
+        //    remove a stale/invalid PAT and fall back to unauthenticated access.
+        const clearedToken = originalToken !== '' && currentToken === '';
+        if (enteredNewToken || clearedToken) {
             return true;
         }
 
@@ -420,16 +425,13 @@ export class RepositoriesDrawerComponent implements OnInit {
                 const hasFormModifications = this.hasFormChanges();
                 const hasEnabledChanges = this.repositoryService.hasUnsavedChanges();
 
-                if (hasFormModifications && hasEnabledChanges) {
-                    // Both form and enabled status changed
-                    // Update the repository details first
+                if (hasFormModifications) {
+                    // Form changed (name, url, token), possibly alongside enabled
+                    // toggles. updateRepository() persists the whole repository
+                    // list — which already includes any enabled-state changes — so
+                    // it covers both cases in a single save (and a single toast).
                     await this.updateRepository();
-                    // Then save all enabled states
-                    await this.repositoryService.saveAllRepositories();
                     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
-                } else if (hasFormModifications) {
-                    // Only form changed (name, url, token)
-                    await this.updateRepository();
                 } else if (hasEnabledChanges) {
                     // Only enabled status changed
                     await this.repositoryService.saveAllRepositories();

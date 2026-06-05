@@ -209,7 +209,7 @@ export class BlockGridComponent implements OnInit {
       monitorName: block.name
     };
     this.bsModalService.show(EditorModalComponent, {
-      class: 'modal-lg',
+      class: 'modal-editor-wide',
       initialState,
       ariaDescribedby: 'modal-body',
       ariaLabelledBy: 'modal-title',

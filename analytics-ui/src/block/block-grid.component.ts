@@ -123,15 +123,14 @@ export class BlockGridComponent implements OnInit {
     });
   }
 
-async loadBlocks() {
-  this.loading = true;
-  
-  try {
-    const blocks = await this.analyticsService.getDeployedBlocks();
-    this.blocks = blocks;
-  } finally {
-    this.loading = false;
+  async loadBlocks() {
+    this.loading = true;
+    try {
+      this.analyticsService.clearAllCaches();
+      const blocks = await this.analyticsService.getDeployedBlocks();
+      this.blocks = blocks;
+    } finally {
+      this.loading = false;
+    }
   }
-}
-
 }

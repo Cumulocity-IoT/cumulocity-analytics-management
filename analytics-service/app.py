@@ -14,6 +14,7 @@ Architecture:
 """
 
 import base64
+import datetime
 import io
 import logging
 import os
@@ -261,7 +262,9 @@ def get_content_list():
     logger.info(f"Fetching content list from: {content_url}")
 
     response = requests.get(content_url, headers=headers, timeout=30)
-    response.raise_for_status()
+    error = _github_error_response(response)
+    if error:
+        return error
 
     return make_response(response.content, 200, {"Content-Type": "application/json"})
 
@@ -304,7 +307,9 @@ def get_content():
     decoded_url = urllib.parse.unquote(encoded_url)
 
     response = requests.get(decoded_url, headers=headers, timeout=30)
-    response.raise_for_status()
+    error = _github_error_response(response)
+    if error:
+        return error
 
     if extract_fqn:
         if not cep_block_name:
@@ -774,14 +779,93 @@ def _get_repository_headers(
 
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
+        logger.info("Using request-supplied PAT (test connection)")
         return headers
 
     if repository_id:
         repo_config = agent.load_repository(request, repository_id, replace_access_token=False)
         if repo_config and repo_config.get("accessToken"):
             headers["Authorization"] = f"Bearer {repo_config['accessToken']}"
+            logger.info("Repository %s: sending request WITH stored PAT", repository_id)
+        else:
+            logger.info(
+                "Repository %s: no PAT stored, sending UNAUTHENTICATED request "
+                "(GitHub limits these to 60 requests/hour per IP)",
+                repository_id,
+            )
 
     return headers
+
+
+def _github_error_response(response: requests.Response):
+    """Translate a failed GitHub API response into a clear Flask error response.
+
+    Returns ``None`` when the request succeeded, so callers can use::
+
+        err = _github_error_response(response)
+        if err:
+            return err
+
+    GitHub returns ``403`` (or ``429``) with ``X-RateLimit-Remaining: 0`` once the
+    request quota is exhausted. Unauthenticated requests are limited to 60/hour per
+    IP; supplying a valid Personal Access Token raises this to 5000/hour. This case
+    is otherwise indistinguishable from a permissions error, so spell it out.
+    """
+    if response.ok:
+        return None
+
+    status = response.status_code
+    remaining = response.headers.get("X-RateLimit-Remaining")
+    sso_header = response.headers.get("X-GitHub-SSO")
+
+    # Log the signals that disambiguate the failure so the cause is provable
+    # from the microservice logs without guesswork.
+    logger.warning(
+        "GitHub error %s (X-RateLimit-Remaining=%s, X-RateLimit-Limit=%s, X-GitHub-SSO=%s)",
+        status,
+        remaining,
+        response.headers.get("X-RateLimit-Limit"),
+        sso_header,
+    )
+
+    # SSO not authorized for the token against an SSO-enforced org. GitHub returns
+    # 403 with an X-GitHub-SSO header rather than a rate-limit signal.
+    if status == 403 and sso_header:
+        message = (
+            "GitHub single sign-on authorization required for this token. Open the "
+            "token at github.com/settings/tokens, click 'Configure SSO' and authorize "
+            f"it for the organization, then retry. (X-GitHub-SSO: {sso_header})"
+        )
+        return create_error_response(message, status)
+
+    if status in (403, 429) and remaining == "0":
+        reset = response.headers.get("X-RateLimit-Reset")
+        when = ""
+        if reset and reset.isdigit():
+            reset_at = datetime.datetime.fromtimestamp(
+                int(reset), datetime.timezone.utc
+            ).strftime("%Y-%m-%d %H:%M UTC")
+            when = f" Limit resets at {reset_at}."
+        message = (
+            "GitHub API rate limit exceeded. Unauthenticated requests are limited "
+            "to 60/hour per IP; add a valid Personal Access Token to this repository "
+            f"to raise the limit to 5000/hour.{when}"
+        )
+        logger.warning("GitHub rate limit exceeded (status %s)", status)
+        return create_error_response(message, status)
+
+    # Fall back to GitHub's own error message when present (it is more specific
+    # than the generic HTTPError string, e.g. SSO authorization required).
+    github_message = None
+    try:
+        github_message = response.json().get("message")
+    except ValueError:
+        pass
+
+    return create_error_response(
+        github_message or response.text or f"GitHub request failed ({status})",
+        status,
+    )
 
 
 def _extract_fqn(content: str, block_name: str) -> str:

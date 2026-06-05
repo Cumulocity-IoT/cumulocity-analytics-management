@@ -18,10 +18,10 @@
 #
 # @authors Christof Strack
 
-NAME="$1"
-VERSION="$2"
-IMG_ARCH="$3"
-IMG_NAME="$4"
+NAME="analytics-ext-service"
+VERSION="$1"
+IMG_ARCH="$2"
+IMG_NAME="$3"
 if ! [ $IMG_NAME ]; then
   IMG_NAME=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '[:punct:]' '-')
 fi

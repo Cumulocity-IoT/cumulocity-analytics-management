@@ -38,6 +38,7 @@ export class EditorModalComponent {
     this.editorOptions = {
       minimap: { enabled: false },
       renderValidationDecorations: "off",
+      automaticLayout: true,
       language: this.configService.getLanguageName(),
       theme: this.configService.getThemeName()
     };
@@ -48,14 +49,21 @@ export class EditorModalComponent {
   }
 
   assignSchema() {
-    if (initializedMonaco || !this.editorComponent.monaco) return;
+    if (!this.editorComponent.monaco || !this.editorComponent.editor) return;
     const monaco = this.editorComponent.monaco;
     try {
-      monaco.languages.register(this.configService.getCustomLangExtensionPoint());
-      monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
-      monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
-      monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
-      initializedMonaco = true;
+      if (!initializedMonaco) {
+        monaco.languages.register(this.configService.getCustomLangExtensionPoint());
+        monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
+        monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
+        monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
+        initializedMonaco = true;
+      }
+
+      // Modal opens with animation; force layout after paint and after transition
+      // so Monaco does not stay at the previous narrow width.
+      setTimeout(() => this.editorComponent.editor?.layout(), 0);
+      setTimeout(() => this.editorComponent.editor?.layout(), 250);
     } catch (err) {
       console.error('Failed to register EPL language with Monaco:', err);
     }
