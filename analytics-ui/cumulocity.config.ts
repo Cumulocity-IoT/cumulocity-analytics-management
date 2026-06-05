@@ -55,10 +55,6 @@ export default {
         to: 'resources/images/block-block-list.png',
       },
       {
-        from: '../resources/images/extension-create-extension-animated.gif',
-        to: 'resources/images/extension-create-extension-animated.gif',
-      },
-      {
         from: '../resources/images/extension-update-extension-modal.png',
         to: 'resources/images/extension-update-extension-modal.png',
       },
