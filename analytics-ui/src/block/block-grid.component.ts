@@ -72,21 +72,10 @@ export class BlockGridComponent implements OnInit {
       header: 'Category',
       name: 'category',
       path: 'category',
-      gridTrackSize: '10%',
+      gridTrackSize: '15%',
       dataType: ColumnDataType.TextShort,
       cellRendererComponent: LabelRendererComponent,
       filterable: true
-    },
-    {
-      header: 'Custom Block',
-      name: 'custom',
-      path: 'custom',
-      gridTrackSize: '15%',
-      filterable: true,
-      dataType: ColumnDataType.TextShort,
-      sortable: true,
-      // cellCSSClassName: 'text-center',
-      cellRendererComponent: BooleanRendererComponent
     },
     {
       header: 'Description',
@@ -103,7 +92,18 @@ export class BlockGridComponent implements OnInit {
       // cellRendererComponent: LabelRendererComponent,
       filterable: true,
       sortable: true
-    }
+    },
+    {
+      header: 'Custom Block',
+      name: 'custom',
+      path: 'custom',
+      gridTrackSize: '10%',
+      filterable: true,
+      dataType: ColumnDataType.TextShort,
+      sortable: true,
+      // cellCSSClassName: 'text-center',
+      cellRendererComponent: BooleanRendererComponent
+    },
   ];
 
   pagination: Pagination = {
