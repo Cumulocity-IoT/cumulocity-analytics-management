@@ -1,4 +1,14 @@
-# Architecture Decision Records (ADRs)
+# Architecture & Development Guides
+
+## Quick Navigation
+
+- **[UI Development Guide](./UI-GUIDE.md)** - Frontend architecture, components, testing, and best practices
+- **[Backend Development Guide](./BACKEND-GUIDE.md)** - API design, deployment, logging, and best practices
+- **Architecture Decision Records** - Key architectural decisions documented below
+
+---
+
+## Architecture Decision Records (ADRs)
 
 ## ADR-001: Use Standalone Angular Components Over NgModule
 
