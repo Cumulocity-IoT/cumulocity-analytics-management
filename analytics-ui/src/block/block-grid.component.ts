@@ -38,7 +38,7 @@ import {
   BooleanRendererComponent,
   CepBlock
 } from '../shared';
-import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
+import { LabelRendererComponent } from '../shared/renderer/label.renderer';
 
 @Component({
   selector: 'a17t-block-grid',

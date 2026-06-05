@@ -1,6 +1,7 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "strict": true,
     "noImplicitOverride": true,
@@ -22,7 +23,6 @@
     "typeCheckHostBindings": true,
     "strictTemplates": true
   },
-  "files": [],
   "lint": [
     {
         "exclude": [

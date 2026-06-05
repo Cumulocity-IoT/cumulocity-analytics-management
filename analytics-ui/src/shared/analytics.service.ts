@@ -984,7 +984,7 @@ export class AnalyticsService implements OnDestroy {
       throw new CepError(
         `Failed to fetch from ${url}`,
         gettext('Network error. Please check your connection and try again.'),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }

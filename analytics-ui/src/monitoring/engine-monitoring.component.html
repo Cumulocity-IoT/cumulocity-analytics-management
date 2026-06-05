@@ -12,9 +12,9 @@
       <p class="card-title">{{ 'Status CEP' | translate }}</p>
     </div>
     <div class="card-block large-padding bg-inherit overflow-visible">
-      @if (cepOperationObjectId && (cepCtrlStatusLabels$ | async).length > 0) {
+      @if (cepOperationObjectId && ((cepCtrlStatusLabels$ | async)?.length ?? 0) > 0) {
       <c8y-properties-list [title]="'CEP Engine Status'" [emptyLabel]="'--'"
-        [properties]="cepCtrlStatusLabels$ | async">
+        [properties]="(cepCtrlStatusLabels$ | async) || []">
       </c8y-properties-list>
       }
       @if (!cepOperationObjectId) {

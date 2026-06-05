@@ -80,7 +80,7 @@ export /**
 
     return contentApiUrl;
   } catch (error) {
-    throw new Error(`Failed to convert GitHub URL: ${error.message}`);
+    throw new Error(`Failed to convert GitHub URL: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
