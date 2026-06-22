@@ -30,7 +30,7 @@ interface BuildInformation {
   templateUrl: './extension-card.component.html',
   styleUrls: ['./extension-card.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule, ConfirmationModalComponent]
+  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
 })
 export class ExtensionCardComponent implements OnInit {
   @Input() extension!: IManagedObject;

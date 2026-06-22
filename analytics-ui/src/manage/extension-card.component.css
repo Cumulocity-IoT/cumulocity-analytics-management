@@ -1,5 +1,12 @@
 /* Extension Card Styling */
 
+/* card-group makes each col-* a flex container; align-self:stretch fills the
+   column's full height so all cards in a row are equal height. */
+.card {
+  align-self: stretch;
+  width: 100%;
+}
+
 /* Data elements font sizing */
 .card-block span:not(.text-medium) {
   font-size: 1.25rem;
@@ -17,12 +24,12 @@
   font-size: 1.1875rem;
 }
 
-/* Increase bottom margin on card - MORE SPACE BETWEEN CARDS */
+/* Increase bottom margin on card */
 .card--d-col {
   margin-bottom: 2.5rem;
 }
 
-/* Reduce spacing within card blocks - TIGHTER LINES */
+/* Reduce spacing within card blocks */
 .card-block {
   padding: 0.25rem 0;
 }
@@ -33,8 +40,10 @@
   padding-bottom: 0 !important;
 }
 
-/* Minimal spacing for Code Extension & Date */
+/* Reserve a fixed height for the conditional block (Code Extension / blocks count)
+   so cards without content in this slot stay the same height as those with it. */
 .card-block:nth-child(3) {
+  min-height: 2rem;
   margin-top: 0 !important;
   margin-bottom: 0 !important;
   padding-top: 0 !important;
@@ -44,6 +53,8 @@
 .card-block:nth-child(4) {
   margin-top: 0 !important;
   padding-top: 0 !important;
+}
+
 /* Extension name font size */
 .text-medium {
   font-size: 1.375rem;
@@ -52,5 +63,4 @@
 /* NO spacing between card-block elements */
 .card-block + .card-block {
   margin-top: 0 !important;
-}
 }

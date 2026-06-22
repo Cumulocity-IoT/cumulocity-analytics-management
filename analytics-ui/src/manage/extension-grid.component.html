@@ -78,7 +78,7 @@
   }
   <!-- Extensions Grid -->
   @if (status === 'up') {
-    <div [ngClass]="listClass">
+    <div class="card-group" [ngClass]="listClass">
       <!-- Empty State -->
       @if ((extensions$ | async)?.length === 0) {
         <div class="row">
