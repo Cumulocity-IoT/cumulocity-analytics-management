@@ -23,7 +23,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     private as: AppStateService,
   ) {}
 
-  get(): NavigatorNode {
+  get(): NavigatorNode | NavigatorNode[] {
     // console.log('AppState', this.as);
     if (this.canActivate()) {
       // id running in 
@@ -32,6 +32,8 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
         this.extensionsNode['label'] = gettext('Extensions');
       }
       return this.extensionsNode;
+    } else {
+      return [];
     }
     return this.extensionsNode;
   }

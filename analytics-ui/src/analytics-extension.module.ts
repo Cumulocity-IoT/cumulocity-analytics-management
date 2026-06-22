@@ -8,7 +8,6 @@ import {
   hookWizard
 } from '@c8y/ngx-components';
 import { BinaryFileDownloadModule } from '@c8y/ngx-components/binary-file-download';
-import { DefaultSubscriptionsModule } from '@c8y/ngx-components/default-subscriptions';
 import { ExtensionAddWizardComponent } from './shared/wizard/extension-add-wizard.component';
 import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factory';
 import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
@@ -38,7 +37,6 @@ import { extensionResolver, backendResolver } from './manage/utils';
     FormsModule,
     ReactiveFormsModule,
     BinaryFileDownloadModule,
-    DefaultSubscriptionsModule,
     PopoverModule,
     // Import standalone components
     BlockGridComponentBlock,
