@@ -1,3 +1,33 @@
+/* Host fills the Cumulocity main-content area so rows can stretch vertically */
+:host {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Blocks row: natural height */
+.row:first-of-type {
+  flex-shrink: 0;
+}
+
+/* Files / Build-information row: grow to fill remaining space */
+.details-bottom-row {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: stretch;
+}
+
+.details-bottom-row > [class*='col-'] {
+  display: flex;
+  flex-direction: column;
+}
+
+.details-bottom-row > [class*='col-'] .card {
+  flex: 1;
+}
+
 /* Align center content in table cells */
 .table tr td.text-center c8y-ui-empty-state {
   margin: 0 auto;

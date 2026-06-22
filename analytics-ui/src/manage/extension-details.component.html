@@ -29,7 +29,7 @@
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
-<div class="row p-l-24 p-r-24 p-b-24">
+<div class="row p-l-24 p-r-24">
   <div class="col-lg-12">
     <div class="card">
       <div class="card-header">
@@ -47,7 +47,6 @@
             </tr>
           </thead>
           <tbody>
-            <!-- Empty state row properly inside tbody -->
             @if (!extensionFromCep || extensionFromCep?.analytics?.length == 0) {
               <tr>
                 <td></td>
@@ -58,7 +57,6 @@
                 </td>
               </tr>
             }
-
             @for (block of extensionFromCep?.analytics; track block) {
               <tr>
                 <td [title]="block.id">{{ block.id }}</td>
@@ -71,6 +69,9 @@
       </div>
     </div>
   </div>
+</div>
+
+<div class="row p-l-24 p-r-24 p-b-24 details-bottom-row">
   <div class="col-lg-6">
     <div class="card">
       <div class="card-header">
@@ -95,31 +96,30 @@
             }
           </tbody>
         </table>
+      </div>
     </div>
   </div>
-</div>
-<div class="col-lg-6">
-  <div class="card">
-    <div class="card-header">
-      <h4 class="card-title d-flex">
-        <span class="m-t-8">{{ 'Build information' | translate }}</span>
-      </h4>
-    </div>
-    <div class="card-block">
-      @if (buildInformation?.length > 0) {
-        <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
-        </c8y-properties-list>
-      }
-
-      @if (buildInformation?.length == 0) {
-        <div class="c8y-empty-state">
-          <h1 [c8yIcon]="'monitoring'"></h1>
-          <p>
-            <strong>Extension contains no build information.</strong><br />
-          </p>
-        </div>
-      }
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h4 class="card-title d-flex">
+          <span class="m-t-8">{{ 'Build information' | translate }}</span>
+        </h4>
+      </div>
+      <div class="card-block">
+        @if (buildInformation?.length > 0) {
+          <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
+          </c8y-properties-list>
+        }
+        @if (buildInformation?.length == 0) {
+          <div class="c8y-empty-state">
+            <h1 [c8yIcon]="'monitoring'"></h1>
+            <p>
+              <strong>Extension contains no build information.</strong><br />
+            </p>
+          </div>
+        }
+      </div>
     </div>
   </div>
-</div>
 </div>
