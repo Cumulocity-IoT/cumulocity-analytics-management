@@ -573,7 +573,11 @@ export class AnalyticsService implements OnDestroy {
         // Don't cache failures — clear so a later call can retry
         this.cachedCepOperationObjectId = null;
         const isBackendAvailable = await this.isBackendServiceAvailable();
-        this.showCepUnavailableWarning(isBackendAvailable);
+        if (isBackendAvailable) {
+          this.showCepUnavailableWarning();
+        } else {
+          this.showBackendNotDeployedWarning();
+        }
         return undefined;
       });
     }
@@ -582,15 +586,31 @@ export class AnalyticsService implements OnDestroy {
 
   private async loadCepOperationObjectId(): Promise<string | undefined> {
     const isBackendAvailable = await this.isBackendServiceAvailable();
-    const id = isBackendAvailable
-      ? await this.fetchOperationIdFromBackend()
-      : await this.fetchOperationIdFromCepStatus();
+
+    let id: string | undefined;
+    if (isBackendAvailable) {
+      try {
+        id = await this.fetchOperationIdFromBackend();
+      } catch (error) {
+        console.warn(
+          '[AnalyticsService] fetchOperationIdFromBackend failed, falling back to CEP status endpoint:',
+          error
+        );
+        id = await this.fetchOperationIdFromCepStatus();
+      }
+    } else {
+      id = await this.fetchOperationIdFromCepStatus();
+    }
 
     if (id) return id;
 
     // Treat missing id as a non-cacheable miss
     this.cachedCepOperationObjectId = null;
-    this.showCepUnavailableWarning(isBackendAvailable);
+    if (isBackendAvailable) {
+      this.showCepUnavailableWarning();
+    } else {
+      this.showBackendNotDeployedWarning();
+    }
     return undefined;
   }
 
@@ -740,9 +760,28 @@ export class AnalyticsService implements OnDestroy {
   // ============================================================================
 
   private async fetchOperationIdFromBackend(): Promise<string> {
-    const data = await this.fetchJSON<{ id: string }>(
-      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`
-    );
+    const url = `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/id`;
+    let data: { id?: string };
+    try {
+      data = await this.fetchJSON<{ id?: string }>(url);
+    } catch (error) {
+      throw new CepError(
+        `fetchOperationIdFromBackend: request to ${url} failed — ${error instanceof CepError ? error.message : String(error)}`,
+        error instanceof CepError
+          ? error.userMessage
+          : gettext('Failed to retrieve the Streaming Analytics operation object ID from the backend service.'),
+        error instanceof Error ? error : undefined,
+        error instanceof CepError ? error.status : undefined
+      );
+    }
+
+    if (!data?.id) {
+      throw new CepError(
+        `fetchOperationIdFromBackend: ${url} returned no id (response body: ${JSON.stringify(data)})`,
+        gettext('The backend service returned an unexpected response when requesting the Streaming Analytics operation object ID.')
+      );
+    }
+
     return data.id;
   }
 
@@ -912,21 +951,30 @@ export class AnalyticsService implements OnDestroy {
   // Private Methods - Warnings
   // ============================================================================
 
-  private showCepUnavailableWarning(isBackendAvailable: boolean): void {
-    // During (and just after) a restart, transient unavailability is expected
-    // and the lifecycle toast already covers it. Suppress both the "restarting"
-    // and the "not deployed" warnings here — mid-restart the availability probe
-    // can briefly report the microservice as down even though it is only
-    // restarting, which would otherwise show a misleading "not deployed" toast.
+  private showCepUnavailableWarning(): void {
+    // During (and just after) a restart, transient CEP unavailability is expected
+    // and the lifecycle toast already covers it.
     if (this.isRestartWindow()) {
       return;
     }
+    this.setCepStatusAlert(
+      gettext('Streaming Analytics is temporarily unavailable. Please retry in a moment.'),
+      'warning',
+      this.ERROR_TIMEOUT
+    );
+  }
 
-    const message = isBackendAvailable
-      ? gettext('Streaming Analytics is restarting. Please retry in a moment.')
-      : gettext('The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.');
-
-    this.setCepStatusAlert(message, 'warning', this.ERROR_TIMEOUT);
+  private showBackendNotDeployedWarning(): void {
+    // Mid-restart, the availability probe can briefly report the microservice as
+    // down even though it is only restarting — suppress to avoid a misleading toast.
+    if (this.isRestartWindow()) {
+      return;
+    }
+    this.setCepStatusAlert(
+      gettext('The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.'),
+      'warning',
+      this.ERROR_TIMEOUT
+    );
   }
 
   /**
