@@ -588,7 +588,7 @@ export class RepositoryService implements OnDestroy {
       throw new RepositoryError(
         'Failed to fetch repositories',
         gettext('Failed to connect to server. Please check your connection.'),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -737,7 +737,7 @@ export class RepositoryService implements OnDestroy {
       throw new RepositoryError(
         'Failed to fetch GitHub content',
         gettext('Failed to connect to GitHub. Please check your connection and repository settings.'),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -1009,7 +1009,7 @@ export class RepositoryService implements OnDestroy {
       throw new RepositoryError(
         `Error parsing ${DESCRIPTOR_YAML}`,
         gettext(`Failed to parse ${DESCRIPTOR_YAML}. Invalid format.`),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -1048,7 +1048,7 @@ export class RepositoryService implements OnDestroy {
       throw new RepositoryError(
         'Failed to save repositories',
         gettext('Failed to connect to server. Please check your connection.'),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }
@@ -1095,7 +1095,7 @@ export class RepositoryService implements OnDestroy {
       throw new RepositoryError(
         'Failed to create extension',
         gettext('Failed to create extension. Please try again.'),
-        error
+        error instanceof Error ? error : undefined
       );
     }
   }

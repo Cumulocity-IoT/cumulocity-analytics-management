@@ -48,7 +48,7 @@ Analytics Builder blocks are build using the [Analytics Builder Block SDK](https
 
 In addition a table lists all installed analytics blocks with the following information: name, category, custom block, extension package name.
 
-![Block list](resources/images/block-block-list.png)
+![Block list](resources/images/block-list.png)
 
 ## Manage custom extension
 Custom extension can be uploaded from your local system. In addition they can be downloaded and deletes as well.
@@ -73,11 +73,6 @@ When the deployment of the extension was not successful an indicator [Safe Mode]
 Removing an extension will eliminate the block once more. It's important to note that when deleting an extension, there is no verification of whether the blocks within this extension are utilized in existing models. This could lead to models that are no longer deployable.
 
 ![Use Extension](resources/images/use-analytics-builder-block.png)
-
-### Build custom extension
-You can build and uploads a custom extension by following the screen flow below:
-
-![Build custom extension](resources/images/extension-create-extension-animated.gif)
 
 ### Options for custom extension
 For a custom extension you have the following options:

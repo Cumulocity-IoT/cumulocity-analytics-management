@@ -219,8 +219,8 @@ export class ExtensionCardComponent implements OnInit {
       this.extensionChanged.emit();
 
     } catch (error) {
-      // Check if it's a 404 error (extension not found for rebuild)
-      if (error?.status === 404 || error?.message?.includes('no existing extension')) {
+      const err = error as { status?: number; message?: string };
+      if (err?.status === 404 || err?.message?.includes('no existing extension')) {
         this.alertService.danger(
           `Rebuild failed: The extension "${this.extension['name']}" was not found in Cumulocity. ` +
           'It may have been deleted. Please create it again instead.'

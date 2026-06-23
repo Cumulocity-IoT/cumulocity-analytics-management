@@ -1,33 +1,33 @@
 <div class="card pointer card--d-col">
   <div (click)="detail()" class="card-block text-center card-column-20">
     <div class="card-appicon">
-      <c8y-app-icon [app]="extension" [contextPath]="extension.contextPath" [name]="extension.name"></c8y-app-icon>
+      <c8y-app-icon [app]="$any(extension)" [contextPath]="extension['contextPath']" [name]="extension['name']"></c8y-app-icon>
     </div>
-    <span class="e2e-appCardName text-medium" title="{{ extension.name }}">
-      {{ extension.name }}
+    <span class="e2e-appCardName text-medium" title="{{ extension['name'] }}">
+      {{ extension['name'] }}
     </span>
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
     <div class="text-center">
-      <span [class]="extension.loaded === true ? 'label label-success' : 'label label-warning'">
-        {{ (extension.loaded === true ? 'Loaded' : 'Not loaded') | translate }}
+      <span [class]="extension['loaded'] === true ? 'label label-success' : 'label label-warning'">
+        {{ (extension['loaded'] === true ? 'Loaded' : 'Not loaded') | translate }}
       </span>
     </div>
     <div class="text-center">
-      <span [class]="extension.build_information ? 'label label-primary' : 'label label-default'">
+      <span [class]="extension['build_information'] ? 'label label-primary' : 'label label-default'">
         {{ 'Build type: ' + getBuildType() | translate }}
       </span>
     </div>
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
-    @if (extension.loaded) {
+    @if (extension['loaded']) {
       <div class="text-center">
-        @if (extension.extensionType !== 'zip') {
-          <span>{{ extension.blocksCount }}&nbsp;{{
-            extension.blocksCount === 1 ? 'Block' : 'Blocks'
+        @if (extension['extensionType'] !== 'zip') {
+          <span>{{ extension['blocksCount'] }}&nbsp;{{
+            extension['blocksCount'] === 1 ? 'Block' : 'Blocks'
           }}</span>
         }
-        @if (extension.extensionType === 'zip') {
+        @if (extension['extensionType'] === 'zip') {
           <span class="label label-info">{{
             'Code Extension'
           }}</span>
@@ -37,7 +37,7 @@
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
     <div class="text-center m-b-8">
-      <span>{{ extension.lastUpdated | c8yDate: 'medium' }}</span>
+      <span>{{ extension['lastUpdated'] | c8yDate: 'medium' }}</span>
     </div>
   </div>
 

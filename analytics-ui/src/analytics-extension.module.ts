@@ -2,6 +2,7 @@ import { NgModule } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
   CoreModule,
+  DynamicFormsModule,
   hookNavigator,
   hookRoute,
   hookTab,
@@ -12,7 +13,7 @@ import { ExtensionAddWizardComponent } from './shared/wizard/extension-add-wizar
 import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factory';
 import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { FORMLY_CONFIG } from '@ngx-formly/core';
+import { FORMLY_CONFIG, FormlyModule } from '@ngx-formly/core';
 
 // Import standalone components
 import { BlockGridComponent as BlockGridComponentBlock } from './block/block-grid.component';
@@ -38,6 +39,8 @@ import { extensionResolver, backendResolver } from './manage/utils';
     ReactiveFormsModule,
     BinaryFileDownloadModule,
     PopoverModule,
+    FormlyModule.forRoot({}),
+    DynamicFormsModule,
     // Import standalone components
     BlockGridComponentBlock,
     EngineMonitoringComponent,
@@ -55,6 +58,16 @@ import { extensionResolver, backendResolver } from './manage/utils';
     RepositoriesDrawerComponent
   ],
   providers: [
+    {
+      provide: FORMLY_CONFIG,
+      multi: true,
+      useValue: {
+        types: [
+          { name: 'a17t-custom-switch', component: CustomSwitchField },
+          { name: 'extension-list', component: ExtensionListComponent }
+        ]
+      }
+    },
     // Navigation and tab hooks
     hookNavigator(AnalyticsNavigationFactory),
     hookTab(AnalyticsTabFactory),
@@ -101,21 +114,6 @@ import { extensionResolver, backendResolver } from './manage/utils';
       ]
     }),
 
-    // Formly configuration for custom field types
-    {
-      provide: FORMLY_CONFIG,
-      multi: true,
-      useValue: {
-        types: [
-          { name: 'a17t-custom-switch', component: CustomSwitchField },
-          {
-            name: 'extension-list',
-            component: ExtensionListComponent,
-            wrappers: ['c8y-form-field']
-          }
-        ]
-      }
-    }
   ]
 })
 export class AnalyticsExtensionModule {

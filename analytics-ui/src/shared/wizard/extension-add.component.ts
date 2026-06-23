@@ -61,7 +61,7 @@ interface BuildInformation {
   templateUrl: './extension-add.component.html',
   styleUrls: ['./extension-add.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule, ConfirmationModalComponent]
+  imports: [CommonModule, CoreModule]
 })
 export class ExtensionAddComponent implements OnDestroy {
   @Input() headerText!: string;

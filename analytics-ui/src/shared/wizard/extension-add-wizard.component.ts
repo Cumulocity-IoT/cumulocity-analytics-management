@@ -32,17 +32,16 @@ export class ExtensionAddWizardComponent implements OnInit {
 
   uploadExtensionHandler = (
     file: File,
-    extension: IManagedObject,
+    extension: Partial<IManagedObject>,
     mode: UploadMode
   ) => this.uploadExtension(file, extension, mode);
 
   async uploadExtension(
     file: File,
-    extension: IManagedObject,
+    extension: Partial<IManagedObject>,
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    // eslint-disable-next-line no-param-reassign
-    if (!extension) extension = this.extensionToReplace;
-    return this.analyticsService.uploadExtension(file, extension, mode);
+    const resolved: IManagedObject = (extension as IManagedObject) ?? this.extensionToReplace;
+    return this.analyticsService.uploadExtension(file, resolved, mode);
   }
 }

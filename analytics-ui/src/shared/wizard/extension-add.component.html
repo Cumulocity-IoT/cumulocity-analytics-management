@@ -16,7 +16,7 @@
           [loading]="isLoading"
           [maxAllowedFiles]="1"
           [message]="'Upload a *.zip file' | translate"
-          [progress]="progress | async"
+          [progress]="(progress | async) ?? 0"
           class="drop-area"
           >
         </c8y-drop-area>

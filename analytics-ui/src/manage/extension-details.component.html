@@ -29,7 +29,8 @@
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
-<div class="row p-l-24 p-r-24">
+<!-- Row 1: Blocks — full width, natural height -->
+<div class="row p-l-24 p-r-24 p-t-16">
   <div class="col-lg-12">
     <div class="card">
       <div class="card-header">
@@ -41,23 +42,23 @@
         <table class="table _table-striped">
           <thead class="headers" role="rowgroup">
             <tr>
-              <th style="width: 15%">Block Name</th>
-              <th style="width: 10%">Block Category</th>
-              <th>Block Description</th>
+              <th style="width: 40%">{{ 'Block Name' | translate }}</th>
+              <th style="width: 15%">{{ 'Block Category' | translate }}</th>
+              <th>{{ 'Block Description' | translate }}</th>
             </tr>
           </thead>
           <tbody>
             @if (!extensionFromCep || extensionFromCep?.analytics?.length == 0) {
               <tr>
-                <td></td>
-                <td colspan="2">
+                <td colspan="3">
                   <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
-                    [title]="'This extension contains no .mon files or extension is not loaded.' | translate" [horizontal]="false">
+                    [title]="'This extension contains no .mon files or extension is not loaded.' | translate"
+                    [horizontal]="false">
                   </c8y-ui-empty-state>
                 </td>
               </tr>
             }
-            @for (block of extensionFromCep?.analytics; track block) {
+            @for (block of extensionFromCep?.analytics || []; track block) {
               <tr>
                 <td [title]="block.id">{{ block.id }}</td>
                 <td [title]="block.category">{{ block.category }}</td>
@@ -71,8 +72,9 @@
   </div>
 </div>
 
-<div class="row p-l-24 p-r-24 p-b-24 details-bottom-row">
-  <div class="col-lg-6">
+<!-- Row 2: Files (wider) + Build information (narrower) -->
+<div class="row p-l-24 p-r-24 p-b-24 p-t-0">
+  <div class="col-lg-7">
     <div class="card">
       <div class="card-header">
         <h4 class="card-title d-flex">
@@ -84,7 +86,7 @@
           <thead>
             <tr>
               <th style="width: 5%">#</th>
-              <th style="width: 95%">{{ 'File Name' | translate }}</th>
+              <th>{{ 'File Name' | translate }}</th>
             </tr>
           </thead>
           <tbody>
@@ -99,7 +101,8 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-6">
+
+  <div class="col-lg-5">
     <div class="card">
       <div class="card-header">
         <h4 class="card-title d-flex">
@@ -107,15 +110,15 @@
         </h4>
       </div>
       <div class="card-block">
-        @if (buildInformation?.length > 0) {
+        @if (buildInformation.length > 0) {
           <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
           </c8y-properties-list>
         }
-        @if (buildInformation?.length == 0) {
+        @if (buildInformation.length == 0) {
           <div class="c8y-empty-state">
             <h1 [c8yIcon]="'monitoring'"></h1>
             <p>
-              <strong>Extension contains no build information.</strong><br />
+              <strong>{{ 'Extension contains no build information.' | translate }}</strong>
             </p>
           </div>
         }

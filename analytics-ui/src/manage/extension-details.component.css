@@ -1,50 +1,16 @@
-/* Host fills the Cumulocity main-content area so rows can stretch vertically */
-:host {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
+/* Break long URLs in the properties list so they don't overflow the card.
+   c8y-properties-list applies text-truncate (white-space:nowrap) to links,
+   so white-space and text-overflow must also be overridden. */
+:host ::ng-deep c8y-properties-list a {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
-/* Blocks row: natural height */
-.row:first-of-type {
-  flex-shrink: 0;
-}
-
-/* Files / Build-information row: grow to fill remaining space */
-.details-bottom-row {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  align-items: stretch;
-}
-
-.details-bottom-row > [class*='col-'] {
-  display: flex;
-  flex-direction: column;
-}
-
-.details-bottom-row > [class*='col-'] .card {
-  flex: 1;
-}
-
-/* Align center content in table cells */
-.table tr td.text-center c8y-ui-empty-state {
-  margin: 0 auto;
-  display: block;
-}
-
-/* Custom centered cell styling */
-.custom-center-cell {
-  text-align: center;
-  position: relative;
-}
-
-/* Custom wrapper for centered content */
-.custom-center-wrapper {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
+/* The wrapping span is a flex item; min-width:0 allows it to shrink */
+:host ::ng-deep c8y-properties-list li > span {
+  min-width: 0;
+  overflow: hidden;
 }

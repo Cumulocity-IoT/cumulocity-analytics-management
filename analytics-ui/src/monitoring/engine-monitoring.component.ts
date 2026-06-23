@@ -63,7 +63,7 @@ export class EngineMonitoringComponent implements OnInit {
           cepCtrlStatusLabels.push({
             label: humanize.transform(key),
             type: 'link',
-            value: cepCtrlStatus[key].toString(),
+            value: cepCtrlStatus[key]?.toString() ?? '',
             // eslint-disable-next-line @typescript-eslint/no-unused-vars
             action:  (_e: any) =>
               window.open(

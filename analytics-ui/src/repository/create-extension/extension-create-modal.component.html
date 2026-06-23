@@ -4,18 +4,50 @@
     <span [c8yIcon]="'plugin'"></span>
   </ng-container>
   <div class="p-24">
-    <div>
-      <div [formGroup]="configFormly">
-        <formly-form [form]="configFormly" [fields]="configFormlyFields" [model]="configuration"></formly-form>
+    <form [formGroup]="configForm">
+      @if (!configurationIsExtension) {
+        <div class="form-group">
+          <label>{{ 'Name Extension' | translate }}</label>
+          <input type="text" class="form-control" formControlName="name" required />
+        </div>
+      }
+      @if (configurationIsExtension) {
+        <div class="form-group">
+          <label>{{ 'Available Extensions' | translate }}</label>
+          @if (sections?.length > 0) {
+            <table class="table table-sm m-t-8">
+              <tbody>
+                @for (ext of sections; track ext; let i = $index) {
+                  <tr>
+                    <td class="text-center" style="width:40px">{{ i + 1 }}</td>
+                    <td><i c8yIcon="cube" class="m-r-4"></i>{{ ext }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          } @else {
+            <p class="text-muted"><em>{{ 'No extensions found in the package.' | translate }}</em></p>
+          }
+        </div>
+      }
+      <div class="form-group">
+        <label class="c8y-switch">
+          <input type="checkbox" formControlName="deploy" />
+          <span></span>
+          <span>{{ 'Restart to deploy' | translate }}</span>
+        </label>
+        <p class="help-block">
+          {{ 'Only after the restart, blocks are available to models in the Analytics Builder' | translate }}
+        </p>
       </div>
-    </div>
+    </form>
     @if (loading) {
       <div><c8y-loading></c8y-loading></div>
     }
     <div class="modal-footer">
-      <button class="btn btn-primary" title="{{ 'Create extension' | translate }}" (click)="createExtension()" [disabled]="
-                (backendDeployed$ | async) === false || !configFormly.valid
-              ">
+      <button class="btn btn-primary" title="{{ 'Create extension' | translate }}"
+        (click)="createExtension()"
+        [disabled]="(backendDeployed$ | async) === false || !configForm.valid">
         <i c8yIcon="plugin"></i>
         {{ 'Create extension' | translate }}
       </button>
