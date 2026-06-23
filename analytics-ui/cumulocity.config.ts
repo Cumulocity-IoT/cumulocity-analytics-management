@@ -92,6 +92,14 @@ export default {
         to: 'resources/images/use-block-detail.png',
       },
       {
+        from: '../resources/images/extension-manage-build-information.png',
+        to: 'resources/images/extension-manage-build-information.png',
+      },
+            {
+        from: '../resources/images/monitoring-cep.png)',
+        to: 'resources/images/monitoring-cep.png)g',
+      },
+      {
         from: '../README.md',
         to: 'README.md',
       },
