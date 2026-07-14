@@ -83,9 +83,11 @@ Options, in order of recommendation:
 
 ---
 
-## Secondary improvement worth folding in
+## Secondary improvement: already done server-side
 
-The current `_download_github_content()` recurses directory-by-directory through the Content API (one GitHub request per folder). GitHub's **Git Trees API** (`GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1`) returns an entire subtree in a single call. Since the whole download step is being rewritten for the browser anyway, switching to the recursive trees API meaningfully reduces GitHub rate-limit consumption per build — worth doing regardless of the no-token/PAT decision above.
+The original concern here was that `_download_github_content()` recursed directory-by-directory through the Content API (one GitHub request per folder). This has already been implemented in `analytics-service`: `_download_full_repository()` and the directory-selection path in `/extension/list` now call a new `_download_directory_via_tree()` helper that lists an entire subtree with a single **Git Trees API** call (`GET /repos/{owner}/{repo}/git/trees/{branch}?recursive=1`), then fetches each matched file directly from `raw.githubusercontent.com` (which isn't subject to the same 5000-requests/hour core API quota as `api.github.com`). This was verified against the real `Cumulocity-IoT/analytics-builder-blocks-contrib` repository.
+
+The same one-call-listing approach should carry over into the browser-only design: when building the extension client-side, use the Git Trees API to enumerate the subtree in one request, then fetch each file's raw content directly, rather than re-deriving the old per-directory recursion in JS.
 
 ---
 
