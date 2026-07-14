@@ -11,7 +11,7 @@ Today it does four things server-side:
 3. Downloads the selected `.mon` file(s)/directory/YAML-selected files and runs the Apama CLI (`analytics_builder build extension`) to package them into a `.zip`.
 4. Uploads the `.zip` as a Cumulocity `Binary` extension, deletes extensions, and relays `apama-ctrl` CEP status/restart calls.
 
-A feasibility analysis (see [CONCEPT.md](CONCEPT.md)) confirmed the packaging step is a filtered zip, not a compilation — `analytics_builder build extension` requires no more than what a browser-side zip library can reproduce, and GitHub's Content/raw APIs are CORS-enabled for direct browser access. **This document defines the requirements for a version of the block ecosystem feature that runs without `analytics-service`.**
+A feasibility analysis (see [CONCEPT.md](CONCEPT.md)) confirmed the packaging step is a filtered zip, not a compilation — `analytics_builder build extension` requires no more than what a browser-side zip library can reproduce, and GitHub's Content/raw APIs are CORS-enabled for direct browser access. **This document defines the requirements for a version of the block marketplace feature that runs without `analytics-service`.**
 
 ## Goal
 
