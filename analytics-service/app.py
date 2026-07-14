@@ -31,10 +31,12 @@ from flask import Flask, jsonify, make_response, request, send_file
 
 from c8y_agent import C8YAgent, C8YAgentError
 from solution_utils import (
+    content_api_to_github_web_url,
     create_error_response,
     github_web_url_to_content_api,
     handle_errors,
     parse_boolean,
+    parse_github_web_url,
     remove_root_folders,
     extract_raw_path,
 )
@@ -522,6 +524,22 @@ def create_extension_from_list():
             logger.error(error_msg)
             return create_error_response(error_msg, 400)
 
+    monitor = monitors[0]
+
+    if monitor.get("type") == "dir":
+        # Directory selections recurse through the whole subtree, so use a single
+        # Git Trees API listing instead of one Content API request per directory.
+        def source_fetcher(work_dir, headers):
+            web_url = content_api_to_github_web_url(monitor["url"])
+            parsed = parse_github_web_url(web_url)
+            _download_directory_via_tree(
+                parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"],
+                headers, work_dir,
+            )
+    else:
+        def source_fetcher(work_dir, headers):
+            _download_github_content(monitor["url"], headers, work_dir)
+
     return _build_and_process_extension(
         extension_name=extension_name,
         repository=repo_config,
@@ -529,9 +547,7 @@ def create_extension_from_list():
         deploy=deploy,
         build_type="list",
         build_info_extra={"monitors": monitors},
-        source_fetcher=lambda work_dir, headers: _download_github_content(
-            monitors[0]["url"], headers, work_dir
-        ),
+        source_fetcher=source_fetcher,
     )
 
 
@@ -877,10 +893,78 @@ def _extract_fqn(content: str, block_name: str) -> str:
     return f"{package_match.group(1)}.{block_name}"
 
 
+def _download_directory_via_tree(
+    owner: str,
+    repo: str,
+    branch: str,
+    path_prefix: str,
+    headers: Dict,
+    work_dir: str,
+) -> None:
+    """
+    Download every file under ``path_prefix`` using the GitHub Git Trees API.
+
+    A single ``git/trees/{branch}?recursive=1`` call lists the entire directory
+    subtree, replacing the Content API's one-request-per-directory recursion
+    (``_download_github_content``). Matched files are then fetched directly from
+    raw.githubusercontent.com, which is not subject to the same 5000-requests/hour
+    core API quota as api.github.com, further reducing rate-limit consumption.
+    """
+    tree_url = f"https://api.github.com/repos/{owner}/{repo}/git/trees/{branch}?recursive=1"
+    response = requests.get(tree_url, headers=headers, timeout=30)
+    response.raise_for_status()
+    tree_data = response.json()
+
+    if tree_data.get("truncated"):
+        logger.warning(
+            "Git tree for %s/%s@%s was truncated by GitHub (repository too large "
+            "for a single recursive listing); some files under '%s' may be missing",
+            owner, repo, branch, path_prefix or "/",
+        )
+
+    prefix = f"{path_prefix}/" if path_prefix else ""
+    raw_headers = {k: v for k, v in headers.items() if k.lower() == "authorization"}
+
+    downloaded_any = False
+    for entry in tree_data.get("tree", []):
+        if entry.get("type") != "blob":
+            continue
+
+        entry_path = entry["path"]
+        if path_prefix and not (entry_path == path_prefix or entry_path.startswith(prefix)):
+            continue
+
+        relative_path = entry_path[len(prefix):] if prefix else entry_path
+        if not relative_path:
+            continue
+
+        full_path = _safe_join(work_dir, relative_path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+        raw_url = (
+            f"https://raw.githubusercontent.com/{owner}/{repo}/{branch}/"
+            f"{urllib.parse.quote(entry_path)}"
+        )
+        file_response = requests.get(raw_url, headers=raw_headers, timeout=30)
+        file_response.raise_for_status()
+
+        with open(full_path, "wb") as f:
+            f.write(file_response.content)
+
+        downloaded_any = True
+
+    if not downloaded_any:
+        raise ValueError(
+            f"No files found under '{path_prefix or '/'}' in {owner}/{repo}@{branch}"
+        )
+
+
 def _download_full_repository(url: str, headers: Dict, work_dir: str) -> None:
-    """Download entire repository."""
-    api_url = github_web_url_to_content_api(url)
-    _download_github_content(api_url, headers, work_dir)
+    """Download entire repository path via the Git Trees API (single listing request)."""
+    parsed = parse_github_web_url(url)
+    _download_directory_via_tree(
+        parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"], headers, work_dir
+    )
 
 
 def _safe_join(work_dir: str, relative_path: str) -> str:
