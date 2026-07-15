@@ -91,6 +91,57 @@ The same one-call-listing approach should carry over into the browser-only desig
 
 ---
 
+## Repository layout: actual vs. assumed
+
+`analytics-service` supports three ways to turn GitHub content into an extension — build the whole configured repository path as one extension (`/extension/repository`), build one selected file or directory (`/extension/list`), or build N extensions from a manifest file that lists named sections and their constituent files (`/extension/yaml`). Comparing that against the actual layout of the reference repo, `Cumulocity-IoT/analytics-builder-blocks-contrib` (fetched via the GitHub Git Trees API, 277 entries, not truncated), shows two of the three modes match the repo well and one has no real counterpart there at all:
+
+- 51 real blocks live as **flat, single `.mon` files** directly inside one of five category folders (`blocks/` 32, `cumulocity-blocks/` 9, `simulation-blocks/` 8, `service-request-blocks/` 1, `utils/` 1) — one file = one block, one extension.
+- Exactly **one block is multi-file**: `python-blocks/PythonFunction/` bundles `PythonFunction.mon` with a `.py` script, a `.properties` file, a plugin `.yaml` config, and a vendored `venv/` (7 levels deep).
+- `tests/<Block>_NNN/` holds PySys test fixtures — including five more `.mon` files that are test inputs, not blocks — and exists as a sibling to the category folders, not nested inside them.
+- `.github/` holds CI workflows and repo tooling.
+- There is **no repo-wide manifest** anywhere (no `extensions.yaml` or similar) mapping named sections to file lists. The only `.yaml` file in the whole tree is `python-blocks/PythonFunction/python-function-plugin.yaml`, which is an Apama plugin descriptor consumed by the block itself, not a build manifest for `analytics-service`.
+
+```mermaid
+flowchart TB
+    ROOT["/ repo root"]
+    ROOT --> BLOCKS["blocks/<br/>32 flat .mon files"]
+    ROOT --> C8YBLOCKS["cumulocity-blocks/<br/>9 flat .mon files"]
+    ROOT --> SIM["simulation-blocks/<br/>8 flat .mon files"]
+    ROOT --> SVC["service-request-blocks/<br/>1 flat .mon file"]
+    ROOT --> UTILS["utils/<br/>1 flat .mon file"]
+    ROOT --> PY["python-blocks/PythonFunction/<br/>.mon + .py + .properties + plugin.yaml + venv/ (7 levels deep)"]
+    ROOT --> TESTS["tests/BlockName_NNN/<br/>PySys fixtures, incl. 5 extra .mon files that are NOT blocks"]
+    ROOT --> GH[".github/<br/>CI workflows, repo tooling"]
+
+    M1["/extension/repository<br/>build ENTIRE configured path as ONE extension"]
+    M2["/extension/list, type=file<br/>build ONE selected .mon file"]
+    M3["/extension/list, type=dir<br/>build ONE selected directory"]
+    M4["/extension/yaml<br/>build N extensions from an 'extensions.yaml'-style manifest"]
+
+    M2 -. "exact fit" .-> BLOCKS
+    M2 -. "exact fit" .-> C8YBLOCKS
+    M2 -. "exact fit" .-> SIM
+    M2 -. "exact fit" .-> SVC
+    M2 -. "exact fit" .-> UTILS
+    M3 -. "exact fit" .-> PY
+    M1 -. "fit, IF pointed at one flat category folder" .-> BLOCKS
+    M1 -. "pulls in tests/ and .github/ if pointed at repo root" .-> ROOT
+    M4 -. "no manifest exists anywhere in this repo" .-> GH
+
+    classDef good fill:#d4edda,stroke:#28a745,color:#111;
+    classDef bad fill:#f8d7da,stroke:#dc3545,color:#111;
+    class M2,M3 good
+    class M4 bad
+```
+
+**Findings:**
+
+- **`/extension/list` (file or dir) is the best-fitting mode** — it matches how this repo is actually organized: mostly one flat file per block, plus exactly one multi-file folder. This should remain the primary build path in the browser-only design.
+- **`/extension/repository` only behaves correctly when scoped to a single flat category folder.** Pointed at the repo root (or any ancestor containing `tests/`/`.github/`), it would bundle unrelated CI/tooling files and even test-fixture `.mon` files into the resulting extension — the SDK's exclude-list (`.log`, `.git`, `.github`, etc., see above) does not filter out `tests/` or vendored `venv/` content. Worth a UI-level warning or validation if a configured repository path is broader than one category folder.
+- **`/extension/yaml` has no matching content in the primary reference repo.** It appears to target a different/hypothetical repo layout (a manifest-driven multi-extension repo) rather than how `analytics-builder-blocks-contrib` is organized today. This is worth revisiting: either the feature was designed for a different source repo, or it's unused in practice — see the corresponding open decision in [REQUIREMENTS.md](REQUIREMENTS.md).
+
+---
+
 ## Proposed target architecture
 
 ```
