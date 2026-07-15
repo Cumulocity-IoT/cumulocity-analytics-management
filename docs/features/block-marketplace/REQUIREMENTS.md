@@ -13,6 +13,8 @@ Today it does four things server-side:
 
 A feasibility analysis (see [CONCEPT.md](CONCEPT.md)) confirmed the packaging step is a filtered zip, not a compilation — `analytics_builder build extension` requires no more than what a browser-side zip library can reproduce, and GitHub's Content/raw APIs are CORS-enabled for direct browser access. **This document defines the requirements for a version of the block marketplace feature that runs without `analytics-service`.**
 
+Requiring `analytics-service` for this flow today is heavy and awkward: it's a separate microservice a customer must subscribe to, deploy, and keep running, holding its own service-user identity and PAT storage, just to browse a repo and zip up a handful of `.mon` files. That deployment/operational burden is itself a barrier to adoption of community blocks — the new browser-based solution's purpose is to remove it, so that browsing, building, and uploading community blocks works out of the box in `analytics-ui` for any tenant, with no extra microservice to subscribe to or operate first.
+
 ## Goal
 
 Let a user browse a configured GitHub block repository and build/upload an Apama extension entirely from the `analytics-ui` Angular app running in the browser, with no dedicated backend microservice required for that flow.
