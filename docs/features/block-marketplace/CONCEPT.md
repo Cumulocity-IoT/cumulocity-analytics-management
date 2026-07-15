@@ -83,6 +83,37 @@ Options, in order of recommendation:
 
 ---
 
+## Extension: deploying already-built extensions from GitHub Releases
+
+Several block repositories (e.g. `Cumulocity-IoT/analytics-builder-blocks-contrib`, https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/tag/1.0.1) publish pre-built extension `.zip`s as GitHub Release assets on every tag, alongside the source tree — for release `1.0.1` this is 51 assets: one zip per block (`Abs-1.0.1.zip`, `AlarmBand-1.0.1.zip`, ...) plus grouped per-category zips (`contrib-blocks-1.0.1.zip`, `contrib-cumulocity-blocks-1.0.1.zip`, `contrib-simulation-blocks-1.0.1.zip`, `contrib-service-request-blocks-1.0.1.zip`). For repos that publish these, there is no need to reconstruct the zip client-side at all (skip Git Trees traversal and the JSZip filter step entirely for this path) — the release asset **is** the extension zip, ready to hand straight to the same `@c8y/client` `InventoryBinaryService.create(file, extension)` call that `analytics-ui`'s existing manual drag-and-drop upload already uses (`analytics-ui/src/shared/wizard/extension-add.component.ts` → `analytics-ui/src/shared/analytics.service.ts:uploadExtension`).
+
+This needs a **repository + release** selector on top of today's repository + path selector: pick a configured GitHub repo, list its releases (`GET /repos/{owner}/{repo}/releases`), pick one, list its assets, pick one or more `.zip`s.
+
+### Verified: listing releases/assets is CORS-open, but the asset bytes are not
+
+Listing releases and reading asset metadata (name, size, `browser_download_url`) works exactly like the Content API — `api.github.com`'s JSON responses send `Access-Control-Allow-Origin: *`, confirmed against the live `analytics-builder-blocks-contrib` repo:
+
+```
+GET https://api.github.com/repos/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/tags/1.0.1
+→ 200, access-control-allow-origin: *, JSON with 51 assets
+```
+
+Fetching the actual asset **bytes** is a different story. Both the public `browser_download_url` and the authenticated `.../releases/assets/{id}` API endpoint (with `Accept: application/octet-stream`) respond with a `302` to a signed, short-lived URL on `release-assets.githubusercontent.com`:
+
+```
+GET https://api.github.com/repos/.../releases/assets/354844623   (Accept: application/octet-stream)
+→ 302, access-control-allow-origin: *
+   location: https://release-assets.githubusercontent.com/...&sig=...
+GET https://release-assets.githubusercontent.com/...             (the redirect target)
+→ 200, content-type: application/octet-stream    ← no Access-Control-Allow-Origin header at all
+```
+
+Per the Fetch spec, a cross-origin redirect chain must pass the CORS check on *every* hop, including the final one. `api.github.com`'s own 302 is CORS-open, but `release-assets.githubusercontent.com` — the CDN that actually serves the bytes — sends no CORS header, so a browser `fetch()`/XHR in `cors` mode is blocked from reading the response body, for both public and PAT-authenticated requests. This is a platform behavior of GitHub's release CDN, not something a request header or token scope can work around — and it is a different constraint from the source-tree case, where both `api.github.com` (Content API) and `raw.githubusercontent.com` (raw file bodies) *do* send `Access-Control-Allow-Origin: *` end to end.
+
+**Mitigation:** a plain top-level browser navigation (an `<a href="..." download>` click, or `window.open`) to the same URL is not an XHR/`fetch()` request and is therefore not subject to CORS at all — the browser downloads the file to disk exactly as it would from a normal link click. The pragmatic client-only flow is: user picks repo → release → asset(s); the UI triggers that native download for each selected asset; the user is then prompted to hand the just-downloaded file(s) to the extension-upload step via the *same* drop-area/file-picker `extension-add.component.ts` already exposes for manual zip uploads (`c8y-drop-area`, `onFileDroppedEvent` → `onFile` → `analyticsService.uploadExtension`). This keeps the whole path backend-free at the cost of one manual "select the file you just downloaded" step per asset; a fully hands-free version would need a small proxy to fetch-and-relay the asset bytes server-side, which reintroduces exactly the kind of backend component this feature is trying to remove — see REQUIREMENTS.md's "Explicitly Out of Scope" and NFR4.
+
+---
+
 ## Secondary improvement: already done server-side
 
 The original concern here was that `_download_github_content()` recursed directory-by-directory through the Content API (one GitHub request per folder). This has already been implemented in `analytics-service`: `_download_full_repository()` and the directory-selection path in `/extension/list` now call a new `_download_directory_via_tree()` helper that lists an entire subtree with a single **Git Trees API** call (`GET /repos/{owner}/{repo}/git/trees/{branch}?recursive=1`), then fetches each matched file directly from `raw.githubusercontent.com` (which isn't subject to the same 5000-requests/hour core API quota as `api.github.com`). This was verified against the real `Cumulocity-IoT/analytics-builder-blocks-contrib` repository.
@@ -150,6 +181,8 @@ Browser (analytics-ui, Angular)
  ├─ PAT                        → browser-local storage only (per user)        [never sent to Cumulocity]
  ├─ List/download .mon files   → fetch() → api.github.com / raw.githubusercontent.com
  ├─ Build extension zip        → JSZip, replicating the SDK's file filter
+ ├─ Browse Releases/assets     → fetch() → api.github.com/repos/.../releases (metadata only)
+ ├─ Fetch release asset bytes  → native browser download (CORS-blocked for fetch/XHR, see below) → drop-area file picker
  ├─ Upload extension           → @c8y/client Binary API
  ├─ Delete extension           → @c8y/client Binary API
  └─ CEP status / restart       → @c8y/client FetchClient → platform REST paths
@@ -163,3 +196,4 @@ No server component is required for this flow. The existing `analytics-service` 
 - **Loss of server-side audit log**: today every build is logged centrally by the microservice; a client-only flow would need to post its own audit event (e.g. a Cumulocity Event) if that visibility is required.
 - **CORS is per-endpoint, not per-repo-host**: only `github.com`'s API/raw hosts are confirmed CORS-open; any other future source of `.mon` files (a private artifact server, GitLab, etc.) needs the same check before assuming this pattern generalizes.
 - **Rate limits on large repos**: for very large contrib-style repos, still recommend an (optional) PAT even for public repos, to raise the 60/hr ceiling to 5000/hr — same guidance the microservice gives today, just enforced client-side.
+- **Release-asset CORS**: confirm the `release-assets.githubusercontent.com` CORS gap (no `Access-Control-Allow-Origin`) holds for private-repo assets and PAT-authenticated requests too, not just the public case tested here, before committing to the download-then-select UX as the permanent design.
