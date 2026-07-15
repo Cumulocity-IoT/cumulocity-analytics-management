@@ -208,7 +208,6 @@ export class BlockGridComponent implements OnInit {
     const initialState = {
       source$: this.repositoryService.getRepositoryItemContent(
         block,
-        false,
         false
       ).pipe(
         catchError(() => {

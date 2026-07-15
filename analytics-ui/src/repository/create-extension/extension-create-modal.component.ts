@@ -51,9 +51,16 @@ export class ExtensionCreateComponent implements OnInit {
   async isDeployed() {
     from(this.analyticsService.isBackendServiceAvailable()).subscribe((status) => {
       this.backendDeployed$.next(status);
-      if (!status) {
+      if (status) {
+        return;
+      }
+      // Building from a plain list of selected files now works client-side,
+      // without the backend — only the yaml-sections and whole-repository
+      // build paths still require it (see RepositoryService.isBackendMode).
+      const requiresBackend = this.configurationIsExtension || !(this.monitors?.length > 0);
+      if (requiresBackend) {
         this.alertService.warning(
-          `You cannot build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
+          `Building an extension from ${this.configurationIsExtension ? 'extensions.yaml sections' : 'a whole repository path'} requires the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE} to be deployed!`
         );
       }
     });
@@ -91,11 +98,9 @@ export class ExtensionCreateComponent implements OnInit {
           `The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.`
         );
       }
-    } else {
-      this.alertService.warning(
-        `Uploaded extension ${configName}.zip was not successful`
-      );
     }
+    // No generic failure alert here: RepositoryService already shows a
+    // specific one for every failure path (backend or browser-mode).
     this.closeSubject.next(true);
   }
 

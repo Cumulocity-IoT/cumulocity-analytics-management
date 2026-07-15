@@ -1,16 +1,15 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { FetchClient, IFetchResponse, ITenantOption, TenantOptionsService } from '@c8y/client';
+import { IFetchResponse } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
-import * as jsyaml from 'js-yaml';
+import { gettext } from '@c8y/ngx-components/gettext';
 import {
   BehaviorSubject,
   Observable,
   Subject,
   combineLatest,
-  forkJoin,
   from,
   lastValueFrom,
-  of,
+  of
 } from 'rxjs';
 import {
   catchError,
@@ -22,42 +21,15 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import {
-  BACKEND_PATH_BASE,
-  CepBlock,
-  DESCRIPTOR_YAML,
-  DUMMY_ACCESS_TOKEN,
-  EXTENSION_ENDPOINT,
-  GITHUB_BASE,
-  Repository,
-  REPOSITORY_CONTENT_ENDPOINT,
-  REPOSITORY_OPTION_CATEGORY,
-  RepositoryItem,
-  RepositoryTestResult
-} from './analytics.model';
+import { Repository, RepositoryItem, RepositoryTestResult } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
-import {
-  getFileExtension,
-  githubWebUrlToContentApi,
-  removeFileExtension,
-  uuidCustom
-} from './utils';
-import { gettext } from '@c8y/ngx-components/gettext';
-
-/**
- * Custom error class for repository-related errors
- */
-class RepositoryError extends Error {
-  constructor(
-    message: string,
-    public readonly userMessage: string,
-    public readonly originalError?: Error,
-    public readonly status?: number
-  ) {
-    super(message);
-    this.name = 'RepositoryError';
-  }
-}
+import { ExtensionBuilderService } from './extension-builder.service';
+import { GitHubContentService } from './github-content.service';
+import { RepositoryBackendService } from './repository-backend.service';
+import { RepositoryConfigService } from './repository-config.service';
+import { RepositoryError } from './repository-error';
+import { RepositoryItemsService } from './repository-items.service';
+import { RepositoryModeService } from './repository-mode.service';
 
 interface RepositoryState {
   repositories: Repository[];
@@ -65,42 +37,36 @@ interface RepositoryState {
   hideInstalled: boolean;
 }
 
-interface CreateExtensionRequest {
-  extension_name: string;
-  upload: boolean;
-  deploy: boolean;
-  repository: Repository;
-  rebuild: boolean;
-}
-
-interface CreateExtensionFromListRequest extends CreateExtensionRequest {
-  monitors: RepositoryItem[];
-}
-
-interface CreateExtensionFromYamlRequest extends CreateExtensionRequest {
-  yaml: RepositoryItem;
-  sections: string[];
-}
-
+/**
+ * Public facade for everything repository-related. Holds the reactive
+ * state (configured repositories, item listing, unsaved-changes tracking)
+ * and delegates actual work to focused services:
+ *
+ * - `RepositoryModeService` — the single "backend or browser?" decision
+ *   every other service below branches on.
+ * - `RepositoryConfigService` — repo config storage (Tenant Options; no
+ *   backend mode, see that service for why).
+ * - `GitHubContentService` / `RepositoryBackendService` — the two
+ *   parallel implementations of test/list/content-fetch.
+ * - `RepositoryItemsService` — fetches, enriches, and caches a repository's
+ *   items on top of the two content services above.
+ * - `ExtensionBuilderService` — builds/uploads an extension from selected
+ *   items, backend or client-side.
+ */
 @Injectable({
   providedIn: 'root'
 })
 export class RepositoryService implements OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
-  // State management
   private readonly state$ = new BehaviorSubject<RepositoryState>({
     repositories: [],
     savedRepositories: [],
     hideInstalled: false
   });
 
-  // Cache management
-  private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
-  private readonly fqnCache = new Map<string, Observable<string>>();
   private readonly reloadTrigger$ = new BehaviorSubject<void>(undefined);
 
-  // Public observables
   readonly repositories$ = this.state$.pipe(
     map(state => state.repositories),
     distinctUntilChanged((a, b) => this.areRepositoriesEqual(a, b)),
@@ -127,8 +93,12 @@ export class RepositoryService implements OnDestroy {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
-    private readonly fetchClient: FetchClient,
-    private readonly tenantOptionsService: TenantOptionsService
+    private readonly repositoryModeService: RepositoryModeService,
+    private readonly repositoryConfigService: RepositoryConfigService,
+    private readonly repositoryItemsService: RepositoryItemsService,
+    private readonly gitHubContentService: GitHubContentService,
+    private readonly repositoryBackendService: RepositoryBackendService,
+    private readonly extensionBuilderService: ExtensionBuilderService
   ) {
     this.initializeRepositories();
   }
@@ -136,7 +106,7 @@ export class RepositoryService implements OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    this.clearCache();
+    this.repositoryItemsService.invalidateCache();
   }
 
   // ============================================================================
@@ -152,7 +122,7 @@ export class RepositoryService implements OnDestroy {
     const updated = [...state.repositories, repository];
 
     try {
-      await this.saveRepositoriesToTenantOptions(updated);
+      await this.repositoryConfigService.saveRepositories(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -187,7 +157,7 @@ export class RepositoryService implements OnDestroy {
     ];
 
     try {
-      await this.saveRepositoriesToTenantOptions(updated);
+      await this.repositoryConfigService.saveRepositories(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -236,7 +206,7 @@ export class RepositoryService implements OnDestroy {
     const state = this.state$.value;
 
     try {
-      await this.saveRepositoriesToTenantOptions(state.repositories);
+      await this.repositoryConfigService.saveRepositories(state.repositories);
       this.updateState({
         savedRepositories: [...state.repositories]
       });
@@ -272,7 +242,7 @@ export class RepositoryService implements OnDestroy {
     const updated = state.repositories.filter(r => r.id !== repositoryId);
 
     try {
-      await this.saveRepositoriesToTenantOptions(updated);
+      await this.repositoryConfigService.saveRepositories(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -290,94 +260,19 @@ export class RepositoryService implements OnDestroy {
   }
 
   /**
-   * Tests a repository directly against GitHub's Content API — no backend
-   * proxy involved, so this works (and fails with a real GitHub-side reason)
-   * even without `analytics-service` deployed. Also allows testing a draft
-   * (unsaved) repository before persisting it.
+   * Tests a repository. Also allows testing a draft (unsaved) repository
+   * before persisting it. Dispatches to the backend or a direct GitHub call
+   * per `RepositoryModeService`.
    */
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
-    try {
-      const contentApiUrl = this.toContentApiUrl(repository.url);
-      const accessToken = await this.resolveAccessToken(repository);
-
-      const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
-      if (accessToken) {
-        headers['authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(contentApiUrl, { method: 'GET', headers });
-
-      if (response.ok) {
-        return {
-          success: true,
-          message: gettext('Successfully connected to repository'),
-          status: response.status
-        };
-      }
-      // Prefer GitHub's specific reason (e.g. bad credentials, SSO
-      // authorization required) over the generic status-based message.
-      const githubMessage = await this.extractErrorMessage(response);
-      return {
-        success: false,
-        status: response.status,
-        message: githubMessage || this.mapTestStatusToResult(response.status).message
-      };
-    } catch (error) {
-      return this.handleTestError(error);
-    }
-  }
-
-  /**
-   * Converts a `Repository.url` into a GitHub Contents API URL, accepting
-   * both shapes the field can hold: an already-Contents-API URL (the
-   * built-in sample repos) or a plain GitHub web URL, e.g.
-   * `github.com/{owner}/{repo}/tree/{branch}/{path}` (what "Manage
-   * repositories" actually stores for user-added repos).
-   */
-  private toContentApiUrl(url: string): string {
-    if (url.startsWith(GITHUB_BASE)) {
-      return url;
-    }
-    return githubWebUrlToContentApi(url);
-  }
-
-  /**
-   * `Repository.accessToken` is always masked behind `DUMMY_ACCESS_TOKEN`
-   * once a repository is persisted (see `parseRepositoryOption`), so a
-   * freshly-loaded repository's token isn't directly usable against GitHub.
-   * Resolve the real token: use it as-is if the caller just typed a new one
-   * (not the masked sentinel), look up the stored value for an existing,
-   * untouched repository, or fall back to unauthenticated (empty) for a
-   * brand-new draft repository that hasn't been saved yet.
-   */
-  private async resolveAccessToken(repository: Repository): Promise<string> {
-    if (repository.accessToken && repository.accessToken !== DUMMY_ACCESS_TOKEN) {
-      return repository.accessToken;
-    }
-    if (repository.accessToken === DUMMY_ACCESS_TOKEN && repository.id && !repository.id.startsWith('temp-')) {
-      return this.getRepositoryAccessToken(repository.id);
-    }
-    return '';
-  }
-
-  private mapTestStatusToResult(status: number): RepositoryTestResult {
-    switch (status) {
-      case 401:
-        return { success: false, status, message: gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).') };
-      case 403:
-      case 429:
-        return { success: false, status, message: gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.') };
-      case 404:
-        return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
-      default:
-        return { success: false, status, message: gettext(`Connection failed (status: ${status}). Please try again.`) };
-    }
+    return (await this.repositoryModeService.isBackendMode())
+      ? this.repositoryBackendService.testRepository(repository)
+      : this.gitHubContentService.testRepository(repository);
   }
 
   async refreshRepositories(): Promise<void> {
     try {
-      await lastValueFrom(this.loadRepositoriesFromTenantOptions()
-        .pipe(take(1)));
+      await lastValueFrom(this.loadRepositoriesFromConfig().pipe(take(1)));
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
@@ -394,16 +289,12 @@ export class RepositoryService implements OnDestroy {
   // Public API - Cache and Reload
   // ============================================================================
 
-  /**
-   * Reload repository items (clears cache and triggers refresh)
-   */
+  /** Reload repository items (clears cache and triggers refresh) */
   reload(): void {
     this.invalidateCache();
   }
 
-  /**
-   * Reload repositories and items from backend
-   */
+  /** Reload repositories and items from tenant options */
   reloadAll(): Promise<void> {
     return this.refreshRepositories();
   }
@@ -414,13 +305,13 @@ export class RepositoryService implements OnDestroy {
 
   getRepositoryItems(): Observable<RepositoryItem[]> {
     return this.repositoryItems$.pipe(
-      map(blocks => this.filterRepositoryItems(blocks))
+      map(blocks => this.repositoryItemsService.filterRepositoryItems(blocks))
     );
   }
 
   getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
     return this.repositoryItems$.pipe(
-      switchMap(items => this.analyzeRepositoryItems(items)),
+      switchMap(items => this.repositoryItemsService.analyzeRepositoryItems(items)),
       catchError(error => {
         this.handleError(
           error,
@@ -437,45 +328,22 @@ export class RepositoryService implements OnDestroy {
     this.updateState({ hideInstalled });
   }
 
-  /**
-   * Callers decide whether a failure here is user-facing: this never shows
-   * an alert itself (only logs), since it's used both for explicit actions
-   * (e.g. "View Source", where the caller should surface a failure) and for
-   * automatic background enrichment during listing (FQN extraction for
-   * every `.mon` file), where one flaky/rate-limited item among many is
-   * expected and already handled gracefully by the caller's own fallback —
-   * see `enrichRepositoryItem`.
-   */
   getRepositoryItemContent(
     block: RepositoryItem,
-    useBackend: boolean = false,
     extractFQN: boolean = false
   ): Observable<string> {
-    const content$ = useBackend
-      ? this.getItemContentFromBackend(block, extractFQN)
-      : this.getItemContentDirectly(block, extractFQN);
+    return this.repositoryItemsService.getItemContent(block, extractFQN);
+  }
 
-    return content$.pipe(
-      catchError(error => {
-        const errorMsg = extractFQN
-          ? gettext('Failed to extract block information')
-          : gettext('Failed to load content');
-
-        throw this.handleError(
-          error,
-          `Failed to get content for ${block.name}`,
-          false,
-          errorMsg
-        );
-      })
-    );
+  async getRepositoryAccessToken(repositoryId: string): Promise<string> {
+    return this.repositoryConfigService.getRepositoryAccessToken(repositoryId);
   }
 
   // ============================================================================
   // Public API - Extension Creation
   // ============================================================================
 
-  async createExtensionFromList(
+  createExtensionFromList(
     name: string,
     monitors: RepositoryItem[],
     repository: Repository,
@@ -483,28 +351,10 @@ export class RepositoryService implements OnDestroy {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    const request: CreateExtensionFromListRequest = {
-      extension_name: name,
-      monitors,
-      repository,
-      upload,
-      deploy,
-      rebuild
-    };
-
-    try {
-      return await this.createExtension('list', request);
-    } catch (error) {
-      throw this.handleError(
-        error,
-        `Failed to create extension from list: ${name}`,
-        true,
-        gettext(`Failed to create extension "${name}". Please try again.`)
-      );
-    }
+    return this.extensionBuilderService.createExtensionFromList(name, monitors, repository, upload, deploy, rebuild);
   }
 
-  async createExtensionFromYaml(
+  createExtensionFromYaml(
     name: string,
     yaml: RepositoryItem,
     sections: string[],
@@ -513,53 +363,17 @@ export class RepositoryService implements OnDestroy {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    const request: CreateExtensionFromYamlRequest = {
-      extension_name: name,
-      yaml,
-      sections,
-      repository,
-      upload,
-      deploy,
-      rebuild
-    };
-
-    try {
-      return await this.createExtension('yaml', request);
-    } catch (error) {
-      throw this.handleError(
-        error,
-        `Failed to create extension from YAML: ${name}`,
-        true,
-        gettext(`Failed to create extension "${name}". Please try again.`)
-      );
-    }
+    return this.extensionBuilderService.createExtensionFromYaml(name, yaml, sections, repository, upload, deploy, rebuild);
   }
 
-  async createExtensionFromRepository(
+  createExtensionFromRepository(
     name: string,
     repository: Repository,
     upload: boolean = false,
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    const request: CreateExtensionRequest = {
-      extension_name: name,
-      repository,
-      upload,
-      deploy,
-      rebuild
-    };
-
-    try {
-      return await this.createExtension('repository', request);
-    } catch (error) {
-      throw this.handleError(
-        error,
-        `Failed to create extension from repository: ${name}`,
-        true,
-        gettext(`Failed to create extension "${name}". Please try again.`)
-      );
-    }
+    return this.extensionBuilderService.createExtensionFromRepository(name, repository, upload, deploy, rebuild);
   }
 
   // ============================================================================
@@ -567,13 +381,13 @@ export class RepositoryService implements OnDestroy {
   // ============================================================================
 
   private initializeRepositories(): void {
-    this.loadRepositoriesFromTenantOptions()
+    this.loadRepositoriesFromConfig()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
   }
 
-  private loadRepositoriesFromTenantOptions(): Observable<Repository[]> {
-    return from(this.fetchRepositoriesFromTenantOptions()).pipe(
+  private loadRepositoriesFromConfig(): Observable<Repository[]> {
+    return from(this.repositoryConfigService.fetchRepositories()).pipe(
       tap(repos => {
         this.updateState({
           repositories: repos,
@@ -592,140 +406,20 @@ export class RepositoryService implements OnDestroy {
     );
   }
 
-  /**
-   * Reads repository config directly from Cumulocity tenant options
-   * (category `REPOSITORY_OPTION_CATEGORY`) — no backend microservice
-   * involved. Matches the wire format `analytics-service/c8y_agent.py`
-   * already writes/reads, so entries created by either side interoperate.
-   * The real access token is never returned here; see `parseRepositoryOption`.
-   */
-  private async fetchRepositoriesFromTenantOptions(): Promise<Repository[]> {
-    try {
-      const options = await this.listRepositoryOptions();
-      return options
-        .map(option => this.parseRepositoryOption(option))
-        .filter((repo): repo is Repository => repo !== null);
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        throw error;
-      }
-      throw new RepositoryError(
-        'Failed to fetch repositories',
-        gettext('Failed to load repositories. Please check your permissions.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Lists repository tenant options for `REPOSITORY_OPTION_CATEGORY`.
-   *
-   * Deliberately does NOT use `TenantOptionsService.list()` — that maps to
-   * the generic `GET /tenant/options`, which is not filterable by category
-   * (an unsupported `category` query param is silently ignored), so it would
-   * return every tenant option across every category, not just this app's.
-   * Instead this calls the category-scoped `GET /tenant/options/{category}`
-   * directly, matching what `tenant.tenant_options.get_all(category=...)`
-   * already does server-side in `analytics-service/c8y_agent.py`. That
-   * endpoint returns a flat `{ key: value }` map, not a list of entities.
-   */
-  private async listRepositoryOptions(): Promise<ITenantOption[]> {
-    try {
-      const response = await this.fetchClient.fetch(
-        `tenant/options/${encodeURIComponent(REPOSITORY_OPTION_CATEGORY)}`,
-        {
-          headers: { accept: 'application/json' },
-          method: 'GET'
-        }
-      );
-
-      if (response.status === 404) {
-        // No repositories saved for this tenant yet — not a failure.
-        return [];
-      }
-
-      if (!response.ok) {
-        throw new RepositoryError(
-          `Failed to list repository options: ${response.status}`,
-          gettext('Failed to load repositories. Please check your permissions.'),
-          undefined,
-          response.status
-        );
-      }
-
-      const valuesByKey = (await response.json()) as Record<string, string>;
-      return Object.entries(valuesByKey).map(([key, value]) => ({
-        category: REPOSITORY_OPTION_CATEGORY,
-        key,
-        value
-      }));
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        throw error;
-      }
-      throw new RepositoryError(
-        'Failed to list repository options',
-        gettext('Failed to connect. Please check your connection.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Returns the real (unmasked) access token for a repository, for direct
-   * GitHub calls (e.g. listing releases) — `Repository.accessToken` from
-   * `getRepositories()`/`repositories$` is always masked behind
-   * `DUMMY_ACCESS_TOKEN` (see `parseRepositoryOption`) so it's safe to render
-   * in the "Manage repositories" form; that masked value is never usable as
-   * a real `Authorization` header.
-   */
-  async getRepositoryAccessToken(repositoryId: string): Promise<string> {
-    try {
-      const options = await this.listRepositoryOptions();
-      const option = options.find(o => o.key === repositoryId);
-      if (!option) {
-        return '';
-      }
-      const parsed = JSON.parse(option.value || '{}') as Partial<Repository>;
-      return parsed.accessToken || '';
-    } catch (error) {
-      console.warn(`[RepositoryService] Could not read access token for "${repositoryId}":`, error);
-      return '';
-    }
-  }
-
-  /**
-   * Parses a raw tenant option into a `Repository`, masking a non-empty
-   * access token behind `DUMMY_ACCESS_TOKEN` — mirrors the microservice's
-   * own masking-on-read behavior so the real secret is never re-displayed
-   * in the "Manage repositories" form after it has been saved once.
-   *
-   * Returns `null` for anything under this category that doesn't actually
-   * look like a repository entry (not valid JSON, or missing `url`) — e.g.
-   * unrelated/leftover tenant options that happen to share this category on
-   * a shared tenant — instead of surfacing it as a blank "ghost" repository.
-   */
-  private parseRepositoryOption(option: ITenantOption): Repository | null {
-    let parsed: Partial<Repository> = {};
-    try {
-      parsed = JSON.parse(option.value || '{}');
-    } catch (error) {
-      console.warn(`[RepositoryService] Skipping option "${option.key}" — not valid JSON:`, error);
-      return null;
-    }
-
-    if (!parsed.url) {
-      console.warn(`[RepositoryService] Skipping option "${option.key}" — not a repository entry (no "url").`);
-      return null;
-    }
-
-    return {
-      id: option.key,
-      name: parsed.name || '',
-      url: parsed.url,
-      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : '',
-      enabled: !!parsed.enabled
-    };
+  private loadRepositoryItemsWithStatus(hideInstalled: boolean): Observable<RepositoryItem[]> {
+    return combineLatest([
+      this.repositories$,
+      from(this.analyticsService.getDeployedBlocks()).pipe(
+        catchError(error => {
+          console.warn('Failed to get deployed blocks:', error);
+          return of([]);
+        })
+      )
+    ]).pipe(
+      switchMap(([repos, loaded]) =>
+        this.repositoryItemsService.getItemsForRepositories(repos, loaded, hideInstalled)
+      )
+    );
   }
 
   // ============================================================================
@@ -738,13 +432,8 @@ export class RepositoryService implements OnDestroy {
   }
 
   private invalidateCache(): void {
-    this.clearCache();
+    this.repositoryItemsService.invalidateCache();
     this.reloadTrigger$.next();
-  }
-
-  private clearCache(): void {
-    this.blockCache.clear();
-    this.fqnCache.clear();
   }
 
   private areRepositoriesEqual(a: Repository[], b: Repository[]): boolean {
@@ -758,552 +447,9 @@ export class RepositoryService implements OnDestroy {
   }
 
   // ============================================================================
-  // Private Methods - Repository Items
-  // ============================================================================
-
-  private loadRepositoryItemsWithStatus(
-    hideInstalled: boolean
-  ): Observable<RepositoryItem[]> {
-    return combineLatest([
-      this.repositories$,
-      from(this.analyticsService.getDeployedBlocks()).pipe(
-        catchError(error => {
-          console.warn('Failed to get deployed blocks:', error);
-          return of([]);
-        })
-      )
-    ]).pipe(
-      switchMap(([repos, loaded]) =>
-        this.processRepositoryItems(repos, loaded, hideInstalled)
-      )
-    );
-  }
-
-  private processRepositoryItems(
-    repos: Repository[],
-    loaded: CepBlock[],
-    hideInstalled: boolean
-  ): Observable<RepositoryItem[]> {
-    const enabledRepos = repos.filter(repo => repo.enabled);
-
-    if (!enabledRepos.length) {
-      return of([]);
-    }
-
-    return forkJoin(
-      enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
-    ).pipe(
-      map(blocks =>
-        this.addInstallationStatus(blocks.flat(), loaded, hideInstalled)
-      ),
-      catchError(error => {
-        this.handleError(
-          error,
-          'Failed to process repository items',
-          true,
-          gettext('Failed to load repository items. Please try again.')
-        );
-        return of([]);
-      })
-    );
-  }
-
-  private getCachedRepositoryItems(
-    repository: Repository
-  ): Observable<RepositoryItem[]> {
-    if (!this.blockCache.has(repository.id)) {
-      const items$ = this.fetchRepositoryItems(repository).pipe(
-        shareReplay({ bufferSize: 1, refCount: true })
-      );
-      this.blockCache.set(repository.id, items$);
-    }
-    return this.blockCache.get(repository.id)!;
-  }
-
-  private fetchRepositoryItems(
-    repository: Repository
-  ): Observable<RepositoryItem[]> {
-    return from(this.getGitHubContent(repository)).pipe(
-      switchMap(data => this.processGitHubContent(data, repository)),
-      catchError(error => {
-        // Surface GitHub's specific reason (rate limit / bad token / bad
-        // path) instead of a generic message, so the cause is diagnosable.
-        // getGitHubContent() now calls GitHub directly (no backend proxy),
-        // so a 404 here is a real "not found" from GitHub, not a missing
-        // microservice — it should be shown, not silently swallowed.
-        const detail = error instanceof RepositoryError ? error.userMessage : '';
-        this.handleError(
-          error,
-          `Failed to fetch items from repository: ${repository.name}`,
-          true,
-          detail
-            ? gettext(`Failed to load items from "${repository.name}": ${detail}`)
-            : gettext(`Failed to load items from repository "${repository.name}".`)
-        );
-        return of([]);
-      })
-    );
-  }
-
-  /**
-   * Lists a repository's content directly against GitHub's Content API — no
-   * backend proxy involved. GitHub returns a directory listing as a plain
-   * array (or a single object for a file path); `processGitHubContent`
-   * already handles both via `Object.values(...)`, so the response is passed
-   * straight through unchanged.
-   */
-  private async getGitHubContent(repository: Repository): Promise<any[]> {
-    try {
-      const contentApiUrl = this.toContentApiUrl(repository.url);
-      const accessToken = await this.resolveAccessToken(repository);
-
-      const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
-      if (accessToken) {
-        headers['authorization'] = `Bearer ${accessToken}`;
-      }
-
-      const response = await fetch(contentApiUrl, { method: 'GET', headers });
-
-      if (!response.ok) {
-        const errorMessage = await this.extractErrorMessage(response);
-        throw new RepositoryError(
-          `Failed to get GitHub content: ${response.status}`,
-          errorMessage,
-          undefined,
-          response.status
-        );
-      }
-
-      return response.json();
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        throw error;
-      }
-      throw new RepositoryError(
-        'Failed to fetch GitHub content',
-        gettext('Failed to connect to GitHub. Please check your connection and repository settings.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  private async extractErrorMessage(response: IFetchResponse): Promise<string> {
-    try {
-      const errorData = await response.json();
-      return errorData.message || errorData.error || JSON.stringify(errorData);
-    } catch {
-      return await response.text() || gettext('Unknown error occurred');
-    }
-  }
-
-  private processGitHubContent(
-    data: unknown,
-    repository: Repository
-  ): Observable<RepositoryItem[]> {
-    try {
-      const items: RepositoryItem[] = [];
-
-      if (data && typeof data === 'object') {
-        const dataObj = data as Record<string, unknown>;
-        for (const item of Object.values(dataObj)) {
-          if (!item || typeof item !== 'object') continue;
-          const name = (item as Record<string, unknown>)['name'] as string | undefined;
-          if (name && getFileExtension(name) !== '.json') {
-            items.push(this.createRepositoryItem(item, repository));
-          }
-        }
-      }
-
-      if (items.length === 0) return of([]);
-      return forkJoin(items.map(item => this.enrichRepositoryItem(item)));
-    } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to process GitHub content',
-        false
-      );
-    }
-  }
-
-  private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
-    if (item.type !== 'file' || !item.file.endsWith('.mon')) {
-      return of({ ...item, id: item.file });
-    }
-
-    const cacheKey = `${item.repositoryId}::${item.url}`;
-    let fqn$ = this.fqnCache.get(cacheKey);
-    if (!fqn$) {
-      fqn$ = this.getRepositoryItemContent(item, false, true).pipe(
-        catchError(error => {
-          console.warn(`Failed to enrich item ${item.name}:`, error);
-          this.fqnCache.delete(cacheKey); // allow retry
-          return of(item.file);
-        }),
-        shareReplay({ bufferSize: 1, refCount: false })
-      );
-      this.fqnCache.set(cacheKey, fqn$);
-    }
-
-    return fqn$.pipe(map(fqn => ({ ...item, id: fqn })));
-  }
-
-  private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
-    if (!item || typeof item !== 'object') {
-      throw new RepositoryError(
-        'Invalid GitHub item structure',
-        gettext('Invalid repository item data received.')
-      );
-    }
-
-    const itemObj = item as Record<string, unknown>;
-    const name = itemObj['name'] as string | undefined;
-    const url = itemObj['url'] as string | undefined;
-    
-    if (!name || !url) {
-      throw new RepositoryError(
-        'Invalid GitHub item structure',
-        gettext('Invalid repository item data received.')
-      );
-    }
-
-    return {
-      id: '',
-      repositoryName: repository.name,
-      repositoryId: repository.id,
-      name: removeFileExtension(name),
-      file: name,
-      type: (itemObj['type'] as string) || 'file',
-      custom: true,
-      downloadUrl: (itemObj['download_url'] as string) || url,
-      url: url
-    } as RepositoryItem;
-  }
-
-  private filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
-    const hasExtensionsYaml = blocks.some(
-      block => block.type !== 'dir' &&
-        block.file?.toLowerCase() === DESCRIPTOR_YAML
-    );
-
-    if (hasExtensionsYaml) {
-      return blocks.filter(
-        block => block.type !== 'dir' &&
-          block.file?.toLowerCase() === DESCRIPTOR_YAML
-      );
-    }
-
-    return blocks.filter(
-      block => (block.type === 'dir' && !block.file.startsWith('.')) ||
-        (block.file?.toLowerCase().endsWith('.mon'))
-    );
-  }
-
-  private analyzeRepositoryItems(items: RepositoryItem[]): Observable<RepositoryItem[]> {
-    const yamlItems = items.filter(
-      block => block.type !== 'dir' &&
-        block.file?.toLowerCase() === DESCRIPTOR_YAML
-    );
-
-    if (yamlItems.length > 0) {
-      const yamlItem = yamlItems[0];
-      return this.getSectionsFromExtensionYAML(yamlItem).pipe(
-        map(sectionNames => this.createYamlSectionItems(sectionNames, yamlItem))
-      );
-    }
-
-    return of(
-      items.filter(
-        item => (item.type === 'dir' && !item.file.startsWith('.')) ||
-          (item.file?.toLowerCase().endsWith('.mon'))
-      )
-    );
-  }
-
-  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
-    return this.getRepositoryItemContent(item, false, false).pipe(
-      map(content => this.parseYamlSections(content)),
-      catchError(error => {
-        console.warn(`Error processing ${DESCRIPTOR_YAML}:`, error);
-        return of([]);
-      })
-    );
-  }
-
-  private createYamlSectionItems(
-    sectionNames: string[],
-    yamlItem: RepositoryItem
-  ): RepositoryItem[] {
-    return sectionNames.map(name => ({
-      ...yamlItem,
-      id: uuidCustom(),
-      name,
-      isYamlSection: true,
-      extensionsYamlItem: yamlItem
-    }));
-  }
-
-  private addInstallationStatus(
-    blocks: RepositoryItem[],
-    loaded: CepBlock[],
-    hideInstalled: boolean
-  ): RepositoryItem[] {
-    const loadedIds = new Set(loaded.map(block => block.id));
-
-    if (hideInstalled) {
-      return blocks.filter(block => !loadedIds.has(block.id));
-    }
-
-    return blocks.map(block => ({
-      ...block,
-      installed: loadedIds.has(block.id)
-    }));
-  }
-
-  // ============================================================================
-  // Private Methods - Content Retrieval
-  // ============================================================================
-
-  private getItemContentFromBackend(
-    block: RepositoryItem,
-    extractFQN: boolean
-  ): Observable<string> {
-    return from(
-      this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
-        {
-          headers: { 'content-type': 'text/plain' },
-          params: {
-            url: encodeURIComponent(block.url),
-            extract_fqn_cep_block: extractFQN.toString(),
-            repository_id: block.repositoryId,
-            cep_block_name: block.name
-          },
-          method: 'GET'
-        }
-      ).then(resp => {
-        if (!resp.ok) {
-          throw new RepositoryError(
-            `Failed to fetch content: ${resp.status}`,
-            gettext('Failed to load content from server.')
-          );
-        }
-        return resp.text();
-      })
-    );
-  }
-
-  private getItemContentDirectly(
-    block: RepositoryItem,
-    extractFQN: boolean
-  ): Observable<string> {
-    return from(
-      fetch(block.downloadUrl, {
-        method: 'GET',
-        headers: {
-          'Content-type': 'application/text',
-          'Accept': 'application/vnd.github.raw'
-        }
-      }).then(async response => {
-        if (!response.ok) {
-          throw new RepositoryError(
-            `Failed to fetch content: ${response.status}`,
-            gettext('Failed to download content from GitHub.')
-          );
-        }
-        return response.text();
-      })
-    ).pipe(
-      map(content => extractFQN ? this.extractFQN(content, block) : content),
-      catchError(error => {
-        throw new RepositoryError(
-          'Failed to fetch content directly',
-          gettext('Failed to download content from GitHub.'),
-          error
-        );
-      })
-    );
-  }
-
-  private extractFQN(content: string, block: RepositoryItem): string {
-    const regex = /(?<=^package\s)(.*?)(?=;)/gm;
-    const match = content.match(regex);
-
-    if (match && match[0]) {
-      const packageName = match[0].trim();
-      // block.name already has its file extension stripped by
-      // removeFileExtension() when the RepositoryItem was created — do not
-      // slice it again here.
-      return `${packageName}.${block.name}`;
-    }
-
-    throw new RepositoryError(
-      'Could not extract FQN from content',
-      gettext('Failed to extract block information from file.')
-    );
-  }
-
-  private parseYamlSections(content: string): string[] {
-    try {
-      const yamlContent = jsyaml.load(content);
-
-      if (yamlContent && typeof yamlContent === 'object') {
-        return Object.keys(yamlContent);
-      }
-
-      console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
-      return [];
-    } catch (error) {
-      throw new RepositoryError(
-        `Error parsing ${DESCRIPTOR_YAML}`,
-        gettext(`Failed to parse ${DESCRIPTOR_YAML}. Invalid format.`),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  // ============================================================================
-  // Private Methods - Tenant Option Operations
-  // ============================================================================
-
-  /**
-   * Persists the given repository list directly as Cumulocity tenant options
-   * (create/update one option per repository, delete options for repositories
-   * no longer present) — mirrors `analytics-service/c8y_agent.py`'s
-   * `update_repositories`/`_save_repository`/`_delete_repository`, so no
-   * backend microservice is required for repository config management
-   * (requires `ROLE_OPTION_MANAGEMENT_ADMIN`/`ROLE_TENANT_MANAGEMENT_ADMIN`).
-   */
-  private async saveRepositoriesToTenantOptions(
-    repositories: Repository[]
-  ): Promise<void> {
-    try {
-      const existingOptions = await this.listRepositoryOptions();
-      const existingById = new Map(existingOptions.map(option => [option.key, option]));
-
-      for (const repo of repositories) {
-        await this.saveRepositoryOption(repo, existingById.get(repo.id));
-        existingById.delete(repo.id);
-      }
-
-      // Anything left is no longer present in the incoming list — delete it.
-      for (const staleId of existingById.keys()) {
-        await this.tenantOptionsService.delete({
-          category: REPOSITORY_OPTION_CATEGORY,
-          key: staleId
-        });
-      }
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        throw error;
-      }
-      throw new RepositoryError(
-        'Failed to save repositories',
-        gettext('Failed to save repositories. Please check your permissions and try again.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Saves a single repository as a tenant option. If `accessToken` is still
-   * the `DUMMY_ACCESS_TOKEN` placeholder (i.e. the user didn't touch the PAT
-   * field), the previously stored token is preserved — unless the URL
-   * changed, in which case the token is cleared, exactly like
-   * `_save_repository` does server-side.
-   */
-  private async saveRepositoryOption(
-    repo: Repository,
-    existingOption?: ITenantOption
-  ): Promise<void> {
-    let existingData: Partial<Repository> = {};
-    if (existingOption) {
-      try {
-        existingData = JSON.parse(existingOption.value || '{}');
-      } catch (error) {
-        console.warn(`[RepositoryService] Could not parse existing option "${existingOption.key}":`, error);
-      }
-    }
-
-    const isDummyToken = repo.accessToken === DUMMY_ACCESS_TOKEN;
-    const urlChanged = existingData.url !== undefined && existingData.url !== repo.url;
-
-    let accessToken = '';
-    if (!isDummyToken) {
-      accessToken = repo.accessToken || '';
-    } else if (!urlChanged) {
-      accessToken = existingData.accessToken || '';
-    }
-
-    const value: Record<string, unknown> = {
-      name: repo.name,
-      url: repo.url,
-      enabled: !!repo.enabled
-    };
-    if (accessToken) {
-      value['accessToken'] = accessToken;
-    }
-
-    await this.tenantOptionsService.create({
-      category: REPOSITORY_OPTION_CATEGORY,
-      key: repo.id,
-      value: JSON.stringify(value)
-    });
-  }
-
-  private async createExtension(
-    endpoint: string,
-    request: unknown
-  ): Promise<IFetchResponse> {
-    // Type narrowing for request
-    if (!request || typeof request !== 'object') {
-      throw new RepositoryError(
-        'Invalid extension request',
-        gettext('Invalid extension data provided.')
-      );
-    }
-
-    try {
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/${endpoint}`,
-        {
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json'
-          },
-          body: JSON.stringify(request),
-          method: 'POST',
-          responseType: 'blob'
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new RepositoryError(
-          `Failed to create extension: ${response.status}`,
-          errorText || gettext('Failed to create extension on server.')
-        );
-      }
-
-      return response;
-    } catch (error) {
-      if (error instanceof RepositoryError) {
-        throw error;
-      }
-      throw new RepositoryError(
-        'Failed to create extension',
-        gettext('Failed to create extension. Please try again.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  // ============================================================================
   // Private Methods - Error Handling
   // ============================================================================
 
-  /**
-   * Centralized error handling
-   */
   private handleError(
     error: unknown,
     logMessage: string,
@@ -1342,14 +488,5 @@ export class RepositoryService implements OnDestroy {
     }
 
     return gettext('An unexpected error occurred. Please try again.');
-  }
-
-  private handleTestError(_error: unknown): RepositoryTestResult {
-    // fetch() only rejects on network errors (DNS, CORS, abort); status-code mapping
-    // happens in mapTestStatusToResult against response.status.
-    return {
-      success: false,
-      message: gettext('Failed to connect to repository. Please check your connection and try again.')
-    };
   }
 }
