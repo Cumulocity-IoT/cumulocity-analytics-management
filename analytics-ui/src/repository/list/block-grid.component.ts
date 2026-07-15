@@ -44,6 +44,7 @@ import {
   RepositoryService
 } from '../../shared';
 import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
@@ -207,8 +208,13 @@ export class BlockGridComponent implements OnInit {
     const initialState = {
       source$: this.repositoryService.getRepositoryItemContent(
         block,
-        true,
+        false,
         false
+      ).pipe(
+        catchError(() => {
+          this.alertService.danger(`Failed to load content for "${block.name}".`);
+          return of('');
+        })
       ),
       monitorName: block.name
     };

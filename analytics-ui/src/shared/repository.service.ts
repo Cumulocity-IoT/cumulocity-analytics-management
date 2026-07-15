@@ -28,9 +28,9 @@ import {
   DESCRIPTOR_YAML,
   DUMMY_ACCESS_TOKEN,
   EXTENSION_ENDPOINT,
+  GITHUB_BASE,
   Repository,
   REPOSITORY_CONTENT_ENDPOINT,
-  REPOSITORY_CONTENT_LIST_ENDPOINT,
   REPOSITORY_OPTION_CATEGORY,
   RepositoryItem,
   RepositoryTestResult
@@ -38,6 +38,7 @@ import {
 import { AnalyticsService } from './analytics.service';
 import {
   getFileExtension,
+  githubWebUrlToContentApi,
   removeFileExtension,
   uuidCustom
 } from './utils';
@@ -288,28 +289,23 @@ export class RepositoryService implements OnDestroy {
     }
   }
 
+  /**
+   * Tests a repository directly against GitHub's Content API — no backend
+   * proxy involved, so this works (and fails with a real GitHub-side reason)
+   * even without `analytics-service` deployed. Also allows testing a draft
+   * (unsaved) repository before persisting it.
+   */
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
-    // Route through the backend so the request honors tenant CSP and reuses the
-    // existing content-list proxy. The PAT is passed in a custom header (not a
-    // query param) so it doesn't land in HTTP access logs or browser history;
-    // this also lets draft (unsaved) repositories be tested before persisting.
     try {
-      const headers: Record<string, string> = { 'content-type': 'application/json' };
-      if (repository.accessToken) {
-        headers['X-Repository-Access-Token'] = repository.accessToken;
+      const contentApiUrl = this.toContentApiUrl(repository.url);
+      const accessToken = await this.resolveAccessToken(repository);
+
+      const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
+      if (accessToken) {
+        headers['authorization'] = `Bearer ${accessToken}`;
       }
 
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
-        {
-          headers,
-          params: {
-            url: encodeURIComponent(repository.url),
-            repository_id: repository.id
-          },
-          method: 'GET'
-        }
-      );
+      const response = await fetch(contentApiUrl, { method: 'GET', headers });
 
       if (response.ok) {
         return {
@@ -318,17 +314,50 @@ export class RepositoryService implements OnDestroy {
           status: response.status
         };
       }
-      // Prefer the backend's specific reason (e.g. SSO authorization required,
-      // rate limit, bad credentials) over the generic status-based message.
-      const backendMessage = await this.extractErrorMessage(response);
+      // Prefer GitHub's specific reason (e.g. bad credentials, SSO
+      // authorization required) over the generic status-based message.
+      const githubMessage = await this.extractErrorMessage(response);
       return {
         success: false,
         status: response.status,
-        message: backendMessage || this.mapTestStatusToResult(response.status).message
+        message: githubMessage || this.mapTestStatusToResult(response.status).message
       };
     } catch (error) {
       return this.handleTestError(error);
     }
+  }
+
+  /**
+   * Converts a `Repository.url` into a GitHub Contents API URL, accepting
+   * both shapes the field can hold: an already-Contents-API URL (the
+   * built-in sample repos) or a plain GitHub web URL, e.g.
+   * `github.com/{owner}/{repo}/tree/{branch}/{path}` (what "Manage
+   * repositories" actually stores for user-added repos).
+   */
+  private toContentApiUrl(url: string): string {
+    if (url.startsWith(GITHUB_BASE)) {
+      return url;
+    }
+    return githubWebUrlToContentApi(url);
+  }
+
+  /**
+   * `Repository.accessToken` is always masked behind `DUMMY_ACCESS_TOKEN`
+   * once a repository is persisted (see `parseRepositoryOption`), so a
+   * freshly-loaded repository's token isn't directly usable against GitHub.
+   * Resolve the real token: use it as-is if the caller just typed a new one
+   * (not the masked sentinel), look up the stored value for an existing,
+   * untouched repository, or fall back to unauthenticated (empty) for a
+   * brand-new draft repository that hasn't been saved yet.
+   */
+  private async resolveAccessToken(repository: Repository): Promise<string> {
+    if (repository.accessToken && repository.accessToken !== DUMMY_ACCESS_TOKEN) {
+      return repository.accessToken;
+    }
+    if (repository.accessToken === DUMMY_ACCESS_TOKEN && repository.id && !repository.id.startsWith('temp-')) {
+      return this.getRepositoryAccessToken(repository.id);
+    }
+    return '';
   }
 
   private mapTestStatusToResult(status: number): RepositoryTestResult {
@@ -408,9 +437,18 @@ export class RepositoryService implements OnDestroy {
     this.updateState({ hideInstalled });
   }
 
+  /**
+   * Callers decide whether a failure here is user-facing: this never shows
+   * an alert itself (only logs), since it's used both for explicit actions
+   * (e.g. "View Source", where the caller should surface a failure) and for
+   * automatic background enrichment during listing (FQN extraction for
+   * every `.mon` file), where one flaky/rate-limited item among many is
+   * expected and already handled gracefully by the caller's own fallback —
+   * see `enrichRepositoryItem`.
+   */
   getRepositoryItemContent(
     block: RepositoryItem,
-    useBackend: boolean = true,
+    useBackend: boolean = false,
     extractFQN: boolean = false
   ): Observable<string> {
     const content$ = useBackend
@@ -426,7 +464,7 @@ export class RepositoryService implements OnDestroy {
         throw this.handleError(
           error,
           `Failed to get content for ${block.name}`,
-          true,
+          false,
           errorMsg
         );
       })
@@ -788,21 +826,11 @@ export class RepositoryService implements OnDestroy {
     return from(this.getGitHubContent(repository)).pipe(
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
-        // A 404 here means the analytics-service microservice isn't deployed
-        // (browsing/building from a repo's source tree still depends on it,
-        // unlike repository config or the Deploy-from-Release flow, both of
-        // which are backend-free). That's an expected condition on a
-        // backend-free tenant, not a failure — degrade silently to an empty
-        // list instead of surfacing a scary error for something the user
-        // didn't explicitly trigger.
-        if (error instanceof RepositoryError && error.status === 404) {
-          console.warn(
-            `[RepositoryService] Backend not deployed (404); cannot list items for "${repository.name}".`
-          );
-          return of([]);
-        }
-        // Surface the backend's specific reason (e.g. GitHub rate limit / bad
-        // token) instead of a generic message, so the cause is diagnosable.
+        // Surface GitHub's specific reason (rate limit / bad token / bad
+        // path) instead of a generic message, so the cause is diagnosable.
+        // getGitHubContent() now calls GitHub directly (no backend proxy),
+        // so a 404 here is a real "not found" from GitHub, not a missing
+        // microservice — it should be shown, not silently swallowed.
         const detail = error instanceof RepositoryError ? error.userMessage : '';
         this.handleError(
           error,
@@ -817,19 +845,24 @@ export class RepositoryService implements OnDestroy {
     );
   }
 
+  /**
+   * Lists a repository's content directly against GitHub's Content API — no
+   * backend proxy involved. GitHub returns a directory listing as a plain
+   * array (or a single object for a file path); `processGitHubContent`
+   * already handles both via `Object.values(...)`, so the response is passed
+   * straight through unchanged.
+   */
   private async getGitHubContent(repository: Repository): Promise<any[]> {
     try {
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_LIST_ENDPOINT}`,
-        {
-          headers: { 'content-type': 'application/json' },
-          params: {
-            url: encodeURIComponent(repository.url),
-            repository_id: repository.id
-          },
-          method: 'GET'
-        }
-      );
+      const contentApiUrl = this.toContentApiUrl(repository.url);
+      const accessToken = await this.resolveAccessToken(repository);
+
+      const headers: Record<string, string> = { accept: 'application/vnd.github+json' };
+      if (accessToken) {
+        headers['authorization'] = `Bearer ${accessToken}`;
+      }
+
+      const response = await fetch(contentApiUrl, { method: 'GET', headers });
 
       if (!response.ok) {
         const errorMessage = await this.extractErrorMessage(response);
@@ -900,7 +933,7 @@ export class RepositoryService implements OnDestroy {
     const cacheKey = `${item.repositoryId}::${item.url}`;
     let fqn$ = this.fqnCache.get(cacheKey);
     if (!fqn$) {
-      fqn$ = this.getRepositoryItemContent(item, true, true).pipe(
+      fqn$ = this.getRepositoryItemContent(item, false, true).pipe(
         catchError(error => {
           console.warn(`Failed to enrich item ${item.name}:`, error);
           this.fqnCache.delete(cacheKey); // allow retry
@@ -987,7 +1020,7 @@ export class RepositoryService implements OnDestroy {
   }
 
   private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
-    return this.getRepositoryItemContent(item, true, false).pipe(
+    return this.getRepositoryItemContent(item, false, false).pipe(
       map(content => this.parseYamlSections(content)),
       catchError(error => {
         console.warn(`Error processing ${DESCRIPTOR_YAML}:`, error);
@@ -1097,8 +1130,10 @@ export class RepositoryService implements OnDestroy {
 
     if (match && match[0]) {
       const packageName = match[0].trim();
-      const className = block.name.slice(0, -4);
-      return `${packageName}.${className}`;
+      // block.name already has its file extension stripped by
+      // removeFileExtension() when the RepositoryItem was created — do not
+      // slice it again here.
+      return `${packageName}.${block.name}`;
     }
 
     throw new RepositoryError(
