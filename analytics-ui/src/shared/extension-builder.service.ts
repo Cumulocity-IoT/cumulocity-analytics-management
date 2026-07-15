@@ -43,7 +43,10 @@ export class ExtensionBuilderService {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    return (await this.repositoryModeService.isBackendMode())
+    const backendMode = await this.repositoryModeService.isBackendMode();
+    // TODO(debug): remove once the missing-metadata investigation is closed.
+    console.debug(`[ExtensionBuilderService] createExtensionFromList("${name}"): backendMode=${backendMode}`);
+    return backendMode
       ? this.repositoryBackendService.createExtensionFromList(name, monitors, repository, upload, deploy, rebuild)
       : this.createExtensionFromListDirect(name, monitors, deploy);
   }
@@ -157,8 +160,12 @@ export class ExtensionBuilderService {
 
       if (lowerFile.endsWith('.mon')) {
         const packageMatch = /^package\s+(.*?);/m.exec(content);
+        // TODO(debug): remove once the missing-metadata investigation is closed.
+        console.debug(`[ExtensionBuilderService] ${item.file}: package=${packageMatch?.[1]?.trim() ?? '(none found)'}`);
         if (packageMatch) {
-          blocks.push(...parseApamaBlockMetadata(content, packageMatch[1].trim()));
+          const parsed = parseApamaBlockMetadata(content, packageMatch[1].trim());
+          console.debug(`[ExtensionBuilderService] ${item.file}: parsed ${parsed.length} block(s)`, parsed);
+          blocks.push(...parsed);
         }
       }
     }
@@ -167,6 +174,9 @@ export class ExtensionBuilderService {
       const events = files.folder('events')!;
       events.file(`${name}_metadata.evt`, buildBlockMetadataEvt(name, blocks));
       events.file(`${name}_messages.evt`, buildBlockMessagesEvt(name, blocks));
+      console.debug(`[ExtensionBuilderService] "${name}": wrote metadata.evt/messages.evt for ${blocks.length} block(s)`);
+    } else {
+      console.debug(`[ExtensionBuilderService] "${name}": no blocks detected — metadata.evt NOT written`);
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
