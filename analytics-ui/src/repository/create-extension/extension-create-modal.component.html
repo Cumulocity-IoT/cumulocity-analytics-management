@@ -47,7 +47,7 @@
     <div class="modal-footer">
       <button class="btn btn-primary" title="{{ 'Create extension' | translate }}"
         (click)="createExtension()"
-        [disabled]="(backendDeployed$ | async) === false || !configForm.valid">
+        [disabled]="(requiresBackend && (backendDeployed$ | async) === false) || !configForm.valid">
         <i c8yIcon="plugin"></i>
         {{ 'Create extension' | translate }}
       </button>

@@ -78,9 +78,22 @@
   }
   <!-- Extensions Grid -->
   @if (status === 'up') {
-    <div class="card-group" [ngClass]="listClass">
-      <!-- Empty State -->
-      @if ((extensions$ | async)?.length === 0) {
+    @if (extensions$ | async; as extensions) {
+      <div class="card-group" [ngClass]="listClass">
+        <!-- Extension Cards -->
+        @for (extension of extensions; track trackByExtension($index, extension)) {
+          <div
+            class="col-xs-12 col-sm-4 col-md-3">
+            <a17t-extension-card
+              (extensionChanged)="reload()"
+              [isBackendServiceAvailable]="isBackendServiceAvailable"
+              [extension]="extension"
+              class="d-contents" />
+          </div>
+        }
+      </div>
+      <!-- Empty State: only once the list has actually resolved to empty -->
+      @if (extensions.length === 0) {
         <div class="row">
           <div class="col-lg-4 col-lg-offset-5 text-center">
             <c8y-ui-empty-state
@@ -95,17 +108,11 @@
           </div>
         </div>
       }
-      <!-- Extension Cards -->
-      @for (extension of extensions$ | async; track trackByExtension($index, extension)) {
-        <div
-          class="col-xs-12 col-sm-4 col-md-3">
-          <a17t-extension-card
-            (extensionChanged)="reload()"
-            [isBackendServiceAvailable]="isBackendServiceAvailable"
-            [extension]="extension"
-            class="d-contents" />
-        </div>
-      }
-    </div>
+    } @else {
+      <!-- Loading: engine just reported "up" but the extension list hasn't resolved yet -->
+      <div class="col-lg-8 col-lg-offset-2 m-b-48 text-center">
+        <c8y-loading />
+      </div>
+    }
   }
 }

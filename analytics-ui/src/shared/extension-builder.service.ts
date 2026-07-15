@@ -3,6 +3,7 @@ import { IFetchResponse, IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import JSZip from 'jszip';
+import { buildBlockMessagesEvt, buildBlockMetadataEvt, ParsedBlockMetadata, parseApamaBlockMetadata } from './apama-block-metadata';
 import { Repository, RepositoryItem } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { GitHubContentService } from './github-content.service';
@@ -118,10 +119,27 @@ export class ExtensionBuilderService {
    * the block SDK's documented build-extension exclude-list — see
    * docs/features/block-marketplace/CONCEPT.md. Directories aren't
    * supported by this path yet (only flat, individually-selected files).
+   *
+   * Every real extension zip (both GitHub Release assets and apama-ctrl's
+   * own correlator logs, e.g. "Extracting AsyncSignal.zip/files/AsyncSignal.mon")
+   * nests its content under a top-level `files/` folder — apama-ctrl's
+   * `copyExtensions` looks specifically there, so a flat zip is silently
+   * skipped (no error, the extension just never loads). CONCEPT.md's
+   * "all files in that directory" description of the CLI build turned out
+   * to describe an input directory that already contains a `files/`
+   * subfolder, not a flat layout — confirmed by unzipping a real published
+   * extension.
+   *
+   * Also generates `files/events/<name>_metadata.evt`/`_messages.evt` (see
+   * apama-block-metadata.ts) — a real CLI build produces these from the
+   * `.mon` file's doc-comment annotations, and without them the correlator
+   * has nothing to register the block's name/category/parameters under.
    */
   private async buildExtensionZip(name: string, monitors: RepositoryItem[]): Promise<File> {
     const EXCLUDED_EXTENSIONS = ['.log', '.classpath', '.dependencies', '.project', '.deploy', '.launch', '.out', '.o'];
     const zip = new JSZip();
+    const files = zip.folder('files')!;
+    const blocks: ParsedBlockMetadata[] = [];
 
     for (const item of monitors) {
       if (item.type === 'dir') {
@@ -135,7 +153,20 @@ export class ExtensionBuilderService {
         continue;
       }
       const content = await this.gitHubContentService.getItemContent(item, false);
-      zip.file(item.file, content);
+      files.file(item.file, content);
+
+      if (lowerFile.endsWith('.mon')) {
+        const packageMatch = /^package\s+(.*?);/m.exec(content);
+        if (packageMatch) {
+          blocks.push(...parseApamaBlockMetadata(content, packageMatch[1].trim()));
+        }
+      }
+    }
+
+    if (blocks.length > 0) {
+      const events = files.folder('events')!;
+      events.file(`${name}_metadata.evt`, buildBlockMetadataEvt(name, blocks));
+      events.file(`${name}_messages.evt`, buildBlockMessagesEvt(name, blocks));
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });

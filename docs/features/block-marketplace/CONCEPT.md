@@ -13,7 +13,7 @@ This is based on reading the current `analytics-service` implementation and the 
 A first implementation now exists in `analytics-ui`, and it landed as a **dual-mode** design rather than a straight replacement: a new `RepositoryModeService` decides, once per session, whether `analytics-service` is actually reachable, and every other repository-related service (config, GitHub content, backend, item listing/enrichment, extension building) dispatches to a backend call or a direct browser/GitHub call accordingly. See REQUIREMENTS.md's "Implementation Status" table for the FR-by-FR breakdown. Two things worth calling out because they weren't anticipated in the original analysis below:
 
 - **PAT custody landed differently than the recommended option 1.** The implementation keeps the PAT in the same Cumulocity tenant option `analytics-service` already used (masked on read), not `localStorage` — see "The one real blocker: PAT custody" below, updated with the actual decision and why.
-- **Two real bugs were found only once this was actually exercised against a live tenant**, both worth keeping in mind for anyone extending this further — see "Verified in practice: two gotchas found during implementation" below.
+- **Three real bugs were found only once this was actually exercised against a live tenant**, all worth keeping in mind for anyone extending this further — see "Verified in practice: gotchas found during implementation" below.
 
 ---
 
@@ -190,9 +190,9 @@ flowchart TB
 
 ---
 
-## Verified in practice: two gotchas found during implementation
+## Verified in practice: gotchas found during implementation
 
-Neither of these was visible from reading the code alone — both only surfaced once the browser-mode paths were actually exercised against a live tenant.
+None of these were visible from reading the code alone — all three only surfaced once the browser-mode paths were actually exercised against a live tenant.
 
 1. **A non-safelisted header silently kills GitHub raw-content fetches.** The direct-fetch path for a `.mon` file's raw content was sending `Content-Type: application/text` on a `GET` request (left over from an early draft). `application/text` isn't one of the three CORS-safelisted `Content-Type` values (`text/plain`, `application/x-www-form-urlencoded`, `multipart/form-data`), so the browser silently upgraded the request to a CORS preflight (`OPTIONS`) — and `raw.githubusercontent.com` is a static CDN, not an API, so it doesn't handle `OPTIONS` at all. Verified directly:
    ```
@@ -202,6 +202,8 @@ Neither of these was visible from reading the code alone — both only surfaced 
    Every `.mon` fetch failed until the header was removed entirely — a bare `GET` needs no headers at all here since `block.downloadUrl` already points straight at the raw file. Lesson: any header beyond the CORS-safelisted set turns a "simple request" into a preflighted one, and not every CORS-open endpoint actually implements `OPTIONS`.
 
 2. **"Subscribed" isn't "running."** The natural way to check "is `analytics-service` available" is `@c8y/client`'s `applicationService.isAvailable(appName)` — but per its own doc comment, that only checks whether the *current user can access* (i.e. the app is *subscribed* to) the tenant, not whether the microservice actually has a running, responding instance. A microservice can be subscribed-but-not-running (e.g. never actually deployed, crashed, scaled to zero), in which case every real request 404s with Cumulocity's own routing error ("Microservice `analytics-ext-service` not found") — indistinguishable, from the subscription check's point of view, from a fully healthy microservice. The dual-mode dispatch (`RepositoryModeService`) therefore treats the subscription check as a fast first filter only, then confirms with an actual liveness probe (a real `GET` against one of the microservice's own endpoints, treating a `404` as "not actually running") before committing to backend mode. Anything using `isBackendServiceAvailable()`-style subscription checks elsewhere in this codebase for a similar "should I call the backend" decision likely has the same latent gap.
+
+3. **The "flat zip" description above is wrong — the extension zip format requires a top-level `files/` folder.** §"What `analytics_builder build extension` actually does" (above) quotes the SDK doc's "all files in that directory are included in the `.zip` file" and concludes the CLI's output is a flat zip of the input directory. It isn't, in the sense that matters for `apama-ctrl`: unzipping a real published extension (`AsyncSignal-1.0.1.zip` from a `analytics-builder-blocks-contrib` GitHub Release) shows every file nested one level down, under `files/` (`files/AsyncSignal.mon`, `files/events/AsyncSignal-1.0.1_messages.evt`, ...) — and apama-ctrl's own correlator log confirms it looks specifically there when applying an extension (`Extracting AsyncSignal.zip/files/AsyncSignal.mon`). The client-side `JSZip` build (`ExtensionBuilderService.buildExtensionZip`) originally zipped selected files flat at the zip root, matching the doc's literal wording — the resulting extension silently failed to load (no error; apama-ctrl's `copyExtensions` just finds nothing under `files/` and skips it) until the builder was fixed to nest every entry under a `files/` folder. This resolves the "Zip parity" open item below in the direction of "not accepted identically" — the doc's flat-zip claim was the actual gap, not JSZip's output format (compression/ordering) itself.
 
 ## Proposed target architecture
 
@@ -223,7 +225,7 @@ This landed as **dual-mode**, not a straight replacement: `analytics-service` ke
 
 ## Migration risks / things to validate before committing
 
-- **Zip parity**: confirm JSZip output (file order, compression, directory entries) is accepted identically by `apama-ctrl` compared to the CLI's zip — worth a side-by-side test extension. Still open: the client-side build path has been exercised manually against a live tenant, but not formally diffed byte-for-byte against the CLI's output.
+- **Zip parity** (partially resolved): see gotcha #3 above — the missing `files/` top-level folder was found and fixed. File order/compression settings still haven't been formally diffed byte-for-byte against the CLI's own zip output; no issue observed from that so far, but still worth a side-by-side test extension if this path sees more use.
 - **Loss of server-side audit log**: today every build is logged centrally by the microservice; a client-only flow would need to post its own audit event (e.g. a Cumulocity Event) if that visibility is required. Still open.
 - **CORS is per-endpoint, not per-repo-host**: only `github.com`'s API/raw hosts are confirmed CORS-open; any other future source of `.mon` files (a private artifact server, GitLab, etc.) needs the same check before assuming this pattern generalizes. Still open; also see gotcha #1 above — CORS-open doesn't automatically mean *any* header combination works.
 - **Rate limits on large repos**: for very large contrib-style repos, still recommend an (optional) PAT even for public repos, to raise the 60/hr ceiling to 5000/hr — same guidance the microservice gives today, just enforced client-side. Still open (no rate-limit-specific testing done yet).

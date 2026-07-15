@@ -20,6 +20,62 @@ export function getFileExtension(name: string): string {
   return (result && result != null) ? result[0] : '';
 }
 
+/** Finds the index of the `{` opening the declaration at `declIndex`, then its matching `}`. */
+export function extractBraceBody(content: string, declIndex: number): string | null {
+  const openIndex = content.indexOf('{', declIndex);
+  if (openIndex === -1) return null;
+
+  let depth = 0;
+  for (let i = openIndex; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}') {
+      depth--;
+      if (depth === 0) return content.slice(openIndex + 1, i);
+    }
+  }
+  return null;
+}
+
+/**
+ * Finds every Apama Analytics Builder block's event type name in a `.mon`
+ * file's source text: an `event <Name> { ... }` declaration whose body
+ * declares a `BlockBase $base;` field — the one field every such block
+ * requires (per the block SDK's own docs), regardless of whether it also
+ * declares parameters. A `<Name>_$Parameters` companion event is *not* a
+ * reliable signal on its own: it's omitted entirely by blocks that take no
+ * parameters (e.g. `Distance.mon` in `analytics-builder-blocks-contrib`),
+ * which a parameters-only detection would silently miss.
+ */
+export function findApamaBlockNames(content: string): string[] {
+  const names: string[] = [];
+  const declPattern = /\bevent\s+(\w+)\s*\{/g;
+  let match: RegExpExecArray | null;
+  while ((match = declPattern.exec(content))) {
+    const body = extractBraceBody(content, match.index);
+    if (body && /\bBlockBase\s+\$base\s*;/.test(body)) {
+      names.push(match[1]);
+    }
+  }
+  return [...new Set(names)];
+}
+
+/**
+ * Extracts the fully-qualified block name(s) a `.mon` file defines, matching
+ * how the Apama correlator reports deployed block ids (`CepBlock.id`). A
+ * file can define more than one block whose names don't match the file name
+ * (e.g. a Send/Receive pair in one file) — see `findApamaBlockNames`. Falls
+ * back to `package.<fallbackName>` when no block is found (e.g. a `.mon`
+ * that isn't an Analytics Builder block at all).
+ */
+export function extractBlockFqns(content: string, fallbackName: string): string[] {
+  const packageMatch = content.match(/^package\s+(.*?);/m);
+  const packageName = packageMatch ? packageMatch[1].trim() : '';
+
+  const blockNames = findApamaBlockNames(content);
+  const names = blockNames.length > 0 ? blockNames : [fallbackName];
+  return packageName ? names.map(name => `${packageName}.${name}`) : names;
+}
+
 export function isCustomCepBlock(block: Pick<CepBlock, 'id'>): boolean {
   const id = block.id ?? '';
   return (

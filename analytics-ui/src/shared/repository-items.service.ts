@@ -14,7 +14,7 @@ import { GitHubContentService } from './github-content.service';
 import { RepositoryBackendService } from './repository-backend.service';
 import { RepositoryError } from './repository-error';
 import { RepositoryModeService } from './repository-mode.service';
-import { getFileExtension, removeFileExtension, uuidCustom } from './utils';
+import { extractBlockFqns, getFileExtension, removeFileExtension, uuidCustom } from './utils';
 
 /**
  * Fetches, enriches, and caches a repository's items (`.mon` files,
@@ -26,7 +26,7 @@ import { getFileExtension, removeFileExtension, uuidCustom } from './utils';
 })
 export class RepositoryItemsService {
   private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
-  private readonly fqnCache = new Map<string, Observable<string>>();
+  private readonly fqnCache = new Map<string, Observable<string[]>>();
 
   constructor(
     private readonly repositoryModeService: RepositoryModeService,
@@ -201,26 +201,35 @@ export class RepositoryItemsService {
     }
   }
 
+  /**
+   * Extracts the block FQN(s) a `.mon` file defines. Always fetches raw
+   * content (not the backend's own `extract_fqn_cep_block` computation) and
+   * parses it client-side with `extractBlockFqns`, so a file that defines
+   * more than one block (e.g. a Send/Receive pair whose names don't match
+   * the file name) is matched correctly against deployed blocks regardless
+   * of whether the backend or direct-GitHub mode is active.
+   */
   private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
     if (item.type !== 'file' || !item.file.endsWith('.mon')) {
       return of({ ...item, id: item.file });
     }
 
     const cacheKey = `${item.repositoryId}::${item.url}`;
-    let fqn$ = this.fqnCache.get(cacheKey);
-    if (!fqn$) {
-      fqn$ = this.getItemContent(item, true).pipe(
+    let fqns$ = this.fqnCache.get(cacheKey);
+    if (!fqns$) {
+      fqns$ = this.getItemContent(item, false).pipe(
+        map(content => extractBlockFqns(content, item.name)),
         catchError(error => {
           console.warn(`Failed to enrich item ${item.name}:`, error);
           this.fqnCache.delete(cacheKey); // allow retry
-          return of(item.file);
+          return of([item.file]);
         }),
         shareReplay({ bufferSize: 1, refCount: false })
       );
-      this.fqnCache.set(cacheKey, fqn$);
+      this.fqnCache.set(cacheKey, fqns$);
     }
 
-    return fqn$.pipe(map(fqn => ({ ...item, id: fqn })));
+    return fqns$.pipe(map(fqns => ({ ...item, id: fqns[0], blockIds: fqns })));
   }
 
   private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
@@ -281,14 +290,18 @@ export class RepositoryItemsService {
     hideInstalled: boolean
   ): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));
+    // A file can define more than one block (see `enrichRepositoryItem`), so
+    // it counts as installed if any of them is deployed, not just `id`.
+    const isInstalled = (block: RepositoryItem) =>
+      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id));
 
     if (hideInstalled) {
-      return blocks.filter(block => !loadedIds.has(block.id));
+      return blocks.filter(block => !isInstalled(block));
     }
 
     return blocks.map(block => ({
       ...block,
-      installed: loadedIds.has(block.id)
+      installed: isInstalled(block)
     }));
   }
 

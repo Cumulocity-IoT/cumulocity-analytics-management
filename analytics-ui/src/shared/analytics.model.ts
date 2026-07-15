@@ -98,6 +98,13 @@ export interface RepositoryItem {
   repositoryId: string;
   installed?: boolean;
   extensionsYamlItem?: RepositoryItem;
+  /**
+   * All fully-qualified block names this item's file defines (see
+   * `extractBlockFqns`). A `.mon` file can define more than one block, so
+   * "installed" status is decided against this whole set, not just `id`
+   * (which holds just the first one, for display/identification).
+   */
+  blockIds?: string[];
 }
 
 export interface Repository {
