@@ -519,18 +519,52 @@ export class AnalyticsService implements OnDestroy {
     return error instanceof CepError && this.TRANSIENT_GATEWAY_STATUSES.has(error.status ?? 0);
   }
 
+  /**
+   * Whether the `analytics-service` backend is actually usable right now.
+   *
+   * `applicationService.isAvailable()` alone is NOT enough — per its own
+   * doc comment, it only reports whether the microservice is *subscribed*
+   * to the tenant (can the current user see it), not whether it has an
+   * actually-running, responding instance. A subscribed-but-not-running
+   * microservice still makes every real request 404 with Cumulocity's own
+   * routing error ("Microservice ... not found"), which is indistinguishable
+   * from a healthy one at the subscription-check level. So: use the
+   * subscription check as a fast first filter, then confirm with a real
+   * liveness probe against the microservice's own REST surface before
+   * reporting it as available. Cached per session (checked once).
+   */
   async isBackendServiceAvailable(): Promise<boolean> {
     if (!this.cachedBackendAvailability) {
-      this.cachedBackendAvailability = this.applicationService
-        .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
-        .then(result => result?.data ?? false)
-        .catch(() => {
-          // Allow retry on next call
-          this.cachedBackendAvailability = null;
-          return false;
-        });
+      this.cachedBackendAvailability = this.checkBackendServiceAvailable().catch(() => {
+        // Allow retry on next call
+        this.cachedBackendAvailability = null;
+        return false;
+      });
     }
     return this.cachedBackendAvailability;
+  }
+
+  private async checkBackendServiceAvailable(): Promise<boolean> {
+    const subscribed = await this.applicationService
+      .isAvailable(APPLICATION_ANALYTICS_BUILDER_SERVICE)
+      .then(result => result?.data ?? false);
+    if (!subscribed) {
+      return false;
+    }
+
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
+        { method: 'GET' }
+      );
+      // A 404 here is Cumulocity's platform-level "no such microservice
+      // instance" routing error, not an application-level status response —
+      // analytics-service always returns valid JSON for this endpoint when
+      // it's actually running, so any 404 means it isn't.
+      return response.status !== 404;
+    } catch {
+      return false;
+    }
   }
 
   // ============================================================================

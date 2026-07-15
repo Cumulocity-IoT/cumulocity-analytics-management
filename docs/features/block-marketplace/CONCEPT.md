@@ -8,6 +8,15 @@ This is based on reading the current `analytics-service` implementation and the 
 
 ---
 
+## Implementation status (as of 2026-07-15)
+
+A first implementation now exists in `analytics-ui`, and it landed as a **dual-mode** design rather than a straight replacement: a new `RepositoryModeService` decides, once per session, whether `analytics-service` is actually reachable, and every other repository-related service (config, GitHub content, backend, item listing/enrichment, extension building) dispatches to a backend call or a direct browser/GitHub call accordingly. See REQUIREMENTS.md's "Implementation Status" table for the FR-by-FR breakdown. Two things worth calling out because they weren't anticipated in the original analysis below:
+
+- **PAT custody landed differently than the recommended option 1.** The implementation keeps the PAT in the same Cumulocity tenant option `analytics-service` already used (masked on read), not `localStorage` — see "The one real blocker: PAT custody" below, updated with the actual decision and why.
+- **Two real bugs were found only once this was actually exercised against a live tenant**, both worth keeping in mind for anyone extending this further — see "Verified in practice: two gotchas found during implementation" below.
+
+---
+
 ## What the microservice actually does today
 
 Reading `analytics-service/app.py` and `c8y_agent.py`, the service has four responsibilities:
@@ -59,13 +68,13 @@ This is why the microservice already does string-level annotation parsing itself
 
 | Capability | Today | Browser-only | Notes |
 |---|---|---|---|
-| List/download `.mon` files from GitHub | Server proxies `api.github.com` | ✅ Direct `fetch()` | `api.github.com` and `raw.githubusercontent.com` send permissive CORS headers (`Access-Control-Allow-Origin: *`) for GET, including with an `Authorization` header — no proxy required. |
-| Zip the extension | `analytics_builder build extension` subprocess | ✅ `JSZip` (or similar) client-side | Reproduce the same exclude-list (`.log`, `.classpath`, `.dependencies`, `.project`, `.deploy`, `.launch`, `.out`, `.o`, `.git`, `.github`) so output matches the CLI byte-for-byte in structure. |
-| Upload extension as Cumulocity `Binary` | `Binary(...).create()` via `c8y-api` (server) | ✅ `@c8y/client`'s `InventoryBinaryService`/`FetchClient` (already available to any Cumulocity UI plugin) | The Angular app already runs authenticated against the tenant; no separate service user is needed to write a binary the logged-in user is allowed to create. |
-| Delete extension(s) | Server, via `tenant.binaries.delete()` | ✅ Same `@c8y/client` binary API | Standard REST DELETE the browser can call directly. |
-| CEP status / restart | Server calls `/service/cep/diagnostics/apamaCtrlStatus`, `/service/cep/restart` | ✅ Direct call through Cumulocity's own microservice proxy | These are plain platform REST paths reached through the tenant's normal auth (cookie/OAuth), not exclusive to the `analytics-service` microservice identity — the server today is just relaying them. |
-| Repository config (URL, name, enabled) | Tenant option, server-mediated | ✅ Tenant Options API directly from UI | No secret involved here. |
-| **GitHub PAT storage** | Tenant option, **masked on read**, only ever used server-side | ⚠️ Hard trade-off | See below. |
+| List/download `.mon` files from GitHub | Server proxies `api.github.com` | ✅ **Implemented** (direct `fetch()`) | `api.github.com` and `raw.githubusercontent.com` send permissive CORS headers (`Access-Control-Allow-Origin: *`) for GET — no proxy required, but see "Verified in practice" gotcha #1 below: only a bare `GET` with no extra headers avoids a preflight the raw CDN can't handle. |
+| Zip the extension | `analytics_builder build extension` subprocess | ⚠️ **Implemented for a selected list of flat files only** (`JSZip`) | Reproduces the same exclude-list. Directory-based and `extensions.yaml`-based builds are NOT yet implemented client-side — see REQUIREMENTS.md. |
+| Upload extension as Cumulocity `Binary` | `Binary(...).create()` via `c8y-api` (server) | ✅ **Implemented** (`@c8y/client`'s `InventoryBinaryService`/`FetchClient`) | The Angular app already runs authenticated against the tenant; no separate service user is needed to write a binary the logged-in user is allowed to create. |
+| Delete extension(s) | Server, via `tenant.binaries.delete()` | ✅ **Implemented** (same `@c8y/client` binary API) | Standard REST DELETE the browser can call directly. |
+| CEP status / restart | Server calls `/service/cep/diagnostics/apamaCtrlStatus`, `/service/cep/restart` | ✅ **Implemented** (direct call through Cumulocity's own microservice proxy) | These are plain platform REST paths reached through the tenant's normal auth (cookie/OAuth), not exclusive to the `analytics-service` microservice identity — the server today is just relaying them. |
+| Repository config (URL, name, enabled) | Tenant option, server-mediated | ✅ **Implemented** (Tenant Options API directly from UI) | No secret involved here. |
+| **GitHub PAT storage** | Tenant option, **masked on read**, only ever used server-side | ✅ **Implemented**, landed differently than recommended | Kept in the same Tenant Option, masked on read, resolved client-side on demand — see "The one real blocker: PAT custody" below for the actual decision and why. |
 
 ---
 
@@ -80,6 +89,14 @@ Options, in order of recommendation:
 3. **Do nothing special.** For public repos (like `analytics-builder-blocks-contrib`), skip the PAT entirely — unauthenticated GitHub API calls work, just capped at 60 requests/hour **per browser's own IP** (today that quota is shared across all users of the microservice's IP, so this is arguably *better* per-user, but worse for anyone browsing a large private/enterprise repo tree).
 
 **Recommendation:** ship option 1 by default (zero backend, token stays in the browser only) with option 3 as the no-token path for public contrib repos, and only build option 2 if a customer explicitly needs centrally-managed shared tokens across a team.
+
+**What was actually built is a fourth option, discovered once repository config storage itself was implemented:** keep the PAT in the *same* Cumulocity tenant option `analytics-service` already wrote it to (category `analytics-management.repository`, one option per repository, masked behind `_DUMMY_ACCESS_CODE_` on read exactly like the backend did), and resolve the real value on demand — client-side, via `@c8y/client`'s `TenantOptionsService` — only at the moment a direct GitHub call actually needs it. This wasn't one of the three options above because it wasn't obvious in advance that repository config storage would land on Tenant Options directly (option 1's `localStorage` and this tenant-option approach are actually independent decisions — "where does repo config live" and "where does the PAT live" could have been answered differently). Once repo config *was* implemented as Tenant Options (a straight, lower-risk swap for what the backend already did — see "Proposed target architecture" below), reusing the same option for the PAT rather than introducing a second, `localStorage`-based storage mechanism turned out to be the simpler and more consistent choice:
+
+- Repositories configured on one device/browser keep working from any other — no PAT re-entry per device, unlike option 1.
+- Entries created by `analytics-service` and by the browser are interoperable (literally the same tenant option) — no split-brain config.
+- No new backend component is introduced (NFR1 still holds) — Tenant Options is a native Cumulocity platform API, not a hidden server.
+
+The trade-off against option 1's purity: the PAT is technically readable by anyone with `ROLE_OPTION_MANAGEMENT_READ` calling the platform API directly (not just through this app's masked UI), same as it already was under `analytics-service` — realistically, the backend's "masked on read" was always a UI-layer courtesy on top of a token any sufficiently-privileged platform API caller could already read, not a hard security boundary, so this isn't a regression versus the status quo, just not the stronger "the platform never sees it at all" guarantee option 1 would have given.
 
 ---
 
@@ -173,27 +190,42 @@ flowchart TB
 
 ---
 
+## Verified in practice: two gotchas found during implementation
+
+Neither of these was visible from reading the code alone — both only surfaced once the browser-mode paths were actually exercised against a live tenant.
+
+1. **A non-safelisted header silently kills GitHub raw-content fetches.** The direct-fetch path for a `.mon` file's raw content was sending `Content-Type: application/text` on a `GET` request (left over from an early draft). `application/text` isn't one of the three CORS-safelisted `Content-Type` values (`text/plain`, `application/x-www-form-urlencoded`, `multipart/form-data`), so the browser silently upgraded the request to a CORS preflight (`OPTIONS`) — and `raw.githubusercontent.com` is a static CDN, not an API, so it doesn't handle `OPTIONS` at all. Verified directly:
+   ```
+   OPTIONS .../blocks/Offset.mon  (Access-Control-Request-Headers: content-type)  → 403
+   GET     .../blocks/Offset.mon  (no custom headers)                            → 200
+   ```
+   Every `.mon` fetch failed until the header was removed entirely — a bare `GET` needs no headers at all here since `block.downloadUrl` already points straight at the raw file. Lesson: any header beyond the CORS-safelisted set turns a "simple request" into a preflighted one, and not every CORS-open endpoint actually implements `OPTIONS`.
+
+2. **"Subscribed" isn't "running."** The natural way to check "is `analytics-service` available" is `@c8y/client`'s `applicationService.isAvailable(appName)` — but per its own doc comment, that only checks whether the *current user can access* (i.e. the app is *subscribed* to) the tenant, not whether the microservice actually has a running, responding instance. A microservice can be subscribed-but-not-running (e.g. never actually deployed, crashed, scaled to zero), in which case every real request 404s with Cumulocity's own routing error ("Microservice `analytics-ext-service` not found") — indistinguishable, from the subscription check's point of view, from a fully healthy microservice. The dual-mode dispatch (`RepositoryModeService`) therefore treats the subscription check as a fast first filter only, then confirms with an actual liveness probe (a real `GET` against one of the microservice's own endpoints, treating a `404` as "not actually running") before committing to backend mode. Anything using `isBackendServiceAvailable()`-style subscription checks elsewhere in this codebase for a similar "should I call the backend" decision likely has the same latent gap.
+
 ## Proposed target architecture
 
 ```
 Browser (analytics-ui, Angular)
- ├─ Repository config          → Cumulocity Tenant Options API (@c8y/client)   [no secret]
- ├─ PAT                        → browser-local storage only (per user)        [never sent to Cumulocity]
- ├─ List/download .mon files   → fetch() → api.github.com / raw.githubusercontent.com
- ├─ Build extension zip        → JSZip, replicating the SDK's file filter
- ├─ Browse Releases/assets     → fetch() → api.github.com/repos/.../releases (metadata only)
+ ├─ Mode decision              → RepositoryModeService: subscription check + liveness probe, cached per session
+ ├─ Repository config          → Cumulocity Tenant Options API (@c8y/client)   [always browser-side; no backend mode]
+ ├─ PAT                        → same Tenant Option as repo config, masked on read (see PAT custody, above)
+ ├─ Test / list / read content → mode ? analytics-service proxy : fetch() → api.github.com / raw.githubusercontent.com
+ ├─ Build extension zip        → mode ? analytics-service (Apama CLI) : JSZip client-side (list-of-files path only)
+ ├─ Browse Releases/assets     → fetch() → api.github.com/repos/.../releases (metadata only; always browser-side)
  ├─ Fetch release asset bytes  → native browser download (CORS-blocked for fetch/XHR, see below) → drop-area file picker
- ├─ Upload extension           → @c8y/client Binary API
- ├─ Delete extension           → @c8y/client Binary API
- └─ CEP status / restart       → @c8y/client FetchClient → platform REST paths
+ ├─ Upload extension           → @c8y/client Binary API (always browser-side)
+ ├─ Delete extension           → @c8y/client Binary API (always browser-side)
+ └─ CEP status / restart       → @c8y/client FetchClient → platform REST paths (always browser-side)
 ```
 
-No server component is required for this flow. The existing `analytics-service` microservice, its Dockerfile, and its build/deploy pipeline can be retired for tenants that adopt this mode, while remaining available as an optional deployment for customers who want centrally-managed PATs (hybrid option 2 above).
+This landed as **dual-mode**, not a straight replacement: `analytics-service` keeps working unchanged for tenants that deploy it (and remains the only path for directory/`extensions.yaml`/whole-repository builds — see REQUIREMENTS.md), while every operation that has a browser-mode implementation now works without it too. In code, this split across several focused services (`RepositoryModeService`, `RepositoryConfigService`, `GitHubContentService`, `RepositoryBackendService`, `RepositoryItemsService`, `ExtensionBuilderService`) composed behind a single `RepositoryService` facade that every component still injects — the facade's public API didn't change shape even though its internals did.
 
 ## Migration risks / things to validate before committing
 
-- **Zip parity**: confirm JSZip output (file order, compression, directory entries) is accepted identically by `apama-ctrl` compared to the CLI's zip — worth a side-by-side test extension.
-- **Loss of server-side audit log**: today every build is logged centrally by the microservice; a client-only flow would need to post its own audit event (e.g. a Cumulocity Event) if that visibility is required.
-- **CORS is per-endpoint, not per-repo-host**: only `github.com`'s API/raw hosts are confirmed CORS-open; any other future source of `.mon` files (a private artifact server, GitLab, etc.) needs the same check before assuming this pattern generalizes.
-- **Rate limits on large repos**: for very large contrib-style repos, still recommend an (optional) PAT even for public repos, to raise the 60/hr ceiling to 5000/hr — same guidance the microservice gives today, just enforced client-side.
-- **Release-asset CORS**: confirm the `release-assets.githubusercontent.com` CORS gap (no `Access-Control-Allow-Origin`) holds for private-repo assets and PAT-authenticated requests too, not just the public case tested here, before committing to the download-then-select UX as the permanent design.
+- **Zip parity**: confirm JSZip output (file order, compression, directory entries) is accepted identically by `apama-ctrl` compared to the CLI's zip — worth a side-by-side test extension. Still open: the client-side build path has been exercised manually against a live tenant, but not formally diffed byte-for-byte against the CLI's output.
+- **Loss of server-side audit log**: today every build is logged centrally by the microservice; a client-only flow would need to post its own audit event (e.g. a Cumulocity Event) if that visibility is required. Still open.
+- **CORS is per-endpoint, not per-repo-host**: only `github.com`'s API/raw hosts are confirmed CORS-open; any other future source of `.mon` files (a private artifact server, GitLab, etc.) needs the same check before assuming this pattern generalizes. Still open; also see gotcha #1 above — CORS-open doesn't automatically mean *any* header combination works.
+- **Rate limits on large repos**: for very large contrib-style repos, still recommend an (optional) PAT even for public repos, to raise the 60/hr ceiling to 5000/hr — same guidance the microservice gives today, just enforced client-side. Still open (no rate-limit-specific testing done yet).
+- **Release-asset CORS**: confirm the `release-assets.githubusercontent.com` CORS gap (no `Access-Control-Allow-Origin`) holds for private-repo assets and PAT-authenticated requests too, not just the public case tested here, before committing to the download-then-select UX as the permanent design. Still open.
+- **Subscribed-but-not-running microservices** (resolved): see gotcha #2 above — `RepositoryModeService`'s liveness probe addresses this specifically for this feature's own mode detection.
