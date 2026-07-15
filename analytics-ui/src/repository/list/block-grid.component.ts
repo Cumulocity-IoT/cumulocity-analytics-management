@@ -31,8 +31,11 @@ import {
   CoreModule,
   DataGridComponent,
   Pagination,
+  WizardConfig,
+  WizardModalService,
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
+import { take } from 'rxjs/operators';
 import {
   BooleanRendererComponent,
   DESCRIPTOR_YAML,
@@ -131,7 +134,8 @@ export class BlockGridComponent implements OnInit {
   constructor(
     public repositoryService: RepositoryService,
     public alertService: AlertService,
-    private bsModalService: BsModalService
+    private bsModalService: BsModalService,
+    private wizardModalService: WizardModalService
   ) {
     this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
       shareReplay(1),
@@ -339,6 +343,19 @@ export class BlockGridComponent implements OnInit {
 
   openRepositoriesDrawer(): void {
     this.showConfigRepositories = true;
+  }
+
+  deployFromRelease(): void {
+    const initialState = {
+      wizardConfig: { headerIcon: 'cloud-download' } as WizardConfig,
+      id: 'deployFromGitHubRelease',
+      componentInitialState: {}
+    };
+
+    this.wizardModalService
+      .show({ initialState })
+      .content?.onClose.pipe(take(1))
+      .subscribe(() => this.reload());
   }
 
   openLayoutHelp(): void {

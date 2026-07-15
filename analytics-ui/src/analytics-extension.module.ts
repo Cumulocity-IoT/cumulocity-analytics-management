@@ -28,6 +28,7 @@ import { ConfirmationModalComponent } from './shared/component/confirmation-moda
 import { EditorModalComponent } from './repository/editor/editor-modal.component';
 import { ExtensionCreateComponent } from './repository/create-extension/extension-create-modal.component';
 import { RepositoriesDrawerComponent } from './repository/repository/repositories-drawer.component';
+import { ReleaseDeployWizardComponent } from './repository/release-deploy/release-deploy-wizard.component';
 
 // Import resolvers
 import { extensionResolver, backendResolver } from './manage/utils';
@@ -55,7 +56,8 @@ import { extensionResolver, backendResolver } from './manage/utils';
     ConfirmationModalComponent,
     EditorModalComponent,
     ExtensionCreateComponent,
-    RepositoriesDrawerComponent
+    RepositoriesDrawerComponent,
+    ReleaseDeployWizardComponent
   ],
   providers: [
     {
@@ -78,6 +80,12 @@ import { extensionResolver, backendResolver } from './manage/utils';
       component: ExtensionAddWizardComponent,
       name: 'Upload analytics extension',
       c8yIcon: 'upload'
+    }),
+    hookWizard({
+      wizardId: 'deployFromGitHubRelease',
+      component: ReleaseDeployWizardComponent,
+      name: 'Deploy from GitHub Release',
+      c8yIcon: 'cloud-download'
     }),
 
     // Route hooks from all modules

@@ -7,7 +7,8 @@ export interface ApplicationState {
 
 export enum Wizards {
   APPLICATION_UPLOAD = 'applicationUpload',
-  MICROSERVICE_UPLOAD = 'microserviceUpload'
+  MICROSERVICE_UPLOAD = 'microserviceUpload',
+  RELEASE_DEPLOY = 'deployFromGitHubRelease'
 }
 
 export enum ERROR_TYPE {
@@ -113,6 +114,30 @@ export interface RepositoryTestResult {
   status?: number;
 }
 
+/**
+ * A single asset (file) attached to a GitHub Release, e.g. a pre-built
+ * extension zip such as `Abs-1.0.1.zip`.
+ */
+export interface GitHubReleaseAsset {
+  id: number;
+  name: string;
+  size: number;
+  browserDownloadUrl: string;
+  contentType: string;
+}
+
+/**
+ * A GitHub Release (`GET /repos/{owner}/{repo}/releases`), with its attached
+ * assets already embedded — no separate "list assets" call is needed.
+ */
+export interface GitHubRelease {
+  id: number;
+  tagName: string;
+  name: string;
+  publishedAt: string;
+  assets: GitHubReleaseAsset[];
+}
+
 export const CEP_PATH_BASE = 'service/cep';
 export const CEP_PATH_CORRELATOR = `${CEP_PATH_BASE}/apamacorrelator`;
 export const CEP_PATH_EN = `${CEP_PATH_CORRELATOR}/en`;
@@ -129,6 +154,22 @@ export const REPOSITORY_CONTENT_LIST_ENDPOINT = 'repository/contentList';
 export const REPOSITORY_CONFIGURATION_ENDPOINT = 'repository/configuration';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
 export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
+
+/**
+ * Tenant option category repository config is stored under, read/written
+ * directly via `@c8y/client`'s `TenantOptionsService` (no backend proxy).
+ * Must match `analytics-service/c8y_agent.py`'s `CATEGORY` constant so that
+ * repos created by either the microservice or the browser stay interoperable.
+ */
+export const REPOSITORY_OPTION_CATEGORY = 'analytics-management.repository';
+
+/**
+ * Placeholder shown for an already-set access token instead of the real
+ * secret. Must match `analytics-service/c8y_agent.py`'s `DUMMY_ACCESS_TOKEN`.
+ * On save, a repository whose `accessToken` still equals this sentinel is
+ * treated as "unchanged" and the previously stored token is kept as-is.
+ */
+export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
 
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';

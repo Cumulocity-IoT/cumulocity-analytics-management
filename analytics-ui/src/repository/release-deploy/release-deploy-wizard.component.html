@@ -1,0 +1,111 @@
+@if (phase === 'select') {
+  <c8y-wizard-header>
+    <h1 c8yIcon="cloud-download"></h1>
+    <h4>{{ 'Deploy from GitHub Release' | translate }}</h4>
+  </c8y-wizard-header>
+
+  <div class="modal-inner-scroll animated fadeIn">
+    <div class="modal-body">
+      <p class="text-muted">
+        {{ 'Pick a repository, one of its releases, and a pre-built extension zip to deploy as-is — no build step required.' | translate }}
+      </p>
+
+      <div class="form-group">
+        <label for="repositorySelect">{{ 'Repository' | translate }}</label>
+        <select
+          id="repositorySelect"
+          class="form-control"
+          [ngModel]="selectedRepository"
+          (ngModelChange)="onRepositorySelected($event)"
+          [disabled]="loading"
+          >
+          @for (repository of repositories; track repository.id) {
+            <option [ngValue]="repository">{{ repository.name }}</option>
+          }
+        </select>
+      </div>
+
+      @if (releases.length > 0) {
+        <div class="form-group">
+          <label for="releaseSelect">{{ 'Release' | translate }}</label>
+          <select
+            id="releaseSelect"
+            class="form-control"
+            [ngModel]="selectedRelease"
+            (ngModelChange)="onReleaseSelected($event)"
+            [disabled]="loading"
+            >
+            @for (release of releases; track release.id) {
+              <option [ngValue]="release">
+                {{ release.name }} ({{ release.assets.length }} {{ 'assets' | translate }})
+              </option>
+            }
+          </select>
+        </div>
+      }
+
+      @if (selectedRelease && assets.length > 0) {
+        <div class="form-group">
+          <label>{{ 'Asset' | translate }}</label>
+          <div class="radio-list">
+            @for (asset of assets; track asset.id) {
+              <div class="radio">
+                <label>
+                  <input
+                    type="radio"
+                    name="asset"
+                    [value]="asset"
+                    [(ngModel)]="selectedAsset"
+                    />
+                  {{ asset.name }}
+                  <span class="text-muted">&nbsp;({{ asset.size }} {{ 'bytes' | translate }})</span>
+                </label>
+              </div>
+            }
+          </div>
+        </div>
+      }
+
+      @if (selectedRelease && assets.length === 0) {
+        <c8y-messages class="m-t-8 m-b-8">
+          <c8y-message type="info">
+            {{ 'This release has no .zip assets.' | translate }}
+          </c8y-message>
+        </c8y-messages>
+      }
+
+      @if (errorMessage) {
+        <c8y-messages class="m-t-8 m-b-8">
+          <c8y-message type="danger">
+            {{ errorMessage | translate }}
+          </c8y-message>
+        </c8y-messages>
+      }
+    </div>
+  </div>
+
+  <c8y-wizard-footer>
+    <button (click)="cancel()" class="btn btn-default" type="button">
+      {{ 'Cancel' | translate }}
+    </button>
+    <button
+      (click)="downloadAndContinue()"
+      class="btn btn-primary"
+      type="button"
+      [disabled]="!selectedAsset"
+      >
+      {{ 'Deploy' | translate }}
+    </button>
+  </c8y-wizard-footer>
+}
+
+@if (phase === 'upload') {
+  <a17t-extension-add
+    [headerText]="selectedAsset?.name || 'Deploy extension'"
+    [headerIcon]="'cloud-download'"
+    [successText]="'Extension deployed'"
+    [uploadExtensionHandler]="uploadExtensionHandler"
+    [mode]="'add'"
+    >
+  </a17t-extension-add>
+}

@@ -31,6 +31,22 @@ export function isCustomCepBlock(block: Pick<CepBlock, 'id'>): boolean {
 
 export const DEFAULT_BRANCH = 'main';
 
+/**
+ * Triggers a native browser download of the given URL. This is a plain
+ * top-level navigation (not fetch/XHR), so it is not subject to CORS —
+ * required for GitHub release assets, whose CDN (release-assets.githubusercontent.com)
+ * sends no Access-Control-Allow-Origin header and therefore cannot be read via fetch().
+ */
+export function triggerBrowserDownload(url: string, filename: string): void {
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.rel = 'noopener';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+}
+
 export /**
 * Transforms a GitHub web URL to a GitHub Content API endpoint URL
 * @param githubWebUrl A GitHub web URL (e.g., https://github.com/user/repo/tree/branch/path)

@@ -5,6 +5,7 @@ export * from './wizard/extension-add-wizard.component';
 export * from './wizard/extension-add.component';
 export * from './analytics.service';
 export * from './repository.service';
+export * from './github-release.service';
 export * from './test-http.service';
 export * from './analytics.constants';
 export * from './analytics.model';

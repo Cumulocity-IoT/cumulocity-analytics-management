@@ -43,7 +43,7 @@ In addition, many block repositories (e.g. `Cumulocity-IoT/analytics-builder-blo
 
 ### GitHub authentication
 - FR11: A user can supply a GitHub PAT to raise the request rate limit (60/hr unauthenticated → 5000/hr) or to access a private repository.
-- FR12: The PAT must never be persisted to a Cumulocity tenant option or any server-side store; it stays local to the browser (e.g. scoped per Cumulocity user/tenant in browser storage) and must be re-entered if the user switches browser/device.
+- FR12: The PAT must never be persisted to a Cumulocity tenant option or any server-side store; it stays local to the browser, in `localStorage` keyed per Cumulocity tenant+user, and must be re-entered if the user switches browser/device.
 - FR13: The UI must clearly communicate that the PAT is stored locally only, is not shared across users, and should be scoped to read-only access on the target repository.
 - FR14: Repositories without a configured PAT must still work (unauthenticated GitHub requests), subject to the lower rate limit; the UI should surface a clear, actionable error when that limit is hit (matching the rate-limit/SSO error handling `analytics-service` already provides today).
 
@@ -70,7 +70,6 @@ In addition, many block repositories (e.g. `Cumulocity-IoT/analytics-builder-blo
 
 ## Open Decisions
 
-- Where exactly the PAT lives in the browser (e.g. `localStorage` vs. `sessionStorage`) and whether it should be scoped per Cumulocity user or per browser profile.
 - Whether `analytics-service` is retired entirely once this ships, or kept available as an opt-in deployment for customers who need centrally-managed tokens.
 - Whether the current grouping/layout should be kept for the new browser-only approach, or whether the repository/marketplace piece should be split out of "Analytics extensions" and given its own entry under "Ecosystem" in the left navigation. Today, "Manage extensions", "Blocks installed", "Repositories", and "Monitoring" are four tabs inside a single "Analytics extensions" nav item; "Repositories" is really a block marketplace/browser rather than extension lifecycle management, so it may deserve to be surfaced as its own top-level "Ecosystem" nav entry (e.g. "Block marketplace") instead of a tab buried under "Analytics extensions".
 - Exact UX for FR18's browser-native-download step: whether to open each asset in a new tab/`window.open`, use a hidden `<a download>` per asset, or (for multi-select) zip-of-zips client-side before download — and how aggressively to detect/auto-open the file picker immediately after triggering the download versus requiring an explicit "I've downloaded it, now pick the file" user action.

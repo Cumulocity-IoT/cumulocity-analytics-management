@@ -1,5 +1,5 @@
 import { Injectable, OnDestroy } from '@angular/core';
-import { FetchClient, IFetchResponse } from '@c8y/client';
+import { FetchClient, IFetchResponse, ITenantOption, TenantOptionsService } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import * as jsyaml from 'js-yaml';
 import {
@@ -26,11 +26,12 @@ import {
   BACKEND_PATH_BASE,
   CepBlock,
   DESCRIPTOR_YAML,
+  DUMMY_ACCESS_TOKEN,
   EXTENSION_ENDPOINT,
   Repository,
-  REPOSITORY_CONFIGURATION_ENDPOINT,
   REPOSITORY_CONTENT_ENDPOINT,
   REPOSITORY_CONTENT_LIST_ENDPOINT,
+  REPOSITORY_OPTION_CATEGORY,
   RepositoryItem,
   RepositoryTestResult
 } from './analytics.model';
@@ -125,7 +126,8 @@ export class RepositoryService implements OnDestroy {
   constructor(
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
-    private readonly fetchClient: FetchClient
+    private readonly fetchClient: FetchClient,
+    private readonly tenantOptionsService: TenantOptionsService
   ) {
     this.initializeRepositories();
   }
@@ -149,7 +151,7 @@ export class RepositoryService implements OnDestroy {
     const updated = [...state.repositories, repository];
 
     try {
-      await this.saveRepositoriesToBackend(updated);
+      await this.saveRepositoriesToTenantOptions(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -184,7 +186,7 @@ export class RepositoryService implements OnDestroy {
     ];
 
     try {
-      await this.saveRepositoriesToBackend(updated);
+      await this.saveRepositoriesToTenantOptions(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -233,7 +235,7 @@ export class RepositoryService implements OnDestroy {
     const state = this.state$.value;
 
     try {
-      await this.saveRepositoriesToBackend(state.repositories);
+      await this.saveRepositoriesToTenantOptions(state.repositories);
       this.updateState({
         savedRepositories: [...state.repositories]
       });
@@ -269,7 +271,7 @@ export class RepositoryService implements OnDestroy {
     const updated = state.repositories.filter(r => r.id !== repositoryId);
 
     try {
-      await this.saveRepositoriesToBackend(updated);
+      await this.saveRepositoriesToTenantOptions(updated);
       this.updateState({
         repositories: updated,
         savedRepositories: [...updated]
@@ -345,7 +347,7 @@ export class RepositoryService implements OnDestroy {
 
   async refreshRepositories(): Promise<void> {
     try {
-      await lastValueFrom(this.loadRepositoriesFromBackend()
+      await lastValueFrom(this.loadRepositoriesFromTenantOptions()
         .pipe(take(1)));
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
@@ -527,13 +529,13 @@ export class RepositoryService implements OnDestroy {
   // ============================================================================
 
   private initializeRepositories(): void {
-    this.loadRepositoriesFromBackend()
+    this.loadRepositoriesFromTenantOptions()
       .pipe(takeUntil(this.destroy$))
       .subscribe();
   }
 
-  private loadRepositoriesFromBackend(): Observable<Repository[]> {
-    return from(this.fetchRepositoriesFromBackend()).pipe(
+  private loadRepositoriesFromTenantOptions(): Observable<Repository[]> {
+    return from(this.fetchRepositoriesFromTenantOptions()).pipe(
       tap(repos => {
         this.updateState({
           repositories: repos,
@@ -541,56 +543,151 @@ export class RepositoryService implements OnDestroy {
         });
       }),
       catchError(error => {
-        // A 404 means the analytics backend microservice is not deployed.
-        // This is an expected condition, not a failure: degrade silently so
-        // the rest of the UI keeps working without surfacing an error.
-        if (error instanceof RepositoryError && error.status === 404) {
-          console.warn(
-            '[RepositoryService] Repository backend not deployed (404); continuing without repositories.'
-          );
-          return of([]);
-        }
         this.handleError(
           error,
-          'Failed to load repositories from backend',
+          'Failed to load repositories from tenant options',
           true,
-          gettext('Failed to load repositories. Please refresh the page.')
+          gettext('Failed to load repositories. Please check your permissions and try again.')
         );
         return of([]);
       })
     );
   }
 
-  private async fetchRepositoriesFromBackend(): Promise<Repository[]> {
+  /**
+   * Reads repository config directly from Cumulocity tenant options
+   * (category `REPOSITORY_OPTION_CATEGORY`) — no backend microservice
+   * involved. Matches the wire format `analytics-service/c8y_agent.py`
+   * already writes/reads, so entries created by either side interoperate.
+   * The real access token is never returned here; see `parseRepositoryOption`.
+   */
+  private async fetchRepositoriesFromTenantOptions(): Promise<Repository[]> {
     try {
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
-        {
-          headers: { 'content-type': 'application/json' },
-          method: 'GET'
-        }
-      );
-
-      if (!response.ok) {
-        throw new RepositoryError(
-          `Failed to fetch repositories: ${response.status}`,
-          gettext('Failed to load repositories from server.'),
-          undefined,
-          response.status
-        );
-      }
-
-      return response.json();
+      const options = await this.listRepositoryOptions();
+      return options
+        .map(option => this.parseRepositoryOption(option))
+        .filter((repo): repo is Repository => repo !== null);
     } catch (error) {
       if (error instanceof RepositoryError) {
         throw error;
       }
       throw new RepositoryError(
         'Failed to fetch repositories',
-        gettext('Failed to connect to server. Please check your connection.'),
+        gettext('Failed to load repositories. Please check your permissions.'),
         error instanceof Error ? error : undefined
       );
     }
+  }
+
+  /**
+   * Lists repository tenant options for `REPOSITORY_OPTION_CATEGORY`.
+   *
+   * Deliberately does NOT use `TenantOptionsService.list()` — that maps to
+   * the generic `GET /tenant/options`, which is not filterable by category
+   * (an unsupported `category` query param is silently ignored), so it would
+   * return every tenant option across every category, not just this app's.
+   * Instead this calls the category-scoped `GET /tenant/options/{category}`
+   * directly, matching what `tenant.tenant_options.get_all(category=...)`
+   * already does server-side in `analytics-service/c8y_agent.py`. That
+   * endpoint returns a flat `{ key: value }` map, not a list of entities.
+   */
+  private async listRepositoryOptions(): Promise<ITenantOption[]> {
+    try {
+      const response = await this.fetchClient.fetch(
+        `tenant/options/${encodeURIComponent(REPOSITORY_OPTION_CATEGORY)}`,
+        {
+          headers: { accept: 'application/json' },
+          method: 'GET'
+        }
+      );
+
+      if (response.status === 404) {
+        // No repositories saved for this tenant yet — not a failure.
+        return [];
+      }
+
+      if (!response.ok) {
+        throw new RepositoryError(
+          `Failed to list repository options: ${response.status}`,
+          gettext('Failed to load repositories. Please check your permissions.'),
+          undefined,
+          response.status
+        );
+      }
+
+      const valuesByKey = (await response.json()) as Record<string, string>;
+      return Object.entries(valuesByKey).map(([key, value]) => ({
+        category: REPOSITORY_OPTION_CATEGORY,
+        key,
+        value
+      }));
+    } catch (error) {
+      if (error instanceof RepositoryError) {
+        throw error;
+      }
+      throw new RepositoryError(
+        'Failed to list repository options',
+        gettext('Failed to connect. Please check your connection.'),
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Returns the real (unmasked) access token for a repository, for direct
+   * GitHub calls (e.g. listing releases) — `Repository.accessToken` from
+   * `getRepositories()`/`repositories$` is always masked behind
+   * `DUMMY_ACCESS_TOKEN` (see `parseRepositoryOption`) so it's safe to render
+   * in the "Manage repositories" form; that masked value is never usable as
+   * a real `Authorization` header.
+   */
+  async getRepositoryAccessToken(repositoryId: string): Promise<string> {
+    try {
+      const options = await this.listRepositoryOptions();
+      const option = options.find(o => o.key === repositoryId);
+      if (!option) {
+        return '';
+      }
+      const parsed = JSON.parse(option.value || '{}') as Partial<Repository>;
+      return parsed.accessToken || '';
+    } catch (error) {
+      console.warn(`[RepositoryService] Could not read access token for "${repositoryId}":`, error);
+      return '';
+    }
+  }
+
+  /**
+   * Parses a raw tenant option into a `Repository`, masking a non-empty
+   * access token behind `DUMMY_ACCESS_TOKEN` — mirrors the microservice's
+   * own masking-on-read behavior so the real secret is never re-displayed
+   * in the "Manage repositories" form after it has been saved once.
+   *
+   * Returns `null` for anything under this category that doesn't actually
+   * look like a repository entry (not valid JSON, or missing `url`) — e.g.
+   * unrelated/leftover tenant options that happen to share this category on
+   * a shared tenant — instead of surfacing it as a blank "ghost" repository.
+   */
+  private parseRepositoryOption(option: ITenantOption): Repository | null {
+    let parsed: Partial<Repository> = {};
+    try {
+      parsed = JSON.parse(option.value || '{}');
+    } catch (error) {
+      console.warn(`[RepositoryService] Skipping option "${option.key}" — not valid JSON:`, error);
+      return null;
+    }
+
+    if (!parsed.url) {
+      console.warn(`[RepositoryService] Skipping option "${option.key}" — not a repository entry (no "url").`);
+      return null;
+    }
+
+    return {
+      id: option.key,
+      name: parsed.name || '',
+      url: parsed.url,
+      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : '',
+      enabled: !!parsed.enabled
+    };
   }
 
   // ============================================================================
@@ -691,6 +788,19 @@ export class RepositoryService implements OnDestroy {
     return from(this.getGitHubContent(repository)).pipe(
       switchMap(data => this.processGitHubContent(data, repository)),
       catchError(error => {
+        // A 404 here means the analytics-service microservice isn't deployed
+        // (browsing/building from a repo's source tree still depends on it,
+        // unlike repository config or the Deploy-from-Release flow, both of
+        // which are backend-free). That's an expected condition on a
+        // backend-free tenant, not a failure — degrade silently to an empty
+        // list instead of surfacing a scary error for something the user
+        // didn't explicitly trigger.
+        if (error instanceof RepositoryError && error.status === 404) {
+          console.warn(
+            `[RepositoryService] Backend not deployed (404); cannot list items for "${repository.name}".`
+          );
+          return of([]);
+        }
         // Surface the backend's specific reason (e.g. GitHub rate limit / bad
         // token) instead of a generic message, so the cause is diagnosable.
         const detail = error instanceof RepositoryError ? error.userMessage : '';
@@ -725,7 +835,9 @@ export class RepositoryService implements OnDestroy {
         const errorMessage = await this.extractErrorMessage(response);
         throw new RepositoryError(
           `Failed to get GitHub content: ${response.status}`,
-          errorMessage
+          errorMessage,
+          undefined,
+          response.status
         );
       }
 
@@ -1015,31 +1127,35 @@ export class RepositoryService implements OnDestroy {
   }
 
   // ============================================================================
-  // Private Methods - Backend Operations
+  // Private Methods - Tenant Option Operations
   // ============================================================================
 
-  private async saveRepositoriesToBackend(
+  /**
+   * Persists the given repository list directly as Cumulocity tenant options
+   * (create/update one option per repository, delete options for repositories
+   * no longer present) — mirrors `analytics-service/c8y_agent.py`'s
+   * `update_repositories`/`_save_repository`/`_delete_repository`, so no
+   * backend microservice is required for repository config management
+   * (requires `ROLE_OPTION_MANAGEMENT_ADMIN`/`ROLE_TENANT_MANAGEMENT_ADMIN`).
+   */
+  private async saveRepositoriesToTenantOptions(
     repositories: Repository[]
   ): Promise<void> {
     try {
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${REPOSITORY_CONFIGURATION_ENDPOINT}`,
-        {
-          headers: {
-            accept: 'application/json',
-            'content-type': 'application/json'
-          },
-          body: JSON.stringify(repositories),
-          method: 'POST'
-        }
-      );
+      const existingOptions = await this.listRepositoryOptions();
+      const existingById = new Map(existingOptions.map(option => [option.key, option]));
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new RepositoryError(
-          `Failed to save repositories: ${response.status}`,
-          errorText || gettext('Failed to save repositories to server.')
-        );
+      for (const repo of repositories) {
+        await this.saveRepositoryOption(repo, existingById.get(repo.id));
+        existingById.delete(repo.id);
+      }
+
+      // Anything left is no longer present in the incoming list — delete it.
+      for (const staleId of existingById.keys()) {
+        await this.tenantOptionsService.delete({
+          category: REPOSITORY_OPTION_CATEGORY,
+          key: staleId
+        });
       }
     } catch (error) {
       if (error instanceof RepositoryError) {
@@ -1047,10 +1163,56 @@ export class RepositoryService implements OnDestroy {
       }
       throw new RepositoryError(
         'Failed to save repositories',
-        gettext('Failed to connect to server. Please check your connection.'),
+        gettext('Failed to save repositories. Please check your permissions and try again.'),
         error instanceof Error ? error : undefined
       );
     }
+  }
+
+  /**
+   * Saves a single repository as a tenant option. If `accessToken` is still
+   * the `DUMMY_ACCESS_TOKEN` placeholder (i.e. the user didn't touch the PAT
+   * field), the previously stored token is preserved — unless the URL
+   * changed, in which case the token is cleared, exactly like
+   * `_save_repository` does server-side.
+   */
+  private async saveRepositoryOption(
+    repo: Repository,
+    existingOption?: ITenantOption
+  ): Promise<void> {
+    let existingData: Partial<Repository> = {};
+    if (existingOption) {
+      try {
+        existingData = JSON.parse(existingOption.value || '{}');
+      } catch (error) {
+        console.warn(`[RepositoryService] Could not parse existing option "${existingOption.key}":`, error);
+      }
+    }
+
+    const isDummyToken = repo.accessToken === DUMMY_ACCESS_TOKEN;
+    const urlChanged = existingData.url !== undefined && existingData.url !== repo.url;
+
+    let accessToken = '';
+    if (!isDummyToken) {
+      accessToken = repo.accessToken || '';
+    } else if (!urlChanged) {
+      accessToken = existingData.accessToken || '';
+    }
+
+    const value: Record<string, unknown> = {
+      name: repo.name,
+      url: repo.url,
+      enabled: !!repo.enabled
+    };
+    if (accessToken) {
+      value['accessToken'] = accessToken;
+    }
+
+    await this.tenantOptionsService.create({
+      category: REPOSITORY_OPTION_CATEGORY,
+      key: repo.id,
+      value: JSON.stringify(value)
+    });
   }
 
   private async createExtension(
