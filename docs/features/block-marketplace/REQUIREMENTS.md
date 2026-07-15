@@ -59,4 +59,8 @@ Let a user browse a configured GitHub block repository and build/upload an Apama
 
 - Where exactly the PAT lives in the browser (e.g. `localStorage` vs. `sessionStorage`) and whether it should be scoped per Cumulocity user or per browser profile.
 - Whether `analytics-service` is retired entirely once this ships, or kept available as an opt-in deployment for customers who need centrally-managed tokens.
-- Whether the current grouping/layout should be kept for the new browser-only approach, or whether the repository/marketplace piece should be split out of "Analytics extensions" and given its own entry under "Ecosystem" in the left navigation. Today, "Manage extensions", "Blocks installed", "Repositories", and "Monitoring" are four tabs inside a single "Analytics extensions" nav item (see `Analytics extensions - Manage.png`); "Repositories" is really a block marketplace/browser (see `Analytics extensions - Repositories.png`) rather than extension lifecycle management, so it may deserve to be surfaced as its own top-level "Ecosystem" nav entry (e.g. "Block marketplace") instead of a tab buried under "Analytics extensions".
+- Whether the current grouping/layout should be kept for the new browser-only approach, or whether the repository/marketplace piece should be split out of "Analytics extensions" and given its own entry under "Ecosystem" in the left navigation. Today, "Manage extensions", "Blocks installed", "Repositories", and "Monitoring" are four tabs inside a single "Analytics extensions" nav item; "Repositories" is really a block marketplace/browser rather than extension lifecycle management, so it may deserve to be surfaced as its own top-level "Ecosystem" nav entry (e.g. "Block marketplace") instead of a tab buried under "Analytics extensions".
+
+  ![Analytics extensions - Manage](./Analytics%20extensions%20-%20Manage.png)
+
+  ![Analytics extensions - Repositories](./Analytics%20extensions%20-%20Repositories.png)
