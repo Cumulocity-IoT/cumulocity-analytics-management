@@ -13,9 +13,13 @@ Today it does four things server-side:
 
 A feasibility analysis (see [CONCEPT.md](CONCEPT.md)) confirmed the packaging step is a filtered zip, not a compilation — `analytics_builder build extension` requires no more than what a browser-side zip library can reproduce, and GitHub's Content/raw APIs are CORS-enabled for direct browser access. **This document defines the requirements for a version of the block marketplace feature that runs without `analytics-service`.**
 
+Requiring `analytics-service` for this flow today is heavy and awkward: it's a separate microservice a customer must subscribe to, deploy, and keep running, holding its own service-user identity and PAT storage, just to browse a repo and zip up a handful of `.mon` files. That deployment/operational burden is itself a barrier to adoption of community blocks — the new browser-based solution's purpose is to remove it, so that browsing, building, and uploading community blocks works out of the box in `analytics-ui` for any tenant, with no extra microservice to subscribe to or operate first.
+
 ## Goal
 
 Let a user browse a configured GitHub block repository and build/upload an Apama extension entirely from the `analytics-ui` Angular app running in the browser, with no dedicated backend microservice required for that flow.
+
+In addition, many block repositories (e.g. `Cumulocity-IoT/analytics-builder-blocks-contrib`, see https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/tag/1.0.1) already publish pre-built extension `.zip`s as GitHub Release assets — one per block, plus grouped per-category zips. For these, no client-side build step is needed at all: the user should be able to pick a repository, pick one of its releases, pick one or more asset zips from that release, and upload them directly as Cumulocity extensions.
 
 ## Functional Requirements
 
@@ -43,23 +47,34 @@ Let a user browse a configured GitHub block repository and build/upload an Apama
 - FR13: The UI must clearly communicate that the PAT is stored locally only, is not shared across users, and should be scoped to read-only access on the target repository.
 - FR14: Repositories without a configured PAT must still work (unauthenticated GitHub requests), subject to the lower rate limit; the UI should surface a clear, actionable error when that limit is hit (matching the rate-limit/SSO error handling `analytics-service` already provides today).
 
+### Deploying pre-built extensions from GitHub Releases
+- FR15: A user can select a configured repository, then browse and pick from the list of its GitHub Releases (e.g. `1.0.1`, `1.0.0`, `0.0.2`, ...), showing at minimum the tag/name and asset count, most-recent first.
+- FR16: For the selected release, a user can browse the list of `.zip` assets attached to it (e.g. one per block such as `Abs-1.0.1.zip`, plus grouped category zips such as `contrib-blocks-1.0.1.zip`) and select one or more to deploy.
+- FR17: A selected release asset is uploaded as a Cumulocity extension `Binary` as-is (no re-zipping, no client-side build step) — it is treated as already conforming to the SDK's extension zip format.
+- FR18: Because the actual asset bytes cannot be fetched by browser JS across origins (see NFR4), the UI must drive a normal browser-native download of the chosen asset(s) (e.g. an anchor with `download`, or `window.open`) and then let the user hand the downloaded file(s) to the extension upload step through the same drop-area/file-picker already used for manual `.zip` uploads today, rather than requiring the user to separately locate the file outside the app.
+- FR19: Listing releases and their assets (metadata only — tag, name, asset names/sizes/URLs) must work directly against GitHub's Releases API from the browser (no server proxy), the same way repository browsing does today.
+
 ## Non-Functional Requirements
 
-- NFR1: No new backend component may be introduced to satisfy FR1–FR14; where a capability requires more than what the browser can safely do (see PAT custody), it must be called out explicitly as an accepted trade-off rather than solved with a hidden server.
+- NFR1: No new backend component may be introduced to satisfy FR1–FR19; where a capability requires more than what the browser can safely do (see PAT custody, release asset CORS), it must be called out explicitly as an accepted trade-off rather than solved with a hidden server.
 - NFR2: GitHub API usage should minimize request count (Git Trees API, no per-file directory recursion) to reduce the chance of hitting rate limits during a build.
 - NFR3: The feature must degrade gracefully and with clear error messages when GitHub rate limits, SSO-restricted tokens, or network failures are encountered — parity with today's `_github_error_response` handling.
+- NFR4: Release *asset bytes* cannot be retrieved via `fetch()`/XHR from the browser: `api.github.com`'s release/asset JSON responses send `Access-Control-Allow-Origin: *`, but the actual binary is served via a 302 redirect to `release-assets.githubusercontent.com`, which sends no CORS header at all — the browser blocks the cross-origin response body. This is a hard platform constraint, not an implementation gap; FR18's browser-native-download workaround (or, later, a minimal download-proxy if a fully hands-free flow becomes a requirement) is the accepted mitigation. See CONCEPT.md for the verification and the trade-off discussion.
 
 ## Explicitly Out of Scope
 
 - Centrally managed, team-shared GitHub tokens (would require a secrets-holding backend — deferred; see CONCEPT.md's "hybrid" option if this becomes a hard requirement later).
 - Any change to how `apama-ctrl` parses/loads an extension once uploaded.
 - Migrating existing repository configurations or extensions already built via `analytics-service` (this is a new build path, not a data migration).
+- A fully automated (no manual re-select step) release-asset download-and-upload flow — blocked by the CORS constraint in NFR4 unless a proxy is introduced, which is out of scope for the zero-backend goal.
 
 ## Open Decisions
 
 - Where exactly the PAT lives in the browser (e.g. `localStorage` vs. `sessionStorage`) and whether it should be scoped per Cumulocity user or per browser profile.
 - Whether `analytics-service` is retired entirely once this ships, or kept available as an opt-in deployment for customers who need centrally-managed tokens.
 - Whether the current grouping/layout should be kept for the new browser-only approach, or whether the repository/marketplace piece should be split out of "Analytics extensions" and given its own entry under "Ecosystem" in the left navigation. Today, "Manage extensions", "Blocks installed", "Repositories", and "Monitoring" are four tabs inside a single "Analytics extensions" nav item; "Repositories" is really a block marketplace/browser rather than extension lifecycle management, so it may deserve to be surfaced as its own top-level "Ecosystem" nav entry (e.g. "Block marketplace") instead of a tab buried under "Analytics extensions".
+- Exact UX for FR18's browser-native-download step: whether to open each asset in a new tab/`window.open`, use a hidden `<a download>` per asset, or (for multi-select) zip-of-zips client-side before download — and how aggressively to detect/auto-open the file picker immediately after triggering the download versus requiring an explicit "I've downloaded it, now pick the file" user action.
+- Whether repository config should distinguish "browse source tree" repos (today's mode) from "browse releases" repos, or whether a single repository entry should expose both modes side by side once configured.
 
   ![Analytics extensions - Manage](./Analytics%20extensions%20-%20Manage.png)
 
