@@ -178,6 +178,15 @@ export const REPOSITORY_OPTION_CATEGORY = 'analytics-management.repository';
  */
 export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
 
+/**
+ * Tenant option category for browser-only UI preferences (e.g. "Expert
+ * mode"). Stored the same way as repository config/PAT — directly as a
+ * Cumulocity tenant option, not `localStorage` — so the setting follows the
+ * user's tenant rather than one browser/device.
+ */
+export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
+export const EXPERT_MODE_OPTION_KEY = 'expertMode';
+
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
@@ -190,6 +199,25 @@ export const REPO_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-
 export const REPO_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
 export const REPO_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_OWNER}/cumulocity-analytics-management/contents/repository/blocks`;
+
+/**
+ * Plain GitHub web URL (not a Content-API URL) for the community blocks
+ * repo — matches the shape "Manage repositories" stores for user-added
+ * repos (see `GitHubContentService.toContentApiUrl`), so this seeded entry
+ * looks and behaves exactly like one the user typed in themselves.
+ */
+export const DEFAULT_REPOSITORY_URL = `https://github.com/${REPO_OWNER}/analytics-builder-blocks-contrib`;
+
+/** Seeded when a tenant has no repositories configured yet — see `RepositoryService.loadRepositoriesFromConfig`. */
+export function createDefaultRepository(): Repository {
+  return {
+    id: uuidCustom(),
+    name: 'Community Blocks (analytics-builder-blocks-contrib)',
+    url: DEFAULT_REPOSITORY_URL,
+    accessToken: '',
+    enabled: true
+  };
+}
 export const REPO_SAMPLES = [
   {
     id: uuidCustom(),

@@ -43,10 +43,7 @@ export class ExtensionBuilderService {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    const backendMode = await this.repositoryModeService.isBackendMode();
-    // TODO(debug): remove once the missing-metadata investigation is closed.
-    console.debug(`[ExtensionBuilderService] createExtensionFromList("${name}"): backendMode=${backendMode}`);
-    return backendMode
+    return (await this.repositoryModeService.isBackendMode())
       ? this.repositoryBackendService.createExtensionFromList(name, monitors, repository, upload, deploy, rebuild)
       : this.createExtensionFromListDirect(name, monitors, deploy);
   }
@@ -160,12 +157,8 @@ export class ExtensionBuilderService {
 
       if (lowerFile.endsWith('.mon')) {
         const packageMatch = /^package\s+(.*?);/m.exec(content);
-        // TODO(debug): remove once the missing-metadata investigation is closed.
-        console.debug(`[ExtensionBuilderService] ${item.file}: package=${packageMatch?.[1]?.trim() ?? '(none found)'}`);
         if (packageMatch) {
-          const parsed = parseApamaBlockMetadata(content, packageMatch[1].trim());
-          console.debug(`[ExtensionBuilderService] ${item.file}: parsed ${parsed.length} block(s)`, parsed);
-          blocks.push(...parsed);
+          blocks.push(...parseApamaBlockMetadata(content, packageMatch[1].trim()));
         }
       }
     }
@@ -174,9 +167,6 @@ export class ExtensionBuilderService {
       const events = files.folder('events')!;
       events.file(`${name}_metadata.evt`, buildBlockMetadataEvt(name, blocks));
       events.file(`${name}_messages.evt`, buildBlockMessagesEvt(name, blocks));
-      console.debug(`[ExtensionBuilderService] "${name}": wrote metadata.evt/messages.evt for ${blocks.length} block(s)`);
-    } else {
-      console.debug(`[ExtensionBuilderService] "${name}": no blocks detected — metadata.evt NOT written`);
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });
@@ -184,10 +174,10 @@ export class ExtensionBuilderService {
   }
 
   /**
-   * Minimal `build_information` for a freshly client-side-built zip — there
-   * is no `.evt` metadata (that's only produced by the Apama CLI's own
-   * build, which we're deliberately not replicating; per CONCEPT.md, block
-   * annotations are parsed later by apama-ctrl at deploy time regardless).
+   * Minimal `build_information` for a freshly client-side-built zip. The
+   * zip itself now includes real `.evt` metadata (see `buildExtensionZip`
+   * above, via apama-block-metadata.ts) — this managed-object fragment is
+   * just the inventory-side bookkeeping and doesn't need to duplicate it.
    * Matches the shape `ExtensionAddComponent.analyzeZipContent` falls back
    * to when no metadata file is found for a monitor.
    */

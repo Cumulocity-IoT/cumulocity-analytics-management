@@ -21,7 +21,7 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { Repository, RepositoryItem, RepositoryTestResult } from './analytics.model';
+import { createDefaultRepository, Repository, RepositoryItem, RepositoryTestResult } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { ExtensionBuilderService } from './extension-builder.service';
 import { GitHubContentService } from './github-content.service';
@@ -339,6 +339,14 @@ export class RepositoryService implements OnDestroy {
     return this.repositoryConfigService.getRepositoryAccessToken(repositoryId);
   }
 
+  async getExpertMode(): Promise<boolean> {
+    return this.repositoryConfigService.getExpertMode();
+  }
+
+  async setExpertMode(expertMode: boolean): Promise<void> {
+    return this.repositoryConfigService.setExpertMode(expertMode);
+  }
+
   // ============================================================================
   // Public API - Extension Creation
   // ============================================================================
@@ -388,6 +396,7 @@ export class RepositoryService implements OnDestroy {
 
   private loadRepositoriesFromConfig(): Observable<Repository[]> {
     return from(this.repositoryConfigService.fetchRepositories()).pipe(
+      switchMap(repos => repos.length > 0 ? of(repos) : from(this.seedDefaultRepository())),
       tap(repos => {
         this.updateState({
           repositories: repos,
@@ -404,6 +413,23 @@ export class RepositoryService implements OnDestroy {
         return of([]);
       })
     );
+  }
+
+  /**
+   * A tenant with no repositories configured gets the community blocks repo
+   * added automatically, so "Blocks from repositories" isn't empty on first
+   * use. Persisted the same way any user-added repository would be; if that
+   * save fails, the seeded entry still gets used for this session (it just
+   * won't survive a reload) rather than leaving the user with nothing.
+   */
+  private async seedDefaultRepository(): Promise<Repository[]> {
+    const defaultRepository = createDefaultRepository();
+    try {
+      await this.repositoryConfigService.saveRepositories([defaultRepository]);
+    } catch (error) {
+      console.warn('[RepositoryService] Failed to persist the default repository:', error);
+    }
+    return [defaultRepository];
   }
 
   private loadRepositoryItemsWithStatus(hideInstalled: boolean): Observable<RepositoryItem[]> {
