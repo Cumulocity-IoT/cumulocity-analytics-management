@@ -13,6 +13,9 @@ import {
   Repository,
   RepositoryService,
   UploadMode,
+  pickOrFindDownloadedFile,
+  preloadDownloadsDirectoryHandle,
+  supportsDownloadsFilePicker,
   triggerBrowserDownload
 } from '../../shared';
 
@@ -37,6 +40,11 @@ export class ReleaseDeployWizardComponent implements OnInit {
   selectedAsset: GitHubReleaseAsset | null = null;
 
   errorMessage: string | null = null;
+
+  readonly supportsDownloadsFilePicker = supportsDownloadsFilePicker();
+
+  pickDownloadedFileHandler = () =>
+    pickOrFindDownloadedFile(this.selectedAsset!.name, '.zip', 'Extension zip');
 
   constructor(
     private readonly repositoryService: RepositoryService,
@@ -114,17 +122,21 @@ export class ReleaseDeployWizardComponent implements OnInit {
     }
     // Triggering the download consumes this click's user-activation token
     // (a browser security mechanism — one activation-gated action per
-    // gesture), so a *second* activation-gated action — opening the file
-    // picker via `dropAreaComponent.showPicker()` — cannot also be fired
-    // from here, synchronously or not; the browser silently refuses it
-    // (confirmed: even a synchronous same-handler attempt didn't work).
-    // The upload step's own drop-area already opens the native file picker
-    // on its own (fresh) click — see `c8y-drop-area`'s `clickToOpen` (true
-    // by default) — so no workaround is needed, just one more real click.
+    // gesture), so a *second* activation-gated action — opening a file
+    // picker — cannot also be fired from here, synchronously or not; the
+    // browser silently refuses it (confirmed: even a synchronous
+    // same-handler attempt didn't work). The upload step exposes its own
+    // (fresh) click to open a picker — see `pickDownloadedFileHandler` above.
     triggerBrowserDownload(this.selectedAsset.browserDownloadUrl, this.selectedAsset.name);
+    // Warm the cached directory-handle lookup now, well ahead of the
+    // "Select downloaded file" click — see `preloadDownloadsDirectoryHandle`'s
+    // doc comment for why this can't happen lazily inside that click's handler.
+    preloadDownloadsDirectoryHandle();
     this.alertService.info(
-      `Downloading "${this.selectedAsset.name}" — once it's done, drag it from your browser's ` +
-      `download tray straight onto the box below (fastest), or click the box to browse for it.`
+      this.supportsDownloadsFilePicker
+        ? `Downloading "${this.selectedAsset.name}" — once it's done, click "Select downloaded file" below.`
+        : `Downloading "${this.selectedAsset.name}" — once it's done, drag it from your browser's ` +
+          `download tray straight onto the box below (fastest), or click the box to browse for it.`
     );
     this.phase = 'upload';
   }

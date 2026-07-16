@@ -103,6 +103,206 @@ export function triggerBrowserDownload(url: string, filename: string): void {
   anchor.remove();
 }
 
+/**
+ * True in Chromium-based browsers, which support the File System Access API
+ * (`showDirectoryPicker` and/or `showOpenFilePicker`) — used to grab the
+ * "just downloaded" file without the user having to hunt for it. Not
+ * supported in Firefox/Safari; callers should fall back to a plain
+ * `<input type=file>`/drop-area there.
+ */
+export function supportsDownloadsFilePicker(): boolean {
+  return typeof (window as any).showDirectoryPicker === 'function'
+    || typeof (window as any).showOpenFilePicker === 'function';
+}
+
+/**
+ * Opens the native file picker starting in the Downloads folder and returns
+ * the selected file, or `null` if the user cancelled. Chromium-only.
+ */
+export async function pickFileFromDownloads(accept: string, description: string): Promise<File | null> {
+  try {
+    const [handle] = await (window as any).showOpenFilePicker({
+      startIn: 'downloads',
+      multiple: false,
+      types: [{ description, accept: { 'application/octet-stream': [accept] } }]
+    });
+    return await handle.getFile();
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+const DOWNLOADS_HANDLE_DB = 'a17t-file-handles';
+const DOWNLOADS_HANDLE_STORE = 'handles';
+const DOWNLOADS_HANDLE_KEY = 'downloadsDir';
+
+function openHandleStore(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DOWNLOADS_HANDLE_DB, 1);
+    request.onupgradeneeded = () => request.result.createObjectStore(DOWNLOADS_HANDLE_STORE);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function loadStoredDownloadsHandle(): Promise<any | null> {
+  const db = await openHandleStore();
+  return new Promise((resolve, reject) => {
+    const request = db.transaction(DOWNLOADS_HANDLE_STORE, 'readonly')
+      .objectStore(DOWNLOADS_HANDLE_STORE)
+      .get(DOWNLOADS_HANDLE_KEY);
+    request.onsuccess = () => resolve(request.result ?? null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function saveDownloadsHandle(handle: any): Promise<void> {
+  const db = await openHandleStore();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(DOWNLOADS_HANDLE_STORE, 'readwrite');
+    tx.objectStore(DOWNLOADS_HANDLE_STORE).put(handle, DOWNLOADS_HANDLE_KEY);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// Reading the stored handle is a real async IndexedDB round-trip — awaiting
+// it *inside* the click handler, before calling `showDirectoryPicker()`, is
+// enough of a delay for Chrome to drop the click's transient user-activation,
+// which makes `showDirectoryPicker()` fail immediately with `AbortError` and
+// never even show a dialog (verified in practice). So this cache is warmed
+// ahead of time via `preloadDownloadsDirectoryHandle()` — call it as soon as
+// you know a pick is coming (e.g. right after starting the download), well
+// before the user's next click — so that by click time, reading it back is
+// synchronous-ish and `showDirectoryPicker()` remains the first real async
+// call in the handler.
+let cachedDownloadsHandlePromise: Promise<any | null> | null = null;
+
+export function preloadDownloadsDirectoryHandle(): void {
+  if (!cachedDownloadsHandlePromise) {
+    cachedDownloadsHandlePromise = loadStoredDownloadsHandle().catch(() => null);
+  }
+}
+
+/**
+ * Returns a handle to the user's Downloads folder, reusing a previously
+ * granted one (persisted in IndexedDB — `FileSystemDirectoryHandle` is
+ * structured-cloneable) so only the *first* use per browser profile needs
+ * the native folder-access prompt; later calls just re-check permission
+ * (no dialog, no user gesture spent) as long as it's still granted. Returns
+ * `null` if the user declines the (re-)prompt. Call
+ * `preloadDownloadsDirectoryHandle()` ahead of the triggering click — see
+ * above for why.
+ */
+async function getDownloadsDirectoryHandle(): Promise<any | null> {
+  preloadDownloadsDirectoryHandle();
+
+  try {
+    const stored = await cachedDownloadsHandlePromise;
+    if (stored) {
+      const granted = await stored.queryPermission({ mode: 'read' }) === 'granted'
+        || await stored.requestPermission({ mode: 'read' }) === 'granted';
+      if (granted) {
+        return stored;
+      }
+    }
+  } catch {
+    // Stored handle is stale/unusable — fall through and re-pick.
+  }
+
+  try {
+    const handle = await (window as any).showDirectoryPicker({ id: 'a17t-downloads', startIn: 'downloads' });
+    cachedDownloadsHandlePromise = Promise.resolve(handle);
+    void saveDownloadsHandle(handle);
+    return handle;
+  } catch (error: any) {
+    if (error?.name === 'AbortError') {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Polls the Downloads folder for `fileName`, tolerating Chrome's automatic
+ * "name (1).ext" suffixing when a file of that name already existed there
+ * (picks the highest numbered duplicate, i.e. the newest one). Returns
+ * `null` if it never shows up within `timeoutMs` — e.g. the download is
+ * still in progress, was blocked, or failed.
+ */
+async function waitForDownloadedFile(
+  dirHandle: any,
+  fileName: string,
+  timeoutMs = 8000,
+  intervalMs = 300
+): Promise<File | null> {
+  const dotIndex = fileName.lastIndexOf('.');
+  const baseName = dotIndex >= 0 ? fileName.slice(0, dotIndex) : fileName;
+  const extension = dotIndex >= 0 ? fileName.slice(dotIndex) : '';
+  const escape = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const duplicatePattern = new RegExp(`^${escape(baseName)} \\((\\d+)\\)${escape(extension)}$`);
+
+  const deadline = Date.now() + timeoutMs;
+  do {
+    try {
+      const handle = await dirHandle.getFileHandle(fileName);
+      return await handle.getFile();
+    } catch (error: any) {
+      if (error?.name !== 'NotFoundError') {
+        throw error;
+      }
+    }
+
+    let bestDuplicate: { suffix: number; name: string } | null = null;
+    for await (const entryName of dirHandle.keys()) {
+      const match = entryName.match(duplicatePattern);
+      if (match) {
+        const suffix = Number(match[1]);
+        if (!bestDuplicate || suffix > bestDuplicate.suffix) {
+          bestDuplicate = { suffix, name: entryName };
+        }
+      }
+    }
+    if (bestDuplicate) {
+      const handle = await dirHandle.getFileHandle(bestDuplicate.name);
+      return await handle.getFile();
+    }
+
+    await new Promise(resolve => setTimeout(resolve, intervalMs));
+  } while (Date.now() < deadline);
+
+  return null;
+}
+
+/**
+ * Best-effort "grab the file I just downloaded, no manual selection"
+ * flow. Uses exactly one File System Access API call per invocation (never
+ * chains a directory picker and a file picker in the same click — each is
+ * independently activation-gated, so the second call in a chain is silently
+ * refused, the same constraint documented on `triggerBrowserDownload`):
+ * - Where `showDirectoryPicker` exists, look the file up by name in the
+ *   (permission-persisted) Downloads folder — zero-click on repeat use.
+ * - Otherwise fall back to the plain Downloads-rooted open picker, which
+ *   still needs a manual click on the file but at least starts in the
+ *   right folder.
+ * Returns `null` if unsupported, declined, or not found in time — callers
+ * should leave a manual fallback (e.g. the existing drop-area) available.
+ */
+export async function pickOrFindDownloadedFile(
+  fileName: string,
+  accept: string,
+  description: string
+): Promise<File | null> {
+  if (typeof (window as any).showDirectoryPicker === 'function') {
+    const dirHandle = await getDownloadsDirectoryHandle();
+    return dirHandle ? waitForDownloadedFile(dirHandle, fileName) : null;
+  }
+  return pickFileFromDownloads(accept, description);
+}
+
 export /**
 * Transforms a GitHub web URL to a GitHub Content API endpoint URL
 * @param githubWebUrl A GitHub web URL (e.g., https://github.com/user/repo/tree/branch/path)

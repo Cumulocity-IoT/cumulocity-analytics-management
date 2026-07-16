@@ -106,6 +106,8 @@
     [successText]="'Extension deployed'"
     [uploadExtensionHandler]="uploadExtensionHandler"
     [mode]="'add'"
+    [extraPickLabel]="supportsDownloadsFilePicker ? 'Select downloaded file' : undefined"
+    [extraPickHandler]="supportsDownloadsFilePicker ? pickDownloadedFileHandler : undefined"
     >
   </a17t-extension-add>
 }
