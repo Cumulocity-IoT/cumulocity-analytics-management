@@ -19,6 +19,15 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     preventDuplicates: true
   });
 
+  protected communityReleaseNode = new NavigatorNode({
+    label: gettext('Community blocks release'),
+    icon: 'cloud-download',
+    path: 'c8y-pkg-analytics-extension/release',
+    parent: gettext('Ecosystem'),
+    priority: 190,
+    preventDuplicates: true
+  });
+
   constructor(private permissions: Permissions,
     private as: AppStateService,
   ) {}
@@ -26,16 +35,16 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   get(): NavigatorNode | NavigatorNode[] {
     // console.log('AppState', this.as);
     if (this.canActivate()) {
-      // id running in 
+      // id running in
       if (this.as['options'].contextPath == 'streaminganalytics'){
         // console.log('AppState contextPath', this.as['options'].contextPath);
         this.extensionsNode['label'] = gettext('Extensions');
       }
-      return this.extensionsNode;
+      // communityReleaseNode disabled for now (kept, not deleted, to re-enable later)
+      return [this.extensionsNode];
     } else {
       return [];
     }
-    return this.extensionsNode;
   }
 
   canActivate(): boolean {

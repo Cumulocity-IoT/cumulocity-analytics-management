@@ -2,8 +2,7 @@ import {
   Component,
   Input,
   ViewChild,
-  OnDestroy,
-  OnInit
+  OnDestroy
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
@@ -64,7 +63,7 @@ interface BuildInformation {
   standalone: true,
   imports: [CommonModule, CoreModule]
 })
-export class ExtensionAddComponent implements OnInit, OnDestroy {
+export class ExtensionAddComponent implements OnDestroy {
   @Input() headerText!: string;
   @Input() headerIcon!: string;
   @Input() successText!: string;
@@ -74,16 +73,8 @@ export class ExtensionAddComponent implements OnInit, OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
-  @Input() extraPickLabel?: string;
-  @Input() extraPickHandler?: () => Promise<File | null>;
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
-
-  // Hidden while `extraPickHandler` can plausibly resolve the file on its
-  // own (no point offering two ways to do the same thing); revealed again
-  // if that automatic lookup ever comes back empty, so there's still a way
-  // to finish the upload.
-  showDropArea = true;
 
   state: UploadState = {
     isLoading: false,
@@ -103,10 +94,6 @@ export class ExtensionAddComponent implements OnInit, OnDestroy {
     private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
   ) { }
-
-  ngOnInit(): void {
-    this.showDropArea = !this.extraPickHandler;
-  }
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -138,18 +125,6 @@ export class ExtensionAddComponent implements OnInit, OnDestroy {
     if (event?.length > 0) {
       const [fileWrapper] = event;
       this.onFile(fileWrapper.file);
-    }
-  }
-
-  async pickExtraFile(): Promise<void> {
-    const file = await this.extraPickHandler?.();
-    if (file) {
-      await this.onFile(file);
-    } else {
-      this.showDropArea = true;
-      this.alertService.warning(
-        'Could not find the downloaded file automatically — drag it onto the box below, or click the box to browse for it.'
-      );
     }
   }
 

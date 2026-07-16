@@ -10,25 +10,16 @@
         [hasError]="!!errorMessage"
         class="m-auto form-group-upload"
         >
-        @if (extraPickHandler) {
-          <div class="text-center m-b-16">
-            <button (click)="pickExtraFile()" class="btn btn-primary" type="button" [disabled]="isLoading">
-              {{ (extraPickLabel || 'Select downloaded file') | translate }}
-            </button>
-          </div>
-        }
-        @if (showDropArea || isLoading) {
-          <c8y-drop-area
-            (dropped)="onFileDroppedEvent($event)"
-            [accept]="'.zip'"
-            [loading]="isLoading"
-            [maxAllowedFiles]="1"
-            [message]="'Upload a *.zip file' | translate"
-            [progress]="(progress | async) ?? 0"
-            class="drop-area"
-            >
-          </c8y-drop-area>
-        }
+        <c8y-drop-area
+          (dropped)="onFileDroppedEvent($event)"
+          [accept]="'.zip'"
+          [loading]="isLoading"
+          [maxAllowedFiles]="1"
+          [message]="'Upload a *.zip file' | translate"
+          [progress]="(progress | async) ?? 0"
+          class="drop-area"
+          >
+        </c8y-drop-area>
         @if (errorMessage) {
           <c8y-messages class="m-t-8 m-b-8">
             <c8y-message type="danger">

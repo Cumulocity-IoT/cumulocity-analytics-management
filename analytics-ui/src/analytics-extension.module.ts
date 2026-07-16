@@ -29,6 +29,7 @@ import { EditorModalComponent } from './repository/editor/editor-modal.component
 import { ExtensionCreateComponent } from './repository/create-extension/extension-create-modal.component';
 import { RepositoriesDrawerComponent } from './repository/repository/repositories-drawer.component';
 import { ReleaseDeployWizardComponent } from './repository/release-deploy/release-deploy-wizard.component';
+import { ReleaseListComponent } from './repository/release-list/release-list.component';
 
 // Import resolvers
 import { extensionResolver, backendResolver } from './manage/utils';
@@ -57,7 +58,8 @@ import { extensionResolver, backendResolver } from './manage/utils';
     EditorModalComponent,
     ExtensionCreateComponent,
     RepositoriesDrawerComponent,
-    ReleaseDeployWizardComponent
+    ReleaseDeployWizardComponent,
+    ReleaseListComponent
   ],
   providers: [
     {
@@ -100,6 +102,10 @@ import { extensionResolver, backendResolver } from './manage/utils';
     hookRoute({
       path: 'c8y-pkg-analytics-extension/repository',
       component: BlockGridComponentRepository
+    }),
+    hookRoute({
+      path: 'c8y-pkg-analytics-extension/release',
+      component: ReleaseListComponent
     }),
     hookRoute({
       path: 'c8y-pkg-analytics-extension/manage',
