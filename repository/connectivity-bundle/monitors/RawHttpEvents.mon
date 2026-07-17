@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) 2026 Cumulocity GmbH
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package apamax.blockmarketplace.fetchextension.raw;
+
+/**
+ * Best-effort draft, unverified against a live correlator — see
+ * ../README.md and docs/features/block-marketplace/DIRECT_UPLOAD.md R1.
+ *
+ * Custom event types mapped (via `apama.eventMap` + `base64Codec`, no
+ * JSON/String codec — see ../config/connectivity/fetch-extension-chains.yaml)
+ * onto the two dynamic chains defined there. Binary content is always
+ * represented here as a Base64-encoded EPL `string` — never a raw byte
+ * type — because the EPL `chunk` type (the only other candidate) explicitly
+ * cannot be sent/routed as an event field (confirmed against ApamaDoc),
+ * which rules it out for anything that has to travel through a chain to a
+ * monitor's listener.
+ *
+ * There used to also be a `RawHttpChainFactory` monitor here wrapping
+ * `ConnectivityPlugins.createDynamicChain()` for `FetchExtensionListener.mon`
+ * (the EPL App that actually uses these chains) to call via
+ * `new RawHttpChainFactory`. Removed: **confirmed by a real EPL App
+ * activation failure** that a monitor type defined in an extension can't be
+ * `new`'d from a separately-deployed EPL App — Cumulocity's per-EPL-App
+ * namespace isolation blocks that specifically for monitor types, even
+ * though *event* types (this file's actual exports) cross that boundary
+ * fine. `FetchExtensionListener.mon` now calls `createDynamicChain()`
+ * directly instead — a plain string-keyed runtime lookup against this
+ * bundle's YAML, not a compile-time type reference, so it isn't affected by
+ * the same isolation.
+ */
+
+/** GET request for a GitHub release asset. `path` should include the leading '/'. */
+event GitHubAssetRequest {
+	string path;
+}
+
+/** Response to a GitHubAssetRequest. `payload` is the Base64-encoded response body. */
+event GitHubAssetResponse {
+	integer statusCode;
+	string payload;
+}
+
+/**
+ * POST multipart/form-data to /inventory/binaries. `metadataJson` is the
+ * managed-object part (a JSON string built by hand in EPL, since this chain
+ * has no JSON codec — see FetchExtensionListener's usage for the exact
+ * shape, mirroring `pas_extension`/`build_information`). `fileBase64` is
+ * the zip content, Base64-encoded; the base64Codec (configured against
+ * `payload.file` specifically, not the whole payload — see the YAML) decodes
+ * it back to real bytes for just that part before the transport sends it.
+ */
+event InventoryUploadRequest {
+	dictionary<string, any> payload;
+	dictionary<string, string> metadata;
+}
+
+/** Response to an InventoryUploadRequest. */
+event InventoryUploadResponse {
+	integer statusCode;
+	string payload;
+}

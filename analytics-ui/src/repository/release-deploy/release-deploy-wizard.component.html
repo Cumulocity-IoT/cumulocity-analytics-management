@@ -89,12 +89,22 @@
       {{ 'Cancel' | translate }}
     </button>
     <button
+      (click)="sendFetchExtensionEvent()"
+      class="btn btn-default"
+      type="button"
+      title="{{ 'Experimental: sends a c8y_FetchExtension event for the EPL app to log — does not deploy the extension yet.' | translate }}"
+      [disabled]="!selectedAsset || sendingFetchEvent"
+      >
+      {{ 'Send via event (experimental)' | translate }}
+    </button>
+    <button
       (click)="downloadAndContinue()"
       class="btn btn-primary"
       type="button"
+      title="{{ 'Downloads the asset, then hand it to the upload step (drag-and-drop or browse) to actually deploy it.' | translate }}"
       [disabled]="!selectedAsset"
       >
-      {{ 'Deploy' | translate }}
+      {{ 'Download' | translate }}
     </button>
   </c8y-wizard-footer>
 }

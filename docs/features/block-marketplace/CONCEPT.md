@@ -129,6 +129,12 @@ Per the Fetch spec, a cross-origin redirect chain must pass the CORS check on *e
 
 **Mitigation:** a plain top-level browser navigation (an `<a href="..." download>` click, or `window.open`) to the same URL is not an XHR/`fetch()` request and is therefore not subject to CORS at all — the browser downloads the file to disk exactly as it would from a normal link click. The pragmatic client-only flow is: user picks repo → release → asset(s); the UI triggers that native download for each selected asset; the user is then prompted to hand the just-downloaded file(s) to the extension-upload step via the *same* drop-area/file-picker `extension-add.component.ts` already exposes for manual zip uploads (`c8y-drop-area`, `onFileDroppedEvent` → `onFile` → `analyticsService.uploadExtension`). This keeps the whole path backend-free at the cost of one manual "select the file you just downloaded" step per asset; a fully hands-free version would need a small proxy to fetch-and-relay the asset bytes server-side, which reintroduces exactly the kind of backend component this feature is trying to remove — see REQUIREMENTS.md's "Explicitly Out of Scope" and NFR4.
 
+That fully-hands-free proxy option is now being explored as a deliberate, explicit trade-off
+(not a silent reintroduction) in [DIRECT_UPLOAD.md](DIRECT_UPLOAD.md) — routing the fetch
+through `apama-ctrl` (already running per-tenant) instead of a new backend component. Status:
+draft, with a working spike (`repository/epl/FetchExtensionListener.mon`) for the
+event-source/lookup part only — the actual fetch/upload is still open design work there.
+
 ---
 
 ## Secondary improvement: already done server-side

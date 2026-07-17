@@ -9,6 +9,7 @@ export * from './cep-restart.service';
 export * from './cep-status.service';
 export * from './extension-enrichment.service';
 export * from './extension-inventory.service';
+export * from './fetch-extension.service';
 export * from './repository.service';
 export * from './repository-mode.service';
 export * from './repository-config.service';

@@ -1,8 +1,37 @@
 # Spec: Event-Driven Extension Deploy via `apama-ctrl` (CORS Workaround)
 
-**Status:** Draft — not yet implemented, not yet reviewed. Written to replace an earlier
-four-bullet sketch; several sections below are open questions rather than settled decisions
-(marked explicitly) and need answers before implementation starts.
+**Status:** Draft, not yet reviewed, **not yet runnable**. Two tiers of confidence:
+- **Verified in practice** (real `apama-ctrl`, multiple rounds of test → fix): Q1 (proxy MO
+  lookup/create), Q2 (PAT delivery), and the `RECEIVED` status event — all in
+  `repository/epl/FetchExtensionListener.mon`, deployed as an EPL App.
+- **Best-effort draft, never run** (R1/R2/R3, Q4's remaining status transitions): the actual
+  fetch+upload, in the same file plus a new `repository/connectivity-bundle/` folder (custom
+  connectivity chains — required because the JSON-codec-only "generic" HTTP client API every
+  verified piece above uses would corrupt binary content; see R1). Written from documented Apama
+  connectivity-plugin behavior, not from a working test. `uploadHost` (the tenant's own API
+  hostname, needed to create the upload chain) is now resolved at startup via
+  `GET /tenant/currentTenant`'s `domain` field — reusing the already-verified `GenericRequest`
+  mechanism rather than an unconfirmed env-var-from-EPL path — but that specific field's
+  presence/shape is itself unverified against a real response; if it's wrong, `uploadHost` stays
+  empty and every request fails fast with a clear "server misconfigured" status rather than
+  silently pointing at the wrong host. Q3 (update-vs-create) also remains unresolved and
+  unimplemented — the current code always attempts a fresh upload, no existing-extension check.
+  Also fixed since first written, found by a real EPL parser (an IDE linter, not a guess): **EPL
+  has no ternary (`? :`) operator at all** — `emitStatus()` and `splitUrl()` both used one;
+  rewritten as plain `if`/`else` into a local variable. Worth remembering for any future EPL code
+  in this project, not just these two spots.
+- **Confirmed by a real EPL App activation failure, then fixed**: `FetchExtensionListener.mon`
+  originally called `new RawHttpChainFactory()` (a monitor type defined in the
+  `connectivity-bundle` extension) to create the connectivity chains — the EPL App failed to
+  activate until every reference to that monitor type was removed. *Event* types from the same
+  extension (`GitHubAssetRequest`/`Response`, etc.) resolve fine via `using`; it's specifically
+  monitor types that Cumulocity's per-EPL-App namespace isolation blocks across this boundary.
+  Fixed by calling `ConnectivityPlugins.createDynamicChain()` directly from
+  `FetchExtensionListener.mon` instead (a string-keyed runtime lookup against the extension's
+  YAML, not a compile-time type reference) — `RawHttpChainFactory` has been deleted from
+  `connectivity-bundle` entirely. See R1 and `repository/connectivity-bundle/README.md` for the
+  full writeup. This also retroactively answers Q1/R1's earlier open question about
+  Extension/EPL-App type visibility — no longer a guess.
 
 ## Background
 
@@ -47,7 +76,9 @@ the tenant's inventory server-side, instead of the browser doing it.
 ```
 analytics-ui                    Cumulocity core                    apama-ctrl (Apama monitor)
      |                                |                                     |
-     |--- POST /event (c8y_FetchExtension, source=?) ------------------->  |
+     |--- GET /identity/externalIds/c8y_Serial/c8y_FetchUploadProxy ----->  |
+     |<-- proxy managed object id (or 404, see Q1 resolution below) ------  |
+     |--- POST /event (c8y_FetchExtension, source=<proxy mo id>) -------->  |
      |                                |--- notify subscribed monitor ----->|
      |                                |                                     |--- GET asset URL (server-side, no CORS)
      |                                |                                     |--- POST /inventory/binaries (zip)
@@ -55,12 +86,12 @@ analytics-ui                    Cumulocity core                    apama-ctrl (A
      |--- refresh "Manage extensions" tab                                  |
 ```
 
-## Event schema (draft — see open questions)
+## Event schema
 
 ```json
 {
   "type": "c8y_FetchExtension",
-  "source": { "id": "<TBD — see Q1>" },
+  "source": { "id": "<id of the c8y_FetchUploadProxy managed object, see Q1 resolution below>" },
   "text": "Deploy extension from GitHub Release",
   "c8y_FetchExtension": {
     "requestId": "<TBD — see Q5, not in the original sketch>",
@@ -73,74 +104,76 @@ analytics-ui                    Cumulocity core                    apama-ctrl (A
 
 This already differs from the original one-liner in two ways that matter: a `requestId` for
 correlation (Q5) and a `headers` field so auth can travel with the request instead of being
-assumed (Q2) — both explained below.
+assumed (Q2) — both explained below. `source` is no longer an open question — see Q1.
 
 ## Open risks — must be resolved before implementation
 
-- **R1 (was a blocking spike; now a narrower, concrete question):**
-  [`HttpOutputBlock.mon`](https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/blob/master/blocks/HttpOutputBlock.mon)
-  is unsuitable for the fetch as-is — its response handling (`$timerTriggered`) only iterates
-  `response.payload.data.getKeys()`/`getEntry()`, treating the response body as a flat JSON
-  object exposed as block output properties (`$OUTPUT_TYPE_responseBody := "pulse"`); there's
-  no code path there that captures or forwards a raw binary body. A new block, built directly
-  on `HttpTransport`/`Request`/`Response` without that JSON-decoding step, is needed for the
-  fetch instead.
+- **R1 — best-effort draft implemented, unverified, and currently non-functional pending one
+  missing value.** `GenericRequest` is JSON-only (confirmed against ApamaDoc: `reqId, method,
+  path, queryParams, isPaging, body: any, headers` — no binary support), and the "generic"
+  `HttpTransport`/`Request`/`Response` API every verified piece of this spec uses
+  (`FetchExtensionListener.mon`'s Identity API calls, `HttpOutputBlock`, `EnhancedHttpOutput`) is
+  documented as *always* going through a JSON codec — not a runtime option, a project-level
+  choice baked in when the HTTP Client bundle was added to whatever image `apama-ctrl` runs.
+  Using it for the fetch would silently corrupt every zip.
 
-  Checked directly against ApamaDoc, `GenericRequest`'s actual fields are `reqId: integer`,
-  `method: string`, `path: string`, `queryParams: dictionary<string,string>`, `isPaging:
-  boolean`, `body: any` ("should be a dictionary or sequence which will be encoded as JSON"),
-  and `headers: dictionary<string,string>` — JSON-only, no binary support. The
-  "each entry ... should have a string key and either a string or a binary value ...
-  `metadata.contentType` ... `multipart/form-data`" quote is real, but it describes the
-  *generic* [HTTP Client Transport Connectivity Plug-in](https://cumulocity.com/apama/docs/10.15/standard-connectivity-plugins/the-http-client-transport-connectivity-plug-in/)'s
-  own `Request`/`Response` events — the same plugin already needed for the fetch leg — not
-  `GenericRequest`. Confirmed directly in that plugin's page source.
+  The actual fix requires a **custom connectivity chain** (Apama's "mapping to events" mode, not
+  "generic events") — implemented in the new `repository/connectivity-bundle/` folder:
+  - `config/connectivity/fetch-extension-chains.yaml` — two `dynamicChains`, `GitHubFetchChain`
+    and `InventoryUploadChain`, each `apama.eventMap` → `base64Codec` → `HTTPClientTransport`,
+    no JSON/String codec.
+  - `monitors/RawHttpEvents.mon` — the custom EPL event types the chains map onto
+    (`GitHubAssetRequest`/`Response`, `InventoryUploadRequest`/`Response`) and
+    `ConnectivityPlugins.createDynamicChain()` helpers.
 
-  So both legs use the same generic `HttpTransport` API, not `GenericRequest`:
-  1. **Fetch**: `HttpTransport` GET against the GitHub asset URL, with a codec chain that skips
-     JSON/String decoding (the docs are explicit that a raw response "must be converted into
-     the format expected by Apama" via the Classifier + Mapper codecs — the question is *which*
-     codecs, and JSON must not be one of them for a binary body) — `Response.payload` is the
-     zip bytes.
-  2. **Upload**: a *second*, independently-configured `HttpTransport` connection, POSTing
-     `multipart/form-data` to the tenant's own `/inventory/binaries` — one payload-dict entry
-     JSON (the managed-object metadata: `pas_extension`/`build_information`, mirroring what
-     `InventoryBinaryService.create()` sends today), one binary (the zip).
-  3. **Authentication for step 2 is not free**, contrary to what the earlier draft assumed.
-     `GenericRequest`/`ManagedObject`/etc. authenticate for free because they ride the separate,
-     already-authenticated *Cumulocity IoT Transport* plug-in's channel. A standalone
-     `HttpTransport` connection back to Cumulocity's own API does not inherit that session and
-     needs its own credentials. The good news: those credentials already exist and don't need
-     to be newly provisioned — per the Cumulocity IoT Transport plug-in's own docs, a
-     subscribed microservice (which `apama-ctrl` is) has the platform auto-provision a service
-     user (`CUMULOCITY_USERNAME`/`CUMULOCITY_PASSWORD`), which is the same identity that
-     channel already authenticates with internally. Configuring the second `HttpTransport`
-     connection with Basic Auth using that same service-user identity is the concrete plan —
-     same pattern `HttpOutputBlock` already uses via `credentialsFromTenantOptions`, just
-     pointed at Cumulocity's own API instead of an external one.
+  Binary content is carried end-to-end as a **Base64-encoded EPL `string`**, never raw bytes —
+  the EPL `chunk` type was the only other candidate and is explicitly disqualified (confirmed
+  against ApamaDoc: *"you cannot send, emit, route, or enqueue an event that has a chunk type
+  field"*), which rules it out for anything a chain has to deliver to a monitor's listener.
+  `FetchExtensionListener.mon` (`startFetch`/`onGitHubAssetResponse`/`startUpload`/
+  `onInventoryUploadResponse`) wires these chains into the request flow, with `mapFailureMessage()`
+  translating upstream status codes into the same categories
+  `GitHubReleaseError.mapErrorResponse()` already produces for the browser-side flow.
 
-  **What's left as the actual, narrow spike**: confirm whether `Response.payload`'s binary
-  value from connection 1 can be assigned directly into connection 2's outgoing
-  `Request.payload` dictionary entry within one EPL block, or whether moving a binary value
-  between two independently-configured `HttpTransport` connections needs a codec hop (e.g. the
-  [Base64 codec plug-in](https://documentation.softwareag.com/apama/v10-11/apama10-11/apama-webhelp/apama-webhelp/co-ConApaAppToExtCom_base64_codec.html))
-  in between — a connectivity-chain type-compatibility question, testable in isolation, not an
-  open-ended "can this be done at all."
-- **R2: EPL/monitor memory model for bulk binary payloads is still unproven.** Analytics
-  Builder blocks and EPL monitors are built around small, frequent event-driven messages.
-  Buffering an entire zip (some community extensions bundle dozens of blocks — see the 58KB
-  `contrib-blocks-1.0.1.zip` example in `CONCEPT.md`) inside an EPL event/block's memory needs a
-  sanity check against Apama's actual limits and recommended practices, not an assumption that
-  it'll just work. R1's resolution doesn't remove this risk — it just clarifies that the data
-  path exists.
-- **R3: no owner named for the inventory upload step (now narrowed by R1).** `GenericRequest`
-  is the concrete candidate — see R1. What's still open is who builds and owns the new block
-  wrapping it (new to `analytics-builder-blocks-contrib`, or does it belong somewhere else),
-  and how its multipart body is assembled (the managed-object JSON part —
-  `pas_extension`/`build_information`, mirroring `InventoryBinaryService.create()`'s existing
-  browser-side shape — plus the binary zip part). `InventoryBinaryService.create()`'s multipart
-  semantics (`analytics.service.ts` /
-  `extension-inventory.service.ts` today) would need an EPL-side equivalent — does one exist?
+  **This requires switching that part from EPL App to Extension deployment** (zip upload +
+  `apama-ctrl` restart) — a real workflow change from the EPL-Apps-only flow every verified piece
+  above was tested with, because custom connectivity YAML is an extension-level artifact.
+
+  **Known-incomplete, not just unverified** — see "Missing information" below for what's
+  actually blocking a first test, starting with `UPLOAD_HOST`.
+- **R2: EPL/monitor memory model for bulk binary payloads is still unproven — now with a
+  placeholder number, not a real one.** `FetchExtensionListener.mon`'s `MAX_ASSET_BASE64_LENGTH`
+  guards against oversized assets, but its value (~20 MB raw) is a guess, not a tested limit —
+  and the guard only rejects *after* the full body is already in memory (there's no way to
+  reject earlier with this design), so it caps the damage rather than preventing it. Analytics
+  Builder blocks and EPL monitors are built around small, frequent event-driven messages, not
+  bulk file transfer — some community extensions bundle dozens of blocks (see the 58KB
+  `contrib-blocks-1.0.1.zip` example in `CONCEPT.md`, tiny by this measure, but not every
+  extension will be).
+- **R3 — resolved by R1's implementation.** `InventoryUploadRequest`/`RawHttpChainFactory` in
+  `repository/connectivity-bundle/` is the owner. Its multipart body: one string part
+  (`managedObject`, hand-built JSON — no JSON codec in this chain, so no
+  `build_information`/zip-content-analysis fields, unlike `analyzeZipContent()`'s browser-side
+  equivalent in `extension-add.component.ts`, which this doesn't attempt to replicate) and one
+  Base64→binary part (`file`).
+
+  **Missing information (blocking, not cosmetic):**
+  1. **`uploadHost` — attempted, not confirmed.** `FetchExtensionListener.mon`'s
+     `resolveUploadHost()` now calls `GET /tenant/currentTenant` and reads its `domain` field at
+     startup, instead of leaving an empty constant (`CUMULOCITY_SERVER_URL` — the original idea —
+     is documented as auto-provisioned for the *Cumulocity IoT Transport* chain specifically, not
+     confirmed readable from plain EPL for a separately-created chain, so this avoids relying on
+     it at all). This reuses `GenericRequest`, already verified working for the Identity API
+     calls — but the `domain` field's exact presence/shape on a real `/tenant/currentTenant`
+     response is itself unverified. First real test will show whether this resolves correctly;
+     if not, the failure is loud (logged raw body, requests fail fast with a clear status) rather
+     than silent.
+  2. Whether `apama.eventMap`'s field-name-matching actually works for a hand-written custom
+     event type the way it does for SDK-generated ones (every real documented example is
+     SDK-generated).
+  3. Whether `config/connectivity/` sits at the extension zip's root, or — like `.mon` blocks,
+     per `CONCEPT.md`'s earlier finding — needs the same `files/` nesting.
+  4. A real number for R2's size ceiling, once something establishes one.
 
 ## Security considerations (absent from the original sketch)
 
@@ -169,10 +202,89 @@ assumed (Q2) — both explained below.
 
 ## Open questions
 
-- **Q1 — event `source`.** Cumulocity events require a `source` managedObject id. Which
-  device/agent/service is this posted against? Analytics Builder models are typically scoped
-  to specific device/asset criteria — does a model bound to "any device" or a dedicated
-  system/service managedObject fit here, or does this need its own convention?
+- **Q1 — event `source` — resolved.** A dedicated, non-device managed object serves as the
+  event source, rather than binding this to any real device/asset: looked up by external id
+  (`idType` `c8y_Serial`, `externalId` value `c8y_FetchUploadProxy` — chosen as a simple,
+  self-describing convention; a plain managed object, no `c8y_IsDevice` fragment, since it's
+  only an anchor for events, not a real device), created on first use if it doesn't exist yet.
+  Both sides need to agree on this lookup:
+  - **`apama-ctrl` side** (implemented as a spike): `repository/epl/FetchExtensionListener.mon`
+    resolves/creates the proxy managed object on monitor load via `GenericRequest` against the
+    Identity API (`GET`/`POST /identity/externalIds/...` and `/identity/globalIds/.../externalIds`
+    — there's no dedicated external-id EPL event type, see R1's research), then listens for
+    `c8y_FetchExtension` events with that id as `source`. Deliberately stops at logging the
+    received event for now — see "Spike scope" below and R1/R2, still open for the actual
+    fetch/upload.
+  - **`analytics-ui` side** (implemented and verified — see "Verified in practice" below):
+    `analytics-ui/src/shared/fetch-extension.service.ts`'s `FetchExtensionService` resolves the
+    same managed object via `IdentityService.detail({type: 'c8y_Serial', externalId:
+    'c8y_FetchUploadProxy'})` and uses its `managedObject.id` as the event's `source`; on a 404
+    (the EPL app hasn't run yet) it fails with a clear message rather than creating the managed
+    object itself, exactly as decided above. Wired into
+    `ReleaseDeployWizardComponent` as a second, clearly-labeled "Send via event (experimental)"
+    button alongside the existing, renamed "Download" button (the original native-download +
+    drop-area flow — renamed from "Deploy" since that's a more honest description of what it
+    actually does, now that there are two visibly different options side by side).
+
+  **Verified in practice** (2026-07-17, real `apama-ctrl` instance, EPL app deployed via the
+  standard EPL Apps mechanism), across two runs:
+
+  *Run 1 — bootstrap, first deploy:*
+  ```
+  looking up proxy managed object external id c8y_Serial/c8y_FetchUploadProxy (reqId 11167)
+  Cumulocity returned error "404 Not Found" ... External id not found ...
+  proxy managed object not found, creating it
+  created proxy managed object, id=65858222
+  bound external id c8y_FetchUploadProxy to managed object 65858222
+  ready, listening for c8y_FetchExtension events with source=65858222
+  ```
+
+  *Run 2 — analytics-ui's `FetchExtensionService` sending a real `c8y_FetchExtension` event*
+  (see the `analytics-ui` side below): the monitor received it correctly, with the exact
+  `url`/`name`/`requestId` fragment the UI sent — confirming the UI ↔ event ↔ monitor path
+  works end to end — but then crashed:
+  ```
+  received c8y_FetchExtension event id=858223 text=Deploy extension from GitHub Release: Abs-1.0.1.zip
+    params={... "c8y_FetchExtension":any(dictionary<any,any>,{"name":"Abs-1.0.1.zip","requestId":"73czia","url":"https://github.com/..."}), ...}
+  CastException - Type mismatch: Trying to cast dictionary<any,any> to dictionary<string,any>
+  ```
+  Nested JSON objects inside an `Event`'s `params` (and, it turns out, inside a
+  `GenericResponse`'s body too — see below) deserialize as `dictionary<any,any>` — both keys
+  *and* values wrapped in `any` — not `dictionary<string,any>` like the top-level `params`
+  dictionary itself. **Fixed** in both places that made this mistake:
+  `onFetchExtensionEvent`'s fragment parsing (the one that actually crashed) and
+  `handleLookupComplete`'s parsing of the identity-lookup response body (which uses the
+  identical pattern but hadn't been exercised yet in either run — both runs so far took the
+  404/create branch, never the "found existing" branch that parses a real body). Both now cast
+  to `dictionary<any,any>` and look up entries with `<any> "key"` instead of `"key"`.
+
+  Also since corrected here: the file's `package apamax.blockmarketplace.fetchextension;`
+  declaration was removed (no longer present in the current file) — the correlator logs the
+  injected monitor as `eplfiles.FetchExtensionListener.FetchExtensionListener` regardless, which
+  is what led to noticing the package statement wasn't doing anything useful under the EPL Apps
+  deployment mechanism in the first place.
+
+  *Run 3 — same UI action, after the cast fix:* clean parse, no exception —
+  ```
+  received c8y_FetchExtension event id=857217 text=Deploy extension from GitHub Release: Abs-1.0.1.zip
+    params={... "c8y_FetchExtension":any(dictionary<any,any>,{"name":"Abs-1.0.1.zip","requestId":"ddq3kl","url":"https://github.com/..."}), ...}
+  c8y_FetchExtension fragment: url=https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/download/1.0.1/Abs-1.0.1.zip name=Abs-1.0.1.zip requestId=ddq3kl
+  ```
+  This closes out everything Q1's spike set out to prove: the proxy managed object
+  lookup/create bootstrap, and the full UI → event → monitor → fragment-parsed-correctly path,
+  all confirmed working against a real tenant. What's genuinely still open is unchanged from
+  before — R1/R2 (the actual fetch/upload) and Q2–Q6 — this spike never touched those.
+
+  Still unverified by this run: the re-run behavior (does a second monitor load correctly find
+  the now-existing managed object via the lookup path instead of hitting create again?) and the
+  actual event flow (no `c8y_FetchExtension` event was sent in this test, so `onFetchExtensionEvent`
+  was never exercised).
+
+  **Spike scope**: `FetchExtensionListener.mon` intentionally only proves out the lookup/create
+  bootstrap and event subscription — not the fetch+upload itself, since R1/R2 (binary transport
+  between two `HttpTransport` connections, EPL's memory model for multi-megabyte payloads) are
+  still open and shouldn't be tackled in the same step as getting the source/event plumbing
+  right.
 - **Q2 — auth header delivery.** See "Credential handling" above; resolve before writing the
   event schema for real.
 - **Q3 — update vs. create semantics.** `ExtensionAddComponent.onFile()` today checks for an
@@ -180,17 +292,30 @@ assumed (Q2) — both explained below.
   (`showUpdateConfirmation()`/`ConfirmationModalComponent`) before overwriting. Does the
   monitor-side flow replicate that check, silently overwrite, or silently create a duplicate?
   This needs a decision, not a default.
-- **Q4 — error surfacing.** GitHub's unauthenticated rate limit (60/hour, already documented in
-  `CONCEPT.md`), a 404 asset, a monitor-side timeout, or an oversized zip all need a defined
-  failure path back to the user. Today's browser flow surfaces `GitHubReleaseError.userMessage`
-  directly in the UI (`release-deploy-wizard.component.ts`); what's the equivalent here, given
-  the actual failure happens inside `apama-ctrl`, not in the browser?
-- **Q5 — request correlation.** Two concurrent deploys (two users, or one user in two tabs)
-  each fire a `c8y_FetchExtension` event; both eventually surface as "an extension changed" via
-  the Inventory Notification API. Without a `requestId` (or equivalent) round-tripped through
-  the event → monitor → resulting managed object, `analytics-ui` cannot tell which notification
-  corresponds to *its own* request — added to the draft schema above, needs a concrete
-  propagation mechanism (e.g. stashed as a fragment on the created `Binary` managedObject).
+- **Q4 — error surfacing — resolved, partially implemented.** The monitor emits
+  `c8y_FetchExtensionStatus` events against the same proxy managed object as progress/error
+  markers for each request (`repository/epl/FetchExtensionListener.mon`'s `emitStatus()`),
+  carrying `requestId`, `status` (`RECEIVED`/`DOWNLOADING`/`UPLOADING`/`SUCCEEDED`/`FAILED`),
+  and a `message`. Because these are plain Cumulocity Events against a real managed object,
+  they show up on Cumulocity's own Monitoring/Events page for that object automatically —
+  **no new UI needed on the `analytics-ui` side to close this gap**, unlike the original framing
+  assumed. `FAILED`'s `message` should mirror the same categories
+  `GitHubReleaseError.mapErrorResponse()` already produces for the browser-side flow (401/403,
+  429 rate limit, 404 asset, timeout, oversized zip) — that mapping is documented as a follow-up
+  in the action's doc comment, not yet coded, since it needs R1/R2's real fetch/upload logic to
+  have something to report on. **Implemented so far**: `RECEIVED`, emitted for real the moment
+  the monitor parses an incoming request (verified in practice, see below).
+  `DOWNLOADING`/`UPLOADING`/`SUCCEEDED`/`FAILED` are documented, not implemented — deliberately
+  not stubbed with fake calls, since there's nothing real to report until R1/R2 land.
+- **Q5 — request correlation — resolved by the same mechanism as Q4.** Every
+  `c8y_FetchExtensionStatus` event carries the originating `requestId`, so `analytics-ui` (or
+  anyone watching the Monitoring page) can filter/correlate the whole trail for a given request
+  without needing a separate propagation mechanism through the eventual `Binary` managedObject —
+  querying Events by `source` + a `requestId` match in `params` is enough. Still open: whether
+  `analytics-ui` should actively poll/subscribe to these status events (e.g. via the Events API
+  or a realtime notification) to reflect progress in the wizard UI itself, or whether pointing
+  the user at the tenant's own Monitoring page is an acceptable v1 (no additional
+  `analytics-ui` code needed for that path).
 - **Q6 — the final bullet in the original sketch** ("in the dialog to 'deploy release' there
   must be an option to directly upload the selected zip") was never reconciled with the rest of
   the doc: does this mean keep the existing manual drag-and-drop path as a fallback alongside

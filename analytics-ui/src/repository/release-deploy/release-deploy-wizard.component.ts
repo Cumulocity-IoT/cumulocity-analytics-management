@@ -7,6 +7,7 @@ import { gettext } from '@c8y/ngx-components/gettext';
 import {
   AnalyticsService,
   ExtensionAddComponent,
+  FetchExtensionService,
   GitHubRelease,
   GitHubReleaseAsset,
   GitHubReleaseService,
@@ -38,10 +39,13 @@ export class ReleaseDeployWizardComponent implements OnInit {
 
   errorMessage: string | null = null;
 
+  sendingFetchEvent = false;
+
   constructor(
     private readonly repositoryService: RepositoryService,
     private readonly githubReleaseService: GitHubReleaseService,
     private readonly analyticsService: AnalyticsService,
+    private readonly fetchExtensionService: FetchExtensionService,
     private readonly alertService: AlertService,
     private readonly wizardComponent: WizardComponent
   ) { }
@@ -127,6 +131,47 @@ export class ReleaseDeployWizardComponent implements OnInit {
       `download tray straight onto the box below (fastest), or click the box to browse for it.`
     );
     this.phase = 'upload';
+  }
+
+  /**
+   * Experimental, additive path alongside `downloadAndContinue()` — sends a
+   * `c8y_FetchExtension` event instead of triggering a browser download. See
+   * `FetchExtensionService` and docs/features/block-marketplace/DIRECT_UPLOAD.md:
+   * as of this writing the EPL side (`repository/epl/FetchExtensionListener.mon`)
+   * only logs the received event — this does NOT yet perform a real deploy.
+   * It exists to exercise the event pipeline end to end while the actual
+   * fetch/upload (DIRECT_UPLOAD.md R1/R2) is still open. Does not replace or
+   * interfere with `downloadAndContinue()`'s working flow.
+   */
+  async sendFetchExtensionEvent(): Promise<void> {
+    if (!this.selectedAsset || this.sendingFetchEvent) {
+      return;
+    }
+
+    this.sendingFetchEvent = true;
+    try {
+      // repository.accessToken is always the masked DUMMY_ACCESS_TOKEN
+      // placeholder (see RepositoryService.parseRepositoryOption) — fetch
+      // the real token separately, same as onRepositorySelected() does for
+      // the browser-side GitHub calls.
+      const accessToken = this.selectedRepository
+        ? await this.repositoryService.getRepositoryAccessToken(this.selectedRepository.id)
+        : undefined;
+      const { requestId } = await this.fetchExtensionService.sendFetchExtensionEvent(
+        this.selectedAsset.browserDownloadUrl,
+        this.selectedAsset.name,
+        accessToken
+      );
+      this.alertService.info(
+        `Sent fetch request for "${this.selectedAsset.name}" (requestId ${requestId}) — this only reaches ` +
+        `the FetchExtensionListener EPL app's log for now, it does not deploy the extension yet.`
+      );
+    } catch {
+      // FetchExtensionService already showed a danger alert with the
+      // specific reason (proxy not found, event creation failed, etc.).
+    } finally {
+      this.sendingFetchEvent = false;
+    }
   }
 
   cancel(): void {
