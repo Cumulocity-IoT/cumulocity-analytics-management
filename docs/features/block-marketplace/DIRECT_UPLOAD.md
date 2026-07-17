@@ -77,35 +77,55 @@ assumed (Q2) — both explained below.
 
 ## Open risks — must be resolved before implementation
 
-- **R1 (was a blocking spike; now a narrower, concrete question): `HttpOutputBlock` itself is
-  the wrong tool, but the underlying transport isn't the blocker.**
-  [`HttpOutputBlock.mon`](https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/blob/master/blocks/HttpOutputBlock.mon)'s
-  response handling (`$timerTriggered`) only iterates
-  `response.payload.data.getKeys()`/`getEntry()` — i.e. it treats the response body as a flat
-  JSON object and exposes it as block output properties (`$OUTPUT_TYPE_responseBody :=
-  "pulse"`). There is no code path there that captures or forwards a raw binary body. **But**
-  per Apama's own docs for the underlying
-  [HTTP Client Transport Connectivity Plug-in](https://cumulocity.com/apama/docs/10.15/standard-connectivity-plugins/the-http-client-transport-connectivity-plug-in/)
-  (the same `com.softwareag.connectivity.httpclient` API `HttpOutputBlock` is built on): *"A
-  response contains a binary payload which is the body of the response and further metadata
-  fields describing the response"* — the binary body is the default; `HttpOutputBlock`'s
-  JSON-object treatment of it is that block's own added codec/parsing step, not a transport
-  limitation. So the fetch side is not blocked; `HttpOutputBlock` specifically is just built for
-  JSON REST bodies and shouldn't be reused as-is — **a new block, built directly on
-  `HttpTransport`/`Request`/`Response` without a JSON-decoding step, is needed for the fetch.**
-  For the upload side, `com.apama.cumulocity` has no dedicated "Binary" event type, but
-  [`GenericRequest`](https://documentation.softwareag.com/apama/v10-11/apama10-11/ApamaDoc/com/apama/cumulocity/GenericRequest.html)
-  explicitly supports a payload dictionary where "each entry ... should have a string key and
-  either a string or a binary value," with `metadata.contentType` set to `multipart/form-data`
-  for exactly this shape — a real match for `POST /inventory/binaries`'s multipart semantics,
-  and it rides the Cumulocity connectivity plugin's already-authenticated tenant session (no
-  separate credential handling needed for this leg, unlike R1's original framing assumed).
-  **What's left as an actual, narrow spike**: confirm whether `Response.payload`'s binary value
-  can be assigned directly into `GenericRequest.payload`'s dictionary slot, or needs a codec hop
-  (e.g. the
+- **R1 (was a blocking spike; now a narrower, concrete question):**
+  [`HttpOutputBlock.mon`](https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/blob/master/blocks/HttpOutputBlock.mon)
+  is unsuitable for the fetch as-is — its response handling (`$timerTriggered`) only iterates
+  `response.payload.data.getKeys()`/`getEntry()`, treating the response body as a flat JSON
+  object exposed as block output properties (`$OUTPUT_TYPE_responseBody := "pulse"`); there's
+  no code path there that captures or forwards a raw binary body. A new block, built directly
+  on `HttpTransport`/`Request`/`Response` without that JSON-decoding step, is needed for the
+  fetch instead.
+
+  Checked directly against ApamaDoc, `GenericRequest`'s actual fields are `reqId: integer`,
+  `method: string`, `path: string`, `queryParams: dictionary<string,string>`, `isPaging:
+  boolean`, `body: any` ("should be a dictionary or sequence which will be encoded as JSON"),
+  and `headers: dictionary<string,string>` — JSON-only, no binary support. The
+  "each entry ... should have a string key and either a string or a binary value ...
+  `metadata.contentType` ... `multipart/form-data`" quote is real, but it describes the
+  *generic* [HTTP Client Transport Connectivity Plug-in](https://cumulocity.com/apama/docs/10.15/standard-connectivity-plugins/the-http-client-transport-connectivity-plug-in/)'s
+  own `Request`/`Response` events — the same plugin already needed for the fetch leg — not
+  `GenericRequest`. Confirmed directly in that plugin's page source.
+
+  So both legs use the same generic `HttpTransport` API, not `GenericRequest`:
+  1. **Fetch**: `HttpTransport` GET against the GitHub asset URL, with a codec chain that skips
+     JSON/String decoding (the docs are explicit that a raw response "must be converted into
+     the format expected by Apama" via the Classifier + Mapper codecs — the question is *which*
+     codecs, and JSON must not be one of them for a binary body) — `Response.payload` is the
+     zip bytes.
+  2. **Upload**: a *second*, independently-configured `HttpTransport` connection, POSTing
+     `multipart/form-data` to the tenant's own `/inventory/binaries` — one payload-dict entry
+     JSON (the managed-object metadata: `pas_extension`/`build_information`, mirroring what
+     `InventoryBinaryService.create()` sends today), one binary (the zip).
+  3. **Authentication for step 2 is not free**, contrary to what the earlier draft assumed.
+     `GenericRequest`/`ManagedObject`/etc. authenticate for free because they ride the separate,
+     already-authenticated *Cumulocity IoT Transport* plug-in's channel. A standalone
+     `HttpTransport` connection back to Cumulocity's own API does not inherit that session and
+     needs its own credentials. The good news: those credentials already exist and don't need
+     to be newly provisioned — per the Cumulocity IoT Transport plug-in's own docs, a
+     subscribed microservice (which `apama-ctrl` is) has the platform auto-provision a service
+     user (`CUMULOCITY_USERNAME`/`CUMULOCITY_PASSWORD`), which is the same identity that
+     channel already authenticates with internally. Configuring the second `HttpTransport`
+     connection with Basic Auth using that same service-user identity is the concrete plan —
+     same pattern `HttpOutputBlock` already uses via `credentialsFromTenantOptions`, just
+     pointed at Cumulocity's own API instead of an external one.
+
+  **What's left as the actual, narrow spike**: confirm whether `Response.payload`'s binary
+  value from connection 1 can be assigned directly into connection 2's outgoing
+  `Request.payload` dictionary entry within one EPL block, or whether moving a binary value
+  between two independently-configured `HttpTransport` connections needs a codec hop (e.g. the
   [Base64 codec plug-in](https://documentation.softwareag.com/apama/v10-11/apama10-11/apama-webhelp/apama-webhelp/co-ConApaAppToExtCom_base64_codec.html))
-  in between — a connectivity-chain type-compatibility question, not an open-ended "can this be
-  done at all."
+  in between — a connectivity-chain type-compatibility question, testable in isolation, not an
+  open-ended "can this be done at all."
 - **R2: EPL/monitor memory model for bulk binary payloads is still unproven.** Analytics
   Builder blocks and EPL monitors are built around small, frequent event-driven messages.
   Buffering an entire zip (some community extensions bundle dozens of blocks — see the 58KB
