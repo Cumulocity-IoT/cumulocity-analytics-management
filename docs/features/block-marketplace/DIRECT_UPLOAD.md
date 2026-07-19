@@ -1,6 +1,14 @@
 # Spec: Event-Driven Extension Deploy via `apama-ctrl` (CORS Workaround)
 
-**Status:** Draft, not yet reviewed, **not yet runnable**. Two tiers of confidence:
+**Status: R1 (the fetch/upload mechanism) is a confirmed blocker — see below. Not just
+unverified; actually tried and it doesn't work via this deployment path.** Q1/Q2/Q4/Q5's
+groundwork (proxy managed object, event listener, status trail, PAT delivery) is real, working
+code, and stays useful if a different fetch/upload mechanism is ever found — but the core
+premise this whole spec depends on (server-side fetch avoids the CORS wall documented in
+`CONCEPT.md`/`REQUIREMENTS.md` NFR4) cannot be realized via an Analytics Builder extension `.zip`
+as currently understood. See "R1 — CONFIRMED BLOCKER" below before investing further here.
+
+Three tiers of confidence (was two; R1 moved from "unverified" to "blocked"):
 - **Verified in practice** (real `apama-ctrl`, multiple rounds of test → fix): Q1 (proxy MO
   lookup/create), Q2 (PAT delivery), and the `RECEIVED` status event — all in
   `repository/epl/FetchExtensionListener.mon`, deployed as an EPL App.
@@ -108,39 +116,86 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
 
 ## Open risks — must be resolved before implementation
 
-- **R1 — best-effort draft implemented, unverified, and currently non-functional pending one
-  missing value.** `GenericRequest` is JSON-only (confirmed against ApamaDoc: `reqId, method,
-  path, queryParams, isPaging, body: any, headers` — no binary support), and the "generic"
-  `HttpTransport`/`Request`/`Response` API every verified piece of this spec uses
+- **R1 — CONFIRMED BLOCKER.** `GenericRequest` is JSON-only (confirmed against ApamaDoc: `reqId,
+  method, path, queryParams, isPaging, body: any, headers` — no binary support), and the
+  "generic" `HttpTransport`/`Request`/`Response` API every verified piece of this spec uses
   (`FetchExtensionListener.mon`'s Identity API calls, `HttpOutputBlock`, `EnhancedHttpOutput`) is
   documented as *always* going through a JSON codec — not a runtime option, a project-level
   choice baked in when the HTTP Client bundle was added to whatever image `apama-ctrl` runs.
   Using it for the fetch would silently corrupt every zip.
 
-  The actual fix requires a **custom connectivity chain** (Apama's "mapping to events" mode, not
-  "generic events") — implemented in the new `repository/connectivity-bundle/` folder:
-  - `config/connectivity/fetch-extension-chains.yaml` — two `dynamicChains`, `GitHubFetchChain`
-    and `InventoryUploadChain`, each `apama.eventMap` → `base64Codec` → `HTTPClientTransport`,
-    no JSON/String codec.
-  - `monitors/RawHttpEvents.mon` — the custom EPL event types the chains map onto
-    (`GitHubAssetRequest`/`Response`, `InventoryUploadRequest`/`Response`) and
-    `ConnectivityPlugins.createDynamicChain()` helpers.
+  The fix that seemed right — a **custom connectivity chain** (Apama's "mapping to events" mode)
+  defined in `repository/connectivity-bundle/config/connectivity/.../fetch-extension-chains.yaml`
+  and deployed as an Analytics Builder extension — was built, iterated on, and ultimately proven
+  **not to work**, across four real rounds against a live `apama-ctrl`:
+  1. `RawHttpChainFactory` (a helper monitor meant to wrap `ConnectivityPlugins.createDynamicChain()`)
+     had no `onload` action — `engine_deploy`'s initialization-list generation rejects any
+     monitor without one. Fixed with a no-op `onload(){}`.
+  2. Once the extension deployed, activating `FetchExtensionListener.mon` (the EPL App that
+     `using`s this extension's types) failed outright until every reference to
+     `RawHttpChainFactory` — a *monitor* type — was removed. Cumulocity's per-EPL-App namespace
+     isolation blocks referencing a monitor type across the Extension/EPL-App boundary, even
+     though *event* types from the same extension resolve fine. Fixed by calling
+     `ConnectivityPlugins.createDynamicChain()` directly from the EPL App instead (a
+     string-keyed runtime lookup, not a compile-time type reference) — `RawHttpChainFactory`
+     was deleted entirely.
+  3. With that fixed, the EPL App activated and a real event flowed all the way to
+     `startFetch()` — which then hit `PluginException - Unknown dynamicChain GitHubFetchChain`.
+     The YAML was extracted to disk in the right place, but the correlator's connectivity-config
+     loader never read it. Every connectivity config it *does* read follows a
+     `config/connectivity/<name>/<file>` pattern (one level nested), so the file was moved into
+     its own `FetchExtension/` subdirectory to match.
+  4. **That didn't fix it either.** A full redeploy afterward showed `fetch-extension-chains.yaml`
+     extracted correctly on disk, but still absent from the correlator's
+     `Reading configuration file` list at startup — which is **exactly the same fixed list of
+     platform-built-in bundles every single time** (`restEndpoint`, `CumulocityClient`,
+     `CumulocityDeviceService`, `CumulocityNotifications2.0`, `HTTPClientGeneric`), unchanged
+     across every extension we've ever deployed, regardless of what that extension contained or
+     how its subfolders were named. That's strong evidence `engine_deploy`'s `connectivity.yaml`
+     generation does not scan arbitrary `config/connectivity/` content contributed by an
+     Analytics Builder extension at all — it only ever includes this fixed platform set. The
+     folder those built-in bundles live in isn't a place extensions can add to; it's a template.
 
-  Binary content is carried end-to-end as a **Base64-encoded EPL `string`**, never raw bytes —
-  the EPL `chunk` type was the only other candidate and is explicitly disqualified (confirmed
-  against ApamaDoc: *"you cannot send, emit, route, or enqueue an event that has a chunk type
-  field"*), which rules it out for anything a chain has to deliver to a monitor's listener.
-  `FetchExtensionListener.mon` (`startFetch`/`onGitHubAssetResponse`/`startUpload`/
-  `onInventoryUploadResponse`) wires these chains into the request flow, with `mapFailureMessage()`
-  translating upstream status codes into the same categories
-  `GitHubReleaseError.mapErrorResponse()` already produces for the browser-side flow.
+  **Conclusion**: delivering a custom (non-JSON-codec) connectivity chain via an Analytics
+  Builder extension `.zip` (built with `analytics_builder build extension`) does not work. The
+  SDK doc line this was originally based on — building via Software AG Designer / the
+  `apama_project` CLI "creates a corresponding folder inside `config/connectivity`" — almost
+  certainly describes a full Apama *project* build, a different deployable artifact than what
+  `analytics_builder build extension` produces, not the same mechanism.
 
-  **This requires switching that part from EPL App to Extension deployment** (zip upload +
-  `apama-ctrl` restart) — a real workflow change from the EPL-Apps-only flow every verified piece
-  above was tested with, because custom connectivity YAML is an extension-level artifact.
+  **Confirmed from first-party source, not just empirical testing.** Cumulocity's own
+  `apama-ctrl` product source (`Cumulocity-IoT/apama-in-c8y`) settles it: its
+  `src/apama-ctrl/base/config/connectivity/` contains exactly the five subdirectories our
+  correlator logs showed every time (`CumulocityClient`, `CumulocityDeviceService`,
+  `CumulocityNotifications2.0`, `HTTPClientGeneric`, `restEndpoint`) — baked into the base
+  product build. The same repo describes `src/extensions` (a separate directory from
+  `config/connectivity`) as *"non-productised extensions... e.g. `inputLog`"* — narrow, not a
+  general path for connectivity chains. A real working example
+  (`customer-demos/DU-batching/DU-batching.mon`) that legitimately calls
+  `ConnectivityPlugins.createDynamicChain()` only ever targets one of those five pre-loaded
+  templates (`HTTPClientGenericJSONChain`) — it never registers a new one. None of the five are
+  a usable fallback either: `HTTPClientGeneric/HTTPClientGenericList.yaml` still runs
+  `jsonCodec`/`stringCodec`/`messageListCodec` end to end, so it would corrupt binary content the
+  same way the APIs already ruled out at the top of R1 would.
 
-  **Known-incomplete, not just unverified** — see "Missing information" below for what's
-  actually blocking a first test, starting with `UPLOAD_HOST`.
+  If R1 is revisited, it needs a genuinely different angle — most plausibly the "custom
+  microservice" option `REQUIREMENTS.md` already named and deferred (build and run an actual
+  custom `apama-ctrl` image from a real project structure, rather than an extension applied to
+  the shared one) — not another packaging variation on this same approach. See
+  `repository/connectivity-bundle/README.md` for the full round-by-round evidence.
+
+  **A real customer sample checked afterward reinforces this rather than contradicting it.**
+  `Cumulocity-IoT/apama-mqttservice-idp-poc`'s `extensions/` folder does define genuinely custom
+  `config/connectivity/` bundles with no JSON codec — but it's a full Designer/Eclipse Apama
+  *project* (`.project`/`.dependencies` metadata, and decisively a project-root
+  `config/CorrelatorConfig.yaml` — the file that configures a whole standalone correlator
+  process, meaningless for anything merged into an already-running `apama-ctrl`), with no
+  Dockerfile/CI/deploy script anywhere in the repo for it. It's the "custom microservice /
+  standalone project" path above, not an `analytics_builder build extension` artifact. It also
+  rules out one theory raised while investigating it: that a missing `.properties`/`.settings`
+  file (which `analytics_builder build extension` is documented to omit) was the real
+  differentiator — it isn't, since neither of that repo's custom bundles has one either. See
+  "Round 6" in `repository/connectivity-bundle/README.md` for the full evidence trail.
 - **R2: EPL/monitor memory model for bulk binary payloads is still unproven — now with a
   placeholder number, not a real one.** `FetchExtensionListener.mon`'s `MAX_ASSET_BASE64_LENGTH`
   guards against oversized assets, but its value (~20 MB raw) is a guess, not a tested limit —
@@ -150,30 +205,15 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
   bulk file transfer — some community extensions bundle dozens of blocks (see the 58KB
   `contrib-blocks-1.0.1.zip` example in `CONCEPT.md`, tiny by this measure, but not every
   extension will be).
-- **R3 — resolved by R1's implementation.** `InventoryUploadRequest`/`RawHttpChainFactory` in
-  `repository/connectivity-bundle/` is the owner. Its multipart body: one string part
-  (`managedObject`, hand-built JSON — no JSON codec in this chain, so no
-  `build_information`/zip-content-analysis fields, unlike `analyzeZipContent()`'s browser-side
-  equivalent in `extension-add.component.ts`, which this doesn't attempt to replicate) and one
-  Base64→binary part (`file`).
+- **R3 — moot while R1 is blocked.** The `InventoryUploadRequest` event shape (one JSON string
+  part `managedObject` — no `build_information`/zip-content-analysis, unlike
+  `analyzeZipContent()`'s browser-side equivalent — plus one Base64→binary part `file`) is still
+  a reasonable design if a working connectivity chain is ever established, but there's currently
+  no chain for it to travel over. Revisit once/if R1 has a real path forward.
 
-  **Missing information (blocking, not cosmetic):**
-  1. **`uploadHost` — attempted, not confirmed.** `FetchExtensionListener.mon`'s
-     `resolveUploadHost()` now calls `GET /tenant/currentTenant` and reads its `domain` field at
-     startup, instead of leaving an empty constant (`CUMULOCITY_SERVER_URL` — the original idea —
-     is documented as auto-provisioned for the *Cumulocity IoT Transport* chain specifically, not
-     confirmed readable from plain EPL for a separately-created chain, so this avoids relying on
-     it at all). This reuses `GenericRequest`, already verified working for the Identity API
-     calls — but the `domain` field's exact presence/shape on a real `/tenant/currentTenant`
-     response is itself unverified. First real test will show whether this resolves correctly;
-     if not, the failure is loud (logged raw body, requests fail fast with a clear status) rather
-     than silent.
-  2. Whether `apama.eventMap`'s field-name-matching actually works for a hand-written custom
-     event type the way it does for SDK-generated ones (every real documented example is
-     SDK-generated).
-  3. Whether `config/connectivity/` sits at the extension zip's root, or — like `.mon` blocks,
-     per `CONCEPT.md`'s earlier finding — needs the same `files/` nesting.
-  4. A real number for R2's size ceiling, once something establishes one.
+  `uploadHost` resolution (`GET /tenant/currentTenant`'s `domain` field) and the
+  `apama.eventMap` hand-written-event-type question are both moot for the same reason — neither
+  is reachable while `createDynamicChain()` fails before either would matter.
 
 ## Security considerations (absent from the original sketch)
 
