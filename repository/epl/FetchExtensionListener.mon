@@ -375,6 +375,15 @@ monitor FetchExtensionListener {
 				" to " + resp.location at INFO;
 			startFetchAt(requestId, resp.location, name, redirectDepth + 1);
 		} else if resp.statusCode >= 200 and resp.statusCode < 300 {
+			log "FetchExtensionListener: GitHub fetch succeeded for requestId=" + requestId +
+				", statusCode=" + resp.statusCode.toString() + " length=" +
+				resp.payload.length().toString() at INFO;
+			if resp.payload.length() < 100 {
+				// Temporary - the real asset should never be this small. Logging the raw
+				// content to see what actually came back instead of guessing.
+				log "FetchExtensionListener: unexpectedly small payload for requestId=" +
+					requestId + ": " + resp.payload at WARN;
+			}
 			if resp.payload.length() > MAX_ASSET_LENGTH {
 				log "FetchExtensionListener: asset for requestId=" + requestId +
 					" exceeds MAX_ASSET_LENGTH (" + resp.payload.length().toString() +
@@ -438,7 +447,8 @@ monitor FetchExtensionListener {
 
 	action onInventoryUploadResponse(string requestId, Response resp) {
 		if resp.isSuccess() {
-			log "FetchExtensionListener: upload succeeded for requestId=" + requestId at INFO;
+			log "FetchExtensionListener: upload succeeded for requestId=" + requestId +
+				" body=" + resp.payload.data.valueToString() at INFO;
 			emitStatus(requestId, STATUS_SUCCEEDED, "");
 		} else {
 			log "FetchExtensionListener: upload failed for requestId=" + requestId +
