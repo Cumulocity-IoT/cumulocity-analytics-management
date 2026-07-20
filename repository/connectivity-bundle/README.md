@@ -1,9 +1,14 @@
 # Raw-binary HTTP connectivity bundle (DIRECT_UPLOAD.md R1)
 
-**Status: best-effort draft, unverified against a live correlator.** Written from documented
-Apama connectivity-plugin behavior (see sources in
-[DIRECT_UPLOAD.md](../../docs/features/block-marketplace/DIRECT_UPLOAD.md) R1), not from a
-working test.
+**Status: previously "confirmed blocker" — retracted, see Round 7.** Four real deploy rounds
+plus first-party `apama-in-c8y` source evidence had convinced us `apama-ctrl`'s
+`config/connectivity/` only ever loads a fixed platform set and extensions can't add to it. The
+Analytics Builder Block SDK's *own test suite* proves that's wrong: `analytics_builder build
+extension` + upload + restart **does** get a custom bundle read and connecting, in an official,
+passing test. Two structural differences between that working example and ours (subdirectory
+name not matching the yaml's basename; missing `.properties` file) have now been fixed here —
+**not yet re-verified against a live correlator**, so treat this as a new, well-evidenced
+hypothesis to test, not a confirmed fix.
 
 ## Why a connectivity bundle is required at all
 
@@ -34,15 +39,12 @@ field, with no JSON/String codec anywhere in the pipeline. That YAML can only be
 no `config/connectivity/` of their own) — hence this bundle needing to exist as a separate
 extension at all, alongside `FetchExtensionListener.mon`.
 
-**Caveat, confirmed after this bundle was first built**: the extension-packaging path described
-above does not actually work in practice — `apama-ctrl`'s `config/connectivity/` only ever loads
-a fixed set of platform-built-in bundles, confirmed both empirically (four real deploy rounds)
-and from Cumulocity's own `apama-ctrl` product source. The *reasoning* above for why some custom
-connectivity chain is necessary still holds; what's now known not to work is delivering that
-chain via this specific packaging mechanism. See
-[repository/connectivity-bundle/README.md](../../repository/connectivity-bundle/README.md) and
-[DIRECT_UPLOAD.md](../../docs/features/block-marketplace/DIRECT_UPLOAD.md) R1 for the full,
-up-to-date evidence — this file is a stale build artifact from before that was confirmed.
+**Update, see Round 7 below**: an earlier version of this doc claimed the extension-packaging
+path above doesn't work at all — that was wrong. The Analytics Builder Block SDK's own test
+suite proves a custom `config/connectivity/<name>/` bundle *can* be delivered this way; our
+bundle was just missing two things every real working example has (matching
+subdirectory/file-basename naming, and a `.properties` file). Both are now fixed here, pending a
+live retest.
 
 ## What's in here, and why it's separate from FetchExtensionListener.mon
 
@@ -84,13 +86,16 @@ can only be defined in a `config/connectivity/` folder inside an Analytics Build
 
 ## What's in here
 
-- `config/connectivity/FetchExtension/fetch-extension-chains.yaml` — two dynamic chains,
+- `config/connectivity/FetchExtension/FetchExtension.yaml` — two dynamic chains,
   `GitHubFetchChain` and `InventoryUploadChain`, each: `apama.eventMap` → `base64Codec` (binary
   payload field only) → `HTTPClientTransport`. No JSON, no String codec. Nested one level under
-  its own `FetchExtension/` subdirectory — **confirmed required** by a real deploy failure (see
-  "Build and deploy" below): every other connectivity config `apama-ctrl` actually reads follows
-  this same `config/connectivity/<name>/<file>` pattern; a file dropped directly at
-  `config/connectivity/<file>.yaml` (no subdirectory) is silently never read at all.
+  its own `FetchExtension/` subdirectory, filename matching the subdirectory name — the same
+  pattern every real connectivity bundle we've found follows (see "Round 7" below for why the
+  filename match, not just the subdirectory nesting, turned out to matter).
+- `config/connectivity/FetchExtension/FetchExtension.properties` — exists only because every
+  real working example pairs a `.properties` file with its `.yaml`; see "Round 7". Not used for
+  `${...}` static substitution here since `FetchExtension.yaml`'s `@{HOST}`/`@{PORT}` tokens are
+  filled at runtime via `createDynamicChain()`'s `substitutions` argument instead.
 - `monitors/RawHttpEvents.mon` — just the custom EPL event types the chains map onto
   (`GitHubAssetRequest`/`Response`, `InventoryUploadRequest`/`Response`). No helper monitor —
   `FetchExtensionListener.mon` calls `ConnectivityPlugins.createDynamicChain()` directly instead
@@ -166,12 +171,64 @@ Checked the correlator's own startup log for every `config/connectivity` file it
 follows one pattern: `config/connectivity/<name>/<file>` — one level nested inside its own named
 subdirectory (`restEndpoint/restEndpoint.yaml`, `CumulocityClient/config.properties`,
 `HTTPClientGeneric/HTTPClientGenericList.yaml`, etc.). Ours sat directly at
-`config/connectivity/fetch-extension-chains.yaml` — not nested — and the deploy tooling's
-aggregation step silently skipped it. **Fixed**: moved it to
-`config/connectivity/FetchExtension/fetch-extension-chains.yaml`, matching the pattern. Not yet
-re-verified — next deploy attempt will show whether the chain registers.
+`config/connectivity/fetch-extension-chains.yaml` — not nested. **Fix attempted**: moved it to
+`config/connectivity/FetchExtension/fetch-extension-chains.yaml`, matching the subdirectory
+nesting.
 
-## Open/unverified specifics (flag these if the first test fails here)
+**Round 4 — that didn't fix it.** Redeployed clean (log confirmed the file extracted correctly
+to `config/connectivity/FetchExtension/fetch-extension-chains.yaml`). Same exact `Unknown
+dynamicChain GitHubFetchChain` error, and the file was still absent from the correlator's
+`Reading configuration file` list — which was **byte-for-byte identical across every restart
+tested** (`restEndpoint`, `CumulocityClient`, `CumulocityDeviceService`,
+`CumulocityNotifications2.0`, `HTTPClientGeneric`), regardless of what any applied extension
+contained.
+
+**Round 5 — seemingly confirmed from first-party source.** Cumulocity's own `apama-ctrl` product
+source (`Cumulocity-IoT/apama-in-c8y`) has exactly those same five subdirectories baked into
+`src/apama-ctrl/base/config/connectivity/`, and a real customer-demo example there
+(`DU-batching.mon`) that calls `ConnectivityPlugins.createDynamicChain()` only ever targets a
+chain template that's already one of those five. This looked decisive enough to write up as a
+**confirmed blocker** — wrongly, as Round 7 below shows.
+
+**Round 6 — a real customer sample (`Cumulocity-IoT/apama-mqttservice-idp-poc`) checked for a
+counterexample.** Its `extensions/` folder does define genuinely custom `config/connectivity/`
+bundles (`mqttservice`, `binaries`) with no JSON codec — but that folder turned out to be a full
+Designer/Eclipse Apama *project* (`.project`/`.dependencies` metadata, a project-root
+`config/CorrelatorConfig.yaml` — meaningless for anything merged into an already-running
+`apama-ctrl`), with no Dockerfile/CI/deploy script anywhere in the repo. Read as the "custom
+microservice / standalone project" path, not an `analytics_builder build extension` artifact —
+so it didn't move the needle either way. It did rule out one theory: neither custom bundle there
+has a `.properties`/`.settings` file, so that pairing isn't universally required.
+
+**Round 7 — the actual, decisive counterexample: the Analytics Builder Block SDK's own test
+suite.** `apama-in-c8y`'s `test/block-sdk/Extensions_Plugins` runs exactly our mechanism —
+`analytics_builder build extension` → `upload extension --restart` — against a `SimplePlugin`
+fixture with its own `config/connectivity/HTTPClient/{HTTPClient.yaml, HTTPClient.properties,
+.settings}`. The test's own assertions, against a real correlator log, prove it works:
+```python
+self.assertGrep('apama-ctrl.1.out', 'Reading configuration file.*HTTPClient.properties')
+self.assertGrep('apama-ctrl.1.out', 'Connecting .*no.such.host.example.com')
+```
+This directly contradicts Round 4/5's conclusion — a custom, non-platform `config/connectivity/`
+bundle delivered via an Analytics Builder extension *is* read and connected by `apama-ctrl`.
+Comparing that fixture's `HTTPClient/HTTPClient.yaml` to ours turned up two real, fixable
+differences, both now applied to this bundle:
+1. **Naming convention**: every real example (the five platform bundles, `SimplePlugin`,
+   `mqttservice`/`binaries`) has the subdirectory name match the yaml's basename exactly. Ours
+   was the only mismatch (`FetchExtension/fetch-extension-chains.yaml`). **Fixed**: renamed to
+   `FetchExtension/FetchExtension.yaml`.
+2. **Missing `.properties` file**: every platform bundle and `SimplePlugin` pair a `.properties`
+   file with the `.yaml`; ours had none. **Fixed**: added
+   `FetchExtension/FetchExtension.properties` (existence-only — our substitutions are runtime
+   `@{...}` tokens via `createDynamicChain()`, not static `.properties`-driven `${...}` ones).
+
+One difference remains unexplained and untested: `SimplePlugin`'s working chain is a
+`startChains:` entry (auto-started at correlator boot), while ours is `dynamicChains:` (a
+template only instantiated on demand via `createDynamicChain()`). Both fixes above are
+well-evidenced; whether `dynamicChains:` specifically needs anything further is the open
+question the next live test will answer.
+
+## Open/unverified specifics (flag these if the next test fails here)
 
 - Exact `apama.eventMap` field-name-matching conventions for a hand-written (non-SDK-generated)
   custom event type — the docs show it working via reflection/annotation over the event's own

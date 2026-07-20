@@ -24,7 +24,7 @@ package apamax.blockmarketplace.fetchextension.raw;
  *
  * Custom event types mapped (via `apama.eventMap` + `base64Codec`, no
  * JSON/String codec — see
- * ../config/connectivity/FetchExtension/fetch-extension-chains.yaml)
+ * ../config/connectivity/FetchExtension/FetchExtension.yaml)
  * onto the two dynamic chains defined there. Binary content is always
  * represented here as a Base64-encoded EPL `string` — never a raw byte
  * type — because the EPL `chunk` type (the only other candidate) explicitly
