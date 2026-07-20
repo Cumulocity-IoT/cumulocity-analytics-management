@@ -1,15 +1,17 @@
 # Spec: Event-Driven Extension Deploy via `apama-ctrl` (CORS Workaround)
 
-**Status: R1's earlier "confirmed blocker" call was wrong — retracted.** Four real deploy rounds
-plus first-party `apama-in-c8y` source evidence had shown `apama-ctrl`'s `config/connectivity/`
-only ever loading a fixed platform set, with no way for an extension to add to it. The Analytics
-Builder Block SDK's own test suite (`test/block-sdk/Extensions_Plugins`) disproves that: it runs
-the identical mechanism (`analytics_builder build extension` → upload → restart) against a
-custom bundle and proves, via real correlator log assertions, that it gets read and connects.
-Two real structural gaps between that working example and ours (subdirectory/filename mismatch,
-missing `.properties` file) are now fixed in `repository/connectivity-bundle/`. **Not yet
-re-verified against a live correlator** — see "Round 7" in
-`repository/connectivity-bundle/README.md` for the full evidence trail and what's still open.
+**Status: R1's earlier "confirmed blocker" call was wrong — retracted, and real progress since.**
+The Analytics Builder Block SDK's own test suite disproved the blocker claim (a custom
+`config/connectivity/` bundle delivered via `analytics_builder build extension` + upload +
+restart does get read and connects, per real correlator log assertions). Since then, against a
+live `apama-ctrl`: moving the yaml/properties to the extension project's own root (not under
+`config/connectivity/` — an outside suggestion that contradicts every cited real example, but
+empirically got the chain recognized) made the `Unknown dynamicChain` error disappear entirely;
+the next real error was a genuine `apama.eventMap` config-schema mistake (`eventTypes` isn't a
+valid option there), now fixed using `defaultEventType`, confirmed against official docs and
+every real `apama.eventMap` usage found in `apama-in-c8y`. **Not yet re-verified against a live
+correlator** — see "Round 7–9" in `repository/connectivity-bundle/README.md` for the full
+evidence trail and what's still open.
 
 Three tiers of confidence:
 - **Verified in practice** (real `apama-ctrl`, multiple rounds of test → fix): Q1 (proxy MO

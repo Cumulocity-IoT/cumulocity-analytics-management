@@ -31,11 +31,8 @@ import {
   CoreModule,
   DataGridComponent,
   Pagination,
-  WizardConfig,
-  WizardModalService,
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import { take } from 'rxjs/operators';
 import {
   BooleanRendererComponent,
   DESCRIPTOR_YAML,
@@ -48,6 +45,7 @@ import { catchError, of } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
@@ -58,7 +56,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
+  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
 export class BlockGridComponent implements OnInit {
   @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
@@ -75,6 +73,7 @@ export class BlockGridComponent implements OnInit {
   showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
+  showDeployRelease: boolean = false;
 
   activeRepository!: Repository;
   repositoryItems$!: Observable<RepositoryItem[]>;
@@ -144,8 +143,7 @@ export class BlockGridComponent implements OnInit {
   constructor(
     public repositoryService: RepositoryService,
     public alertService: AlertService,
-    private bsModalService: BsModalService,
-    private wizardModalService: WizardModalService
+    private bsModalService: BsModalService
   ) {
     this.repositoryItems$ = this.expertMode$.pipe(
       switchMap(expertMode => expertMode
@@ -385,16 +383,16 @@ export class BlockGridComponent implements OnInit {
   }
 
   deployFromRelease(): void {
-    const initialState = {
-      wizardConfig: { headerIcon: 'cloud-download' } as WizardConfig,
-      id: 'deployFromGitHubRelease',
-      componentInitialState: {}
-    };
+    this.showDeployRelease = true;
+  }
 
-    this.wizardModalService
-      .show({ initialState })
-      .content?.onClose.pipe(take(1))
-      .subscribe(() => this.reload());
+  onDeployReleaseCancel(): void {
+    this.showDeployRelease = false;
+  }
+
+  onDeployReleaseCommit(): void {
+    this.showDeployRelease = false;
+    this.reload();
   }
 
   openLayoutHelp(): void {

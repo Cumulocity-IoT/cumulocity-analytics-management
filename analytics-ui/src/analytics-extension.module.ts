@@ -83,12 +83,6 @@ import { extensionResolver, backendResolver } from './manage/utils';
       name: 'Upload analytics extension',
       c8yIcon: 'upload'
     }),
-    hookWizard({
-      wizardId: 'deployFromGitHubRelease',
-      component: ReleaseDeployWizardComponent,
-      name: 'Deploy from GitHub Release',
-      c8yIcon: 'cloud-download'
-    }),
 
     // Route hooks from all modules
     hookRoute({

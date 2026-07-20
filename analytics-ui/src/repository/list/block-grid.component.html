@@ -116,3 +116,13 @@
     }
   </div>
 </div>
+
+<div [ngClass]="{ drawerOpen: showDeployRelease }">
+  <div class="bottom-drawer">
+    @if (showDeployRelease) {
+      <a17t-release-deploy-wizard (cancel)="onDeployReleaseCancel()"
+        (commit)="onDeployReleaseCommit()">
+      </a17t-release-deploy-wizard>
+    }
+  </div>
+</div>

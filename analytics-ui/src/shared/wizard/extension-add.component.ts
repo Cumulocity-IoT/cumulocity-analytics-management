@@ -1,6 +1,8 @@
 import {
   Component,
+  EventEmitter,
   Input,
+  Output,
   ViewChild,
   OnDestroy
 } from '@angular/core';
@@ -9,8 +11,7 @@ import { IManagedObject } from '@c8y/client';
 import {
   AlertService,
   CoreModule,
-  DropAreaComponent,
-  WizardComponent
+  DropAreaComponent
 } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -73,6 +74,8 @@ export class ExtensionAddComponent implements OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
+  @Output() cancelled = new EventEmitter<void>();
+  @Output() completed = new EventEmitter<void>();
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
@@ -91,7 +94,6 @@ export class ExtensionAddComponent implements OnDestroy {
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
-    private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
   ) { }
 
@@ -360,11 +362,11 @@ export class ExtensionAddComponent implements OnDestroy {
 
   cancel(): void {
     this.cleanup();
-    this.wizardComponent.close();
+    this.cancelled.emit();
   }
 
   done(): void {
-    this.wizardComponent.close();
+    this.completed.emit();
   }
 
   private extractExtensionName(fileName: string): string {

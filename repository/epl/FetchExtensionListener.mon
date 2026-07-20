@@ -24,74 +24,55 @@ using com.apama.cumulocity.GenericRequest;
 using com.apama.cumulocity.GenericResponse;
 using com.apama.cumulocity.GenericResponseComplete;
 using com.apama.cumulocity.Util;
+using com.apama.cumulocity.CumulocityRequestInterface;
 using com.softwareag.connectivity.ConnectivityPlugins;
+using com.softwareag.connectivity.Chain;
+using com.softwareag.connectivity.httpclient.FormRequest;
+using com.softwareag.connectivity.httpclient.Request;
+using com.softwareag.connectivity.httpclient.Response;
 using apamax.blockmarketplace.fetchextension.raw.GitHubAssetRequest;
 using apamax.blockmarketplace.fetchextension.raw.GitHubAssetResponse;
-using apamax.blockmarketplace.fetchextension.raw.InventoryUploadRequest;
-using apamax.blockmarketplace.fetchextension.raw.InventoryUploadResponse;
 
 /**
  * Event-driven extension deploy flow described in
  * docs/features/block-marketplace/DIRECT_UPLOAD.md.
  *
- * This file is deployed as an EPL App - it depends on
- * repository/connectivity-bundle/ being deployed *separately*, as an
- * Analytics Builder extension, and apama-ctrl having restarted with it
- * loaded *before* this EPL App runs (see that folder's README.md).
+ * Deployed as an EPL App - depends on repository/connectivity-bundle/ being deployed
+ * *separately*, as an Analytics Builder extension, with apama-ctrl restarted with it loaded
+ * *before* this EPL App runs (see that folder's README.md).
  *
- * CONFIRMED IN PRACTICE (real activation attempt): Cumulocity's per-EPL-App
- * namespace isolation ("event definitions from one module cannot be used in
- * other modules" - see EPL Apps docs) blocks referencing a *monitor* type
- * defined in a different deployment unit (a `using` for the extension's
- * `RawHttpChainFactory` monitor, and `new RawHttpChainFactory`, both failed
- * to activate) - but *event* types defined in the extension (the four
- * `using`s below) resolve here just fine. So: never `new` a monitor type
- * from another module: call `ConnectivityPlugins.createDynamicChain()`
- * directly instead (a plain string-keyed runtime lookup against the
- * extension's YAML, not a compile-time type reference - see
- * startFetch()/startUpload()), and only exchange *event* types across the
- * boundary.
+ * Only *event* types can be `using`'d across the extension/EPL-App boundary - a *monitor* type
+ * defined in the extension cannot be `new`'d from here (Cumulocity's per-EPL-App namespace
+ * isolation blocks that specifically for monitor types). Call
+ * `ConnectivityPlugins.createDynamicChain()` directly instead of wrapping it in a helper
+ * monitor the extension would own - see startFetchAt().
  *
- * Two tiers of confidence in this one file - see DIRECT_UPLOAD.md's status
- * line for the full breakdown:
- *   1. VERIFIED IN PRACTICE (multiple rounds of real test -> fix): resolving
- *      the "proxy" managed object that c8y_FetchExtension events are sent
- *      against as their `source` (looked up by external id, created if
- *      missing), listening for those events, and the RECEIVED status event.
- *   2. BEST-EFFORT DRAFT, NEVER RUN (startFetch/onGitHubAssetResponse/
- *      startUpload/onInventoryUploadResponse and everything they call):
- *      the actual GitHub fetch and inventory upload, via the custom
- *      connectivity chains in repository/connectivity-bundle/ (required
- *      because the JSON-codec-only "generic" HttpTransport API used
- *      everywhere in tier 1 would corrupt binary content - see
- *      DIRECT_UPLOAD.md R1) - untested, and known-incomplete in specific
- *      ways DIRECT_UPLOAD.md R1 lists under "Missing information".
+ * The GitHub fetch (startFetch/startFetchAt/onGitHubAssetResponse) goes through the custom
+ * connectivity chain in repository/connectivity-bundle/, since the generic HttpTransport API
+ * always JSON-encodes and would corrupt a raw binary GET response. The inventory upload
+ * (startUpload/onInventoryUploadResponse) uses the standard
+ * com.softwareag.connectivity.httpclient.FormRequest/com.apama.cumulocity.CumulocityRequestInterface
+ * APIs directly - no custom chain needed there, since FormRequest's underlying platform chain
+ * already skips both the JSON and string codecs for multipart payloads.
  *
- * Prerequisite to double check when testing this: receiving Cumulocity Event
- * notifications in the correlator has historically required a connectivity
- * bundle configuration property to be enabled (documented under the name
- * `subscribeToAllMeasurements` in older Apama/Cumulocity docs, despite the
- * name suggesting it's measurement-specific - confirm the current equivalent
- * for your apama-ctrl version) - if this monitor's Event listener never
- * fires, check that first before assuming the EPL is wrong.
+ * Prerequisite: receiving Cumulocity Event notifications in the correlator has historically
+ * required a connectivity bundle configuration property to be enabled (documented under the
+ * name `subscribeToAllMeasurements` in older Apama/Cumulocity docs, despite the name suggesting
+ * it's measurement-specific) - if this monitor's Event listener never fires, check that first.
  *
- * External id convention used here (see DIRECT_UPLOAD.md Q1): idType
- * "c8y_Serial", externalId value "c8y_FetchUploadProxy". The managed object
- * itself is plain (no c8y_IsDevice fragment) - it is only an event-source
- * anchor, not a real device.
+ * External id convention used here: idType "c8y_Serial", externalId value
+ * "c8y_FetchUploadProxy". The managed object itself is plain (no c8y_IsDevice fragment) - it is
+ * only an event-source anchor, not a real device.
  */
 monitor FetchExtensionListener {
 
 	constant string EVENT_TYPE := "c8y_FetchExtension";
 
 	/**
-	 * Status events emitted against the same proxy managed object as
-	 * progress/error markers for a given request (correlated by
-	 * `requestId`) - see DIRECT_UPLOAD.md Q4/Q5. Because they're plain
-	 * Cumulocity Events against a real managed object, they show up on
-	 * Cumulocity's own Monitoring/Events page for that object for free - no
-	 * new UI needed. This is the equivalent of today's browser-side
-	 * `GitHubReleaseError.userMessage` surfacing, moved server-side.
+	 * Status events emitted against the same proxy managed object as progress/error markers for
+	 * a given request (correlated by `requestId`). Because they're plain Cumulocity Events
+	 * against a real managed object, they show up on Cumulocity's own Monitoring/Events page for
+	 * that object for free.
 	 */
 	constant string STATUS_EVENT_TYPE := "c8y_FetchExtensionStatus";
 	constant string STATUS_RECEIVED := "RECEIVED";
@@ -105,27 +86,18 @@ monitor FetchExtensionListener {
 	constant string PROXY_MO_NAME := "Fetch Upload Proxy";
 	constant string PROXY_MO_TYPE := "c8y_FetchUploadProxy";
 
-	// --- R1/R2 (best-effort, unverified - see repository/connectivity-bundle/README.md) ---
+	/** Conservative placeholder ceiling on asset size, pending a real EPL memory-model limit. */
+	constant integer MAX_ASSET_LENGTH := 20971520; // 20 MB
 
 	/**
-	 * MISSING INFORMATION / placeholder: conservative guess at a size ceiling
-	 * pending R2's real EPL memory-model answer (still not established by
-	 * any real test). 20 MB of raw bytes ~= 27 MB of Base64. Adjust once
-	 * real testing (or Apama guidance) gives an actual number.
+	 * GitHub release assets always redirect cross-host (github.com -> an S3-backed CDN host),
+	 * and HTTPClientTransport never follows a cross-host redirect automatically - so this chain
+	 * runs with followRedirects: false and follows redirects itself; this bounds that loop.
 	 */
-	constant integer MAX_ASSET_BASE64_LENGTH := 27962026; // ~20 MB raw
+	constant integer MAX_REDIRECTS := 5;
 
 	/** Cumulocity id of the proxy managed object, once resolved. Empty until then. */
 	string proxySourceId;
-
-	/**
-	 * Tenant's own API hostname, needed to create the InventoryUploadChain -
-	 * resolved once at startup via GET /tenant/currentTenant's `domain`
-	 * field (reusing GenericRequest, the same mechanism already verified
-	 * working for the Identity API calls, rather than an unconfirmed
-	 * env-var-from-EPL path). Empty until resolveUploadHost() completes.
-	 */
-	string uploadHost;
 
 	action onload() {
 		monitor.subscribe(GenericResponse.SUBSCRIBE_CHANNEL);
@@ -133,48 +105,6 @@ monitor FetchExtensionListener {
 		monitor.subscribe(Event.SUBSCRIBE_CHANNEL);
 
 		lookupProxyManagedObject();
-		resolveUploadHost();
-	}
-
-	/**
-	 * Resolves uploadHost via GET /tenant/currentTenant. Best-effort,
-	 * unverified: the `domain` field's presence/exact meaning (e.g. does it
-	 * include a port, is it definitely just a hostname) is taken from a web
-	 * search of Cumulocity's REST API docs, not confirmed against a live
-	 * response - check the logged raw body if this doesn't work.
-	 */
-	action resolveUploadHost() {
-		integer reqId := Util.generateReqId();
-
-		GenericRequest req := new GenericRequest;
-		req.reqId := reqId;
-		req.method := "GET";
-		req.path := "/tenant/currentTenant";
-		req.queryParams := new dictionary<string, string>;
-		req.isPaging := false;
-		req.body := new any;
-		req.headers := new dictionary<string, string>;
-
-		on GenericResponse(reqId = reqId) as resp {
-			dictionary<any, any> body := <dictionary<any, any> > resp.getBody();
-			uploadHost := body.getOrDefault(<any> "domain").valueToString();
-			if uploadHost.length() > 0 {
-				log "FetchExtensionListener: resolved uploadHost=" + uploadHost at INFO;
-			} else {
-				log "FetchExtensionListener: GET /tenant/currentTenant had no usable " +
-					"'domain' field - raw body: " + body.toString() at ERROR;
-			}
-		}
-		on GenericResponseComplete(reqId = reqId) as complete {
-			if complete.error {
-				log "FetchExtensionListener: failed to resolve uploadHost, statusCode=" +
-					complete.statusCode.toString() + " details=" + complete.details at ERROR;
-			}
-		}
-
-		log "FetchExtensionListener: resolving uploadHost via GET /tenant/currentTenant " +
-			"(reqId " + reqId.toString() + ")" at INFO;
-		send req to GenericRequest.SEND_CHANNEL;
 	}
 
 	/** Looks up the proxy managed object by external id (GET /identity/externalIds/{type}/{value}). */
@@ -195,10 +125,7 @@ monitor FetchExtensionListener {
 		}
 		on GenericResponseComplete(reqId = reqId) as complete and not GenericResponse(reqId = reqId) {
 			// Error responses (e.g. 404 - external id doesn't exist yet) carry no
-			// GenericResponse, only the GenericResponseComplete - see GenericRequest's
-			// own doc: "If it returned a non-JSON payload... no GenericResponse events
-			// will be sent" / "If an error occurred then GenericResponseComplete will
-			// contain the error details".
+			// GenericResponse, only the GenericResponseComplete.
 			handleLookupComplete(new GenericResponse, complete);
 		}
 
@@ -209,11 +136,8 @@ monitor FetchExtensionListener {
 
 	action handleLookupComplete(GenericResponse resp, GenericResponseComplete complete) {
 		if not complete.error {
-			// Same dictionary<any,any> shape as the Event.params fragment case
-			// below (nested JSON objects deserialize with `any`-wrapped keys,
-			// not string keys) - untested until this branch first ran, which
-			// is why it used the same wrong cast onFetchExtensionEvent() did
-			// until that one hit a live CastException.
+			// Nested JSON objects deserialize with `any`-wrapped keys, not string keys - look up
+			// entries with <any> "key", not "key".
 			dictionary<any, any> body := <dictionary<any, any> > resp.getBody();
 			dictionary<any, any> managedObjectRef := <dictionary<any, any> > body.getOrDefault(<any> "managedObject");
 			string moId := managedObjectRef.getOrDefault(<any> "id").valueToString();
@@ -289,16 +213,11 @@ monitor FetchExtensionListener {
 	}
 
 	/**
-	 * Emits a c8y_FetchExtensionStatus event against the proxy managed
-	 * object - see the STATUS_* constants' doc comment above (Q4/Q5). A
-	 * missing/empty requestId means the caller has nothing to correlate
-	 * this against, so callers should avoid calling this without one
-	 * (see onFetchExtensionEvent's malformed-request branch, which logs
-	 * instead of calling this for exactly that reason).
+	 * Emits a c8y_FetchExtensionStatus event against the proxy managed object. A missing/empty
+	 * requestId means the caller has nothing to correlate this against, so callers should avoid
+	 * calling this without one.
 	 */
 	action emitStatus(string requestId, string status, string message) {
-		// EPL has no ternary operator (confirmed by a real parser error:
-		// "unexpected char: '?'") - use a plain if/else into a local instead.
 		string messageSuffix := "";
 		if message.length() > 0 {
 			messageSuffix := ": " + message;
@@ -314,15 +233,10 @@ monitor FetchExtensionListener {
 	}
 
 	/**
-	 * Splits a URL into {"host": ..., "path": ...} - https/http-only, no
-	 * query-param handling (GitHub release asset URLs don't need it).
-	 * Loosely adapted from HttpOutputBlock.mon's splitUrl() (see
-	 * DIRECT_UPLOAD.md R1), simplified since we don't need query params
-	 * here. Returns an empty dictionary (no "host" key) if the URL doesn't
-	 * start with a recognized scheme - callers must check for that rather
-	 * than assuming a result, since this deliberately avoids throwing (no
-	 * dependency on the Analytics Builder-specific L10N exception helper,
-	 * which doesn't apply to a plain monitor like this one).
+	 * Splits a URL into {"host": ..., "path": ...} - https/http-only, no query-param handling
+	 * (GitHub release asset URLs don't need it). Returns an empty dictionary (no "host" key) if
+	 * the URL doesn't start with a recognized scheme - callers must check for that rather than
+	 * assuming a result.
 	 */
 	action splitUrl(string url) returns dictionary<string, string> {
 		string withoutScheme;
@@ -347,11 +261,9 @@ monitor FetchExtensionListener {
 	}
 
 	/**
-	 * Maps an upstream (GitHub or inventory) HTTP status code to a
-	 * user-facing message, mirroring the categories
-	 * GitHubReleaseError.mapErrorResponse() already produces for the
-	 * browser-side flow (github-release.service.ts) - kept in sync by hand,
-	 * there's no shared source of truth between EPL and TypeScript here.
+	 * Maps an upstream (GitHub or inventory) HTTP status code to a user-facing message,
+	 * mirroring the categories GitHubReleaseError.mapErrorResponse() already produces for the
+	 * browser-side flow (github-release.service.ts) - kept in sync by hand.
 	 */
 	action mapFailureMessage(integer statusCode) returns string {
 		if statusCode = 401 {
@@ -365,30 +277,17 @@ monitor FetchExtensionListener {
 		}
 	}
 
-	/**
-	 * Handles the received event: parses it, emits a RECEIVED status event,
-	 * then attempts the real fetch+upload - see the file header comment and
-	 * DIRECT_UPLOAD.md R1/R2/R3 for how unverified this part still is
-	 * (untested against a live correlator; depends on
-	 * repository/connectivity-bundle/ being packaged as an extension and
-	 * deployed alongside this EPL App, and on uploadHost having resolved
-	 * successfully - see resolveUploadHost()).
-	 */
+	/** Handles the received event: parses it, emits a RECEIVED status event, then starts the fetch+upload. */
 	action onFetchExtensionEvent(Event e) {
 		// Deliberately NOT logging e.params.toString() here (and never log the
-		// c8y_FetchExtension fragment's `headers` value below either) - per
-		// DIRECT_UPLOAD.md Q2, the event is allowed to carry a GitHub PAT in
-		// its `headers` fragment (an accepted risk against Cumulocity's event
-		// history, not a decision to also multiply that exposure into the
-		// correlator's own log files).
+		// c8y_FetchExtension fragment's `headers` value below either) - the event is allowed to
+		// carry a GitHub PAT in its `headers` fragment, and this avoids multiplying that
+		// exposure into the correlator's own log files.
 		log "FetchExtensionListener: received " + EVENT_TYPE + " event id=" + e.id +
 			" text=" + e.text at INFO;
 
 		if e.params.hasKey(EVENT_TYPE) {
-			// The nested fragment comes back from JSON as dictionary<any,any> (both
-			// keys and values wrapped in `any`), not dictionary<string,any> like
-			// e.params itself - confirmed by a CastException at runtime when this
-			// used the wrong cast. Look up entries with <any> "key", not "key".
+			// Nested JSON objects deserialize with `any`-wrapped keys, not string keys.
 			dictionary<any, any> details := <dictionary<any, any> > e.params.getOrDefault(EVENT_TYPE);
 			boolean hasAuth := false;
 			if details.hasKey(<any> "headers") {
@@ -409,22 +308,28 @@ monitor FetchExtensionListener {
 
 			emitStatus(requestId, STATUS_RECEIVED, "Request received, queued for processing");
 
-			if uploadHost.length() = 0 {
-				log "FetchExtensionListener: uploadHost has not resolved (see resolveUploadHost() - " +
-					"either still pending at startup, or it failed). Cannot proceed with the real " +
-					"fetch/upload for requestId=" + requestId at ERROR;
-				emitStatus(requestId, STATUS_FAILED, "Server misconfigured (no upload host set) - contact an administrator.");
-				return;
-			}
-
 			startFetch(requestId, url, name);
 		} else {
 			log "FetchExtensionListener: event has no " + EVENT_TYPE + " fragment - malformed request?" at WARN;
 		}
 	}
 
-	/** Starts the GitHub asset fetch - see the class-level R1/R2 comment for how unverified this is. */
+	/** Starts the GitHub asset fetch. */
 	action startFetch(string requestId, string url, string name) {
+		startFetchAt(requestId, url, name, 0);
+	}
+
+	/**
+	 * `redirectDepth` bounds the manual redirect-following loop (see MAX_REDIRECTS) - one hop
+	 * per call here.
+	 */
+	action startFetchAt(string requestId, string url, string name, integer redirectDepth) {
+		if redirectDepth > MAX_REDIRECTS {
+			log "FetchExtensionListener: too many redirects for requestId=" + requestId + ": " + url at ERROR;
+			emitStatus(requestId, STATUS_FAILED, "GitHub asset download redirected too many times.");
+			return;
+		}
+
 		dictionary<string, string> urlParts := splitUrl(url);
 		if not urlParts.hasKey("host") {
 			log "FetchExtensionListener: could not parse url for requestId=" + requestId + ": " + url at ERROR;
@@ -436,16 +341,12 @@ monitor FetchExtensionListener {
 
 		emitStatus(requestId, STATUS_DOWNLOADING, "");
 
-		// Was `new RawHttpChainFactory().createGitHubFetchChain(host)` - a
-		// monitor type from the connectivity-bundle extension can't be `new`'d
-		// from this EPL App (confirmed by a real activation failure - see the
-		// file header comment). createDynamicChain() is a plain string-keyed
-		// runtime lookup against that extension's YAML, not a compile-time
-		// type reference, so it works fine called directly from here.
-		string fetchChannel := "GitHubFetchChannel-" + host;
+		// Chain/channel id includes requestId, not just host, so a redirect hop (or a second
+		// concurrent fetch to the same host) never collides with a still-live chain instance.
+		string fetchChannel := "GitHubFetchChannel-" + host + "-" + requestId;
 		monitor.subscribe(fetchChannel);
-		ConnectivityPlugins.createDynamicChain(
-			"github-fetch-" + host,
+		Chain fetchChain := ConnectivityPlugins.createDynamicChain(
+			"github-fetch-" + host + "-" + requestId,
 			[fetchChannel],
 			"GitHubFetchChain",
 			{"HOST": host, "PORT": "443"},
@@ -456,18 +357,28 @@ monitor FetchExtensionListener {
 		req.path := path;
 
 		on GitHubAssetResponse() as resp {
-			onGitHubAssetResponse(requestId, name, resp);
+			onGitHubAssetResponse(requestId, name, redirectDepth, fetchChain, resp);
 		}
 
 		send req to fetchChannel;
 	}
 
-	action onGitHubAssetResponse(string requestId, string name, GitHubAssetResponse resp) {
-		if resp.statusCode >= 200 and resp.statusCode < 300 {
-			if resp.payload.length() > MAX_ASSET_BASE64_LENGTH {
+	action onGitHubAssetResponse(string requestId, string name, integer redirectDepth, Chain fetchChain, GitHubAssetResponse resp) {
+		// This chain instance is done regardless of outcome (a redirect creates a fresh chain
+		// for the next hop; success/failure need this one no further either).
+		fetchChain.destroy();
+
+		boolean isRedirect := resp.statusCode = 301 or resp.statusCode = 302 or
+			resp.statusCode = 303 or resp.statusCode = 307 or resp.statusCode = 308;
+		if isRedirect and resp.location.length() > 0 {
+			log "FetchExtensionListener: following redirect for requestId=" + requestId +
+				" to " + resp.location at INFO;
+			startFetchAt(requestId, resp.location, name, redirectDepth + 1);
+		} else if resp.statusCode >= 200 and resp.statusCode < 300 {
+			if resp.payload.length() > MAX_ASSET_LENGTH {
 				log "FetchExtensionListener: asset for requestId=" + requestId +
-					" exceeds MAX_ASSET_BASE64_LENGTH (" + resp.payload.length().toString() +
-					" > " + MAX_ASSET_BASE64_LENGTH.toString() + ")" at ERROR;
+					" exceeds MAX_ASSET_LENGTH (" + resp.payload.length().toString() +
+					" > " + MAX_ASSET_LENGTH.toString() + ")" at ERROR;
 				emitStatus(requestId, STATUS_FAILED, "Asset is too large to process.");
 				return;
 			}
@@ -480,51 +391,59 @@ monitor FetchExtensionListener {
 	}
 
 	/**
-	 * Starts the inventory upload. `fileBase64` is passed straight through
-	 * from the fetch response - still Base64, never decoded to raw bytes in
-	 * EPL at any point (see repository/connectivity-bundle/README.md for
-	 * why). `metadataJson` is built by hand since this chain has no JSON
-	 * codec - mirrors the pas_extension/build_information shape
-	 * `InventoryBinaryService.create()` sends today
-	 * (extension-inventory.service.ts), but only the minimal fields; nothing
-	 * here replicates analyzeZipContent()'s build_information extraction.
+	 * Starts the inventory upload via FormRequest/CumulocityRequestInterface. `fileContent` is
+	 * passed straight through from the fetch response, whatever exact string representation
+	 * GitHubFetchChain's stringCodec produced - never decoded to raw bytes in EPL. Multipart
+	 * field names are "object" (JSON metadata) and "file" (the binary) - Cumulocity's real
+	 * /inventory/binaries convention. `metadataJson` mirrors the minimal
+	 * pas_extension/name/type shape InventoryBinaryService.create() sends today
+	 * (extension-inventory.service.ts), plus a minimal `build_information.build_type` (matching
+	 * analytics-service's own server-side build flow, c8y_agent.py) so the extension details
+	 * page's "Build information" panel isn't empty. Not a full replica of the browser's
+	 * analyzeZipContent() - that also lists every monitor/file inside the zip (with per-block
+	 * category/description/inputs/outputs, parsed from each block's generated
+	 * `_metadata.evt`), which needs real ZIP-parsing EPL doesn't have.
 	 */
-	action startUpload(string requestId, string name, string fileBase64) {
+	action startUpload(string requestId, string name, string fileContent) {
 		emitStatus(requestId, STATUS_UPLOADING, "");
 
-		string metadataJson := "{\"name\":\"" + name + "\",\"pas_extension\":\"" + name + "\"}";
+		string metadataJson := "{\"name\":\"" + name + "\",\"type\":\"application/zip\"," +
+			"\"pas_extension\":\"" + name + "\",\"build_information\":{\"build_type\":\"external\"}}";
 
-		InventoryUploadRequest req := new InventoryUploadRequest;
-		req.payload := {"file": <any> fileBase64, "managedObject": <any> metadataJson};
-		req.metadata := {"contentType": "multipart/form-data"};
+		CumulocityRequestInterface iface := CumulocityRequestInterface.connectToCumulocity();
+		dictionary<string, string> formPayload := {"object": metadataJson, "file": fileContent};
+		Request req := iface.createRequest("POST", "/inventory/binaries", formPayload);
+		req.setHeader("content-type", "multipart/form-data");
+		req.setHeader("accept", "application/json");
 
-		// See startFetch()'s comment - same fix, monitor types from the
-		// extension can't be `new`'d here, so call createDynamicChain()
-		// directly instead of going through RawHttpChainFactory.
-		string uploadChannel := "InventoryUploadChannel-" + uploadHost;
-		monitor.subscribe(uploadChannel);
-		ConnectivityPlugins.createDynamicChain(
-			"inventory-upload-" + uploadHost,
-			[uploadChannel],
-			"InventoryUploadChain",
-			{"HOST": uploadHost, "PORT": "443"},
-			uploadChannel
-		);
+		// formMetadata's "contentType" per part is required, not cosmetic - without it,
+		// Cumulocity doesn't parse the "object" part as JSON at all.
+		dictionary<string, dictionary<string, string> > formMetadata := {
+			"object": {"contentType": "application/json"},
+			"file": {"filename": name, "contentType": "application/zip"}
+		};
+		FormRequest formReq := FormRequest(req, formMetadata);
 
-		on InventoryUploadResponse() as resp {
+		// Not using formReq.execute()/executeWithSeparateCallbacks() - those take a plain
+		// action<Response> with no way to bind extra context (requestId). Replicating their own
+		// internal correlation logic instead (a fresh id from the same shared counter, then a
+		// listener for the matching Response), with our own closure over requestId.
+		integer respId := integer.incrementCounter("com.softwareag.connectivity.httpclient.HTTPClientGeneric");
+		formReq.request.id := respId;
+		on Response(id = respId) as resp {
 			onInventoryUploadResponse(requestId, resp);
 		}
-
-		send req to uploadChannel;
+		send formReq to formReq.request.channel;
 	}
 
-	action onInventoryUploadResponse(string requestId, InventoryUploadResponse resp) {
-		if resp.statusCode >= 200 and resp.statusCode < 300 {
+	action onInventoryUploadResponse(string requestId, Response resp) {
+		if resp.isSuccess() {
 			log "FetchExtensionListener: upload succeeded for requestId=" + requestId at INFO;
 			emitStatus(requestId, STATUS_SUCCEEDED, "");
 		} else {
 			log "FetchExtensionListener: upload failed for requestId=" + requestId +
-				", statusCode=" + resp.statusCode.toString() at ERROR;
+				", statusCode=" + resp.statusCode.toString() + " statusMessage=" +
+				resp.statusMessage + " body=" + resp.payload.data.valueToString() at ERROR;
 			emitStatus(requestId, STATUS_FAILED, mapFailureMessage(resp.statusCode));
 		}
 	}

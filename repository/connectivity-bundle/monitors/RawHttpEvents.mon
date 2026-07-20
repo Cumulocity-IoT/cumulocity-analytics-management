@@ -22,15 +22,25 @@ package apamax.blockmarketplace.fetchextension.raw;
  * Best-effort draft, unverified against a live correlator — see
  * ../README.md and docs/features/block-marketplace/DIRECT_UPLOAD.md R1.
  *
- * Custom event types mapped (via `apama.eventMap` + `base64Codec`, no
- * JSON/String codec — see
- * ../config/connectivity/FetchExtension/FetchExtension.yaml)
- * onto the two dynamic chains defined there. Binary content is always
- * represented here as a Base64-encoded EPL `string` — never a raw byte
- * type — because the EPL `chunk` type (the only other candidate) explicitly
- * cannot be sent/routed as an event field (confirmed against ApamaDoc),
- * which rules it out for anything that has to travel through a chain to a
- * monitor's listener.
+ * Custom event types mapped (via `apama.eventMap` + `stringCodec`, no
+ * JSON codec — see
+ * ../FetchExtension.yaml — project root, not config/connectivity/, see README.md Round 8)
+ * onto GitHubFetchChain, the one dynamic chain defined there (there used to also be an
+ * InventoryUploadChain and its own InventoryUploadRequest/Response event types here - removed,
+ * Round 26 - the /inventory/binaries upload now goes through the standard FormRequest/
+ * CumulocityRequestInterface APIs directly from FetchExtensionListener.mon, no longer needing
+ * its own custom chain or event types). Binary content is always
+ * represented here as an EPL `string`, never a raw byte type — the EPL
+ * `chunk` type (the only other candidate) explicitly cannot be sent/routed
+ * as an event field (confirmed against ApamaDoc), which rules it out for
+ * anything that has to travel through a chain to a monitor's listener.
+ * NOT actual Base64 (an earlier revision of this bundle used base64Codec,
+ * which turned out to be the wrong tool - see FetchExtension.yaml's
+ * stringCodec comment, Round 18) - this is `stringCodec` with `encoding:
+ * Latin-1`, a lossless byte<->char roundtrip through the string, chosen
+ * specifically because base64Codec's fixed direction semantics don't offer
+ * an encode operation on the inbound (towardsHost) path our raw HTTP
+ * response body actually needs.
  *
  * There used to also be a `RawHttpChainFactory` monitor here wrapping
  * `ConnectivityPlugins.createDynamicChain()` for `FetchExtensionListener.mon`
@@ -51,28 +61,18 @@ event GitHubAssetRequest {
 	string path;
 }
 
-/** Response to a GitHubAssetRequest. `payload` is the Base64-encoded response body. */
+/**
+ * Response to a GitHubAssetRequest. `payload` is the response body, as an EPL string via
+ * stringCodec's Latin-1 encoding (lossless byte<->char roundtrip - NOT Base64, see this file's
+ * header comment).
+ * `location` is the redirect target (from the `Location` response header) when `statusCode`
+ * is a redirect (301/302/303/307/308) - empty otherwise. GitHub release assets always redirect
+ * cross-host to an S3-backed CDN, which HTTPClientTransport's own docs confirm it never follows
+ * automatically ("redirects to a different host... are not followed"), so this chain runs with
+ * followRedirects: false and FetchExtensionListener.mon follows redirects itself.
+ */
 event GitHubAssetResponse {
 	integer statusCode;
 	string payload;
-}
-
-/**
- * POST multipart/form-data to /inventory/binaries. `metadataJson` is the
- * managed-object part (a JSON string built by hand in EPL, since this chain
- * has no JSON codec — see FetchExtensionListener's usage for the exact
- * shape, mirroring `pas_extension`/`build_information`). `fileBase64` is
- * the zip content, Base64-encoded; the base64Codec (configured against
- * `payload.file` specifically, not the whole payload — see the YAML) decodes
- * it back to real bytes for just that part before the transport sends it.
- */
-event InventoryUploadRequest {
-	dictionary<string, any> payload;
-	dictionary<string, string> metadata;
-}
-
-/** Response to an InventoryUploadRequest. */
-event InventoryUploadResponse {
-	integer statusCode;
-	string payload;
+	string location;
 }

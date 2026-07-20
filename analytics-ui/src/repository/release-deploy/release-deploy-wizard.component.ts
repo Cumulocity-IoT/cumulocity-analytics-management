@@ -1,7 +1,7 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, EventEmitter, OnInit, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { AlertService, CoreModule, WizardComponent } from '@c8y/ngx-components';
+import { AlertService, CoreModule } from '@c8y/ngx-components';
 import { IManagedObject } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
@@ -22,6 +22,7 @@ type Phase = 'select' | 'upload';
 @Component({
   selector: 'a17t-release-deploy-wizard',
   templateUrl: './release-deploy-wizard.component.html',
+  styleUrls: ['./release-deploy-wizard.component.css'],
   standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, ExtensionAddComponent]
 })
@@ -41,13 +42,15 @@ export class ReleaseDeployWizardComponent implements OnInit {
 
   sendingFetchEvent = false;
 
+  @Output() cancel = new EventEmitter<void>();
+  @Output() commit = new EventEmitter<void>();
+
   constructor(
     private readonly repositoryService: RepositoryService,
     private readonly githubReleaseService: GitHubReleaseService,
     private readonly analyticsService: AnalyticsService,
     private readonly fetchExtensionService: FetchExtensionService,
-    private readonly alertService: AlertService,
-    private readonly wizardComponent: WizardComponent
+    private readonly alertService: AlertService
   ) { }
 
   uploadExtensionHandler = (
@@ -174,7 +177,11 @@ export class ReleaseDeployWizardComponent implements OnInit {
     }
   }
 
-  cancel(): void {
-    this.wizardComponent.close();
+  onCancel(): void {
+    this.cancel.emit();
+  }
+
+  onUploadCompleted(): void {
+    this.commit.emit();
   }
 }
