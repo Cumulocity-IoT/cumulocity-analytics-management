@@ -1,121 +1,19 @@
 # Best-effort draft, unverified — see ../../README.md.
 #
-# One dynamic chain (parameterized per host/port at chain-creation time via @{varname}
-# substitution from EPL's ConnectivityPlugins.createDynamicChain):
-#
-# - GitHubFetchChain: GET a release asset. No JSON codec — the body stays binary end-to-end
-#   until stringCodec (Latin-1) converts it to an EPL string losslessly, byte-for-byte
-#   (NOT actual Base64 - see stringCodec's own comment below for why base64Codec doesn't fit
-#   here, despite this bundle's name and earlier revisions assuming it would).
-#   See monitors/RawHttpEvents.mon's GitHubAssetResponse.payload.
-#
-# There used to also be an InventoryUploadChain here for the /inventory/binaries upload -
-# removed (Round 26). It's now done via the standard
+# No connectivity chains defined here. GitHubFetchChain (a custom HTTPClientTransport chain,
+# used to GET a raw GitHub release asset) has been removed - it's replaced by
+# config/CorrelatorConfig.yaml's GitHubFetchPlugin (a Python EPL plug-in), because
+# HTTPClientTransport's stringCodec truncates a binary response's buffer->string conversion at
+# the first embedded null byte (confirmed against a real GitHub release asset - see
+# README.md's account of this investigation), which every real ZIP file hits. The upload side
+# (InventoryUploadChain, removed earlier - Round 26) was already replaced with the standard
 # com.softwareag.connectivity.httpclient.FormRequest/com.apama.cumulocity.CumulocityRequestInterface
-# APIs directly from repository/epl/FetchExtensionListener.mon's startUpload(), not a second
-# custom connectivity chain - see that file's header comment and README.md Round 26 for why
-# (binary-safe without a custom stringCodec, and no separate credential/host wiring needed at
-# all, unlike the ${C8Y_USER}/${C8Y_PASSWORD} substitution this chain used to attempt).
+# APIs. See repository/epl/FetchExtensionListener.mon for both.
+#
+# This file (paired with FetchExtension.properties of the same base name) is kept present even
+# though empty of chains, since that file pairing - not just YAML content - is what
+# apama-ctrl's connectivity-config scan appears to key off (see README.md Round 7).
 
-connectivityPlugins:
-  HTTPClientTransport:
-    libraryName: connectivity-http-client
-    class: HTTPClient
+connectivityPlugins: {}
 
-dynamicChains:
-  GitHubFetchChain:
-    - apama.eventMap:
-        defaultEventType: "apamax.blockmarketplace.fetchextension.raw.GitHubAssetResponse"
-    # Required - confirmed by a real "No request Id"/"Unknown control message" failure at
-    # HTTPClientTransport without this. metadata.requestId is a static value, not per-request:
-    # onGitHubAssetResponse()'s `on GitHubAssetResponse() as resp` listener has no requestId
-    # filter (single in-flight fetch per dynamic chain instance), so this is purely
-    # HTTPClientTransport's own internal bookkeeping requirement, not EPL-level correlation.
-    - mapperCodec:
-        allowMissing: true
-        apamax.blockmarketplace.fetchextension.raw.GitHubAssetRequest:
-          towardsTransport:
-            copyFrom:
-              - metadata.http.path: payload.path
-            # GET has no body. Without this, the leftover apama.eventMap-generated payload
-            # map ({path: ...}) is left in place and HTTPClientTransport rejects it - confirmed
-            # by a real "Incorrect type in get (you asked for buffer but it's actually map)"
-            # failure. `set` unconditionally overwrites (applied after copyFrom per the Mapper
-            # codec docs' fixed action order), replacing that leftover map with an empty body.
-            set:
-              - payload: ""
-            defaultValue:
-              - metadata.http.method: GET
-              # Unquoted - must be a real YAML integer, not a string. Confirmed by a real
-              # "Failed to perform HTTP redirect: Incorrect type in get (you asked for integer
-              # but it's actually string)" failure: the initial request tolerated
-              # metadata.requestId as a string, but HTTPClientTransport's own internal
-              # request-tracking (exercised specifically when GitHub's release URL redirects to
-              # its S3-backed asset host) requires it to be an integer.
-              - metadata.requestId: 0
-        "*":
-          towardsHost:
-            mapFrom:
-              # Order matters and this was wrong before - confirmed by a real "Incoming event
-              # map does not contain a value for statusCode" failure. Rules run in the order
-              # listed; the top-level `payload` arrives as a raw (non-map) buffer, so setting a
-              # NESTED field on it first (payload.statusCode) triggers "the payload is first
-              # overwritten with an empty map" per the Mapper codec docs - destroying the raw
-              # body before the next rule could copy it. `payload.payload: payload` must run
-              # FIRST, capturing the raw body while `payload` is still the original buffer -
-              # confirmed against the real, working `binaries.yaml` example, which orders its
-              # own equivalent rule (`payload.payload.data: payload`) first for the same reason.
-              - payload.payload: payload
-              - payload.statusCode: metadata.http.statusCode
-              # Confirmed field name against the official "Mapping events between EPL and HTTP
-              # client requests" docs' own redirect-handling example.
-              - payload.location: metadata.http.headers.location
-            # Required in addition to allowMissing above - confirmed by a real "Incoming event
-            # map does not contain a value for location and missing entries are not allowed"
-            # failure on a genuine 200 response (no Location header at all, as expected).
-            # allowMissing only suppresses mapperCodec's OWN error when a mapFrom rule's source
-            # is absent - it still leaves the target key missing entirely from the payload dict
-            # if there's no defaultValue. apama.eventMap's later, separate construction step is
-            # strict regardless of allowMissing: every field of the target event type must have
-            # a value. defaultValue runs after mapFrom (fixed action order), so this backfills
-            # the key with "" whenever the mapFrom rule above didn't create it.
-            defaultValue:
-              - payload.location: ""
-    # base64Codec + classifierCodec (an earlier version of this) is gone - it was fundamentally
-    # the wrong tool. base64Codec's own docs fix its direction semantics: towardsTransport
-    # (outbound) ENCODES buffer->string; towardsHost (inbound) DECODES string->buffer. Our raw
-    # HTTP response body is a genuine buffer straight off the wire, never pre-encoded as base64
-    # text - so towardsHost needed the opposite of what base64Codec offers there, confirmed by
-    # a real "Incorrect type in get (you asked for string but it's actually buffer)" failure
-    # even after classifierCodec correctly tagged sag.type in time.
-    #
-    # stringCodec's docs describe the *correct* direction for our need: towardsHost converts
-    # buffer->string (not string->buffer). Using `encoding: Latin-1` instead of the UTF-8
-    # default makes this a lossless byte<->char roundtrip (every byte 0-255 maps to exactly one
-    # Latin-1 character and back) - safe for arbitrary binary, unlike UTF-8 which would corrupt
-    # any bytes that aren't valid UTF-8 (a zip file has no such guarantee). The EPL-side string
-    # this produces is not real Base64 text - despite this bundle's earlier comments/naming
-    # assuming that - it just happens to be losslessly reversible, which is all that's actually
-    # needed to carry the bytes through to InventoryUploadChain's matching stringCodec fix.
-    #
-    # No eventTypes/direction scoping needed: `fields: [payload]` alone is enough, since this
-    # field-level restriction (not sag.type-based) works correctly regardless of when sag.type
-    # gets assigned, and this chain only ever carries these two event types anyway.
-    - stringCodec:
-        encoding: Latin-1
-        fields:
-          - payload
-    - HTTPClientTransport:
-        host: "@{HOST}"
-        port: "@{PORT}"
-        tls: true
-        # false, not true - confirmed against the official HTTPClientTransport docs: "redirects
-        # to a different host... are not followed" by the transport itself, for security,
-        # regardless of this setting. GitHub release assets always redirect cross-host to an
-        # S3-backed CDN, which is exactly what triggered the real "Failed to perform HTTP
-        # redirect: Incorrect type in get" failure - not a type bug in our config at all, but
-        # this transport hitting an edge case while attempting something it was never going to
-        # complete. FetchExtensionListener.mon now follows redirects itself (see
-        # onGitHubAssetResponse()/startFetchAt()) using the `location` field mapped above.
-        followRedirects: false
-        timeoutSecs: 120
+dynamicChains: {}
