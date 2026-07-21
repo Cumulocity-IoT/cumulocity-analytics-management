@@ -91,7 +91,7 @@
         <button (click)="onCancel()" class="btn btn-default" type="button">
           {{ 'Cancel' | translate }}
         </button>
-        <button
+        <!-- <button
           (click)="sendFetchExtensionEvent()"
           class="btn btn-default m-l-8"
           type="button"
@@ -99,7 +99,7 @@
           [disabled]="!selectedAsset || sendingFetchEvent"
           >
           {{ 'Send via event (experimental)' | translate }}
-        </button>
+        </button> -->
         <button
           (click)="downloadAndContinue()"
           class="btn btn-primary m-l-8"
