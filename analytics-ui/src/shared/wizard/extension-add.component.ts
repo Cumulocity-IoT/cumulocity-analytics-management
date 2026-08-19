@@ -17,6 +17,7 @@ import { takeUntil } from 'rxjs/operators';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
+import { removeFileExtension } from '../utils';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import JSZip from 'jszip';
@@ -368,11 +369,7 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private extractExtensionName(fileName: string): string {
-    // Remove .zip extension if present, otherwise remove the last extension
-    if (fileName.toLowerCase().endsWith('.zip')) {
-      return fileName.slice(0, -4);
-    }
-    return fileName.split('.').slice(0, -1).join('.');
+    return removeFileExtension(fileName);
   }
 
   private async findExistingExtension(
