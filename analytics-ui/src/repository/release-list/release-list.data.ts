@@ -91,7 +91,7 @@ export const RELEASE_BLOCKS: ReleaseAsset[] = [
   asset('IntervalPulseGenerator', 'Generates a pulse at a configurable time interval.', 2750),
   asset('IntToFloat32', 'Converts an integer value to a 32-bit floating point value.', 3020),
   asset('IntToFloat64', 'Converts an integer value to a 64-bit floating point value.', 3026),
-  asset('LastestValue', 'Holds and re-emits the most recently received value.', 3479),
+  asset('LatestValue', 'Holds and re-emits the most recently received value.', 3479),
   asset('Limit', 'Clamps a signal to a configurable minimum and maximum.', 2109),
   asset('Logging', 'Writes signal values to the Apama log for debugging.', 2395),
   asset('MathOperation', 'Performs a configurable arithmetic operation on two inputs.', 2334),
