@@ -24,7 +24,7 @@ import {
   OnInit,
   ViewEncapsulation
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import {
   ActionControl,
   AlertService,
@@ -46,7 +46,7 @@ import { LabelRendererComponent } from '../shared/renderer/label.renderer';
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, CoreModule]
+  imports: [CoreModule]
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;
@@ -103,7 +103,7 @@ export class BlockGridComponent implements OnInit {
       sortable: true,
       // cellCSSClassName: 'text-center',
       cellRendererComponent: BooleanRendererComponent
-    },
+    }
   ];
 
   pagination: Pagination = {

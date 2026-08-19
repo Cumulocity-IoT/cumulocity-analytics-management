@@ -5,7 +5,7 @@ import { AlertService, CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject, from } from 'rxjs';
 import { AnalyticsService } from '../../shared/analytics.service';
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE, Repository, RepositoryItem } from '../../shared/analytics.model';
-import { RepositoryService } from 'src/shared';
+import { RepositoryService } from '../../shared';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({

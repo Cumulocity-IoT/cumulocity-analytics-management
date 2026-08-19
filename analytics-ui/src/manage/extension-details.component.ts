@@ -19,7 +19,7 @@
  */
 
 import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ActivatedRoute, Router } from '@angular/router';
 import { CoreModule } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -30,7 +30,7 @@ import { AnalyticsService, CepExtension } from '../shared';
   templateUrl: './extension-details.component.html',
   styleUrls: ['./extension-details.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule]
+  imports: [CoreModule]
 })
 export class ExtensionDetailsComponent implements OnInit {
   extensionFromCep!: CepExtension;
@@ -45,7 +45,7 @@ export class ExtensionDetailsComponent implements OnInit {
     private analyticsService: AnalyticsService
   ) {
     // Get the extension from navigation state in constructor
-    const navigation = this.router.getCurrentNavigation();
+    const navigation = this.router.currentNavigation();
     this.extension = navigation?.extras?.state?.['extension'];
     // console.log("Navigation", navigation?.extras);
   }
@@ -85,7 +85,7 @@ export class ExtensionDetailsComponent implements OnInit {
           type: 'link',
           value: repo.url,
           action: (_event: any, link: string) =>
-            window.open(link, "_blank", "noopener,noreferrer"),
+            window.open(link, '_blank', 'noopener,noreferrer')
         });
       }
     }
@@ -97,21 +97,29 @@ export class ExtensionDetailsComponent implements OnInit {
     this.setBreadcrumbConfig();
     const { name } = this.route.snapshot.params;
     if (this.extensionFromCep) {
-      const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
+      const extensionNames =
+        await this.analyticsService.getExtensionNamesFromCep();
       const key = `${name}.zip`;
-      this.extensionContent = (extensionNames as any)[key]?.contents?.map((fileName: string) => {
-        return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
-      }) || [];
+      this.extensionContent =
+        (extensionNames as any)[key]?.contents?.map((fileName: string) => {
+          return fileName.startsWith('files/')
+            ? fileName.substring(6)
+            : fileName;
+        }) || [];
     } else {
       if (((this.extension as any)['build_information'] as any)['monitors']) {
-        ((this.extension as any)['build_information'] as any)['monitors'].forEach((monitor: any) => {
+        ((this.extension as any)['build_information'] as any)[
+          'monitors'
+        ].forEach((monitor: any) => {
           this.extensionContent.push(monitor['file']);
         });
       }
       if (((this.extension as any)['build_information'] as any)['files']) {
-        ((this.extension as any)['build_information'] as any)['files'].forEach((monitor: any) => {
-          this.extensionContent.push(monitor['file']);
-        });
+        ((this.extension as any)['build_information'] as any)['files'].forEach(
+          (monitor: any) => {
+            this.extensionContent.push(monitor['file']);
+          }
+        );
       }
     }
   }

@@ -178,8 +178,9 @@ export class ExtensionEnrichmentService {
     deployedMetadata: CepExtensionsMetadata,
     diagnostics: CepExtensionsMetadata
   ): Promise<IManagedObject> {
-    // Use the name directly - it's already clean (no .zip extension) when stored in inventory
-    const cleanName = extension['name'];
+    // Some inventory entries keep the ".zip" suffix in their name; normalize
+    // it so lookups against the correlator (which never uses ".zip") match.
+    const cleanName = removeFileExtension(extension['name']);
     const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
     const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
 

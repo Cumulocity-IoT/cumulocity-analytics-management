@@ -1,5 +1,5 @@
 import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { WizardComponent } from '@c8y/ngx-components';
@@ -19,7 +19,7 @@ import { ExtensionAddComponent } from './extension-add.component';
     (completed)="onCompleted()"
   ></a17t-extension-add>`,
   standalone: true,
-  imports: [CommonModule, ExtensionAddComponent]
+  imports: [ExtensionAddComponent]
 })
 export class ExtensionAddWizardComponent implements OnInit {
   @Input() mode!: UploadMode;
@@ -31,7 +31,7 @@ export class ExtensionAddWizardComponent implements OnInit {
   constructor(
     private analyticsService: AnalyticsService,
     private wizardComponent: WizardComponent
-  ) { }
+  ) {}
   ngOnInit(): void {
     console.log('Mode', this.mode);
   }
@@ -56,7 +56,8 @@ export class ExtensionAddWizardComponent implements OnInit {
     extension: Partial<IManagedObject>,
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    const resolved: IManagedObject = (extension as IManagedObject) ?? this.extensionToReplace;
+    const resolved: IManagedObject =
+      (extension as IManagedObject) ?? this.extensionToReplace;
     return this.analyticsService.uploadExtension(file, resolved, mode);
   }
 }
