@@ -5,7 +5,7 @@ Utility functions for solution management, GitHub integration, and error handlin
 import json
 import logging
 from functools import wraps
-from typing import Any
+from typing import Any, Dict
 from urllib.parse import urlparse, parse_qs
 
 from flask import Response
@@ -62,15 +62,15 @@ def create_error_response(message: str, status_code: int) -> Response:
     )
 
 
-def github_web_url_to_content_api(github_web_url: str) -> str:
+def parse_github_web_url(github_web_url: str) -> Dict[str, str]:
     """
-    Transform a GitHub web URL to a GitHub Content API endpoint URL.
+    Parse a GitHub web URL into its owner, repo, branch and in-repo path components.
 
     Args:
-        github_web_url: GitHub web URL
+        github_web_url: GitHub web URL, e.g. https://github.com/owner/repo/tree/branch/some/path
 
     Returns:
-        GitHub Content API URL
+        {"owner": str, "repo": str, "branch": str, "path": str}
 
     Raises:
         ValueError: If URL is invalid
@@ -86,7 +86,7 @@ def github_web_url_to_content_api(github_web_url: str) -> str:
         if len(path_parts) < 2:
             raise ValueError("Invalid GitHub URL: missing user or repository")
 
-        user, repo = path_parts[0], path_parts[1]
+        owner, repo = path_parts[0], path_parts[1]
         branch = DEFAULT_BRANCH
         path_in_repo = ""
 
@@ -96,15 +96,33 @@ def github_web_url_to_content_api(github_web_url: str) -> str:
         elif len(path_parts) > 2:
             path_in_repo = "/".join(path_parts[2:])
 
-        content_api_url = f"https://api.github.com/repos/{user}/{repo}/contents"
-        if path_in_repo:
-            content_api_url += f"/{path_in_repo}"
-        content_api_url += f"?ref={branch}"
-
-        return content_api_url
+        return {"owner": owner, "repo": repo, "branch": branch, "path": path_in_repo}
 
     except Exception as e:
-        raise ValueError(f"Failed to convert GitHub URL: {e}")
+        raise ValueError(f"Failed to parse GitHub URL: {e}")
+
+
+def github_web_url_to_content_api(github_web_url: str) -> str:
+    """
+    Transform a GitHub web URL to a GitHub Content API endpoint URL.
+
+    Args:
+        github_web_url: GitHub web URL
+
+    Returns:
+        GitHub Content API URL
+
+    Raises:
+        ValueError: If URL is invalid
+    """
+    parsed = parse_github_web_url(github_web_url)
+
+    content_api_url = f"https://api.github.com/repos/{parsed['owner']}/{parsed['repo']}/contents"
+    if parsed["path"]:
+        content_api_url += f"/{parsed['path']}"
+    content_api_url += f"?ref={parsed['branch']}"
+
+    return content_api_url
 
 
 def content_api_to_github_web_url(content_api_url: str) -> str:

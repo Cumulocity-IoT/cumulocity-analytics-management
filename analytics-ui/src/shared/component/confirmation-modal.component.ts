@@ -18,8 +18,14 @@
  * @authors Christof Strack
  */
 
-import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import {
+  AfterViewInit,
+  Component,
+  Input,
+  OnInit,
+  ViewChild
+} from '@angular/core';
+
 import {
   ConfirmModalComponent,
   CoreModule,
@@ -35,7 +41,7 @@ import { Subject } from 'rxjs';
   selector: 'a17t-confirmation-modal',
   templateUrl: './confirmation-modal.component.html',
   standalone: true,
-  imports: [CommonModule, CoreModule]
+  imports: [CoreModule]
 })
 export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   @Input() title!: string;
@@ -46,7 +52,7 @@ export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   };
 
   @ViewChild('modalRef', { static: false }) modalRef!: ConfirmModalComponent;
-  
+
   messageTranslated!: string;
   closeSubject: Subject<boolean> = new Subject();
   status: StatusType = Status.WARNING;

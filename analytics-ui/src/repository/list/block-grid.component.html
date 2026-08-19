@@ -28,6 +28,13 @@
 </c8y-breadcrumb>
 
 <c8y-action-bar-item [placement]="'right'">
+  <button class="btn btn-link" title="{{ 'Deploy from GitHub Release' | translate }}" (click)="deployFromRelease()">
+    <i c8yIcon="cloud-download"></i>
+    {{ "Deploy Release" | translate }}
+  </button>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
   <button class="btn btn-link" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
     <i c8yIcon="change-theme"></i>
     {{ "Repositories" | translate }}
@@ -45,6 +52,13 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
+  <label class="c8y-switch">
+    <input type="checkbox" [(ngModel)]="expertMode" (change)="updateMode()" />
+    <span></span> Expert mode
+  </label>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'right'">
   <button class="btn btn-link" title="{{ 'Reload from server' | translate }}" (click)="reloadAll()">
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
     {{ "Reload" | translate }}
@@ -55,18 +69,29 @@
 <div class="content-fullpage border-top border-bottom">
   <!-- Add showDataGrid condition here -->
   @if (!loading && showDataGrid) {
-    <c8y-data-grid id="dataGrid" #dataGrid [title]="titleSample | translate"
-      [columns]="columnsSamples" [rows]="repositoryItems$ | async" [pagination]="pagination" [selectable]="true"
-      (itemsSelect)="checkSelection($event)" [actionControls]="actionControls" [bulkActionControls]="bulkActionControls"
-      [singleSelection]="singleSelection">
-      <c8y-ui-empty-state [icon]="'cog'" [title]="'No samples to display.' | translate"
-        [subtitle]="'Configure repositories.' | translate" [horizontal]="true">
-        <button class="btn btn-link m-t-24" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
-          <i c8yIcon="change-theme"></i>
-          {{ "Repositories" | translate }}
-        </button>
-      </c8y-ui-empty-state>
-    </c8y-data-grid>
+    @if (!expertMode) {
+      <div class="p-t-48">
+        <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
+          <c8y-ui-empty-state [icon]="'cog'" [title]="'Expert mode is off.' | translate"
+            [subtitle]="'Enable Expert mode to browse and load blocks from configured repositories.' | translate"
+            [horizontal]="true">
+          </c8y-ui-empty-state>
+        </div>
+      </div>
+    } @else {
+      <c8y-data-grid id="dataGrid" #dataGrid [title]="titleSample | translate"
+        [columns]="columnsSamples" [rows]="(repositoryItems$ | async) ?? []" [pagination]="pagination" [selectable]="true"
+        (itemsSelect)="checkSelection($event)" [actionControls]="actionControls" [bulkActionControls]="bulkActionControls"
+        [singleSelection]="singleSelection">
+        <c8y-ui-empty-state [icon]="'cog'" [title]="'No samples to display.' | translate"
+          [subtitle]="'Configure repositories.' | translate" [horizontal]="true">
+          <button class="btn btn-link m-t-24" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
+            <i c8yIcon="change-theme"></i>
+            {{ "Repositories" | translate }}
+          </button>
+        </c8y-ui-empty-state>
+      </c8y-data-grid>
+    }
   }
 
   @if (loading) {
@@ -88,6 +113,16 @@
       <a17t-name-repositories-drawer (cancel)="onRepositoryCancel()"
         (commit)="onRepositoryCommit($event)" [hideInstalled]="hideInstalled">
       </a17t-name-repositories-drawer>
+    }
+  </div>
+</div>
+
+<div [ngClass]="{ drawerOpen: showDeployRelease }">
+  <div class="bottom-drawer">
+    @if (showDeployRelease) {
+      <a17t-release-deploy-wizard (cancel)="onDeployReleaseCancel()"
+        (commit)="onDeployReleaseCommit()">
+      </a17t-release-deploy-wizard>
     }
   </div>
 </div>

@@ -1,0 +1,20 @@
+/*
+ * Layout/colors are inherited from the shared c8y style library (.card,
+ * .card__ribbon, .label-*, .bg-info, …) — same classes as
+ * ecosystem/packages/package-list's application-card. Only page-specific
+ * bits live here.
+ */
+
+.card {
+  align-self: stretch;
+  width: 100%;
+}
+
+.source-note {
+  color: var(--c8y-component-color-text-muted, #6c7484);
+  font-size: 1.1rem;
+}
+
+.source-note a {
+  white-space: nowrap;
+}

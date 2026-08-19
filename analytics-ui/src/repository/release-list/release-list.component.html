@@ -1,0 +1,143 @@
+<!--
+~ Copyright (c) 2025 Cumulocity GmbH
+~
+~ SPDX-License-Identifier: Apache-2.0
+~
+~ Licensed under the Apache License, Version 2.0 (the "License");
+~ you may not use this file except in compliance with the License.
+~ You may obtain a copy of the License at
+~
+~      http://www.apache.org/licenses/LICENSE-2.0
+~
+~ Unless required by applicable law or agreed to in writing, software
+~ distributed under the License is distributed on an "AS IS" BASIS,
+~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+~ See the License for the specific language governing permissions and
+~ limitations under the License.
+~
+~ @authors Christof Strack
+-->
+
+<c8y-title translate>Community blocks release</c8y-title>
+<c8y-breadcrumb>
+  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item [icon]="'cloud-download'" [label]="'Community release' | translate"
+    [path]="'c8y-pkg-analytics-extension/release'">
+  </c8y-breadcrumb-item>
+</c8y-breadcrumb>
+
+<c8y-action-bar-item [placement]="'right'">
+  <a class="btn btn-link" [href]="releaseTagUrl" target="_blank" rel="noopener" title="{{ 'Open release on GitHub' | translate }}">
+    <i c8yIcon="c8y-github"></i>
+    {{ 'Open on GitHub' | translate }}
+  </a>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'left'" itemClass="p-r-8 p-l-8">
+  <div class="input-group">
+    <span class="input-group-addon"><i c8yIcon="search"></i></span>
+    <input
+      type="text"
+      class="form-control"
+      placeholder="{{ 'Filter blocks…' | translate }}"
+      [(ngModel)]="filterTerm"
+    />
+  </div>
+</c8y-action-bar-item>
+
+<c8y-action-bar-item [placement]="'left'" itemClass="navbar-form hidden-xs">
+  <c8y-list-display-switch
+    (onListClassChange)="listClass = $event"
+    [listLength]="filteredBundles.length + filteredBlocks.length">
+  </c8y-list-display-switch>
+</c8y-action-bar-item>
+
+<div class="source-note m-l-16 m-r-16 m-t-8">
+  {{ 'Static mockup — data taken from the' | translate }}
+  <a [href]="releaseTagUrl" target="_blank" rel="noopener">analytics-builder-blocks-contrib release 1.0.1</a>,
+  {{ 'published' | translate }} {{ releasePublishedAt }}. {{ 'Not wired to a live feed.' | translate }}
+</div>
+
+<ng-template #assetCard let-asset="asset" let-isBundle="isBundle">
+  <div class="card pointer card--d-col notFeature">
+    <div class="card-block text-center card-column-40">
+      <button
+        class="card__ribbon btn-clean"
+        type="button"
+        title="{{ (isBundle ? 'Bundle of several blocks' : 'Individual block') | translate }}"
+      >
+        <span class="bg-info">{{ 'COMMUNITY' | translate }}</span>
+      </button>
+      <div class="card-appicon">
+        <i [c8yIcon]="isBundle ? 'big-parcel' : 'flow-chart'"></i>
+      </div>
+      <div style="line-height: 1.3">
+        <p class="text-medium text-break-word" [title]="asset.name">{{ asset.name }}</p>
+        <p class="small text-muted">
+          <em>{{ asset.version }}</em>
+        </p>
+        <p class="small text-break-word">{{ asset.author }}</p>
+      </div>
+    </div>
+    <div class="card-block p-0 no-min-height card--d-col card-column-80 flex-grow">
+      <div class="card-block no-min-height p-t-0 p-b-0 card-column-80">
+        <div class="text-center-grid">
+          <div class="p-b-8 card-hidden-grid"></div>
+          <p class="small l-h-tight p-b-8 p-l-0 p-r-0 text-break-word">{{ asset.description }}</p>
+        </div>
+      </div>
+      <div class="card-block no-min-height p-t-0 p-b-0 d-flex card-column-20 text-center-grid flex-wrap gap-8">
+        <span class="label" [ngClass]="isBundle ? 'label-success' : 'label-info'">
+          {{ (isBundle ? 'Bundle' : 'Block') | translate }}
+        </span>
+        <span class="small text-muted">{{ formatSize(asset.sizeBytes) }}</span>
+      </div>
+      <div class="card-footer no-min-height p-t-0 p-b-0 card-column-20 text-center-grid">
+        <div class="p-b-16 card-hidden-list"></div>
+        <a
+          class="btn btn-sm btn-default"
+          [href]="asset.downloadUrl"
+          target="_blank"
+          rel="noopener"
+          title="{{ 'Deploy' | translate }}"
+        >
+          <i class="m-r-4" c8yIcon="export"></i>
+          {{ 'Deploy' | translate }}
+        </a>
+        <div class="p-b-32 card-hidden-list"></div>
+      </div>
+    </div>
+    <div class="p-r-40 card-hidden-grid"></div>
+  </div>
+</ng-template>
+
+@if (filteredBundles.length > 0) {
+  <h4 class="m-l-16 m-t-16">{{ 'Bundles' | translate }} ({{ filteredBundles.length }})</h4>
+  <div class="card-group" [ngClass]="listClass">
+    @for (asset of filteredBundles; track trackByAsset($index, asset)) {
+      <div class="col-xs-12 col-sm-4 col-md-3">
+        <ng-container [ngTemplateOutlet]="assetCard" [ngTemplateOutletContext]="{ asset: asset, isBundle: true }"></ng-container>
+      </div>
+    }
+  </div>
+}
+
+@if (filteredBlocks.length > 0) {
+  <h4 class="m-l-16 m-t-16">{{ 'Individual blocks' | translate }} ({{ filteredBlocks.length }})</h4>
+  <div class="card-group" [ngClass]="listClass">
+    @for (asset of filteredBlocks; track trackByAsset($index, asset)) {
+      <div class="col-xs-12 col-sm-4 col-md-3">
+        <ng-container [ngTemplateOutlet]="assetCard" [ngTemplateOutletContext]="{ asset: asset, isBundle: false }"></ng-container>
+      </div>
+    }
+  </div>
+}
+
+@if (filteredBundles.length === 0 && filteredBlocks.length === 0) {
+  <c8y-ui-empty-state
+    [icon]="'search'"
+    [title]="'No matching blocks.' | translate"
+    [subtitle]="'Refine your search terms' | translate">
+  </c8y-ui-empty-state>
+}

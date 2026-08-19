@@ -1,0 +1,19 @@
+# Best-effort draft, unverified — see ../../README.md.
+#
+# No connectivity chains defined here. GitHubFetchChain (a custom HTTPClientTransport chain,
+# used to GET a raw GitHub release asset) has been removed - it's replaced by
+# config/CorrelatorConfig.yaml's GitHubFetchPlugin (a Python EPL plug-in), because
+# HTTPClientTransport's stringCodec truncates a binary response's buffer->string conversion at
+# the first embedded null byte (confirmed against a real GitHub release asset - see
+# README.md's account of this investigation), which every real ZIP file hits. The upload side
+# (InventoryUploadChain, removed earlier - Round 26) was already replaced with the standard
+# com.softwareag.connectivity.httpclient.FormRequest/com.apama.cumulocity.CumulocityRequestInterface
+# APIs. See repository/epl/FetchExtensionListener.mon for both.
+#
+# This file (paired with FetchExtension.properties of the same base name) is kept present even
+# though empty of chains, since that file pairing - not just YAML content - is what
+# apama-ctrl's connectivity-config scan appears to key off (see README.md Round 7).
+
+connectivityPlugins: {}
+
+dynamicChains: {}

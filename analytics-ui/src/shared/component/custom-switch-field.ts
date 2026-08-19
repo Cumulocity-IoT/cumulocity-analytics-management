@@ -19,7 +19,7 @@
  */
 
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ReactiveFormsModule } from '@angular/forms';
 import { FieldType, FormlyModule } from '@ngx-formly/core';
 import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
@@ -32,7 +32,7 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
       [class.c8y-checkbox]="!to.switchMode"
       [class.c8y-switch]="to.switchMode"
       [class.has-error]="showError"
-      >
+    >
       <input
         type="checkbox"
         [formControl]="formControl"
@@ -41,7 +41,7 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
           'c8y-field-checkbox--' +
           (field.templateOptions?.optionDataCy || to.label)
         "
-        />
+      />
       <span></span>
       <span class="text-truncate" title="{{ to.label | humanize }}">{{
         to.label | humanize
@@ -61,8 +61,8 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
       *ngIf="!!to.description"
     ></button> -->
     </label>
-    `,
+  `,
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormlyModule, CoreModule, HumanizePipe]
+  imports: [ReactiveFormsModule, FormlyModule, CoreModule, HumanizePipe]
 })
 export class CustomSwitchField extends FieldType {}

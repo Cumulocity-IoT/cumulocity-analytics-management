@@ -5,7 +5,7 @@ import { AlertService, CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject, from } from 'rxjs';
 import { AnalyticsService } from '../../shared/analytics.service';
 import { APPLICATION_ANALYTICS_BUILDER_SERVICE, Repository, RepositoryItem } from '../../shared/analytics.model';
-import { RepositoryService } from 'src/shared';
+import { RepositoryService } from '../../shared';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
@@ -29,6 +29,11 @@ export class ExtensionCreateComponent implements OnInit {
   loading: boolean = false;
   backendDeployed$: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   configurationIsExtension!: boolean;
+  // Building from a plain list of selected files works client-side, without
+  // the backend — only the yaml-sections and whole-repository build paths
+  // need it (see isDeployed()). Starts true so the button stays disabled
+  // during the initial isBackendServiceAvailable() check, same as before.
+  requiresBackend = true;
 
   constructor(
     public analyticsService: AnalyticsService,
@@ -51,9 +56,17 @@ export class ExtensionCreateComponent implements OnInit {
   async isDeployed() {
     from(this.analyticsService.isBackendServiceAvailable()).subscribe((status) => {
       this.backendDeployed$.next(status);
-      if (!status) {
+      if (status) {
+        this.requiresBackend = false;
+        return;
+      }
+      // Building from a plain list of selected files now works client-side,
+      // without the backend — only the yaml-sections and whole-repository
+      // build paths still require it (see RepositoryService.isBackendMode).
+      this.requiresBackend = this.configurationIsExtension || !(this.monitors?.length > 0);
+      if (this.requiresBackend) {
         this.alertService.warning(
-          `You cannot build custom extension unless you deploy the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE}!`
+          `Building an extension from ${this.configurationIsExtension ? 'extensions.yaml sections' : 'a whole repository path'} requires the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE} to be deployed!`
         );
       }
     });
@@ -91,11 +104,9 @@ export class ExtensionCreateComponent implements OnInit {
           `The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.`
         );
       }
-    } else {
-      this.alertService.warning(
-        `Uploaded extension ${configName}.zip was not successful`
-      );
     }
+    // No generic failure alert here: RepositoryService already shows a
+    // specific one for every failure path (backend or browser-mode).
     this.closeSubject.next(true);
   }
 

@@ -1,5 +1,5 @@
 import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
 import {
@@ -30,7 +30,7 @@ interface BuildInformation {
   templateUrl: './extension-card.component.html',
   styleUrls: ['./extension-card.component.css'],
   standalone: true,
-  imports: [CommonModule, CoreModule, BsDropdownModule, PopoverModule]
+  imports: [CoreModule, BsDropdownModule, PopoverModule]
 })
 export class ExtensionCardComponent implements OnInit {
   @Input() extension!: IManagedObject;
@@ -45,9 +45,9 @@ export class ExtensionCardComponent implements OnInit {
     private readonly activatedRoute: ActivatedRoute,
     private readonly bsModalService: BsModalService,
     private readonly wizardModalService: WizardModalService
-  ) { }
+  ) {}
 
-  ngOnInit(): void { }
+  ngOnInit(): void {}
 
   async detail(): Promise<void> {
     await this.router.navigate(['details', this.extension['name']], {
@@ -59,7 +59,12 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   isBuildInternally(): boolean {
-    return this.extension?.['build_information'] && (this.extension?.['build_information'].build_type == 'list' || this.extension?.['build_information'].build_type == 'yaml' || this.extension?.['build_information'].build_type == 'repository')
+    return (
+      this.extension?.['build_information'] &&
+      (this.extension?.['build_information'].build_type == 'list' ||
+        this.extension?.['build_information'].build_type == 'yaml' ||
+        this.extension?.['build_information'].build_type == 'repository')
+    );
   }
 
   hasBuildInformation(): boolean {
@@ -67,7 +72,9 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   getBuildType(): string {
-    return this.extension?.['build_information'] ? this.extension?.['build_information'].build_type : 'Unknown';
+    return this.extension?.['build_information']
+      ? this.extension?.['build_information'].build_type
+      : 'Unknown';
   }
 
   async delete(): Promise<void> {
@@ -127,8 +134,8 @@ export class ExtensionCardComponent implements OnInit {
       componentInitialState: {
         mode: 'update',
         extensionToReplace: this.extension,
-        headerText: 'Update extension',
-      },
+        headerText: 'Update extension'
+      }
     };
 
     const modalOptions: ModalOptions = { initialState };
@@ -148,7 +155,7 @@ export class ExtensionCardComponent implements OnInit {
     if (!buildInfo) {
       this.alertService.warning(
         'Cannot rebuild: No build information found for this extension. ' +
-        'This extension may have been created manually or with an older version.'
+          'This extension may have been created manually or with an older version.'
       );
       return;
     }
@@ -193,7 +200,9 @@ export class ExtensionCardComponent implements OnInit {
   }
 
   private async performRebuild(buildInfo: BuildInformation): Promise<void> {
-    this.alertService.info(`Rebuilding extension "${this.extension['name']}"...`);
+    this.alertService.info(
+      `Rebuilding extension "${this.extension['name']}"...`
+    );
 
     try {
       switch (buildInfo.build_type) {
@@ -217,13 +226,15 @@ export class ExtensionCardComponent implements OnInit {
         `Extension "${this.extension['name']}" rebuilt successfully`
       );
       this.extensionChanged.emit();
-
     } catch (error) {
       const err = error as { status?: number; message?: string };
-      if (err?.status === 404 || err?.message?.includes('no existing extension')) {
+      if (
+        err?.status === 404 ||
+        err?.message?.includes('no existing extension')
+      ) {
         this.alertService.danger(
           `Rebuild failed: The extension "${this.extension['name']}" was not found in Cumulocity. ` +
-          'It may have been deleted. Please create it again instead.'
+            'It may have been deleted. Please create it again instead.'
         );
       } else {
         throw error;
@@ -231,18 +242,19 @@ export class ExtensionCardComponent implements OnInit {
     }
   }
 
-  private async rebuildFromRepository(buildInfo: BuildInformation): Promise<void> {
+  private async rebuildFromRepository(
+    buildInfo: BuildInformation
+  ): Promise<void> {
     await this.repositoryService.createExtensionFromRepository(
       this.extension['name'],
       buildInfo.repository,
-      true,  // upload
+      true, // upload
       true, // deploy
-      true   // rebuild
+      true // rebuild
     );
   }
 
   private async rebuildFromList(buildInfo: any): Promise<void> {
-
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
     }
@@ -251,14 +263,13 @@ export class ExtensionCardComponent implements OnInit {
       this.extension['name'],
       buildInfo.monitors,
       buildInfo.repository,
-      true,  // upload
+      true, // upload
       true, // deploy
-      true   // rebuild
+      true // rebuild
     );
   }
 
   private async rebuildFromYaml(buildInfo: any): Promise<void> {
-
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');
     }
@@ -271,9 +282,9 @@ export class ExtensionCardComponent implements OnInit {
       buildInfo.yaml,
       sections,
       buildInfo.repository,
-      true,  // upload
+      true, // upload
       true, // deploy
-      true   // rebuild
+      true // rebuild
     );
   }
 }

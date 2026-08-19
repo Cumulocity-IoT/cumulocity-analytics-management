@@ -1,7 +1,8 @@
 import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
+import { WizardComponent } from '@c8y/ngx-components';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 import { ExtensionAddComponent } from './extension-add.component';
@@ -14,9 +15,11 @@ import { ExtensionAddComponent } from './extension-add.component';
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
     [mode]="mode"
+    (cancelled)="onCancelled()"
+    (completed)="onCompleted()"
   ></a17t-extension-add>`,
   standalone: true,
-  imports: [CommonModule, ExtensionAddComponent]
+  imports: [ExtensionAddComponent]
 })
 export class ExtensionAddWizardComponent implements OnInit {
   @Input() mode!: UploadMode;
@@ -25,9 +28,21 @@ export class ExtensionAddWizardComponent implements OnInit {
   @Output() refresh = new EventEmitter<void>();
   successText: string = gettext('Extension created');
 
-  constructor(private analyticsService: AnalyticsService) { }
+  constructor(
+    private analyticsService: AnalyticsService,
+    private wizardComponent: WizardComponent
+  ) {}
   ngOnInit(): void {
     console.log('Mode', this.mode);
+  }
+
+  onCancelled(): void {
+    this.wizardComponent.close();
+  }
+
+  onCompleted(): void {
+    this.wizardComponent.close();
+    this.refresh.emit();
   }
 
   uploadExtensionHandler = (
@@ -41,7 +56,8 @@ export class ExtensionAddWizardComponent implements OnInit {
     extension: Partial<IManagedObject>,
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    const resolved: IManagedObject = (extension as IManagedObject) ?? this.extensionToReplace;
+    const resolved: IManagedObject =
+      (extension as IManagedObject) ?? this.extensionToReplace;
     return this.analyticsService.uploadExtension(file, resolved, mode);
   }
 }

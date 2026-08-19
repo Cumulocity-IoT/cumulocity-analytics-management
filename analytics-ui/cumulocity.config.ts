@@ -95,9 +95,9 @@ export default {
         from: '../resources/images/extension-manage-build-information.png',
         to: 'resources/images/extension-manage-build-information.png',
       },
-            {
-        from: '../resources/images/monitoring-cep.png)',
-        to: 'resources/images/monitoring-cep.png)g',
+      {
+        from: '../resources/images/monitoring-cep.png',
+        to: 'resources/images/monitoring-cep.png',
       },
       {
         from: '../README.md',

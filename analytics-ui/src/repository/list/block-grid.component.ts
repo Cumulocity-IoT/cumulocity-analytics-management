@@ -40,10 +40,12 @@ import {
   RepositoryItem,
   RepositoryService
 } from '../../shared';
-import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
+import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
+import { catchError, of } from 'rxjs';
 import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
 import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
@@ -54,18 +56,24 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
-  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
+  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
 export class BlockGridComponent implements OnInit {
   @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
+  // Loading items from a repository (GitHub calls, FQN extraction, deployed-
+  // blocks lookup) is comparatively expensive, so it's opt-in: off by
+  // default, and persisted as a tenant option (see updateMode()) — not
+  // localStorage — the same way repository config/PAT is stored.
+  expertMode: boolean = false;
   loading: boolean = false;
   singleSelection: boolean = false;
   showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
+  showDeployRelease: boolean = false;
 
   activeRepository!: Repository;
   repositoryItems$!: Observable<RepositoryItem[]>;
@@ -127,13 +135,21 @@ export class BlockGridComponent implements OnInit {
   };
 
   private destroyRef = inject(DestroyRef);
+  // Drives repositoryItems$ below — starts at the same `false` default as
+  // `expertMode` so nothing is fetched until the persisted setting (or a
+  // user toggle) says otherwise.
+  private readonly expertMode$ = new BehaviorSubject<boolean>(false);
 
   constructor(
     public repositoryService: RepositoryService,
     public alertService: AlertService,
     private bsModalService: BsModalService
   ) {
-    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
+    this.repositoryItems$ = this.expertMode$.pipe(
+      switchMap(expertMode => expertMode
+        ? this.repositoryService.getRepositoryItemsAnalyzed()
+        : of([])
+      ),
       shareReplay(1),
       tap(items => {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
@@ -160,6 +176,12 @@ export class BlockGridComponent implements OnInit {
   ngOnInit() {
     this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((samples) => (this.repositoryItems = samples));
+
+    this.repositoryService.getExpertMode().then(expertMode => {
+      this.expertMode = expertMode;
+      this.expertMode$.next(expertMode);
+    });
+
     this.bulkActionControls.push({
       type: 'CREATE',
       text: 'Create extension',
@@ -203,8 +225,12 @@ export class BlockGridComponent implements OnInit {
     const initialState = {
       source$: this.repositoryService.getRepositoryItemContent(
         block,
-        true,
         false
+      ).pipe(
+        catchError(() => {
+          this.alertService.danger(`Failed to load content for "${block.name}".`);
+          return of('');
+        })
       ),
       monitorName: block.name
     };
@@ -337,8 +363,36 @@ export class BlockGridComponent implements OnInit {
     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
   }
 
+  /**
+   * Toggling Expert mode on/off immediately gates whether `repositoryItems$`
+   * loads anything (see the constructor); persisting is best-effort — a
+   * failed save only logs, since the in-memory toggle already took effect
+   * for this session.
+   */
+  async updateMode() {
+    this.expertMode$.next(this.expertMode);
+    try {
+      await this.repositoryService.setExpertMode(this.expertMode);
+    } catch (error) {
+      console.error('Failed to persist Expert mode setting:', error);
+    }
+  }
+
   openRepositoriesDrawer(): void {
     this.showConfigRepositories = true;
+  }
+
+  deployFromRelease(): void {
+    this.showDeployRelease = true;
+  }
+
+  onDeployReleaseCancel(): void {
+    this.showDeployRelease = false;
+  }
+
+  onDeployReleaseCommit(): void {
+    this.showDeployRelease = false;
+    this.reload();
   }
 
   openLayoutHelp(): void {

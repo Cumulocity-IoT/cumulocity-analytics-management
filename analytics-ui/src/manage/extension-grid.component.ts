@@ -11,6 +11,7 @@ import {
   map,
   retry,
   shareReplay,
+  startWith,
   switchMap,
   take,
   takeUntil,
@@ -29,7 +30,11 @@ import { ExtensionCardComponent } from './extension-card.component';
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
   // Observables for template
-  extensions$!: Observable<IManagedObject[]>;
+  // `null` means "not yet known" (engine down, or the post-restart load is
+  // still in flight) — distinct from a resolved, genuinely empty `[]` — so
+  // the template doesn't flash the "No extensions loaded" empty state while
+  // the real list is still being fetched.
+  extensions$!: Observable<IManagedObject[] | null>;
   cepStatus$!: Observable<CepEngineStatus>;
   isSafeMode$!: Observable<boolean>;
 
@@ -145,13 +150,13 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
       switchMap(([_, status]) =>
         status === 'up'
           ? this.loadExtensions$()
-          : of([])
+          : of(null)
       ),
       shareReplay(1)
     );
   }
 
-  private loadExtensions$(): Observable<IManagedObject[]> {
+  private loadExtensions$(): Observable<IManagedObject[] | null> {
     // defer() so each retry re-invokes getEnrichedExtensions() (which re-fetches,
     // since it clears its cache on failure) rather than replaying a settled promise.
     return defer(() => from(this.analyticsService.getEnrichedExtensions())).pipe(
@@ -182,7 +187,11 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
           });
         }
         return of([]);
-      })
+      }),
+      // Emit `null` synchronously first so the grid shows a loading state
+      // instead of the "No extensions loaded" empty state while the initial
+      // fetch (and any transient-error retries above) is still in flight.
+      startWith(null)
     );
   }
 }

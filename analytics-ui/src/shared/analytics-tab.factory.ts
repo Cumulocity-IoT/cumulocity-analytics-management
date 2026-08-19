@@ -21,18 +21,13 @@
 import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
-import { Observable, from, filter, map, merge, mergeAll, of, toArray } from 'rxjs';
-import { AnalyticsService } from './analytics.service';
+import { Observable, of } from 'rxjs';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
-  constructor(
-    private router: Router,
-    private analyticsService: AnalyticsService
-  ) {}
+  constructor(private router: Router) {}
 
   get(): Observable<Tab[]> {
     const tabs: Tab[] = [];
-    let repositoryTab$: Observable<Tab>;
     if (this.router.url.match(/c8y-pkg-analytics-extension/g)) {
       tabs.push({
         path: 'c8y-pkg-analytics-extension/manage',
@@ -48,23 +43,18 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'flow-chart',
         orientation: 'horizontal'
       } as Tab);
-      repositoryTab$ = from(
-        this.analyticsService.isBackendServiceAvailable()
-      ).pipe(
-        map((result) => {
-          if (result) {
-            return {
-              path: 'c8y-pkg-analytics-extension/repository',
-              priority: 920,
-              label: 'Repositories',
-              icon: 'test',
-              orientation: 'horizontal'
-            } as Tab;
-          }
-          return null;
-        }),
-        filter((tab): tab is Tab => tab !== null)
-      );
+      // Always shown: repository config (Tenant Options) and the
+      // "Deploy from GitHub Release" flow both work without the
+      // analytics-service microservice — only browsing/building from a
+      // repo's source tree still depends on it, which degrades gracefully
+      // on that page rather than requiring the whole tab to be hidden.
+      tabs.push({
+        path: 'c8y-pkg-analytics-extension/repository',
+        priority: 920,
+        label: 'Repositories',
+        icon: 'test',
+        orientation: 'horizontal'
+      } as Tab);
       tabs.push({
         path: 'c8y-pkg-analytics-extension/monitoring',
         priority: 900,
@@ -72,7 +62,6 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'monitoring',
         orientation: 'horizontal'
       } as Tab);
-      return merge(of(tabs), [repositoryTab$]).pipe(mergeAll(), toArray());
     }
     return of(tabs);
   }
