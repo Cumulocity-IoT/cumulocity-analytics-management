@@ -30,6 +30,7 @@ import yaml
 from flask import Flask, jsonify, make_response, request, send_file
 
 from c8y_agent import C8YAgent, C8YAgentError
+from logging_config import setup_logging
 from solution_utils import (
     content_api_to_github_web_url,
     create_error_response,
@@ -41,11 +42,8 @@ from solution_utils import (
     extract_raw_path,
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s",
-)
+# Configure logging (LOG_LEVEL/LOG_FORMAT/ENV/LOG_FILE env vars — see logging_config.py)
+setup_logging()
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -795,7 +793,7 @@ def _get_repository_headers(
 
     if access_token:
         headers["Authorization"] = f"Bearer {access_token}"
-        logger.info("Using request-supplied PAT (test connection)")
+        logger.info("Using caller-supplied PAT")
         return headers
 
     if repository_id:
@@ -1097,7 +1095,10 @@ def _build_and_process_extension(
     """Build and optionally upload an extension."""
     with tempfile.TemporaryDirectory() as work_dir:
         try:
-            headers = _get_repository_headers(repository["id"])
+            # `repository` here is already the loaded repo_config (with its
+            # real accessToken) from the caller — reuse it instead of making
+            # another agent.load_repository() round-trip for the same id.
+            headers = _get_repository_headers(access_token=repository.get("accessToken"))
             source_fetcher(work_dir, headers)
         except Exception as e:
             logger.error(f"Download failed: {e}", exc_info=True)
@@ -1146,7 +1147,10 @@ def _process_yaml_sections(
     rebuild: bool = False,
 ):
     """Process and build extensions from YAML specification."""
-    headers = _get_repository_headers(repository["id"])
+    # `repository` is already the loaded repo_config (with its real
+    # accessToken) from the caller — reuse it instead of another
+    # agent.load_repository() round-trip for the same id.
+    headers = _get_repository_headers(access_token=repository.get("accessToken"))
 
     # Fetch and parse YAML
     try:
@@ -1225,11 +1229,15 @@ def _process_yaml_sections(
                 )
 
         try:
+            # Deploy (CEP restart) is handled once, after the loop, only if
+            # at least one section actually succeeded — not gated on this
+            # being the last positional index, which can be a section that
+            # never reaches this call (e.g. failed name validation above).
             result = _build_and_process_extension(
                 extension_name=section_name,
                 repository=repository,
                 upload=upload,
-                deploy=deploy and (idx == len(sections_to_process) - 1),
+                deploy=False,
                 build_type="yaml",
                 build_info_extra={
                     "yaml": yaml_data,
@@ -1241,11 +1249,24 @@ def _process_yaml_sections(
             )
 
             if upload:
-                # Extract ID from result
+                # Extract ID from result; a plain (non-tuple) Response here
+                # means _build_and_process_extension returned an error
+                # response (create_error_response), so record it as a
+                # failure instead of dropping it silently.
                 if isinstance(result, tuple):
                     response_data = result[0].get_json()
                     ext_id = response_data.get("id")
                     uploaded_extensions.append({"name": section_name, "id": ext_id})
+                else:
+                    error_data = result.get_json() or {}
+                    error_msg = error_data.get(
+                        "error", f"Failed to build section '{section_name}'"
+                    )
+                    logger.error(f"Section '{section_name}' failed: {error_msg}")
+                    failed_sections.append({
+                        "section": section_name,
+                        "error": error_msg
+                    })
             elif idx == 0:
                 return result
         except Exception as e:
@@ -1257,16 +1278,19 @@ def _process_yaml_sections(
             })
 
     if upload:
+        if deploy and uploaded_extensions:
+            agent.restart_cep(request)
+
         if failed_sections:
             return jsonify({
                 "uploaded_extensions": uploaded_extensions,
                 "failed_sections": failed_sections,
                 "message": f"Partially completed: {len(uploaded_extensions)} succeeded, {len(failed_sections)} failed"
             }), 207  # Multi-Status
-        
+
         if uploaded_extensions:
             return jsonify({"uploaded_extensions": uploaded_extensions}), 201
-        
+
         return create_error_response(
             "All sections failed to build. See details in failed_sections.",
             400

@@ -54,7 +54,7 @@
                     [ngClass]="{ 
                 active: displayList.indexOf(repository) === selectedRepositoryIndex,
                 'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
-            }" (click)="onEditRepository(repository, i)" [title]="repository.name">
+            }" (click)="onEditRepository(repository)" [title]="repository.name">
               <i c8yIcon="plugin" class="m-r-4"></i>
               <span class="m-r-8 text-truncate">{{ repository.name }}</span>
               @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {

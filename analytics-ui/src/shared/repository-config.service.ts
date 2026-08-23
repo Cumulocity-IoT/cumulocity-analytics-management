@@ -97,18 +97,19 @@ export class RepositoryConfigService {
    * value is never usable as a real `Authorization` header.
    */
   async getRepositoryAccessToken(repositoryId: string): Promise<string> {
-    try {
-      const options = await this.listRepositoryOptions();
-      const option = options.find(o => o.key === repositoryId);
-      if (!option) {
-        return '';
-      }
-      const parsed = JSON.parse(option.value || '{}') as Partial<Repository>;
-      return parsed.accessToken || '';
-    } catch (error) {
-      console.warn(`[RepositoryConfigService] Could not read access token for "${repositoryId}":`, error);
+    const options = await this.listRepositoryOptions();
+    const option = options.find(o => o.key === repositoryId);
+    if (!option) {
       return '';
     }
+    let parsed: Partial<Repository> = {};
+    try {
+      parsed = JSON.parse(option.value || '{}');
+    } catch (error) {
+      console.warn(`[RepositoryConfigService] Could not parse access token for "${repositoryId}":`, error);
+      return '';
+    }
+    return parsed.accessToken || '';
   }
 
   /**

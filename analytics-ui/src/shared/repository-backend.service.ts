@@ -12,6 +12,7 @@ import {
   RepositoryTestResult
 } from './analytics.model';
 import { extractErrorMessage, RepositoryError } from './repository-error';
+import { RepositoryConfigService } from './repository-config.service';
 
 interface CreateExtensionRequest {
   extension_name: string;
@@ -42,16 +43,22 @@ interface CreateExtensionFromYamlRequest extends CreateExtensionRequest {
 export class RepositoryBackendService {
   constructor(
     private readonly fetchClient: FetchClient,
-    private readonly alertService: AlertService
+    private readonly alertService: AlertService,
+    private readonly repositoryConfigService: RepositoryConfigService
   ) {}
 
   async testRepository(repository: Repository): Promise<RepositoryTestResult> {
     // The PAT is passed in a custom header (not a query param) so it doesn't
     // land in HTTP access logs or browser history.
     try {
+      // `repository.accessToken` from the UI form is the masked
+      // DUMMY_ACCESS_TOKEN sentinel whenever the user didn't retype the PAT —
+      // resolve it to the real stored token first (see GitHubContentService,
+      // which does the same before making its own GitHub call).
+      const accessToken = await this.repositoryConfigService.resolveAccessToken(repository);
       const headers: Record<string, string> = { 'content-type': 'application/json' };
-      if (repository.accessToken) {
-        headers['X-Repository-Access-Token'] = repository.accessToken;
+      if (accessToken) {
+        headers['X-Repository-Access-Token'] = accessToken;
       }
 
       const response = await this.fetchClient.fetch(

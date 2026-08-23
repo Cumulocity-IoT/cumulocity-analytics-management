@@ -5,6 +5,7 @@ import { AlertService, CoreModule } from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable } from 'rxjs';
 import {
+    DUMMY_ACCESS_TOKEN,
     Repository,
     RepositoryService,
     uuidCustom
@@ -43,7 +44,6 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     GITHUB_API = 'https://api.github.com/repos/';
     GITHUB_URL = 'https://github.com/';
-    DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_";
 
     showAddRepository: boolean = false;
     deleteDisabled: boolean = false;
@@ -102,26 +102,35 @@ export class RepositoriesDrawerComponent implements OnInit {
     async ngOnInit(): Promise<void> {
         this.repositories$ = this.repositoryService.getRepositories();
 
+        // Wait for the real initial fetch to settle before deciding whether
+        // to open an "add repository" placeholder — the observable's
+        // synchronous replay value is still the empty seed at this point,
+        // not a reliable signal that there really are no repositories yet.
+        const initialRepos = await this.repositoryService.whenReady();
+
         this.repositories$.subscribe(repos => {
             this.repositoriesList = repos;
             const enabledRepo = repos.find(r => r.enabled);
             if (enabledRepo) {
               this.activeRepository = enabledRepo;
             }
-            this.updateDisplayList();
 
             if (this.isAddingNew && this.tempNewRepository) {
                 const addedRepo = repos.find(r => r.name === this.tempNewRepository?.name);
                 if (addedRepo) {
                     this.isAddingNew = false;
                     this.tempNewRepository = null;
+                    this.updateDisplayList();
                     const index = this.displayList.indexOf(addedRepo);
                     this.setIndex(index);
+                    return;
                 }
             }
+
+            this.updateDisplayList();
         });
 
-        if (this.repositoriesList.length > 0) {
+        if (initialRepos.length > 0) {
             this.setIndex(0);
         } else {
             this.createCustomRepository();
@@ -195,7 +204,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         const currentToken = currentValues.accessToken || '';
 
         // 1. A new, real token was entered (non-empty and not the masked dummy)
-        const enteredNewToken = currentToken !== '' && currentToken !== this.DUMMY_ACCESS_TOKEN;
+        const enteredNewToken = currentToken !== '' && currentToken !== DUMMY_ACCESS_TOKEN;
         // 2. An existing token was cleared (had one before, now empty) — needed to
         //    remove a stale/invalid PAT and fall back to unauthenticated access.
         const clearedToken = originalToken !== '' && currentToken === '';

@@ -315,12 +315,18 @@ class C8YAgent:
         except KeyError:
             self._logger.debug(f"Creating new repository: {repo_id}")
 
-        # Determine access token
-        new_token = repository.get("accessToken") != self.DUMMY_ACCESS_TOKEN
-        if new_token:
-            access_token = repository.get("accessToken", "")
-        else:
+        # Determine access token. A field that's entirely absent (as opposed
+        # to explicitly sent as "" or the DUMMY sentinel) means the caller
+        # didn't touch it at all — preserve whatever is currently stored
+        # rather than treating "not provided" the same as "clear it".
+        raw_token = repository.get("accessToken")
+        if raw_token is None:
             access_token = existing_token
+        elif raw_token == self.DUMMY_ACCESS_TOKEN:
+            access_token = existing_token
+        else:
+            access_token = raw_token
+        new_token = raw_token is not None and raw_token != self.DUMMY_ACCESS_TOKEN
 
         # Reset token if URL changed
         if existing_url and existing_url != repository.get("url") and not new_token:
