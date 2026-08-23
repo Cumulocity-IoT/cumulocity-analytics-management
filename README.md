@@ -101,7 +101,7 @@ The modal dialog provides the option:
 
 ![Create extension](resources/images/extension-create-extension-modal.png)
 
-If an extension is build using the backend additional build information it added to this extension. IN this case the extension can be rebuild from the same repository.
+If an extension is built using the backend, additional build information is added to the extension. In this case, the extension can be rebuilt from the same repository.
 
 ![Build information](resources/images/extension-manage-build-information.png)
 
