@@ -32,9 +32,7 @@ export class ExtensionAddWizardComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private wizardComponent: WizardComponent
   ) {}
-  ngOnInit(): void {
-    console.log('Mode', this.mode);
-  }
+  ngOnInit(): void {}
 
   onCancelled(): void {
     this.wizardComponent.close();
