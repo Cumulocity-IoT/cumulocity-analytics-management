@@ -1,23 +1,16 @@
-.text-center {
-    text-align: center !important;
-  }
-  
-  /* Try targeting the specific case with a more specific selector */
-  .table tr td.text-center c8y-ui-empty-state {
-    margin: 0 auto;
-    display: block;
-  }
+/* Break long URLs in the properties list so they don't overflow the card.
+   c8y-properties-list applies text-truncate (white-space:nowrap) to links,
+   so white-space and text-overflow must also be overridden. */
+:host ::ng-deep c8y-properties-list a {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  word-break: break-all;
+  overflow-wrap: break-word;
+}
 
-
-  .custom-center-cell {
-    text-align: center !important;
-    position: relative !important;
-  }
-  
-  .custom-center-wrapper {
-    position: absolute !important;
-    top: 50% !important;
-    left: 50% !important;
-    transform: translate(-50%, -50%) !important;
-    width: 100% !important;
-  }
+/* The wrapping span is a flex item; min-width:0 allows it to shrink */
+:host ::ng-deep c8y-properties-list li > span {
+  min-width: 0;
+  overflow: hidden;
+}

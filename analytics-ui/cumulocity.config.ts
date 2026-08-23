@@ -51,12 +51,8 @@ export default {
         to: 'resources/images/extension-add-extension.png',
       },
       {
-        from: '../resources/images/block-block-list.png',
-        to: 'resources/images/block-block-list.png',
-      },
-      {
-        from: '../resources/images/extension-create-extension-animated.gif',
-        to: 'resources/images/extension-create-extension-animated.gif',
+        from: '../resources/images/block-list.png',
+        to: 'resources/images/block-list.png',
       },
       {
         from: '../resources/images/extension-update-extension-modal.png',
@@ -94,6 +90,14 @@ export default {
       {
         from: '../resources/images/use-block-detail.png',
         to: 'resources/images/use-block-detail.png',
+      },
+      {
+        from: '../resources/images/extension-manage-build-information.png',
+        to: 'resources/images/extension-manage-build-information.png',
+      },
+      {
+        from: '../resources/images/monitoring-cep.png',
+        to: 'resources/images/monitoring-cep.png',
       },
       {
         from: '../README.md',

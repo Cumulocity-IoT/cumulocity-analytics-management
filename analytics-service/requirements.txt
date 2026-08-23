@@ -1,4 +1,10 @@
 c8y_api
 flask
-PyGithub
 python-dotenv
+pyyaml
+requests
+psutil
+pytest
+pytest-cov
+pytest-mock
+pydantic

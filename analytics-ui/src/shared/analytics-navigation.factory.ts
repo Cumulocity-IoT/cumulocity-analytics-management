@@ -2,20 +2,29 @@ import { Injectable } from '@angular/core';
 
 import {
   AppStateService,
-  gettext,
   NavigatorNode,
   NavigatorNodeFactory,
   Permissions
 } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Injectable()
 export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   protected extensionsNode = new NavigatorNode({
     label: gettext('Analytics extensions'),
     icon: 'extension',
-    path: 'c8y-pkg-analytics-extension/block',
+    path: 'c8y-pkg-analytics-extension/manage',
     parent: gettext('Ecosystem'),
     priority: 200,
+    preventDuplicates: true
+  });
+
+  protected communityReleaseNode = new NavigatorNode({
+    label: gettext('Community blocks release'),
+    icon: 'cloud-download',
+    path: 'c8y-pkg-analytics-extension/release',
+    parent: gettext('Ecosystem'),
+    priority: 190,
     preventDuplicates: true
   });
 
@@ -23,18 +32,19 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     private as: AppStateService,
   ) {}
 
-  get(): NavigatorNode {
+  get(): NavigatorNode | NavigatorNode[] {
     // console.log('AppState', this.as);
     if (this.canActivate()) {
-      // id running in 
+      // id running in
       if (this.as['options'].contextPath == 'streaminganalytics'){
         // console.log('AppState contextPath', this.as['options'].contextPath);
-        delete this.extensionsNode['parent'];
         this.extensionsNode['label'] = gettext('Extensions');
       }
-      return this.extensionsNode;
+      // communityReleaseNode disabled for now (kept, not deleted, to re-enable later)
+      return [this.extensionsNode];
+    } else {
+      return [];
     }
-    return;
   }
 
   canActivate(): boolean {

@@ -1,0 +1,15 @@
+/* Hide reload button */
+button[title="Reload"] {
+  display: none;
+}
+
+/* Popover sizing */
+.popover {
+  max-width: 31.25rem;
+}
+
+/* Custom popover styling */
+.popover.your-custom-class {
+  max-width: 37.5rem;
+  width: 37.5rem;
+}

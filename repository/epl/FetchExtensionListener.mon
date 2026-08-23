@@ -1,0 +1,388 @@
+/*
+ * Copyright (c) 2026 Cumulocity GmbH
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+using com.apama.cumulocity.Event;
+using com.apama.cumulocity.ManagedObject;
+using com.apama.cumulocity.ObjectCommitted;
+using com.apama.cumulocity.ObjectCommitFailed;
+using com.apama.cumulocity.GenericRequest;
+using com.apama.cumulocity.GenericResponse;
+using com.apama.cumulocity.GenericResponseComplete;
+using com.apama.cumulocity.Util;
+using com.apama.cumulocity.CumulocityRequestInterface;
+using com.softwareag.connectivity.httpclient.FormRequest;
+using com.softwareag.connectivity.httpclient.Request;
+using com.softwareag.connectivity.httpclient.Response;
+
+/**
+ * Event-driven extension deploy flow described in
+ * docs/features/block-marketplace/DIRECT_UPLOAD.md.
+ *
+ * Deployed as an EPL App - depends on repository/connectivity-bundle/ being deployed
+ * *separately*, as an Analytics Builder extension, with apama-ctrl restarted with it loaded
+ * *before* this EPL App runs (see that folder's README.md).
+ *
+ * The GitHub fetch (startFetch/onGitHubFetchResult) calls into a Python EPL plug-in
+ * (repository/connectivity-bundle/plugins/GitHubFetchPlugin.py) rather than a connectivity
+ * chain, because HTTPClientTransport's stringCodec truncates a binary response's
+ * buffer->string conversion at the first embedded null byte - which every real ZIP file hits.
+ * It also sidesteps HTTPClientTransport's refusal to follow cross-host redirects (GitHub
+ * release assets always redirect cross-host to a CDN), since Python's urllib follows them
+ * transparently. The inventory upload (startUpload/onInventoryUploadResponse) uses the
+ * standard com.softwareag.connectivity.httpclient.FormRequest/
+ * com.apama.cumulocity.CumulocityRequestInterface APIs directly - already binary-safe, since
+ * FormRequest's underlying platform chain skips both the JSON and string codecs for multipart
+ * payloads.
+ *
+ * Only *event* types can be `using`'d across the extension/EPL-App boundary. The plug-in
+ * itself is imported by name (`import "GitHubFetchPlugin" as ...;`), a string-keyed runtime
+ * lookup against the correlator-wide plug-in registry rather than a compile-time type
+ * reference, so - like ConnectivityPlugins.createDynamicChain() - it isn't affected by the
+ * per-EPL-App namespace isolation that blocks referencing a monitor type defined in the
+ * extension directly.
+ *
+ * Prerequisite: receiving Cumulocity Event notifications in the correlator has historically
+ * required a connectivity bundle configuration property to be enabled (documented under the
+ * name `subscribeToAllMeasurements` in older Apama/Cumulocity docs, despite the name suggesting
+ * it's measurement-specific) - if this monitor's Event listener never fires, check that first.
+ *
+ * External id convention used here: idType "c8y_Serial", externalId value
+ * "c8y_FetchUploadProxy". The managed object itself is plain (no c8y_IsDevice fragment) - it is
+ * only an event-source anchor, not a real device.
+ */
+monitor FetchExtensionListener {
+
+	import "GitHubFetchPlugin" as githubFetchPlugin;
+
+	constant string EVENT_TYPE := "c8y_FetchExtension";
+
+	/**
+	 * Status events emitted against the same proxy managed object as progress/error markers for
+	 * a given request (correlated by `requestId`). Because they're plain Cumulocity Events
+	 * against a real managed object, they show up on Cumulocity's own Monitoring/Events page for
+	 * that object for free.
+	 */
+	constant string STATUS_EVENT_TYPE := "c8y_FetchExtensionStatus";
+	constant string STATUS_RECEIVED := "RECEIVED";
+	constant string STATUS_DOWNLOADING := "DOWNLOADING";
+	constant string STATUS_UPLOADING := "UPLOADING";
+	constant string STATUS_SUCCEEDED := "SUCCEEDED";
+	constant string STATUS_FAILED := "FAILED";
+
+	constant string PROXY_EXTERNAL_ID_TYPE := "c8y_Serial";
+	constant string PROXY_EXTERNAL_ID_VALUE := "c8y_FetchUploadProxy";
+	constant string PROXY_MO_NAME := "Fetch Upload Proxy";
+	constant string PROXY_MO_TYPE := "c8y_FetchUploadProxy";
+
+	/** Conservative placeholder ceiling on asset size, pending a real EPL memory-model limit. */
+	constant integer MAX_ASSET_LENGTH := 20971520; // 20 MB
+
+	/** Cumulocity id of the proxy managed object, once resolved. Empty until then. */
+	string proxySourceId;
+
+	action onload() {
+		monitor.subscribe(GenericResponse.SUBSCRIBE_CHANNEL);
+		monitor.subscribe(ManagedObject.SUBSCRIBE_CHANNEL);
+		monitor.subscribe(Event.SUBSCRIBE_CHANNEL);
+
+		lookupProxyManagedObject();
+	}
+
+	/** Looks up the proxy managed object by external id (GET /identity/externalIds/{type}/{value}). */
+	action lookupProxyManagedObject() {
+		integer reqId := Util.generateReqId();
+
+		GenericRequest req := new GenericRequest;
+		req.reqId := reqId;
+		req.method := "GET";
+		req.path := "/identity/externalIds/" + PROXY_EXTERNAL_ID_TYPE + "/" + PROXY_EXTERNAL_ID_VALUE;
+		req.queryParams := new dictionary<string, string>;
+		req.isPaging := false;
+		req.body := new any;
+		req.headers := new dictionary<string, string>;
+
+		on GenericResponse(reqId = reqId) as resp and GenericResponseComplete(reqId = reqId) as complete {
+			handleLookupComplete(resp, complete);
+		}
+		on GenericResponseComplete(reqId = reqId) as complete and not GenericResponse(reqId = reqId) {
+			// Error responses (e.g. 404 - external id doesn't exist yet) carry no
+			// GenericResponse, only the GenericResponseComplete.
+			handleLookupComplete(new GenericResponse, complete);
+		}
+
+		log "FetchExtensionListener: looking up proxy managed object external id " +
+			PROXY_EXTERNAL_ID_TYPE + "/" + PROXY_EXTERNAL_ID_VALUE + " (reqId " + reqId.toString() + ")" at INFO;
+		send req to GenericRequest.SEND_CHANNEL;
+	}
+
+	action handleLookupComplete(GenericResponse resp, GenericResponseComplete complete) {
+		if not complete.error {
+			// Nested JSON objects deserialize with `any`-wrapped keys, not string keys - look up
+			// entries with <any> "key", not "key".
+			dictionary<any, any> body := <dictionary<any, any> > resp.getBody();
+			dictionary<any, any> managedObjectRef := <dictionary<any, any> > body.getOrDefault(<any> "managedObject");
+			string moId := managedObjectRef.getOrDefault(<any> "id").valueToString();
+			log "FetchExtensionListener: found existing proxy managed object, id=" + moId at INFO;
+			onProxyManagedObjectResolved(moId);
+		} else if complete.statusCode = 404 {
+			log "FetchExtensionListener: proxy managed object not found, creating it" at INFO;
+			createProxyManagedObject();
+		} else {
+			log "FetchExtensionListener: lookup of proxy managed object failed, statusCode=" +
+				complete.statusCode.toString() + " details=" + complete.details at ERROR;
+		}
+	}
+
+	/** Creates the proxy managed object (POST via ManagedObject.SEND_CHANNEL). */
+	action createProxyManagedObject() {
+		integer reqId := Util.generateReqId();
+
+		ManagedObject mo := new ManagedObject;
+		mo.name := PROXY_MO_NAME;
+		mo.type := PROXY_MO_TYPE;
+
+		on ObjectCommitted(reqId = reqId) as committed {
+			log "FetchExtensionListener: created proxy managed object, id=" + committed.id at INFO;
+			bindExternalId(committed.id);
+		}
+		on ObjectCommitFailed(reqId = reqId) as failed {
+			log "FetchExtensionListener: failed to create proxy managed object, statusCode=" +
+				failed.statusCode.toString() + " body=" + failed.body.valueToString() at ERROR;
+		}
+
+		send mo.withChannelResponse(reqId, new dictionary<string, string>) to ManagedObject.SEND_CHANNEL;
+	}
+
+	/** Binds the external id to the freshly created managed object (POST /identity/globalIds/{id}/externalIds). */
+	action bindExternalId(string managedObjectId) {
+		integer reqId := Util.generateReqId();
+
+		GenericRequest req := new GenericRequest;
+		req.reqId := reqId;
+		req.method := "POST";
+		req.path := "/identity/globalIds/" + managedObjectId + "/externalIds";
+		req.queryParams := new dictionary<string, string>;
+		req.isPaging := false;
+		req.body := {"type": <any> PROXY_EXTERNAL_ID_TYPE, "externalId": <any> PROXY_EXTERNAL_ID_VALUE};
+		req.headers := new dictionary<string, string>;
+
+		on GenericResponseComplete(reqId = reqId) as complete {
+			if not complete.error {
+				log "FetchExtensionListener: bound external id " + PROXY_EXTERNAL_ID_VALUE +
+					" to managed object " + managedObjectId at INFO;
+				onProxyManagedObjectResolved(managedObjectId);
+			} else {
+				log "FetchExtensionListener: failed to bind external id to managed object " +
+					managedObjectId + ", statusCode=" + complete.statusCode.toString() +
+					" details=" + complete.details at ERROR;
+			}
+		}
+
+		send req to GenericRequest.SEND_CHANNEL;
+	}
+
+	/** Proxy managed object is ready - start listening for c8y_FetchExtension events against it. */
+	action onProxyManagedObjectResolved(string managedObjectId) {
+		proxySourceId := managedObjectId;
+
+		on all Event(type = EVENT_TYPE, source = proxySourceId) as e {
+			onFetchExtensionEvent(e);
+		}
+
+		log "FetchExtensionListener: ready, listening for " + EVENT_TYPE +
+			" events with source=" + proxySourceId at INFO;
+	}
+
+	/**
+	 * Emits a c8y_FetchExtensionStatus event against the proxy managed object. A missing/empty
+	 * requestId means the caller has nothing to correlate this against, so callers should avoid
+	 * calling this without one.
+	 */
+	action emitStatus(string requestId, string status, string message) {
+		string messageSuffix := "";
+		if message.length() > 0 {
+			messageSuffix := ": " + message;
+		}
+
+		Event statusEvent := new Event;
+		statusEvent.source := proxySourceId;
+		statusEvent.type := STATUS_EVENT_TYPE;
+		statusEvent.time := currentTime;
+		statusEvent.text := EVENT_TYPE + " " + status + messageSuffix;
+		statusEvent.params := {"requestId": <any> requestId, "status": <any> status, "message": <any> message};
+		send statusEvent to Event.SEND_CHANNEL;
+	}
+
+	/**
+	 * Maps an upstream (GitHub or inventory) HTTP status code to a user-facing message,
+	 * mirroring the categories GitHubReleaseError.mapErrorResponse() already produces for the
+	 * browser-side flow (github-release.service.ts) - kept in sync by hand.
+	 */
+	action mapFailureMessage(integer statusCode) returns string {
+		if statusCode = 401 {
+			return "Authentication failed. The access token is invalid or expired.";
+		} else if statusCode = 403 or statusCode = 429 {
+			return "Access denied or rate limit exceeded.";
+		} else if statusCode = 404 {
+			return "Asset not found (it may have been deleted, or the URL is wrong).";
+		} else {
+			return "Request failed (status " + statusCode.toString() + ").";
+		}
+	}
+
+	/** Handles the received event: parses it, emits a RECEIVED status event, then starts the fetch+upload. */
+	action onFetchExtensionEvent(Event e) {
+		// Deliberately NOT logging e.params.toString() here (and never log the
+		// c8y_FetchExtension fragment's `headers` value below either) - the event is allowed to
+		// carry a GitHub PAT in its `headers` fragment, and this avoids multiplying that
+		// exposure into the correlator's own log files.
+		log "FetchExtensionListener: received " + EVENT_TYPE + " event id=" + e.id +
+			" text=" + e.text at INFO;
+
+		if e.params.hasKey(EVENT_TYPE) {
+			// Nested JSON objects deserialize with `any`-wrapped keys, not string keys.
+			dictionary<any, any> details := <dictionary<any, any> > e.params.getOrDefault(EVENT_TYPE);
+			dictionary<string, string> headers := new dictionary<string, string>;
+			if details.hasKey(<any> "headers") {
+				dictionary<any, any> rawHeaders := <dictionary<any, any> > details.getOrDefault(<any> "headers");
+				any headerKey;
+				for headerKey in rawHeaders.keys() {
+					headers[headerKey.valueToString()] := rawHeaders[headerKey].valueToString();
+				}
+			}
+			string requestId := details.getOrDefault(<any> "requestId").valueToString();
+			string url := details.getOrDefault(<any> "url").valueToString();
+			string name := details.getOrDefault(<any> "name").valueToString();
+			log "FetchExtensionListener: " + EVENT_TYPE + " fragment: url=" + url + " name=" + name +
+				" requestId=" + requestId + " hasAuthHeader=" + headers.hasKey("Authorization").toString() at INFO;
+
+			if requestId.length() = 0 {
+				log "FetchExtensionListener: " + EVENT_TYPE + " fragment has no requestId - " +
+					"cannot emit a correlatable status event for it" at WARN;
+				return;
+			}
+
+			emitStatus(requestId, STATUS_RECEIVED, "Request received, queued for processing");
+
+			startFetch(requestId, url, name, headers);
+		} else {
+			log "FetchExtensionListener: event has no " + EVENT_TYPE + " fragment - malformed request?" at WARN;
+		}
+	}
+
+	/**
+	 * Starts the GitHub asset fetch via GitHubFetchPlugin. Temporary diagnostic version: calls
+	 * the plugin's `fetch` action synchronously (a plain return value, not an event sent via
+	 * Correlator.sendTo()) to isolate which EPL<->Python marshalling path truncates a binary
+	 * response at its first embedded null byte - see that plugin's header comment.
+	 */
+	action startFetch(string requestId, string url, string name, dictionary<string, string> headers) {
+		emitStatus(requestId, STATUS_DOWNLOADING, "");
+
+		dictionary<string, any> result := githubFetchPlugin.fetch(url, headers);
+		onGitHubFetchResult(requestId, name, result);
+	}
+
+	action onGitHubFetchResult(string requestId, string name, dictionary<string, any> result) {
+		string errorMessage := result.getOrDefault("errorMessage").valueToString();
+		integer statusCode := <integer> result.getOrDefault("statusCode");
+		string payload := <string> result.getOrDefault("payload");
+		integer pythonLength := <integer> result.getOrDefault("length");
+
+		if errorMessage.length() > 0 {
+			log "FetchExtensionListener: GitHub fetch failed for requestId=" + requestId +
+				": " + errorMessage at ERROR;
+			emitStatus(requestId, STATUS_FAILED, "Could not reach GitHub: " + errorMessage);
+		} else if statusCode >= 200 and statusCode < 300 {
+			log "FetchExtensionListener: GitHub fetch succeeded for requestId=" + requestId +
+				", statusCode=" + statusCode.toString() + " epl_length=" +
+				payload.length().toString() + " python_length=" + pythonLength.toString() at INFO;
+			if payload.length() > MAX_ASSET_LENGTH {
+				log "FetchExtensionListener: asset for requestId=" + requestId +
+					" exceeds MAX_ASSET_LENGTH (" + payload.length().toString() +
+					" > " + MAX_ASSET_LENGTH.toString() + ")" at ERROR;
+				emitStatus(requestId, STATUS_FAILED, "Asset is too large to process.");
+				return;
+			}
+			startUpload(requestId, name, payload);
+		} else {
+			log "FetchExtensionListener: GitHub fetch failed for requestId=" + requestId +
+				", statusCode=" + statusCode.toString() at ERROR;
+			emitStatus(requestId, STATUS_FAILED, mapFailureMessage(statusCode));
+		}
+	}
+
+	/**
+	 * Starts the inventory upload via FormRequest/CumulocityRequestInterface. `fileContent` is
+	 * passed straight through from the fetch result, whatever exact string representation
+	 * GitHubFetchPlugin's Latin-1 decoding produced - never re-decoded in EPL. Multipart field
+	 * names are "object" (JSON metadata) and "file" (the binary) - Cumulocity's real
+	 * /inventory/binaries convention. `metadataJson` mirrors the minimal
+	 * pas_extension/name/type shape InventoryBinaryService.create() sends today
+	 * (extension-inventory.service.ts), plus a minimal `build_information.build_type` (matching
+	 * analytics-service's own server-side build flow, c8y_agent.py) so the extension details
+	 * page's "Build information" panel isn't empty. Not a full replica of the browser's
+	 * analyzeZipContent() - that also lists every monitor/file inside the zip (with per-block
+	 * category/description/inputs/outputs, parsed from each block's generated
+	 * `_metadata.evt`), which needs real ZIP-parsing EPL doesn't have.
+	 */
+	action startUpload(string requestId, string name, string fileContent) {
+		emitStatus(requestId, STATUS_UPLOADING, "");
+
+		string metadataJson := "{\"name\":\"" + name + "\",\"type\":\"application/zip\"," +
+			"\"pas_extension\":\"" + name + "\",\"build_information\":{\"build_type\":\"external\"}}";
+
+		CumulocityRequestInterface iface := CumulocityRequestInterface.connectToCumulocity();
+		dictionary<string, string> formPayload := {"object": metadataJson, "file": fileContent};
+		Request req := iface.createRequest("POST", "/inventory/binaries", formPayload);
+		req.setHeader("content-type", "multipart/form-data");
+		req.setHeader("accept", "application/json");
+
+		// formMetadata's "contentType" per part is required, not cosmetic - without it,
+		// Cumulocity doesn't parse the "object" part as JSON at all.
+		dictionary<string, dictionary<string, string> > formMetadata := {
+			"object": {"contentType": "application/json"},
+			"file": {"filename": name, "contentType": "application/zip"}
+		};
+		FormRequest formReq := FormRequest(req, formMetadata);
+
+		// Not using formReq.execute()/executeWithSeparateCallbacks() - those take a plain
+		// action<Response> with no way to bind extra context (requestId). Replicating their own
+		// internal correlation logic instead (a fresh id from the same shared counter, then a
+		// listener for the matching Response), with our own closure over requestId.
+		integer respId := integer.incrementCounter("com.softwareag.connectivity.httpclient.HTTPClientGeneric");
+		formReq.request.id := respId;
+		on Response(id = respId) as resp {
+			onInventoryUploadResponse(requestId, resp);
+		}
+		send formReq to formReq.request.channel;
+	}
+
+	action onInventoryUploadResponse(string requestId, Response resp) {
+		if resp.isSuccess() {
+			log "FetchExtensionListener: upload succeeded for requestId=" + requestId +
+				" body=" + resp.payload.data.valueToString() at INFO;
+			emitStatus(requestId, STATUS_SUCCEEDED, "");
+		} else {
+			log "FetchExtensionListener: upload failed for requestId=" + requestId +
+				", statusCode=" + resp.statusCode.toString() + " statusMessage=" +
+				resp.statusMessage + " body=" + resp.payload.data.valueToString() at ERROR;
+			emitStatus(requestId, STATUS_FAILED, mapFailureMessage(resp.statusCode));
+		}
+	}
+}

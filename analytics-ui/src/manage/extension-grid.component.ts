@@ -1,118 +1,197 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
+import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { BehaviorSubject, combineLatest, defer, from, merge, Observable, of, Subject, timer } from 'rxjs';
 import {
-  AlertService,
-  WizardConfig,
-  WizardModalService,
-  gettext
-} from '@c8y/ngx-components';
-import { ModalOptions } from 'ngx-bootstrap/modal';
-import {
-  BehaviorSubject,
-  Observable,
-  Subscription,
-  merge,
-  of
-} from 'rxjs';
-import { catchError, shareReplay, switchMap, take, tap } from 'rxjs/operators';
-import { AnalyticsService, CEPEngineStatus, CEPStatusObject } from '../shared';
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  map,
+  retry,
+  shareReplay,
+  startWith,
+  switchMap,
+  take,
+  takeUntil,
+  tap
+} from 'rxjs/operators';
+import { AnalyticsService, CepEngineStatus } from '../shared';
+import { ActivatedRoute } from '@angular/router';
+import { ExtensionCardComponent } from './extension-card.component';
 
 @Component({
   selector: 'a17t-extension',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
-  cepOperationObject$: Observable<IManagedObject>;
-  cepCtrlStatus: CEPStatusObject;
-  cepEngineStatus$: BehaviorSubject<CEPEngineStatus> =
-    new BehaviorSubject<CEPEngineStatus>('unknown');
-  cepId: string;
-  reload$: BehaviorSubject<boolean> = new BehaviorSubject(false);
-  extensions$: Observable<IManagedObject[]>;
-  sub1: Subscription;
-  listClass: string;
+  // Observables for template
+  // `null` means "not yet known" (engine down, or the post-restart load is
+  // still in flight) — distinct from a resolved, genuinely empty `[]` — so
+  // the template doesn't flash the "No extensions loaded" empty state while
+  // the real list is still being fetched.
+  extensions$!: Observable<IManagedObject[] | null>;
+  cepStatus$!: Observable<CepEngineStatus>;
+  isSafeMode$!: Observable<boolean>;
+
+  // Template bindings
+  listClass = 'card-group';
+  isBackendServiceAvailable = false;
+
+  // Private subjects
+  private readonly reload$ = new BehaviorSubject<boolean>(false);
+  private readonly destroy$ = new Subject<void>();
+
+  // Just after the engine reports "up", its diagnostics endpoints can still
+  // return 502 for a few seconds. Retry transient load failures with a short
+  // backoff so the extensions appear once the engine is fully ready.
+  private readonly MAX_LOAD_RETRIES = 6;
+  private readonly LOAD_RETRY_STEP = 1500;
+  private readonly MAX_LOAD_RETRY_DELAY = 6000;
 
   constructor(
-    private analyticsService: AnalyticsService,
-    private alertService: AlertService,
-    private wizardModalService: WizardModalService
+    private route: ActivatedRoute,
+    private readonly analyticsService: AnalyticsService,
+    private readonly alertService: AlertService,
+    private readonly wizardModalService: WizardModalService
   ) { }
 
-
-  ngOnInit() {
-    this.init();
+  async ngOnInit(): Promise<void> {
+    this.isBackendServiceAvailable = await this.route.snapshot.data['isBackendServiceAvailable'];
+    this.initializeStreams();
   }
 
   ngOnDestroy(): void {
-    this.sub1.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  async init() {
-    const { microservice_application_id } =
-      await this.analyticsService.getCEP_CtrlStatus();
-    this.cepId = microservice_application_id as string;
-    this.cepCtrlStatus = await this.analyticsService.getCEP_CtrlStatus();
-    this.cepOperationObject$ = this.analyticsService.getCEP_OperationObject();
-    this.sub1 = this.cepOperationObject$.subscribe((mo) => {
-      console.log("Update", (mo.c8y_Status ? mo.c8y_Status.status : 'Down').toLowerCase());
-      this.cepEngineStatus$.next((mo.c8y_Status ? mo.c8y_Status.status : 'Down').toLowerCase());
-    });
-    this.extensions$ = merge(
-      this.analyticsService.getReloadThroughService(),
-      this.reload$
-    ).pipe(
-      tap((clearCache) => {
-        clearCache && this.analyticsService.clearCaches();
-        this.updateCepStatus('loading');
-      }),
-      switchMap(() => this.analyticsService.getExtensionsMetadataEnriched()),
-      catchError(() => {
-        this.updateCepStatus('loadingError');
-        return of([]);
-      }),
-      tap((res) => {
-        this.updateCepStatus(res?.length ? 'loaded' : 'empty');
-      }),
-      shareReplay()
-    );
-
-    this.reload$.next(false);
+  reload(): void {
+    this.analyticsService.clearAllCaches(); // Clear immediately
+    this.reload$.next(true); // Signal reload with cache clear
   }
 
-  private updateCepStatus(status: CEPEngineStatus) {
-    this.cepEngineStatus$.next(status);
+  async restartCep(): Promise<void> {
+    try {
+      // The service drives the user-facing restart lifecycle toast
+      // (restarting -> in progress -> success/failure), so we only need to
+      // swallow the error here to avoid an unhandled rejection.
+      await this.analyticsService.restartCepEngine();
+    } catch (error) {
+      console.error('Failed to restart Cep:', error);
+    }
   }
 
-  loadExtensions() {
-    this.reload$.next(true);
-  }
-
-  restartCEP() {
-    this.alertService.success(gettext('Deployment (restart) submitted ...'));
-    this.analyticsService.restartCEP();
-  }
-
-  addExtension() {
-    const wizardConfig: WizardConfig = {
-      headerIcon: 'plus'
-    };
-
-    const initialState: any = {
-      wizardConfig,
+  addExtension(): void {
+    const initialState = {
+      wizardConfig: { headerIcon: 'plus' } as WizardConfig,
       id: 'uploadAnalyticsExtension',
       componentInitialState: {
-        mode: 'add',
-        headerText: 'Add extension'
+        mode: 'add' as const,
+        headerText: 'Add extension',
+        uploadExtensionHandler: this.analyticsService.uploadExtension.bind(this.analyticsService)
       }
     };
 
-    const modalOptions: ModalOptions = { initialState };
+    this.wizardModalService
+      .show({ initialState })
+      .content?.onClose.pipe(take(1))
+      .subscribe(() => this.reload());
+  }
 
-    const modalRef = this.wizardModalService.show(modalOptions);
-    modalRef.content.onClose.pipe(take(1)).subscribe(() => {
-      this.loadExtensions();
-    });
+  getCepMicroserviceUrl(): string {
+    return `/apps/administration/index.html#/ecosystem/microservice/microservices`;
+  }
+
+  trackByExtension(_: number, extension: IManagedObject): string {
+    return extension.id;
+  }
+
+  private initializeStreams(): void {
+    // Cep operation object stream
+    const cepObject$ = this.analyticsService.getCepOperationObjectStream$().pipe(
+      takeUntil(this.destroy$),
+      shareReplay(1)
+    );
+
+    // Extract status
+    this.cepStatus$ = cepObject$.pipe(
+      map(mo => (mo?.['c8y_Status']?.['status']?.toLowerCase() || 'down') as CepEngineStatus),
+      distinctUntilChanged(),
+      shareReplay(1)
+    );
+
+    // Extract safe mode
+    this.isSafeMode$ = cepObject$.pipe(
+      map(mo => mo?.['c8y_Status']?.['is_safe_mode'] ?? false),
+      distinctUntilChanged()
+    );
+
+    // Combined reload trigger
+    const reload$ = merge(
+      this.reload$,
+      this.analyticsService.getCacheReloadRequests$()
+    ).pipe(
+      debounceTime(100),
+      tap(clearCache => {
+        // console.log('Reload triggered, clearCache:', clearCache);
+        if (clearCache) {
+          this.analyticsService.clearAllCaches();
+        }
+      })
+    );
+
+    // Extensions stream
+    this.extensions$ = combineLatest([reload$, this.cepStatus$]).pipe(
+      switchMap(([_, status]) =>
+        status === 'up'
+          ? this.loadExtensions$()
+          : of(null)
+      ),
+      shareReplay(1)
+    );
+  }
+
+  private loadExtensions$(): Observable<IManagedObject[] | null> {
+    // defer() so each retry re-invokes getEnrichedExtensions() (which re-fetches,
+    // since it clears its cache on failure) rather than replaying a settled promise.
+    return defer(() => from(this.analyticsService.getEnrichedExtensions())).pipe(
+      retry({
+        count: this.MAX_LOAD_RETRIES,
+        delay: (error, retryCount) => {
+          // The engine status flips to "up" slightly before its diagnostics
+          // endpoints serve, so a fresh restart briefly 502s. Retry those
+          // transient failures with a short backoff until the engine is ready.
+          if (this.analyticsService.isExpectedTransientError(error)) {
+            return timer(Math.min(retryCount * this.LOAD_RETRY_STEP, this.MAX_LOAD_RETRY_DELAY));
+          }
+          // Non-transient: stop retrying and surface it via catchError.
+          throw error;
+        }
+      }),
+      catchError(error => {
+        // Still failing after the retries are exhausted (or a non-transient
+        // error): keep transient cases quiet, alert only on genuine failures.
+        if (this.analyticsService.isExpectedTransientError(error)) {
+          console.warn('Failed to load extensions after retries (engine still unavailable):', error);
+        } else {
+          console.error('Failed to load extensions:', error);
+          this.alertService.add({
+            text: gettext('Failed to load extensions. Please refresh.'),
+            type: 'warning',
+            timeout: 8000
+          });
+        }
+        return of([]);
+      }),
+      // Emit `null` synchronously first so the grid shows a loading state
+      // instead of the "No extensions loaded" empty state while the initial
+      // fetch (and any transient-error retries above) is still in flight.
+      startWith(null)
+    );
   }
 }

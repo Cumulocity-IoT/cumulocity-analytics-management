@@ -1,161 +1,522 @@
 import {
   Component,
+  EventEmitter,
   Input,
-  ViewChild
+  Output,
+  ViewChild,
+  OnDestroy
 } from '@angular/core';
-import { IManagedObject, IResultList } from '@c8y/client';
+import { CommonModule } from '@angular/common';
+import { IManagedObject } from '@c8y/client';
 import {
   AlertService,
-  DropAreaComponent,
-  WizardComponent
+  CoreModule,
+  DropAreaComponent
 } from '@c8y/ngx-components';
-import { BehaviorSubject } from 'rxjs';
+import { BehaviorSubject, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
+import JSZip from 'jszip';
+
+interface UploadState {
+  isLoading: boolean;
+  isComplete: boolean;
+  errorMessage: string | null;
+  file: File | null;
+  extension: Partial<IManagedObject> | null;
+  requiresUpdate: boolean;
+}
+
+interface MonitorMetadata {
+  custom: boolean;
+  file: string;
+  id: string;
+  name: string;
+  type: string;
+  category?: string;
+  description?: string;
+  inputs?: any[];
+  outputs?: any[];
+  parameters?: any[];
+}
+
+interface FileMetadata {
+  custom: boolean;
+  file: string;
+  name: string;
+  type: string;
+}
+
+interface BuildInformation {
+  build_type: string;
+  monitors: MonitorMetadata[];
+  files: FileMetadata[];
+}
 
 @Component({
   selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html',
-  standalone: false
+  styleUrls: ['./extension-add.component.css'],
+  standalone: true,
+  imports: [CommonModule, CoreModule]
 })
-export class ExtensionAddComponent {
-  @Input() headerText: string;
-  @Input() headerIcon: string;
-  @Input() successText: string;
-  @Input() uploadExtensionHandler: any;
-  @Input() mode: UploadMode;
+export class ExtensionAddComponent implements OnDestroy {
+  @Input() headerText!: string;
+  @Input() headerIcon!: string;
+  @Input() successText!: string;
+  @Input() uploadExtensionHandler!: (
+    file: File,
+    extension: Partial<IManagedObject>,
+    mode: UploadMode
+  ) => Promise<any>;
+  @Input() mode!: UploadMode;
+  @Output() cancelled = new EventEmitter<void>();
+  @Output() completed = new EventEmitter<void>();
 
-  @ViewChild(DropAreaComponent) dropAreaComponent;
+  @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
-  isLoading: boolean;
-  isUpdate: boolean = false;
-  isAppCreated: boolean;
-  createdApp: Partial<IManagedObject>;
-  errorMessage: string;
-  fileToUpload: File;
-  uploadCanceled: boolean = false;
+  state: UploadState = {
+    isLoading: false,
+    isComplete: false,
+    errorMessage: null,
+    file: null,
+    extension: null,
+    requiresUpdate: false
+  };
+
+  private destroy$ = new Subject<void>();
+  private modalRef: BsModalRef | null = null;
 
   constructor(
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
-    private wizardComponent: WizardComponent,
     private bsModalService: BsModalService
   ) { }
 
-  get progress(): BehaviorSubject<number> {
-    return this.analyticsService.progress;
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.cleanup();
   }
 
-  onFileDroppedEvent(event) {
-    if (event && event.length > 0) {
-      const [file] = event;
-      this.onFile(file.file);
+  get progress(): BehaviorSubject<number | null> {
+    return this.analyticsService.uploadProgress$;
+  }
+
+  get isLoading(): boolean {
+    return this.state.isLoading;
+  }
+
+  get isComplete(): boolean {
+    return this.state.isComplete;
+  }
+
+  get errorMessage(): string | null {
+    return this.state.errorMessage;
+  }
+
+  get createdApp(): Partial<IManagedObject> | null {
+    return this.state.extension;
+  }
+
+  onFileDroppedEvent(event: any[]): void {
+    if (event?.length > 0) {
+      const [fileWrapper] = event;
+      this.onFile(fileWrapper.file);
     }
   }
 
-  async onFile(file: File) {
-    this.fileToUpload = file;
-    this.isLoading = true;
-    this.errorMessage = null;
+  async onFile(file: File): Promise<void> {
+    this.resetState();
+    this.state.file = file;
+    this.state.isLoading = true;
     this.progress.next(0);
-    const n = file.name.split('.').slice(0, -1).join('.');
+
     try {
-      this.createdApp = {
-        pas_extension: n,
-        name: n
+      const extensionName = this.extractExtensionName(file.name);
+      const existingExtension = await this.findExistingExtension(extensionName);
+
+      // Analyze ZIP content
+      const buildInformation = await this.analyzeZipContent(file);
+
+      this.state.extension = existingExtension || {
+        pas_extension: extensionName,
+        name: extensionName,
+        build_information: buildInformation
       };
-      const result: IResultList<IManagedObject> =
-        await this.analyticsService.getExtensionsMetadataFromInventory();
-      const { data } = result;
-      for (let i = 0; i < data.length; i++) {
-        const ext = data[i];
-        if (ext.name == n) {
-          this.createdApp = ext;
-          this.isUpdate = true;
-          break;
-        }
+
+      // Add build_information to existing extension as well
+      if (existingExtension) {
+        this.state.extension['build_information'] = buildInformation;
       }
-      if (this.isUpdate && this.mode == 'add') {
-        this.done();
-        this.confirmUpdate();
+
+      this.state.requiresUpdate = !!existingExtension;
+
+      if (this.state.requiresUpdate && this.mode === 'add') {
+        this.handleUpdateRequired();
       } else {
-        await this.uploadExtension(this.mode);
+        await this.performUpload(this.mode);
       }
-    } catch (ex) {
-      this.analyticsService.cancelExtensionCreation(this.createdApp);
-      this.createdApp = null;
-      this.dropAreaComponent.onDelete();
-      this.errorMessage = ERROR_MESSAGES[ex.message];
-      if (!this.errorMessage && !this.uploadCanceled) {
-        this.alertService.addServerFailure(ex);
+    } catch (error) {
+      this.handleCreationFailure(error);
+    } finally {
+      this.finalizeUpload();
+    }
+  }
+
+  /**
+   * Analyzes the ZIP file content to extract monitor information
+   */
+  private async analyzeZipContent(file: File): Promise<BuildInformation> {
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const monitors: MonitorMetadata[] = [];
+      const files: FileMetadata[] = [];
+
+      // Track processed files to avoid duplicates
+      const processedFiles = new Set<string>();
+
+      // Find all .mon files
+      const monitorFiles: string[] = [];
+      zip.forEach((relativePath, zipEntry) => {
+        if (relativePath.endsWith('.mon') && !zipEntry.dir) {
+          monitorFiles.push(relativePath);
+          processedFiles.add(relativePath);
+        }
+      });
+
+      // Process each monitor file
+      for (const monitorPath of monitorFiles) {
+        const monitorName = this.extractMonitorName(monitorPath);
+        const metadataPath = `events/${monitorName}_metadata.evt`;
+
+        // Try to find corresponding metadata file
+        const metadataFile = zip.file(metadataPath);
+        
+        // Mark metadata file as processed
+        if (metadataFile) {
+          processedFiles.add(metadataPath);
+        }
+
+        const monitorMetadata: MonitorMetadata = {
+          custom: true,
+          file: monitorPath.split('/').pop()!,
+          id: `apamax.analyticsbuilder.custom.${monitorName}`,
+          name: monitorName,
+          type: 'file'
+        };
+
+        // Parse metadata if available
+        if (metadataFile) {
+          try {
+            const metadataContent = await metadataFile.async('text');
+            const parsedMetadata = this.parseEventMetadata(metadataContent);
+
+            if (parsedMetadata) {
+              monitorMetadata.category = parsedMetadata.category;
+              monitorMetadata.description = parsedMetadata.description;
+              monitorMetadata.inputs = parsedMetadata.inputs;
+              monitorMetadata.outputs = parsedMetadata.outputs;
+              monitorMetadata.parameters = parsedMetadata.parameters;
+
+              // Use the ID from metadata if available
+              if (parsedMetadata.id) {
+                monitorMetadata.id = parsedMetadata.id;
+              }
+            }
+          } catch (error) {
+            console.warn(`Failed to parse metadata for ${monitorName}:`, error);
+          }
+        }
+        
+        monitors.push(monitorMetadata);
       }
+
+      // Process all other files (excluding monitors and their metadata)
+      zip.forEach((relativePath, zipEntry) => {
+        // Skip directories and already processed files
+        if (zipEntry.dir || processedFiles.has(relativePath)) {
+          return;
+        }
+
+        // Skip common metadata/config files that shouldn't be listed
+        const skipPatterns = [
+          /^__MACOSX\//,
+          /\.DS_Store$/,
+          /^\.git\//,
+          /^node_modules\//
+        ];
+
+        if (skipPatterns.some(pattern => pattern.test(relativePath))) {
+          return;
+        }
+
+        const fileName = relativePath.split('/').pop() || relativePath;
+        const extension = this.getFileExtension(fileName);
+
+        const fileMetadata: FileMetadata = {
+          custom: true,
+          file: relativePath,
+          name: fileName,
+          type: this.mapFileType(extension)
+        };
+
+        files.push(fileMetadata);
+      });
+
+      return {
+        build_type: 'external',
+        monitors,
+        files
+      };
+    } catch (error) {
+      console.error('Failed to analyze ZIP content:', error);
+      throw new Error('Failed to analyze extension package');
     }
-    this.progress.next(100);
-    this.isLoading = false;
   }
 
-  private async uploadExtension(mode: UploadMode) {
-    const result = await this.uploadExtensionHandler(this.fileToUpload, this.createdApp, mode);
-    if (result) {
-      this.alertService.success('Uploaded new extension.');
-      this.isAppCreated = true;
-      this.progress.next(100);
-    } else {
-      this.errorMessage = "Could not create extension!"
-      this.isAppCreated = false;
-      this.progress.next(100);
+  /**
+   * Extracts file extension from filename
+   */
+  private getFileExtension(fileName: string): string {
+    const parts = fileName.split('.');
+    return parts.length > 1 ? parts.pop()!.toLowerCase() : '';
+  }
 
+  /**
+   * Maps file extension to a type category
+   */
+  private mapFileType(extension: string): string {
+    const typeMap: { [key: string]: string } = {
+      'json': 'config',
+      'xml': 'config',
+      'yaml': 'config',
+      'yml': 'config',
+      'txt': 'text',
+      'md': 'documentation',
+      'pdf': 'documentation',
+      'evt': 'event',
+      'mon': 'monitor',
+      'jar': 'library',
+      'js': 'script',
+      'ts': 'script',
+      'py': 'script',
+      'sh': 'script',
+      'bat': 'script',
+      'html': 'web',
+      'css': 'web',
+      'png': 'image',
+      'jpg': 'image',
+      'jpeg': 'image',
+      'gif': 'image',
+      'svg': 'image'
+    };
+
+    return typeMap[extension] || 'file';
+  }
+
+  /**
+   * Extracts monitor name from file path
+   * e.g., "monitors/BasicAnomalyDetection.mon" -> "BasicAnomalyDetection"
+   */
+  private extractMonitorName(filePath: string): string {
+    const fileName = filePath.split('/').pop() || '';
+    return fileName.replace('.mon', '');
+  }
+
+  /**
+   * Parses the .evt metadata file content
+   * Format: "analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("Name", "EN", "{...json...}")
+   */
+  private parseEventMetadata(content: string): any | null {
+    try {
+      // Extract JSON from the metadata format
+      const jsonMatch = content.match(/BlockMetadata\([^,]+,\s*"[^"]+",\s*"({.*})"\)/);
+
+      if (!jsonMatch || !jsonMatch[1]) {
+        return null;
+      }
+
+      // Unescape the JSON string
+      const jsonString = jsonMatch[1]
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\');
+
+      const metadata = JSON.parse(jsonString);
+
+      // Extract analytics information (first element in analytics array)
+      if (metadata.analytics && metadata.analytics.length > 0) {
+        return metadata.analytics[0];
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Failed to parse event metadata:', error);
+      return null;
     }
+  }
+
+  cancel(): void {
+    this.cleanup();
+    this.cancelled.emit();
+  }
+
+  done(): void {
+    this.completed.emit();
+  }
+
+  private extractExtensionName(fileName: string): string {
+    // Remove .zip extension if present, otherwise remove the last extension
+    if (fileName.toLowerCase().endsWith('.zip')) {
+      return fileName.slice(0, -4);
+    }
+    return fileName.split('.').slice(0, -1).join('.');
+  }
+
+  private async findExistingExtension(
+    name: string
+  ): Promise<IManagedObject | null> {
+    const extensions = await this.analyticsService.getExtensionsFromInventory();
+    return extensions.find(ext => ext['name'] === name) || null;
+  }
+
+  private handleUpdateRequired(): void {
+    this.done();
+    this.showUpdateConfirmation();
+  }
+
+  private async performUpload(mode: UploadMode): Promise<void> {
+    try {
+      const result = await this.uploadExtensionHandler(
+        this.state.file!,
+        this.state.extension!,
+        mode
+      );
+
+      if (result) {
+        this.handleUploadSuccess(mode);
+      } else {
+        this.handleUploadFailure();
+      }
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private handleUploadSuccess(mode: UploadMode): void {
+    const action = mode === 'update' ? 'Updated' : 'Uploaded';
+    const extensionName = this.state.extension?.['name'] || 'Extension';
+    this.alertService.success(`${action} extension ${extensionName} successfully.`);
+    this.state.isComplete = true;
     this.progress.next(100);
-    this.isLoading = false;
   }
 
-  cancel() {
-    this.cancelFileUpload();
-    this.wizardComponent.close();
+  private handleUploadFailure(): void {
+    this.state.errorMessage = 'Could not create extension!';
+    this.state.isComplete = false;
   }
 
-  done() {
-    this.wizardComponent.close();
+  private handleCreationFailure(error: unknown): void {
+    this.cleanup();
+    this.dropAreaComponent?.onDelete();
+
+    const errorMessage = this.getErrorMessage(error);
+    this.state.errorMessage = errorMessage;
+
+    if (!this.state.errorMessage && error) {
+      this.alertService.addServerFailure(error);
+    }
   }
 
-  cancelFileUpload() {
-    this.uploadCanceled = true;
-    this.analyticsService.cancelExtensionCreation(this.createdApp);
-    this.createdApp = null;
+  private finalizeUpload(): void {
+    this.progress.next(100);
+    this.state.isLoading = false;
   }
 
-  confirmUpdate() {
+  private showUpdateConfirmation(): void {
     const initialState = {
       title: 'Update extension',
-      message: `Extension with the same name ${this.createdApp.name} already exists! Do you want to proceed?`,
+      message: `Extension "${this.state.extension!['name']}" already exists. Do you want to update it?`,
       labels: {
         ok: 'Update',
         cancel: 'Cancel'
       }
     };
-    const confirmDeletionModalRef: BsModalRef = this.bsModalService.show(
+
+    this.modalRef = this.bsModalService.show(
       ConfirmationModalComponent,
       { initialState }
     );
-    confirmDeletionModalRef.content.closeSubject.subscribe(
-      async (result: boolean) => {
-        console.log('Confirmation delete result:', result);
-        if (result) {
-          try {
-            await this.uploadExtension('update');
-            this.analyticsService.initiateReload(true);
-          } catch (ex) {
-            if (ex) {
-              this.alertService.addServerFailure(ex);
-            }
-          }
+
+    this.modalRef.content.closeSubject
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(async (confirmed: boolean) => {
+        if (confirmed) {
+          await this.handleUpdateConfirmed();
         }
-        confirmDeletionModalRef.hide();
+        this.modalRef?.hide();
+        this.modalRef = null;
+      });
+  }
+
+  private async handleUpdateConfirmed(): Promise<void> {
+    try {
+      this.state.isLoading = true;
+      await this.performUpload('update');
+      this.analyticsService.triggerCacheReload(true);
+    } catch (error) {
+      console.error('Update failed:', error);
+      if (error) {
+        this.alertService.addServerFailure(error);
       }
-    );
+    } finally {
+      this.state.isLoading = false;
+    }
+  }
+
+  private cleanup(): void {
+    if (this.state.extension && !this.state.isComplete) {
+      this.analyticsService.cancelExtensionCreation(this.state.extension);
+    }
+
+    if (this.modalRef) {
+      this.modalRef.hide();
+      this.modalRef = null;
+    }
+  }
+
+  private resetState(): void {
+    this.state = {
+      isLoading: false,
+      isComplete: false,
+      errorMessage: null,
+      file: null,
+      extension: null,
+      requiresUpdate: false
+    };
+  }
+
+  private getErrorMessage(error: unknown): string | null {
+    if (!error) {
+      return null;
+    }
+
+    // Handle error object with message property
+    if (typeof error === 'object' && 'message' in error) {
+      const errorObj = error as Record<string, unknown>;
+      const message = errorObj['message'] as string;
+      return ERROR_MESSAGES[message as keyof typeof ERROR_MESSAGES] || message || null;
+    }
+
+    // Handle string errors
+    if (typeof error === 'string') {
+      return ERROR_MESSAGES[error as keyof typeof ERROR_MESSAGES] || error;
+    }
+
+    return null;
   }
 }

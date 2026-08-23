@@ -1,0 +1,4 @@
+/* Safe mode pulse animation */
+.safe-mode-pulse {
+  animation-duration: var(--c8y-animation-duration, 1.5s);
+}

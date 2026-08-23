@@ -1,0 +1,206 @@
+<div class="d-col flex-nowrap no-align-items p-48 flex-grow col-md-12 col-md-offset-0">
+  <div class="card card--fullpage d-col flex-grow">
+    <!-- Header -->
+    <div class="card-header separator" style="justify-content: center">
+      <h4 class="card-title d-flex">
+        <i [c8yIcon]="'change-theme'" class="icon-32 m-r-16"></i>
+        <span class="m-t-8">{{ 'Manage repositories' | translate }}</span>
+      </h4>
+    </div>
+
+<div class="card content-fullpage split-view--4-8 grid__row--single flex-grow" style="padding:0">
+  <!-- Left Panel: Repository List -->
+  <div class="inner-scroll split-view__list bg-level-1 d-flex flex-column">
+    <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
+      <div class="input-group input-group-search">
+        <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
+          [(ngModel)]="searchTerm" (keyup)="searchRepositories($event)" />
+        <span class="input-group-btn">
+          @if (!searchTerm || searchTerm.length === 0) {
+            <button class="btn btn-clean" [title]="'Filter repositories…' | translate"
+              [attr.aria-label]="'Filter repositories' | translate"
+              >
+              <i c8yIcon="search"></i>
+            </button>
+          }
+          @if (searchTerm && searchTerm.length > 0) {
+            <button class="btn btn-clean" [title]="'Clear' | translate" [attr.aria-label]="'Clear' | translate"
+              type="button" (click)="clearSearch()">
+              <i c8yIcon="times"></i>
+            </button>
+          }
+        </span>
+      </div>
+    </div>
+
+    <div class="flex-grow" style="flex: 1 1 auto; min-height: 0; overflow-y: auto;">
+      @if (!filteredDisplayList.length && !searchTerm) {
+        <c8y-ui-empty-state icon="plugin" [horizontal]="true"
+          [title]="'No repositories defined.' | translate"
+          [subtitle]="'Add a repository using the button below.' | translate"
+        class="d-block"></c8y-ui-empty-state>
+      }
+
+      @if (!filteredDisplayList.length && searchTerm) {
+        <c8y-ui-empty-state icon="search" [horizontal]="true"
+          [title]="'No matching repositories found.' | translate"
+        [subtitle]="'Try different search terms.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+      }
+
+      @if (filteredDisplayList.length) {
+        <div class="c8y-nav-stacked">
+          @for (repository of filteredDisplayList; track repository; let i = $index) {
+            <button class="c8y-stacked-item"
+                    [ngClass]="{ 
+                active: displayList.indexOf(repository) === selectedRepositoryIndex,
+                'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
+            }" (click)="onEditRepository(repository, i)" [title]="repository.name">
+              <i c8yIcon="plugin" class="m-r-4"></i>
+              <span class="m-r-8 text-truncate">{{ repository.name }}</span>
+              @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {
+                <span class="m-l-auto label m-r-16"
+                  [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
+                  >
+                  {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
+                </span>
+              }
+              @if (isAddingNew && tempNewRepository && repository.id === tempNewRepository.id) {
+                <span class="m-l-auto label label-default m-r-16"
+                  >
+                  {{ 'Not saved' | translate }}
+                </span>
+              }
+            </button>
+          }
+        </div>
+      }
+      <div class="ff-scroll-fix"></div>
+    </div>
+  </div>
+
+  <!-- Right Panel: Repository Details -->
+  <div class="inner-scroll split-view__detail" cdkScrollable
+    [ngClass]="{ 'split-view__detail--selected': showAddRepository }">
+    @if (!showAddRepository) {
+      <div class="p-l-24 p-r-24 flex-grow text-center">
+        <c8y-ui-empty-state icon="plugin" [horizontal]="true" [title]="'No repository selected.' | translate"
+        [subtitle]="'Add or select a repository.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+        <button type="button" class="btn btn-primary m-t-16" [title]="'Add repository' | translate"
+          (click)="createCustomRepository()">
+          <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
+        </button>
+      </div>
+    }
+
+    @if (showAddRepository) {
+      <div class="p-l-24 p-r-24 p-t-24 flex-grow">
+        <form [formGroup]="repositoryForm" autocomplete="off">
+          <fieldset>
+            <input type="hidden" formControlName="id" />
+            <c8y-form-group>
+              <div class="d-flex j-c-between a-i-center">
+                <label for="name" class="m-b-0">{{ 'Name' | translate }}</label>
+                @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+                  <label class="c8y-switch flex-no-shrink m-b-0">
+                    <input type="checkbox" formControlName="enabled"
+                      (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
+                    <span></span>
+                    <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
+                  </label>
+                }
+              </div>
+              <input type="text" id="name" formControlName="name" class="form-control m-t-8"
+                (change)="warnAboutPATReset()" [placeholder]="'Repository name' | translate" />
+            </c8y-form-group>
+            <c8y-form-group>
+              <label for="url">
+                <span>{{ 'Repository URL' | translate }}</span>
+                <button type="button" placement="right" [popover]="popRepositoryUrlTpl" class="btn-help"
+                aria-label="Help content"></button>
+                <ng-template #popRepositoryUrlTpl>
+                  Enter the last parts to a github repository. If no branch name is given, the default branch <code>main</code> is assumed.
+                </ng-template>
+              </label>
+              <div class="input-group">
+                <span class="input-group-addon">{{ GITHUB_URL }}</span>
+                <input type="text" id="url" #urlInput autocomplete="off" formControlName="url"
+                  (change)="warnAboutPATReset()"
+                  [placeholder]="'apama-analytics-builder-block-sdk/tree/main/samples/blocks' | translate"
+                  class="form-control" />
+                <span class="input-group-btn">
+                  <button type="button" class="btn btn-default" [title]="'Open in GitHub' | translate"
+                    [attr.aria-label]="'Open repository in GitHub' | translate" (click)="openInGitHub()"
+                    [disabled]="!repositoryForm.get('url').value || repositoryForm.get('url').value.trim() === ''">
+                    <i c8yIcon="external-link"></i>
+                  </button>
+                </span>
+              </div>
+            </c8y-form-group>
+            <c8y-form-group>
+              <label for="accessToken">
+                <span>{{ 'Personal Access Token' | translate }}</span>
+                <button type="button" placement="right" [popover]="popupPAT" class="btn-help"
+                aria-label="Help content" [outsideClick]="true"></button>
+                <ng-template #popupPAT>
+                  <p class="m-b-8">
+                    Optional for public repositories. For private repositories, enter a Personal Access Token (PAT) created <a
+                  href="https://github.com/settings/tokens/new" target="_blank">here</a>. <br />
+                  Select
+                  the scope <code>public_repo</code> and enable SSO for the token
+                </p>
+              </ng-template>
+            </label>
+            <input type="password" id="accessToken" formControlName="accessToken"
+              [placeholder]="'e.g.: your github Personal Access Token (PAT) — optional for public repositories' | translate"
+              class="form-control" />
+            <!-- Warning message displayed under the input -->
+            @if (showPATWarning) {
+              <c8y-messages class="m-t-8 m-b-8">
+                <c8y-message class="text-warning">
+                  {{ 'Changing the URL or name resets the PAT token. Enter the token again.' | translate
+                  }}
+                </c8y-message>
+              </c8y-messages>
+            }
+          </c8y-form-group>
+          <div class="btn-toolbar d-flex" style="gap: 8px;">
+            <button (click)="testRepository()" class="btn btn-default" style="min-width:120px;"
+              [title]="'Test the connection (PAT optional for public repositories)' | translate"
+              [disabled]="repositoryForm.get('url')?.invalid || isSaving">
+              {{ 'Test connection' | translate }}
+            </button>
+            <button type="button" class="btn btn-default" [title]="'Add repository' | translate"
+              (click)="createCustomRepository()">
+              <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
+            </button>
+            @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+              <button type="button" [title]="'Delete repository' | translate" class="btn btn-danger"
+                (click)="deleteButtonClicked()"
+                [disabled]="deleteDisabled">
+                <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+              </button>
+            }
+          </div>
+        </fieldset>
+      </form>
+    </div>
+  }
+
+  <div class="ff-scroll-fix"></div>
+</div>
+</div>
+
+    <!-- Outer card footer: form actions centered -->
+    @if (showAddRepository) {
+      <div class="card-footer separator p-24 flex-no-shrink text-center">
+        <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
+          {{ 'Cancel' | translate }}
+        </button>
+        <button type="button" [title]="'Save' | translate" class="btn btn-primary m-l-8" (click)="onSave()"
+          [disabled]="isSaveDisabled">
+          {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
+        </button>
+      </div>
+    }
+  </div>
+</div>

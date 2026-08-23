@@ -42,16 +42,24 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.ref_name }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '**/package-lock.json'
+
+      - name: Sync package.json version with tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          # Strip leading "v" — tag "v2.8.0-rc.1" becomes version "2.8.0-rc.1"
+          REF_VERSION="${GITHUB_REF_NAME#v}"
+          echo "Setting package.json version to ${REF_VERSION}"
+          npm version "${REF_VERSION}" --no-git-tag-version --allow-same-version
+
       - name: Save Version
         id: save-version
         run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-          cache: 'npm'
-          cache-dependency-path: '**/package-lock.json' 
 
       - name: Install dependencies
         run: npm ci
@@ -108,7 +116,7 @@ jobs:
 
       - name: Build backend
         run: |
-          ./build.sh analytics-extension-service  ${{ needs.build_ui.outputs.version }}
+          ./build.sh ${{ needs.build_ui.outputs.version }}
       - name: Upload build artifact service
         uses: actions/upload-artifact@v4
         with:
@@ -116,7 +124,7 @@ jobs:
           if-no-files-found: error
           retention-days: 1
           path: |
-            ./analytics-service/dist/analytics-extension-service.zip
+            ./analytics-service/dist/analytics-ext-service.zip
   release-assets:
     needs: [build_ui, build_service]
     # if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
@@ -139,22 +147,27 @@ jobs:
         with:
           files: |
             ./analytics-service/*.zip
-          tag_name: v${{ needs.build_ui.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
 
       - name: Download build artifact UI
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ui
           path: |
-           ./analytics-ui 
-      - name: Rename file 
-        run: | 
-          mv ./analytics-ui/build.zip  ./analytics-ui/c8y-pkg-analytics-extension-${{ needs.build_ui.outputs.version }}.zip
+           ./analytics-ui
+      - name: Rename file
+        run: |
+          # Strip leading "v" from the triggering tag to produce a clean asset name,
+          # e.g. tag "v2.8.0-rc.1" -> "c8y-pkg-analytics-extension-2.8.0-rc.1.zip"
+          REF_VERSION="${GITHUB_REF_NAME#v}"
+          mv ./analytics-ui/build.zip ./analytics-ui/c8y-pkg-analytics-extension-${REF_VERSION}.zip
           ls -lah ./analytics-ui
           pwd
       - name: Release UI
         uses: softprops/action-gh-release@v1
         with:
-          files: 
+          files:
             ./analytics-ui/*.zip
-          tag_name: v${{ needs.build_ui.outputs.version }}
+          tag_name: ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}

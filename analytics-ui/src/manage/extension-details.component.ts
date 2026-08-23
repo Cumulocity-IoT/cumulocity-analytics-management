@@ -18,47 +18,110 @@
  * @authors Christof Strack
  */
 
-import { Component } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
-import { gettext } from '@c8y/ngx-components';
-import { AnalyticsService, CEP_Extension } from '../shared';
+import { Component, OnInit } from '@angular/core';
+
+import { ActivatedRoute, Router } from '@angular/router';
+import { CoreModule } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { AnalyticsService, CepExtension } from '../shared';
 
 @Component({
   selector: 'a17t-extension-details',
   templateUrl: './extension-details.component.html',
   styleUrls: ['./extension-details.component.css'],
-  standalone: false
+  standalone: true,
+  imports: [CoreModule]
 })
-export class ExtensionDetailsComponent {
-  extension: CEP_Extension;
-  extensionContent: any;
-  breadcrumbConfig: { icon: string; label: string; path: string };
+export class ExtensionDetailsComponent implements OnInit {
+  extensionFromCep!: CepExtension;
+  extension!: CepExtension;
+  extensionContent: string[] = [];
+  buildInformation: any[] = [];
+  breadcrumbConfig!: { icon: string; label: string; path: string };
 
   constructor(
-    private activatedRoute: ActivatedRoute,
+    private route: ActivatedRoute,
+    private router: Router,
     private analyticsService: AnalyticsService
   ) {
-    this.refresh();
+    // Get the extension from navigation state in constructor
+    const navigation = this.router.currentNavigation();
+    this.extension = navigation?.extras?.state?.['extension'];
+    // console.log("Navigation", navigation?.extras);
+  }
+  async ngOnInit(): Promise<void> {
+    this.extensionFromCep = await this.route.snapshot.data['extensionFromCep'];
+
+    // Alternative: Get extension from history state if not set in constructor
+    if (!this.extension) {
+      this.extension = history.state.extension;
+    }
+
+    const buildInfo = (this.extension as any)?.['build_information'];
+
+    if (buildInfo) {
+      // Add Build Type
+      if (buildInfo.build_type) {
+        this.buildInformation.push({
+          label: 'Build Type',
+          type: 'string',
+          value: buildInfo.build_type
+        });
+      }
+
+      // Add Repository information if available
+      const repo = buildInfo.repository;
+      if (repo?.name) {
+        this.buildInformation.push({
+          label: 'Repository Name',
+          type: 'string',
+          value: repo.name
+        });
+      }
+
+      if (repo?.url) {
+        this.buildInformation.push({
+          label: 'Repository Url',
+          type: 'link',
+          value: repo.url,
+          action: (_event: any, link: string) =>
+            window.open(link, '_blank', 'noopener,noreferrer')
+        });
+      }
+    }
+
+    await this.init();
   }
 
-  async refresh() {
-    await this.load();
+  async init() {
     this.setBreadcrumbConfig();
-  }
-
-  async load() {
-    await this.loadExtension();
-  }
-
-  async loadExtension() {
-    const { name } = this.activatedRoute.snapshot.params;
-    this.extension = await this.analyticsService.getExtensionDetailFromCEP(name);
-    const extensionNames = await this.analyticsService.getExtensionNamesFromCEP();
-    const key = `${name}.zip`;
-    this.extensionContent = extensionNames[key]?.contents?.map(fileName => {
-      return fileName.startsWith('files/') ? fileName.substring(6) : fileName;
-    }) || [];
-    // console.log( "Content", this.extensionContent, this.extension?.analytics?.length);
+    const { name } = this.route.snapshot.params;
+    if (this.extensionFromCep) {
+      const extensionNames =
+        await this.analyticsService.getExtensionNamesFromCep();
+      const key = `${name}.zip`;
+      this.extensionContent =
+        (extensionNames as any)[key]?.contents?.map((fileName: string) => {
+          return fileName.startsWith('files/')
+            ? fileName.substring(6)
+            : fileName;
+        }) || [];
+    } else {
+      if (((this.extension as any)['build_information'] as any)['monitors']) {
+        ((this.extension as any)['build_information'] as any)[
+          'monitors'
+        ].forEach((monitor: any) => {
+          this.extensionContent.push(monitor['file']);
+        });
+      }
+      if (((this.extension as any)['build_information'] as any)['files']) {
+        ((this.extension as any)['build_information'] as any)['files'].forEach(
+          (monitor: any) => {
+            this.extensionContent.push(monitor['file']);
+          }
+        );
+      }
+    }
   }
 
   private setBreadcrumbConfig() {

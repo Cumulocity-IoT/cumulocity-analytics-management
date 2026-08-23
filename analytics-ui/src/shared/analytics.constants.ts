@@ -1,5 +1,6 @@
+import { gettext } from '@c8y/ngx-components/gettext';
 import { ERROR_TYPE } from './analytics.model';
-import { gettext, PropertiesListItem } from '@c8y/ngx-components';
+import { PropertiesListItem } from '@c8y/ngx-components';
 
 export const ERROR_MESSAGES = {
   [ERROR_TYPE.TYPE_VALIDATION]: gettext(
@@ -63,18 +64,25 @@ export const packageProperties: PropertiesListItem[] = [
   {
     label: gettext('Source'),
     key: 'repository',
-    transform: (repository: any) =>
-      repository?.url ? repository.url : repository,
+    transform: (repository: unknown) => {
+      if (repository && typeof repository === 'object') {
+        const repo = repository as Record<string, unknown>;
+        return repo['url'] ? repo['url'] : repository;
+      }
+      return repository;
+    },
     type: 'link',
-    action: (e, link) =>
-      window.open(link as string, '_blank', 'noopener,noreferrer')
-  },
+    action: () => {
+      // Action handled by link type
+    }
+  } as any,
   {
     label: gettext('Homepage'),
     key: 'homepage',
     type: 'link',
-    action: (e, link) =>
-      window.open(link as string, '_blank', 'noopener,noreferrer')
+    action: () => {
+      // Action handled by link type
+    }
   },
   {
     label: gettext('Required platform version'),

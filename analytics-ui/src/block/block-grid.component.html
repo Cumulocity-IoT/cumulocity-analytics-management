@@ -1,22 +1,22 @@
 <!--
- ~ Copyright (c) 2025 Cumulocity GmbH
- ~
- ~ SPDX-License-Identifier: Apache-2.0
- ~
- ~ Licensed under the Apache License, Version 2.0 (the "License");
- ~ you may not use this file except in compliance with the License.
- ~ You may obtain a copy of the License at
- ~
- ~      http://www.apache.org/licenses/LICENSE-2.0
- ~
- ~ Unless required by applicable law or agreed to in writing, software
- ~ distributed under the License is distributed on an "AS IS" BASIS,
- ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- ~ See the License for the specific language governing permissions and
- ~ limitations under the License.
- ~
- ~ @authors Christof Strack
-  -->
+~ Copyright (c) 2025 Cumulocity GmbH
+~
+~ SPDX-License-Identifier: Apache-2.0
+~
+~ Licensed under the Apache License, Version 2.0 (the "License");
+~ you may not use this file except in compliance with the License.
+~ You may obtain a copy of the License at
+~
+~      http://www.apache.org/licenses/LICENSE-2.0
+~
+~ Unless required by applicable law or agreed to in writing, software
+~ distributed under the License is distributed on an "AS IS" BASIS,
+~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+~ See the License for the specific language governing permissions and
+~ limitations under the License.
+~
+~ @authors Christof Strack
+-->
 
 <c8y-title translate>Analytics Builder blocks</c8y-title>
 <c8y-breadcrumb>
@@ -32,7 +32,7 @@
     [icon]="'flow-chart'"
     [label]="'Blocks installed' | translate"
     [path]="'c8y-pkg-analytics-extension/list'"
-  >
+    >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <c8y-action-bar-item [placement]="'right'">
@@ -40,38 +40,39 @@
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
     (click)="loadBlocks()"
-  >
+    >
     <i c8yIcon="refresh"></i>
     {{ "Refresh" | translate }}
   </button>
 </c8y-action-bar-item>
 
 <div class="content-fullpage border-top border-bottom">
-  <c8y-data-grid *ngIf="!loading"
-    [title]="titleBlock | translate"
-    [refresh]="refresh"
-    [columns]="columnsBlocks"
-    [rows]="blocks"
-    [pagination]="pagination"
-    [actionControls]="actionControls"
-  >
-    <c8y-ui-empty-state
-      [icon]="'plugin'"
-      [title]="'No blocks loaded.' | translate"
-      [subtitle]="'Wait for Analytics Streaming to load blocks.' | translate"
-      [horizontal]="true"
-    ></c8y-ui-empty-state>
-  </c8y-data-grid>
+  @if (!loading) {
+    <c8y-data-grid
+      [title]="titleBlock | translate"
+      [refresh]="refresh"
+      [columns]="columnsBlocks"
+      [rows]="blocks"
+      [pagination]="pagination"
+      [actionControls]="actionControls"
+      >
+      <c8y-ui-empty-state
+        [icon]="'plugin'"
+        [title]="'No blocks loaded.' | translate"
+        [subtitle]="'Wait for Analytics Streaming to load blocks.' | translate"
+        [horizontal]="true"
+      ></c8y-ui-empty-state>
+    </c8y-data-grid>
+  }
 
-  <div style="padding-top: 48px" *ngIf="loading">
-    <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
-      <h2>
-        <span class="label label-primary text-center text-14">
-          Please stand by until the blocks metadata is loaded
-          successfully. This may take a short while ...
-        </span>
-      </h2>
+  @if (loading) {
+    <div class="p-t-48">
+      <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
+        <p class="lead text-muted">
+          {{ 'Please stand by until the blocks metadata is loaded successfully. This may take a short while...' | translate }}
+        </p>
+      </div>
+      <c8y-loading></c8y-loading>
     </div>
-    <c8y-loading></c8y-loading>
-  </div>
+  }
 </div>

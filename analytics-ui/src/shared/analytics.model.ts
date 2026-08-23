@@ -7,7 +7,8 @@ export interface ApplicationState {
 
 export enum Wizards {
   APPLICATION_UPLOAD = 'applicationUpload',
-  MICROSERVICE_UPLOAD = 'microserviceUpload'
+  MICROSERVICE_UPLOAD = 'microserviceUpload',
+  RELEASE_DEPLOY = 'deployFromGitHubRelease'
 }
 
 export enum ERROR_TYPE {
@@ -29,20 +30,20 @@ export enum Category {
   UTILITY = 'UTILITY'
 }
 
-export interface CEP_ExtensionsMetadata {
+export interface CepExtensionsMetadata {
   metadatas: string[];
   messages: string[];
 }
 
-export interface CEP_Extension {
+export interface CepExtension {
   name: string;
-  analytics: CEP_Block[];
+  analytics: CepBlock[];
   version: string;
   loaded: true;
   extensionType?: ExtensionType;
 }
 
-export interface CEP_Block {
+export interface CepBlock {
   id: string;
   name: string;
   file: string;
@@ -56,8 +57,31 @@ export interface CEP_Block {
   custom: boolean;
   extension?: string;
   resultingExtension?: string;
-  repositoryName: string;
-  repositoryId: string;
+  // Only populated for repository-sourced blocks; deployed blocks read back from
+  // the CEP correlator have no originating repository, so these stay undefined.
+  repositoryName?: string;
+  repositoryId?: string;
+  category?: Category;
+}
+
+/**
+ * Raw block payload as returned by the CEP correlator
+ * (`service/cep/apamacorrelator/en/<extension>.json` → `analytics[]`).
+ * Every field is optional/untrusted; `addBlockMetadata` normalizes it into a
+ * {@link CepBlock}.
+ */
+export interface RawCepBlock {
+  id?: string;
+  name?: string;
+  file?: string;
+  type?: string;
+  installed?: boolean;
+  producesOutput?: string;
+  description?: string;
+  url?: string;
+  downloadUrl?: string;
+  path?: string;
+  resultingExtension?: string;
   category?: Category;
 }
 
@@ -74,6 +98,13 @@ export interface RepositoryItem {
   repositoryId: string;
   installed?: boolean;
   extensionsYamlItem?: RepositoryItem;
+  /**
+   * All fully-qualified block names this item's file defines (see
+   * `extractBlockFqns`). A `.mon` file can define more than one block, so
+   * "installed" status is decided against this whole set, not just `id`
+   * (which holds just the first one, for display/identification).
+   */
+  blockIds?: string[];
 }
 
 export interface Repository {
@@ -88,6 +119,30 @@ export interface RepositoryTestResult {
   success: boolean;
   message?: string;
   status?: number;
+}
+
+/**
+ * A single asset (file) attached to a GitHub Release, e.g. a pre-built
+ * extension zip such as `Abs-1.0.1.zip`.
+ */
+export interface GitHubReleaseAsset {
+  id: number;
+  name: string;
+  size: number;
+  browserDownloadUrl: string;
+  contentType: string;
+}
+
+/**
+ * A GitHub Release (`GET /repos/{owner}/{repo}/releases`), with its attached
+ * assets already embedded — no separate "list assets" call is needed.
+ */
+export interface GitHubRelease {
+  id: number;
+  tagName: string;
+  name: string;
+  publishedAt: string;
+  assets: GitHubReleaseAsset[];
 }
 
 export const CEP_PATH_BASE = 'service/cep';
@@ -107,6 +162,31 @@ export const REPOSITORY_CONFIGURATION_ENDPOINT = 'repository/configuration';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
 export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 
+/**
+ * Tenant option category repository config is stored under, read/written
+ * directly via `@c8y/client`'s `TenantOptionsService` (no backend proxy).
+ * Must match `analytics-service/c8y_agent.py`'s `CATEGORY` constant so that
+ * repos created by either the microservice or the browser stay interoperable.
+ */
+export const REPOSITORY_OPTION_CATEGORY = 'analytics-management.repository';
+
+/**
+ * Placeholder shown for an already-set access token instead of the real
+ * secret. Must match `analytics-service/c8y_agent.py`'s `DUMMY_ACCESS_TOKEN`.
+ * On save, a repository whose `accessToken` still equals this sentinel is
+ * treated as "unchanged" and the previously stored token is kept as-is.
+ */
+export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
+
+/**
+ * Tenant option category for browser-only UI preferences (e.g. "Expert
+ * mode"). Stored the same way as repository config/PAT — directly as a
+ * Cumulocity tenant option, not `localStorage` — so the setting follows the
+ * user's tenant rather than one browser/device.
+ */
+export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
+export const EXPERT_MODE_OPTION_KEY = 'expertMode';
+
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
@@ -119,6 +199,25 @@ export const REPO_CONTRIB_BLOCK = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-
 export const REPO_CONTRIB_CUMULOCITY = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/cumulocity-blocks`;
 export const REPO_CONTRIB_SIMULATION = `${GITHUB_BASE}/repos/${REPO_OWNER}/analytics-builder-blocks-contrib/contents/simulation-blocks`;
 export const REPO_ANALYTICS_MANAGEMENT = `${GITHUB_BASE}/repos/${REPO_OWNER}/cumulocity-analytics-management/contents/repository/blocks`;
+
+/**
+ * Plain GitHub web URL (not a Content-API URL) for the community blocks
+ * repo — matches the shape "Manage repositories" stores for user-added
+ * repos (see `GitHubContentService.toContentApiUrl`), so this seeded entry
+ * looks and behaves exactly like one the user typed in themselves.
+ */
+export const DEFAULT_REPOSITORY_URL = `https://github.com/${REPO_OWNER}/analytics-builder-blocks-contrib`;
+
+/** Seeded when a tenant has no repositories configured yet — see `RepositoryService.loadRepositoriesFromConfig`. */
+export function createDefaultRepository(): Repository {
+  return {
+    id: uuidCustom(),
+    name: 'Community Blocks (analytics-builder-blocks-contrib)',
+    url: DEFAULT_REPOSITORY_URL,
+    accessToken: '',
+    enabled: true
+  };
+}
 export const REPO_SAMPLES = [
   {
     id: uuidCustom(),
@@ -156,10 +255,26 @@ export const REPO_SAMPLES = [
 export const DESCRIPTOR_YAML = "extensions.yaml";
 
 
-export type CEPEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
 
 export type ExtensionType = 'block' | 'zip';
 
-export type CEPStatusObject = any;
+/**
+ * Status payload for the CEP/Apama engine. Sourced either from the backend
+ * microservice (`.../cep/status`) or, when it is unavailable, directly from the
+ * CEP correlator diagnostics (`CEP_PATH_STATUS`). Only the fields the UI relies
+ * on are typed; the index signature keeps the remaining diagnostic fields
+ * accessible (e.g. the engine-monitoring view iterates all keys).
+ */
+export interface CepStatusObject {
+  status?: string;
+  is_safe_mode?: boolean;
+  microservice_name?: string;
+  microservice_application_id?: string;
+  number_extensions?: number;
+  // Remaining diagnostic fields are untyped; the engine-monitoring view iterates
+  // and renders them generically.
+  [key: string]: any;
+}
 
 export type UploadMode = 'add' | 'update';

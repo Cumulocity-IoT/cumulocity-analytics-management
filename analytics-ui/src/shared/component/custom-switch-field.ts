@@ -19,7 +19,10 @@
  */
 
 import { ChangeDetectionStrategy, Component } from '@angular/core';
-import { FieldType } from '@ngx-formly/core';
+
+import { ReactiveFormsModule } from '@angular/forms';
+import { FieldType, FormlyModule } from '@ngx-formly/core';
+import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
 
 @Component({
   selector: 'a17t-custom-switch',
@@ -43,20 +46,23 @@ import { FieldType } from '@ngx-formly/core';
       <span class="text-truncate" title="{{ to.label | humanize }}">{{
         to.label | humanize
       }}</span>
-      <span *ngIf="to.required && to.hideRequiredMarker !== true">
-        <em class="m-l-4" translate>(required)</em>
-      </span>
+      @if (to.required && to.hideRequiredMarker !== true) {
+        <span>
+          <em class="m-l-4" translate>(required)</em>
+        </span>
+      }
       <!-- <button
-    class="btn-help btn-help--sm m-t-auto m-b-auto"
-    type="button"
-    [attr.aria-label]="'Help' | translate"
-    [popover]="to.description"
-    triggers="focus"
-    placement="right"
-    *ngIf="!!to.description"
-  ></button> -->
+      class="btn-help btn-help--sm m-t-auto m-b-auto"
+      type="button"
+      [attr.aria-label]="'Help' | translate"
+      [popover]="to.description"
+      triggers="focus"
+      placement="right"
+      *ngIf="!!to.description"
+    ></button> -->
     </label>
   `,
-  standalone: false
+  standalone: true,
+  imports: [ReactiveFormsModule, FormlyModule, CoreModule, HumanizePipe]
 })
 export class CustomSwitchField extends FieldType {}

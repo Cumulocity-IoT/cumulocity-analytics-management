@@ -19,19 +19,19 @@
  */
 
 import { Component } from '@angular/core';
+
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-    selector: 'a17t-label-renderer-api',
-    template: `
-	<div>
-        <span class="text-12 label label-primary">{{context.value}}</span
-        >
+  selector: 'a17t-label-renderer-api',
+  template: `
+    <div>
+      <span class="text-12 label label-primary">{{ context.value }}</span>
     </div>
   `,
-  standalone: false
+  standalone: true,
+  imports: []
 })
 export class LabelRendererComponent {
-    constructor(public context: CellRendererContext) {
-    }
+  constructor(public context: CellRendererContext) {}
 }

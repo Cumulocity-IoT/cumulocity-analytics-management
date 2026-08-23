@@ -1,0 +1,128 @@
+<div class="d-col flex-nowrap no-align-items p-48 flex-grow col-md-12 col-md-offset-0">
+  <div class="card card--fullpage d-col flex-grow">
+    @if (phase === 'select') {
+      <!-- Header -->
+      <div class="card-header separator" style="justify-content: center">
+        <h4 class="card-title d-flex">
+          <i c8yIcon="cloud-download" class="icon-32 m-r-16"></i>
+          <span class="m-t-8">{{ 'Deploy from GitHub Release' | translate }}</span>
+        </h4>
+      </div>
+
+      <div class="card content-fullpage inner-scroll flex-grow" style="padding: 24px">
+        <p class="text-muted">
+          {{ 'Pick a repository, one of its releases, and a pre-built extension zip to deploy as-is — no build step required.' | translate }}
+        </p>
+
+        <div class="form-group">
+          <label for="repositorySelect">{{ 'Repository' | translate }}</label>
+          <select
+            id="repositorySelect"
+            class="form-control"
+            [ngModel]="selectedRepository"
+            (ngModelChange)="onRepositorySelected($event)"
+            [disabled]="loading"
+            >
+            @for (repository of repositories; track repository.id) {
+              <option [ngValue]="repository">{{ repository.name }}</option>
+            }
+          </select>
+        </div>
+
+        @if (releases.length > 0) {
+          <div class="form-group">
+            <label for="releaseSelect">{{ 'Release' | translate }}</label>
+            <select
+              id="releaseSelect"
+              class="form-control"
+              [ngModel]="selectedRelease"
+              (ngModelChange)="onReleaseSelected($event)"
+              [disabled]="loading"
+              >
+              @for (release of releases; track release.id) {
+                <option [ngValue]="release">
+                  {{ release.name }} ({{ release.assets.length }} {{ 'assets' | translate }})
+                </option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (selectedRelease && assets.length > 0) {
+          <div class="form-group">
+            <label>{{ 'Asset' | translate }}</label>
+            <div class="radio-list">
+              @for (asset of assets; track asset.id) {
+                <div class="radio">
+                  <label>
+                    <input
+                      type="radio"
+                      name="asset"
+                      [value]="asset"
+                      [(ngModel)]="selectedAsset"
+                      />
+                    {{ asset.name }}
+                    <span class="text-muted">&nbsp;({{ asset.size }} {{ 'bytes' | translate }})</span>
+                  </label>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        @if (selectedRelease && assets.length === 0) {
+          <c8y-messages class="m-t-8 m-b-8">
+            <c8y-message type="info">
+              {{ 'This release has no .zip assets.' | translate }}
+            </c8y-message>
+          </c8y-messages>
+        }
+
+        @if (errorMessage) {
+          <c8y-messages class="m-t-8 m-b-8">
+            <c8y-message type="danger">
+              {{ errorMessage | translate }}
+            </c8y-message>
+          </c8y-messages>
+        }
+      </div>
+
+      <div class="card-footer separator p-24 flex-no-shrink text-center">
+        <button (click)="onCancel()" class="btn btn-default" type="button">
+          {{ 'Cancel' | translate }}
+        </button>
+        <!-- <button
+          (click)="sendFetchExtensionEvent()"
+          class="btn btn-default m-l-8"
+          type="button"
+          title="{{ 'Experimental: sends a c8y_FetchExtension event for the EPL app to log — does not deploy the extension yet.' | translate }}"
+          [disabled]="!selectedAsset || sendingFetchEvent"
+          >
+          {{ 'Send via event (experimental)' | translate }}
+        </button> -->
+        <button
+          (click)="downloadAndContinue()"
+          class="btn btn-primary m-l-8"
+          type="button"
+          title="{{ 'Downloads the asset, then hand it to the upload step (drag-and-drop or browse) to actually deploy it.' | translate }}"
+          [disabled]="!selectedAsset"
+          >
+          {{ 'Download' | translate }}
+        </button>
+      </div>
+    }
+
+    @if (phase === 'upload') {
+      <a17t-extension-add
+        [headerText]="selectedAsset?.name || 'Deploy extension'"
+        [headerIcon]="'cloud-download'"
+        [successText]="'Extension deployed'"
+        [uploadExtensionHandler]="uploadExtensionHandler"
+        [mode]="'add'"
+        (cancelled)="onCancel()"
+        (completed)="onUploadCompleted()"
+        >
+      </a17t-extension-add>
+    }
+  </div>
+</div>

@@ -2,6 +2,7 @@
 
 ## Content
 - [Overview](#overview)
+- [Documentation](#documentation)
 - [Manage custom extension](#manage-custom-extension)
   - [Upload custom extension](#upload-custom-extension)
   - [Build custom extension](#build-custom-extension)
@@ -13,6 +14,22 @@
 - [Analytics Builder Extension Backend](#analytics-builder-extension-backend)
 - [Analytics Builder Block SDK](#analytics-builder-block-sdk)
 - [Troubleshooting](#troubleshooting)
+- [Repository Layout](#repository-layout)
+
+## Documentation
+
+**Start here for project overview and contribution:**
+- [AGENT.md](AGENT.md) - System overview, architecture, how to run
+- [IMPROVEMENTS.md](IMPROVEMENTS.md) - Comprehensive improvement roadmap
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - Architecture Decision Records (ADRs)
+- [CONTRIBUTING.md](CONTRIBUTING.md) - Contributing guidelines and development workflow
+- [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md) - Latest improvements implemented
+- [analytics-service/API.md](analytics-service/API.md) - Backend API documentation
+
+**For developers:**
+- Run tests: `npm test` (frontend) or `pytest` (backend)
+- Code quality: `npm run lint` and `npm run format` (frontend)
+- Development setup: See [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Overview
 
@@ -31,7 +48,7 @@ Analytics Builder blocks are build using the [Analytics Builder Block SDK](https
 
 In addition a table lists all installed analytics blocks with the following information: name, category, custom block, extension package name.
 
-![Block list](resources/images/block-block-list.png)
+![Block list](resources/images/block-list.png)
 
 ## Manage custom extension
 Custom extension can be uploaded from your local system. In addition they can be downloaded and deletes as well.
@@ -56,11 +73,6 @@ When the deployment of the extension was not successful an indicator [Safe Mode]
 Removing an extension will eliminate the block once more. It's important to note that when deleting an extension, there is no verification of whether the blocks within this extension are utilized in existing models. This could lead to models that are no longer deployable.
 
 ![Use Extension](resources/images/use-analytics-builder-block.png)
-
-### Build custom extension
-You can build and uploads a custom extension by following the screen flow below:
-
-![Build custom extension](resources/images/extension-create-extension-animated.gif)
 
 ### Options for custom extension
 For a custom extension you have the following options:
@@ -88,6 +100,10 @@ The modal dialog provides the option:
 * to restart the streaming analytics engine to load the created custom extension.
 
 ![Create extension](resources/images/extension-create-extension-modal.png)
+
+If an extension is built using the backend, additional build information is added to the extension. In this case, the extension can be rebuilt from the same repository.
+
+![Build information](resources/images/extension-manage-build-information.png)
 
 ## Monitoring
 
@@ -127,8 +143,14 @@ Finally, you should see the new application in your App-Switcher.
 **Prerequisites to build plugin:**
   
 * Git 
-* NodeJS (release builds are currently built with `v18.19.0`)
+* NodeJS (v18+ or v20+ recommended; release builds are currently built with `v18.19.0`)
 * NPM (Included with NodeJS)
+
+**Current Dependencies:**
+* Angular 20.3.0
+* Cumulocity 1023.82.4
+* TypeScript 5.9.2
+* RxJS 7.8.2
 
 **Instructions**
 
@@ -138,16 +160,19 @@ Make sure you set the environments url, username, password before starting.
 ```
 git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
 ```
-2. Change directory:
-  ```cd cumulocity-analytics-management```
-3. run npm i command to install all library files specified in source code
-  ```npm i ``` 
+2. Change directory to analytics-ui:
+  ```cd cumulocity-analytics-management/analytics-ui```
+3. Install dependencies:
+  ```npm install``` 
 4. (Optional) Local development server:
   ```npm start```
-6. Build the app:
+5. Build the app:
   ```npm run build```
-7. Deploy the app:
+6. Deploy the app:
   ```npm run deploy```
+7. (Optional) Format and lint code:
+  ```npm run format``` - Formats TypeScript files with Prettier
+  ```npm run lint``` - Runs ESLint with auto-fix
 
 ## Analytics Builder Extension Backend
 
@@ -157,8 +182,9 @@ git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
  The microservice is multi tenant ready.
 
 ## Prerequisites to build/deploy the microservice
+* Python 3.8+ 
 * Docker host/client 
-* [c8y-go-cli](https://goc8ycli.netlify.app)
+* [c8y-go-cli](https://goc8ycli.netlify.app) or c8y CLI
 
 ## Local debugging using Vscode/Devcontainer
 To run and debug the microservice locally you an use Vscode and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin (Administrative Credentials to fetch BootStrap Credentials) file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). The get_service_creds.py fetch the credentials and create the .env file containing the bootstrap credentials. 
@@ -229,6 +255,41 @@ In order to check if an extension is deployed look for a relevant message in the
 `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 
 The log file can be accessed: Administration> Ecosystem>Microservices>apama-ctrl-1c-4g>Logs
+
+
+## Repository Layout
+
+Two layouts are proposed to build an extension from a github repository / folder are as follows:
+
+1. Directory is Extension
+This is the preferred because of its simplicity.
+
+Mechanism: 
+* The extension builder inspects the top-level items in the configured repository path.
+
+* If an item is a .mon file (e.g., Difference.mon), a single-file extension is created from just that file.
+
+* If an item is a directory (e.g., Python), an extension is created by packaging all the content within that directory (including subdirectories like venv).
+
+User UI: 
+* The user sees a list of names for each top-level .mon file and top-level directory (e.g., "Difference", "Offset", "Python"). Only one item (either directory or *.mon file) can be selected.
+
+Key Benefit: Retains simple behavior for existing single-file blocks while easily supporting complex blocks that require multiple files and/or directories (like a Python environment).
+
+2. Configuration File `extensions.yaml`
+This layout uses a dedicated configuration file to define the extension's contents explicitly.
+
+Mechanism: 
+* The builder recursively inspects the directory for a specific configuration file `extensions.yaml`.
+
+* If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include. Multiple *.mon files can be selected.
+
+* If no config file is present, it defaults to listing simple .mon files as before.
+
+User UI: 
+* If the config file is present, the UI should read it and only show the top-level keys defined in the file, not the embedded files or directories.
+
+Key Benefit: Highly flexible, allowing for specifying dependent bundles and explicit control over included content. (However, this was abandoned in favor of the simpler Directory is Extension approach).
 
 
 **NOTE:** 

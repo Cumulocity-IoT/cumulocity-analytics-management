@@ -19,13 +19,17 @@
  */
 
 import { Component } from '@angular/core';
+
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
   template: `<a [href]="context.value" target="'_blank'"
-    ><span>{{ context.item.type === 'file'? context.item.file : context.item.file+'/' }}</span></a
+    ><span>{{
+      context.item.type === 'file' ? context.item.file : context.item.file + '/'
+    }}</span></a
   >`,
-  standalone: false
+  standalone: true,
+  imports: []
 })
 export class LinkRendererComponent {
   constructor(public context: CellRendererContext) {

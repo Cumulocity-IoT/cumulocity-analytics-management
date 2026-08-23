@@ -1,57 +1,15 @@
-textarea.numbered {
-  /*background: url(http://i.imgur.com/2cOaJ.png);*/
-  background-attachment: local;
-  background-repeat: no-repeat;
-  padding-left: 35px;
-  padding-top: 10px;
-  border-color:#ccc;
+/* Widen the dialog for the source-code editor. Scoped via :has() to this
+   modal only (its host renders inside the .modal-dialog wrapper) so other
+   modals keep their default width. */
+.modal-dialog:has(a17t-name-extension-modal) {
+  max-width: 90vw;
+  width: 1100px;
 }
 
-pre {
-  tab-size: 4;
-  counter-reset: linecounter;
-  padding: 0;
-  color: #060606;
-  background-color: #333;
-  line-height: 16px;
-  max-height: 700px;
-  /* font-size: var(--c8y-font-size-base); */
-  /* font-size: 16px; */
-  font-size: smaller;
+/* Editor sizes with the viewport but stays well within it so the modal
+   header (title) and footer (Close button) remain visible without scrolling. */
+.editor-half-height {
+  display: block;
+  height: 70vh;
+  min-height: 18rem;
 }
-
-pre span.line {
-  counter-increment: linecounter;
-  line-height: 6px;
-}
-
-pre span.line::before {
-  content: counter(linecounter);
-  color: red;
-  width: 40px;
-  display: inline-block;
-  border-right: 1px dotted #ccc;
-  padding-right: 8px;
-  margin-right: 8px;
-  text-align: right;
-  font-size: smaller;
-  line-height: 10px;
-}
-
-.padding-editor {
-  padding-top: 48px;
-  padding-bottom: 24px;
-}
-
-.margin-editor {
-  margin-top: 48px;
-  margin-bottom: 48px;
-}
-
-#modal-body .modal-body {
-  height: 700px;
-}
-
-/* pre span.line:nth-child(odd)::before {
-  background-color: #555;
-} */

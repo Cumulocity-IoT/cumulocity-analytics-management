@@ -24,33 +24,36 @@ import {
   OnInit,
   ViewEncapsulation
 } from '@angular/core';
+
 import {
   ActionControl,
   AlertService,
   Column,
   ColumnDataType,
+  CoreModule,
   Pagination
 } from '@c8y/ngx-components';
 import {
   AnalyticsService,
   BooleanRendererComponent,
-  CEP_Block
+  CepBlock
 } from '../shared';
-import { LabelRendererComponent } from 'src/shared/renderer/label.renderer';
+import { LabelRendererComponent } from '../shared/renderer/label.renderer';
 
 @Component({
   selector: 'a17t-block-grid',
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: false
+  standalone: true,
+  imports: [CoreModule]
 })
 export class BlockGridComponent implements OnInit {
   loading: boolean = true;
 
   refresh: EventEmitter<any> = new EventEmitter<any>();
 
-  blocks: CEP_Block[] = [];
+  blocks: CepBlock[] = [];
   actionControls: ActionControl[] = [];
 
   titleBlock: string = 'Analytics Builder blocks';
@@ -69,21 +72,10 @@ export class BlockGridComponent implements OnInit {
       header: 'Category',
       name: 'category',
       path: 'category',
-      gridTrackSize: '10%',
+      gridTrackSize: '15%',
       dataType: ColumnDataType.TextShort,
       cellRendererComponent: LabelRendererComponent,
       filterable: true
-    },
-    {
-      header: 'Custom Block',
-      name: 'custom',
-      path: 'custom',
-      gridTrackSize: '15%',
-      filterable: true,
-      dataType: ColumnDataType.TextShort,
-      sortable: true,
-      // cellCSSClassName: 'text-center',
-      cellRendererComponent: BooleanRendererComponent
     },
     {
       header: 'Description',
@@ -97,9 +89,20 @@ export class BlockGridComponent implements OnInit {
       name: 'extension',
       path: 'extension',
       gridTrackSize: '15%',
-      cellRendererComponent: LabelRendererComponent,
+      // cellRendererComponent: LabelRendererComponent,
       filterable: true,
       sortable: true
+    },
+    {
+      header: 'Custom Block',
+      name: 'custom',
+      path: 'custom',
+      gridTrackSize: '10%',
+      filterable: true,
+      dataType: ColumnDataType.TextShort,
+      sortable: true,
+      // cellCSSClassName: 'text-center',
+      cellRendererComponent: BooleanRendererComponent
     }
   ];
 
@@ -122,8 +125,12 @@ export class BlockGridComponent implements OnInit {
 
   async loadBlocks() {
     this.loading = true;
-    this.blocks = await this.analyticsService.getLoadedBlocksFromCEP();
-    this.loading = false;
+    try {
+      this.analyticsService.clearAllCaches();
+      const blocks = await this.analyticsService.getDeployedBlocks();
+      this.blocks = blocks;
+    } finally {
+      this.loading = false;
+    }
   }
-
 }

@@ -18,10 +18,10 @@
 #
 # @authors Christof Strack
 
-NAME="$1"
-VERSION="$2"
-IMG_ARCH="$3"
-IMG_NAME="$4"
+NAME="analytics-ext-service"
+VERSION="$1"
+IMG_ARCH="$2"
+IMG_NAME="$3"
 if ! [ $IMG_NAME ]; then
   IMG_NAME=$(echo "$NAME" | tr '[:upper:]' '[:lower:]' | tr '[:punct:]' '-')
 fi
@@ -49,9 +49,7 @@ mkdir -p "$DIST_DIR"
 
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
-cp ./flask_wrapper.py "$BUILD_DIR"
-cp ./extension_builder.py "$BUILD_DIR"
-cp ./monitor_downloader.py "$BUILD_DIR"
+cp ./app.py "$BUILD_DIR"
 cp ./solution_utils.py "$BUILD_DIR"
 cp ./c8y_agent.py "$BUILD_DIR"
 sed -e "s/{VERSION}/$VERSION/g" ./cumulocity.json > "$BUILD_DIR/cumulocity.json"
