@@ -51,11 +51,11 @@ cumulocity-analytics-management/
 ### Technology Stack
 
 **Frontend (analytics-ui):**
-- Angular 20.3.0 - Core framework
-- TypeScript 5.9.2 - Language
+- Angular 21.2.x - Core framework
+- TypeScript 5.9.3 - Language
 - RxJS 7.8.2 - Reactive programming
-- Cumulocity 1023.82.4 - IoT platform integration
-- ngx-bootstrap 20.0.2 - UI components
+- Cumulocity 1024.15.1 - IoT platform integration
+- ngx-bootstrap 21.2.2 - UI components
 - ESLint + Prettier - Code quality
 
 **Backend (analytics-service):**
