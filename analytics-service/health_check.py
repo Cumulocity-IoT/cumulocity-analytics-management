@@ -7,6 +7,7 @@ Provides endpoints and checks for service health status
 import logging
 import os
 import psutil
+import requests
 from datetime import datetime
 from typing import Dict, Any
 from enum import Enum
@@ -109,7 +110,6 @@ class HealthCheck:
         """Check GitHub API connectivity"""
         try:
             # This would check actual connectivity to GitHub
-            import requests
             response = requests.head("https://api.github.com", timeout=5)
             if response.status_code == 200:
                 return {
