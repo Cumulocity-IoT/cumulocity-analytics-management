@@ -20,12 +20,12 @@ package apamax.blockmarketplace.fetchextension.raw;
 
 /**
  * Only *event* types can be `using`'d across the extension/EPL-App boundary (a *monitor* or
- * plug-in type defined in the extension cannot be referenced directly from the EPL App) - this
- * event exists so ../plugins/GitHubFetchPlugin.py's fetch result can reach
- * repository/epl/FetchExtensionListener.mon. Sent directly by the plugin via
- * Correlator.sendTo(channel, event, type=...) - never touches a connectivity chain, so there's
- * no codec involved and no risk of the binary-truncation issue that motivated using a plugin
- * here in the first place (see that file's header comment).
+ * plug-in type defined in the extension cannot be referenced directly from the EPL App).
+ *
+ * NOTE: The current diagnostic `GitHubFetchPlugin.py` returns its result directly from the
+ * action (dictionary return value) and does not publish this event via `Correlator.sendTo(...)`.
+ * This event type is kept only for a potential future async variant that would send results
+ * across the boundary as events.
  */
 event GitHubFetchPluginResult {
 	string requestId;
