@@ -59,5 +59,8 @@
     "less": "^4.2.0",
     "prettier": "^3.6.2",
     "typescript": "5.9.3"
+  },
+  "overrides": {
+    "monaco-editor": "0.55.1"
   }
 }
