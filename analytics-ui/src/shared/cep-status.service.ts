@@ -17,6 +17,7 @@ import {
 } from './analytics.model';
 import { CepError, fetchCepJSON } from './cep-error';
 import { CepRestartService } from './cep-restart.service';
+import { RepositoryConfigService } from './repository-config.service';
 
 /**
  * Owns the CEP/Apama operation-object realtime stream, its derived status,
@@ -39,7 +40,8 @@ export class CepStatusService implements OnDestroy {
     private readonly inventoryService: InventoryService,
     private readonly fetchClient: FetchClient,
     private readonly applicationService: ApplicationService,
-    private readonly cepRestartService: CepRestartService
+    private readonly cepRestartService: CepRestartService,
+    private readonly repositoryConfigService: RepositoryConfigService
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.initializeMonitoring();
@@ -119,7 +121,25 @@ export class CepStatusService implements OnDestroy {
   }
 
   /**
-   * Whether the `analytics-service` backend is actually usable right now.
+   * Whether the `analytics-service` backend should actually be used right
+   * now — it must be deployed (see `isBackendServiceDeployed()`) AND the
+   * user hasn't explicitly disabled it via the "use backend service" switch
+   * (see `isBackendServiceEnabled()`/`setBackendServiceEnabled()`). Every
+   * mode-dependent decision in the app goes through this one method.
+   */
+  async isBackendServiceAvailable(): Promise<boolean> {
+    const [deployed, enabled] = await Promise.all([
+      this.isBackendServiceDeployed(),
+      this.isBackendServiceEnabled()
+    ]);
+    return deployed && enabled;
+  }
+
+  /**
+   * Whether the `analytics-service` backend is actually deployed and
+   * responding right now — independent of the user's enable/disable
+   * preference, so a UI indicator can show the real deployment state even
+   * while the user has chosen to not use it.
    *
    * `applicationService.isAvailable()` alone is NOT enough — per its own
    * doc comment, it only reports whether the microservice is *subscribed*
@@ -132,7 +152,7 @@ export class CepStatusService implements OnDestroy {
    * liveness probe against the microservice's own REST surface before
    * reporting it as available. Cached per session (checked once).
    */
-  async isBackendServiceAvailable(): Promise<boolean> {
+  async isBackendServiceDeployed(): Promise<boolean> {
     if (!this.cachedBackendAvailability) {
       this.cachedBackendAvailability = this.checkBackendServiceAvailable().catch(() => {
         // Allow retry on next call
@@ -141,6 +161,22 @@ export class CepStatusService implements OnDestroy {
       });
     }
     return this.cachedBackendAvailability;
+  }
+
+  /** The user's "use backend service" preference — see `USE_BACKEND_SERVICE_OPTION_KEY`. */
+  async isBackendServiceEnabled(): Promise<boolean> {
+    return this.repositoryConfigService.getUseBackendServiceEnabled();
+  }
+
+  /**
+   * Persists the "use backend service" preference and clears the caches
+   * that depend on which mode is active, so the next status/operation-object
+   * read picks up the new mode immediately instead of serving a stale,
+   * previously-cached one.
+   */
+  async setBackendServiceEnabled(enabled: boolean): Promise<void> {
+    await this.repositoryConfigService.setUseBackendServiceEnabled(enabled);
+    this.clearCache();
   }
 
   private async checkBackendServiceAvailable(): Promise<boolean> {

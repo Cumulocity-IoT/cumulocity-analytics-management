@@ -186,6 +186,14 @@ export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
  */
 export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
 export const EXPERT_MODE_OPTION_KEY = 'expertMode';
+/**
+ * User preference for whether the `analytics-service` backend microservice
+ * should be used when it's deployed — lets a user force browser-only mode
+ * even on a tenant where the backend is available. Has no effect when the
+ * backend isn't deployed at all (there's nothing to opt into). Defaults to
+ * `true` (use it when available) when never explicitly set.
+ */
+export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
 
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';

@@ -13,7 +13,8 @@ import { BsModalRef } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
 import { AnalyticsService } from '../shared';
-import { CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
+import { AlertService, CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Component({
   selector: 'a17t-engine-monitoring',
@@ -39,11 +40,15 @@ export class EngineMonitoringComponent implements OnInit {
   isAlarmExpanded: boolean = true;
   isEventExpanded: boolean = false;
   cepCtrlStatus: Record<string, unknown> = {};
+  backendDeployed: boolean = false;
+  backendEnabled: boolean = false;
+  backendTogglePending: boolean = false;
 
   constructor(
     private alarmService: AlarmService,
     private eventService: EventService,
     private analyticsService: AnalyticsService,
+    private alertService: AlertService,
     public bsModalRef: BsModalRef
   ) {}
 
@@ -51,6 +56,7 @@ export class EngineMonitoringComponent implements OnInit {
     const humanize = new HumanizePipe();
 
     this.init();
+    this.loadBackendStatus();
     const operationObjectId = await this.analyticsService.getCepOperationObjectId();
     this.cepOperationObjectId = operationObjectId || '';
     const cepCtrlStatus = await this.analyticsService.getCepStatus();
@@ -127,6 +133,37 @@ export class EngineMonitoringComponent implements OnInit {
   private async init() {
     const operationObjectId = await this.analyticsService.getCepOperationObjectId();
     this.cepOperationObjectId = operationObjectId || '';
+  }
+
+  private async loadBackendStatus(): Promise<void> {
+    const [deployed, enabled] = await Promise.all([
+      this.analyticsService.isBackendServiceDeployed(),
+      this.analyticsService.isBackendServiceEnabled()
+    ]);
+    this.backendDeployed = deployed;
+    this.backendEnabled = enabled;
+  }
+
+  async toggleBackendEnabled(enabled: boolean): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      await this.analyticsService.setBackendServiceEnabled(enabled);
+      this.backendEnabled = enabled;
+      this.alertService.success(
+        enabled
+          ? gettext('Backend service enabled')
+          : gettext('Backend service disabled')
+      );
+      // Status/operation-object reads are mode-dependent — re-fetch so the
+      // page reflects whichever endpoint the new mode actually uses.
+      await this.init();
+    } catch (error) {
+      this.backendEnabled = !enabled;
+      this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));
+      console.error('Failed to update backend service setting:', error);
+    } finally {
+      this.backendTogglePending = false;
+    }
   }
 
   nextPageAlarm(direction: number) {

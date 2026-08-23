@@ -6,7 +6,8 @@ import {
   EXPERT_MODE_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
-  SETTINGS_OPTION_CATEGORY
+  SETTINGS_OPTION_CATEGORY,
+  USE_BACKEND_SERVICE_OPTION_KEY
 } from './analytics.model';
 import { RepositoryError } from './repository-error';
 
@@ -161,6 +162,41 @@ export class RepositoryConfigService {
       throw new RepositoryError(
         'Failed to save expert mode setting',
         gettext('Failed to save the Expert mode setting. Please try again.'),
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  /**
+   * Reads the "use backend service" preference, defaulting to `true` — both
+   * when never set and on any read failure, so a transient error doesn't
+   * silently strand the app in browser-only mode on an otherwise-working
+   * backend.
+   */
+  async getUseBackendServiceEnabled(): Promise<boolean> {
+    try {
+      const { data } = await this.tenantOptionsService.detail({
+        category: SETTINGS_OPTION_CATEGORY,
+        key: USE_BACKEND_SERVICE_OPTION_KEY
+      });
+      return data.value !== 'false';
+    } catch {
+      return true;
+    }
+  }
+
+  /** Persists the "use backend service" preference as a tenant option. */
+  async setUseBackendServiceEnabled(enabled: boolean): Promise<void> {
+    try {
+      await this.tenantOptionsService.create({
+        category: SETTINGS_OPTION_CATEGORY,
+        key: USE_BACKEND_SERVICE_OPTION_KEY,
+        value: String(enabled)
+      });
+    } catch (error) {
+      throw new RepositoryError(
+        'Failed to save backend service setting',
+        gettext('Failed to save the backend service setting. Please try again.'),
         error instanceof Error ? error : undefined
       );
     }

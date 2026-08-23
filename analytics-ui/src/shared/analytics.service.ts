@@ -177,6 +177,21 @@ export class AnalyticsService {
     return this.cepStatusService.isBackendServiceAvailable();
   }
 
+  /** Whether the `analytics-service` backend is deployed, regardless of the user's enable/disable preference. */
+  async isBackendServiceDeployed(): Promise<boolean> {
+    return this.cepStatusService.isBackendServiceDeployed();
+  }
+
+  /** The user's "use backend service when deployed" preference. */
+  async isBackendServiceEnabled(): Promise<boolean> {
+    return this.cepStatusService.isBackendServiceEnabled();
+  }
+
+  /** Persists the "use backend service" preference. */
+  async setBackendServiceEnabled(enabled: boolean): Promise<void> {
+    return this.cepStatusService.setBackendServiceEnabled(enabled);
+  }
+
   // ============================================================================
   // Public API - Cep Metadata (Read-only)
   // ============================================================================
