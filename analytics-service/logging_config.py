@@ -65,7 +65,7 @@ def setup_logging():
                 "class": "logging.handlers.RotatingFileHandler",
                 "level": log_level,
                 "formatter": "json" if is_production else "standard",
-                "filename": os.getenv("LOG_FILE", "analytics-service.log"),
+                "filename": os.getenv("LOG_FILE", "/tmp/analytics-service.log"),
                 "maxBytes": 10485760,  # 10MB
                 "backupCount": 5,
             },
@@ -78,11 +78,28 @@ def setup_logging():
             "werkzeug": {
                 "level": "INFO",
                 "handlers": ["console"],
+                # Without this, records go out via this handler AND bubble up
+                # to the root logger's own "console" handler, printing twice.
+                "propagate": False,
             },
         },
     }
 
-    logging.config.dictConfig(logging_config)
+    try:
+        logging.config.dictConfig(logging_config)
+    except ValueError as e:
+        # The "file" handler can fail to open (e.g. a read-only/unwritable
+        # working directory in the deployed microservice container) — don't
+        # let that crash the app at import time, fall back to console-only.
+        # dictConfig configures every entry under "handlers" regardless of
+        # whether a logger references it, so the handler itself must be
+        # dropped, not just unreferenced.
+        del logging_config["handlers"]["file"]
+        logging_config["loggers"][""]["handlers"] = ["console"]
+        logging.config.dictConfig(logging_config)
+        logging.getLogger(__name__).warning(
+            f"File log handler unavailable, falling back to console-only logging: {e}"
+        )
 
     # Log startup information
     logger = logging.getLogger(__name__)
