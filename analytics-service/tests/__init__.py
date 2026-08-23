@@ -1,6 +1,4 @@
-# Test directory for analytics-service
-
-This directory contains unit tests, integration tests, and fixtures for the analytics-service backend.
+"""
 
 ## Structure
 
