@@ -1,0 +1,599 @@
+openapi: 3.0.3
+info:
+  title: Cumulocity Analytics Builder Extension Service API
+  description: |
+    HTTP API exposed by the `analytics-service` microservice (`analytics-service/app.py`).
+
+    It is deployed to Cumulocity under the microservice context path
+    `service/analytics-ext-service`, and provides:
+
+    - CEP (Apama) engine status/id lookup
+    - GitHub repository configuration (CRUD)
+    - GitHub repository content access (browse/download)
+    - Apama Analytics Builder extension building, upload and deletion
+
+    All paths below are relative to the microservice base path. When called from the
+    Cumulocity UI plugin, requests are proxied through
+    `service/analytics-ext-service/<path>` (see "Consumers" in `docs/api/README.md`
+    for the exact constants used by each Angular service).
+  version: "1.0.0"
+servers:
+  - url: /service/analytics-ext-service
+    description: Cumulocity microservice proxy path for analytics-service
+
+tags:
+  - name: Health
+  - name: CEP
+    description: Apama CEP engine status/id
+  - name: Repository Configuration
+    description: CRUD for configured GitHub repositories
+  - name: Repository Content
+    description: Browsing/downloading GitHub repository content
+  - name: Extensions
+    description: Building, uploading and deleting Apama Analytics Builder extensions
+
+paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: UP
+
+  /cep/id:
+    get:
+      tags: [CEP]
+      summary: Get the managed object ID of the CEP (Apama) microservice
+      description: |
+        Used by the UI (`CepStatusService.fetchOperationIdFromBackend`, endpoint
+        constant `CEP_ENDPOINT` = `cep`) to resolve the Cumulocity managed object
+        that carries the CEP engine's realtime status (`c8y_Status`), so it can
+        subscribe to it via the Cumulocity realtime API.
+      operationId: getCepOperationObjectId
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    example: "12345678"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cep/status:
+    get:
+      tags: [CEP]
+      summary: Get the current status of the CEP (Apama) engine
+      description: |
+        Used by the UI (`CepStatusService.loadCepStatus`) as the primary source of
+        CEP status when the backend microservice is available; falls back to the
+        CEP correlator's own diagnostics endpoint
+        (`service/cep/diagnostics/apamaCtrlStatus`) otherwise.
+      operationId: getCepCtrlStatus
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CepStatusObject"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /repository/configuration:
+    get:
+      tags: [Repository Configuration]
+      summary: Load all configured GitHub repositories
+      description: |
+        Access tokens are replaced with the dummy value `_DUMMY_ACCESS_CODE_` in the
+        response for security; the UI resends that sentinel unchanged on update to
+        mean "keep the existing token".
+      operationId: loadRepositories
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Repository"
+    post:
+      tags: [Repository Configuration]
+      summary: Replace the full set of configured GitHub repositories
+      description: |
+        Creates, updates, or deletes repositories: any repository not present in
+        the request body is deleted.
+      operationId: updateRepositories
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/Repository"
+      responses:
+        "200":
+          description: Repositories updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Repositories updated successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /repository/contentList:
+    get:
+      tags: [Repository Content]
+      summary: List the content (files/directories) at a GitHub repository path
+      description: |
+        Converts a GitHub web URL to the GitHub Content API format and returns the
+        raw GitHub API listing. Used by the UI's "Test connection" flow and the
+        repository browser (`RepositoryBackendService.testRepository`/`getContent`,
+        endpoint constant `REPOSITORY_CONTENT_LIST_ENDPOINT` =
+        `repository/contentList`).
+      operationId: getContentList
+      parameters:
+        - $ref: "#/components/parameters/UrlParam"
+        - $ref: "#/components/parameters/RepositoryIdParam"
+        - $ref: "#/components/parameters/RepositoryAccessTokenHeader"
+      responses:
+        "200":
+          description: GitHub directory/file listing (passthrough of the GitHub API response)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Invalid or expired GitHub access token
+        "403":
+          description: Access denied, GitHub API rate limit exceeded, or SSO authorization required for the token
+        "404":
+          description: Path not found in the repository
+        "429":
+          description: GitHub API rate limit exceeded
+
+  /repository/content:
+    get:
+      tags: [Repository Content]
+      summary: Download a single file's content from a GitHub repository
+      description: |
+        Optionally extracts the Fully Qualified Name (FQN) of an Apama monitor
+        block instead of returning the raw file. Used by the UI's block content
+        preview / FQN resolution (`RepositoryBackendService.getItemContent`,
+        endpoint constant `REPOSITORY_CONTENT_ENDPOINT` = `repository/content`).
+      operationId: getContent
+      parameters:
+        - $ref: "#/components/parameters/UrlParam"
+        - $ref: "#/components/parameters/RepositoryIdParam"
+        - $ref: "#/components/parameters/RepositoryAccessTokenHeader"
+        - name: extract_fqn_cep_block
+          in: query
+          description: Set to `true` to return the block's FQN instead of raw file content
+          schema:
+            type: boolean
+            default: false
+        - name: cep_block_name
+          in: query
+          description: Block name used for FQN extraction. Required when `extract_fqn_cep_block=true`.
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Raw file content, or the extracted FQN string when `extract_fqn_cep_block=true`
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: com.example.blocks.MyBlock
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /extension/repository:
+    post:
+      tags: [Extensions]
+      summary: Build an Apama extension from an entire GitHub repository path
+      operationId: createExtensionFromRepository
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExtensionFromRepositoryRequest"
+      responses:
+        "200":
+          description: Success (download mode) — returns the built extension as a `.zip`
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "201":
+          description: Success (upload mode) — extension uploaded to Cumulocity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionUploadedResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: Repository not found, or `rebuild` requested but no existing extension was found to delete
+
+  /extension/list:
+    post:
+      tags: [Extensions]
+      summary: Build an Apama extension from a single file or directory
+      description: |
+        `monitors` must contain exactly one item — either a single `.mon` file
+        (`type: "file"`) or a directory to download recursively (`type: "dir"`).
+      operationId: createExtensionFromList
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExtensionFromListRequest"
+      responses:
+        "200":
+          description: Success (download mode) — returns the built extension as a `.zip`
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "201":
+          description: Success (upload mode) — extension uploaded to Cumulocity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionUploadedResponse"
+        "400":
+          description: Invalid request (wrong number of monitors, or build failed)
+        "404":
+          description: Repository not found, or `rebuild` requested but no existing extension was found to delete
+
+  /extension/yaml:
+    post:
+      tags: [Extensions]
+      summary: Build one or more Apama extensions from a YAML specification file
+      description: |
+        The YAML file defines named "sections", each listing the files that make up
+        one extension. `sections: []` (or omitted) builds every section found in
+        the YAML; otherwise only the named sections are built. When `upload: true`,
+        each section is built and uploaded independently, and the response may
+        report a partial success (`207`).
+      operationId: createExtensionFromYaml
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateExtensionFromYamlRequest"
+      responses:
+        "200":
+          description: Success (download mode) — returns the first built section's `.zip`
+          content:
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        "201":
+          description: Success (upload mode) — all sections uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionYamlUploadedResponse"
+        "207":
+          description: Partial success (upload mode) — some sections failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionYamlPartialResponse"
+        "400":
+          description: Invalid YAML structure, or all sections failed to build
+        "404":
+          description: Repository not found
+
+  /extension/{extension_id}:
+    delete:
+      tags: [Extensions]
+      summary: Delete a specific extension by its Cumulocity managed object ID
+      operationId: deleteExtensionById
+      parameters:
+        - name: extension_id
+          in: path
+          required: true
+          description: Cumulocity managed object ID of the extension
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Extension deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Extension deleted successfully
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /extension:
+    delete:
+      tags: [Extensions]
+      summary: Delete one or more extensions by name
+      description: Deletes every extension in inventory that shares the given name.
+      operationId: deleteExtensionsByName
+      parameters:
+        - name: name
+          in: query
+          required: true
+          description: Extension name to search for and delete
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Extension(s) deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Successfully deleted 2 extension(s)
+                  deleted_count:
+                    type: integer
+                    example: 2
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          description: No extensions found with that name
+
+components:
+  parameters:
+    UrlParam:
+      name: url
+      in: query
+      required: true
+      description: URL-encoded GitHub URL (web or content-API form)
+      schema:
+        type: string
+    RepositoryIdParam:
+      name: repository_id
+      in: query
+      required: false
+      description: Configured repository ID, used to resolve a stored access token
+      schema:
+        type: string
+    RepositoryAccessTokenHeader:
+      name: X-Repository-Access-Token
+      in: header
+      required: false
+      description: |
+        GitHub Personal Access Token to use for this request instead of a stored
+        one. Used by the UI's "Test connection" flow to validate a draft
+        repository before it is saved, keeping the PAT out of query strings/access
+        logs.
+      schema:
+        type: string
+
+  responses:
+    BadRequest:
+      description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+
+    CepStatusObject:
+      type: object
+      description: Status information for the CEP (Apama) engine.
+      properties:
+        status:
+          type: string
+          enum: [Up, Down]
+        is_safe_mode:
+          type: boolean
+        microservice_application_id:
+          type: string
+        microservice_name:
+          type: string
+        version:
+          type: string
+      additionalProperties: true
+
+    Repository:
+      type: object
+      required: [id, name, url]
+      properties:
+        id:
+          type: string
+          example: repo-1
+        name:
+          type: string
+          example: My Repository
+        url:
+          type: string
+          format: uri
+          example: https://github.com/user/repo/tree/main/path
+        accessToken:
+          type: string
+          description: |
+            GitHub Personal Access Token. Returned as `_DUMMY_ACCESS_CODE_` by
+            `GET /repository/configuration`; send that same sentinel back on
+            update to keep the stored token unchanged, or a real token to
+            replace it.
+        enabled:
+          type: boolean
+
+    RepositoryRef:
+      type: object
+      required: [id]
+      properties:
+        id:
+          type: string
+          example: repo-1
+
+    Monitor:
+      type: object
+      required: [url, name, type]
+      properties:
+        url:
+          type: string
+          format: uri
+          description: GitHub Content API URL for the file or directory
+        name:
+          type: string
+        type:
+          type: string
+          enum: [file, dir]
+
+    YamlRef:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+          example: https://raw.githubusercontent.com/user/repo/main/extensions.yaml
+
+    CreateExtensionFromRepositoryRequest:
+      type: object
+      required: [extension_name, repository]
+      properties:
+        extension_name:
+          type: string
+          pattern: '^[a-zA-Z0-9_-]+$'
+          example: MyExtension
+        repository:
+          $ref: "#/components/schemas/RepositoryRef"
+        upload:
+          type: boolean
+          default: false
+          description: Upload the built extension to Cumulocity instead of returning it as a download
+        deploy:
+          type: boolean
+          default: false
+          description: Restart the CEP engine after a successful upload
+        rebuild:
+          type: boolean
+          default: false
+          description: Delete any existing extension(s) with the same name before building
+
+    CreateExtensionFromListRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateExtensionFromRepositoryRequest"
+        - type: object
+          required: [monitors]
+          properties:
+            monitors:
+              type: array
+              minItems: 1
+              maxItems: 1
+              items:
+                $ref: "#/components/schemas/Monitor"
+
+    CreateExtensionFromYamlRequest:
+      allOf:
+        - type: object
+          required: [yaml, repository]
+          properties:
+            yaml:
+              $ref: "#/components/schemas/YamlRef"
+            sections:
+              type: array
+              items:
+                type: string
+              description: Sections to build. Empty or omitted builds every section in the YAML.
+            repository:
+              $ref: "#/components/schemas/RepositoryRef"
+            upload:
+              type: boolean
+              default: false
+            deploy:
+              type: boolean
+              default: false
+              description: Restart the CEP engine once, after the last section is uploaded
+            rebuild:
+              type: boolean
+              default: false
+
+    ExtensionUploadedResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          example: "12345678"
+        message:
+          type: string
+          example: Extension uploaded
+
+    ExtensionYamlUploadedResponse:
+      type: object
+      properties:
+        uploaded_extensions:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              id:
+                type: string
+
+    ExtensionYamlPartialResponse:
+      allOf:
+        - $ref: "#/components/schemas/ExtensionYamlUploadedResponse"
+        - type: object
+          properties:
+            failed_sections:
+              type: array
+              items:
+                type: object
+                properties:
+                  section:
+                    type: string
+                  error:
+                    type: string
+            message:
+              type: string
+              example: "Partially completed: 1 succeeded, 1 failed"
