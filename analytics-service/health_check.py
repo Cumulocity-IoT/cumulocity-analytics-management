@@ -108,6 +108,8 @@ class HealthCheck:
 
     def _check_github(self) -> Dict[str, Any]:
         """Check GitHub API connectivity"""
+        import requests
+
         try:
             # This would check actual connectivity to GitHub
             response = requests.head("https://api.github.com", timeout=5)
