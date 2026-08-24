@@ -306,7 +306,7 @@ export class BlockGridComponent implements OnInit {
       };
 
       const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-        class: 'modal-lg',
+        class: 'modal-md',
         initialState
       });
 
@@ -324,7 +324,7 @@ export class BlockGridComponent implements OnInit {
       };
 
       const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
-        class: 'modal-lg',
+        class: 'modal-md',
         initialState
       });
 
