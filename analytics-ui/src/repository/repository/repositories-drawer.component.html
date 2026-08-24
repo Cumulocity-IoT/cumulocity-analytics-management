@@ -11,6 +11,33 @@
 <div class="card content-fullpage split-view--4-8 grid__row--single flex-grow" style="padding:0">
   <!-- Left Panel: Repository List -->
   <div class="inner-scroll split-view__list bg-level-1 d-flex flex-column">
+    <div class="p-l-16 p-r-16 p-t-8 p-b-8 flex-no-shrink separator-bottom">
+      <form [formGroup]="globalAccessTokenForm" autocomplete="off">
+        <c8y-form-group class="m-b-0">
+          <label for="globalAccessToken">
+            <span>{{ 'Global Personal Access Token' | translate }}</span>
+            <button type="button" placement="right" [popover]="popupGlobalPAT" class="btn-help"
+              aria-label="Help content" [outsideClick]="true"></button>
+          </label>
+          <div class="input-group">
+            <input type="password" id="globalAccessToken" formControlName="accessToken" autocomplete="new-password"
+              [placeholder]="'Optional — used as a fallback when a repository has no token of its own' | translate"
+              class="form-control" />
+            <span class="input-group-btn">
+              <button type="button" class="btn btn-default" [title]="'Clear' | translate"
+                [attr.aria-label]="'Clear global access token' | translate" (click)="clearGlobalAccessToken()">
+                <i c8yIcon="times"></i>
+              </button>
+              <button type="button" class="btn btn-default" [title]="'Save' | translate"
+                [attr.aria-label]="'Save global access token' | translate" (click)="saveGlobalAccessToken()"
+                [disabled]="isGlobalAccessTokenSaveDisabled">
+                <i c8yIcon="save"></i>
+              </button>
+            </span>
+          </div>
+        </c8y-form-group>
+      </form>
+    </div>
     <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
       <div class="input-group input-group-search">
         <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
@@ -146,12 +173,13 @@
                     Optional for public repositories. For private repositories, enter a Personal Access Token (PAT) created <a
                   href="https://github.com/settings/tokens/new" target="_blank">here</a>. <br />
                   Select
-                  the scope <code>public_repo</code> and enable SSO for the token
+                  the scope <code>public_repo</code> and enable SSO for the token. <br />
+                  Leave empty to use the global access token, if one is configured.
                 </p>
               </ng-template>
             </label>
             <input type="password" id="accessToken" formControlName="accessToken"
-              [placeholder]="'e.g.: your github Personal Access Token (PAT) — optional for public repositories' | translate"
+              [placeholder]="(isGlobalAccessTokenSet ? 'Optional — leave empty to use the global access token' : 'e.g.: your github Personal Access Token (PAT) — optional for public repositories') | translate"
               class="form-control" />
             <!-- Warning message displayed under the input -->
             @if (showPATWarning) {
