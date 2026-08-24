@@ -96,32 +96,42 @@ export class ExtensionDetailsComponent implements OnInit {
   async init() {
     this.setBreadcrumbConfig();
     const { name } = this.route.snapshot.params;
+    const buildInformation = (this.extension as any)?.['build_information'];
+    const contentPaths = new Set<string>();
+    // Real extension zips nest everything under a top-level "files/" folder
+    // (apama-ctrl's copyExtensions looks specifically there), so every source
+    // below reports paths with that prefix. Strip it uniformly so paths from
+    // build_information and from the CEP diagnostics endpoint dedupe and
+    // display consistently.
+    const stripFilesPrefix = (path: string) =>
+      path.startsWith('files/') ? path.substring(6) : path;
+
+    // build_information keeps the full relative path of every file within the
+    // extension zip (including nested subfolders), regardless of deployment
+    // status, so it is always the primary source for the Files list.
+    (buildInformation?.['monitors'] || []).forEach((monitor: any) => {
+      if (monitor?.['file']) {
+        contentPaths.add(stripFilesPrefix(monitor['file']));
+      }
+    });
+    (buildInformation?.['files'] || []).forEach((file: any) => {
+      if (file?.['file']) {
+        contentPaths.add(stripFilesPrefix(file['file']));
+      }
+    });
+
     if (this.extensionFromCep) {
       const extensionNames =
         await this.analyticsService.getExtensionNamesFromCep();
       const key = `${name}.zip`;
-      this.extensionContent =
-        (extensionNames as any)[key]?.contents?.map((fileName: string) => {
-          return fileName.startsWith('files/')
-            ? fileName.substring(6)
-            : fileName;
-        }) || [];
-    } else {
-      if (((this.extension as any)['build_information'] as any)['monitors']) {
-        ((this.extension as any)['build_information'] as any)[
-          'monitors'
-        ].forEach((monitor: any) => {
-          this.extensionContent.push(monitor['file']);
-        });
-      }
-      if (((this.extension as any)['build_information'] as any)['files']) {
-        ((this.extension as any)['build_information'] as any)['files'].forEach(
-          (monitor: any) => {
-            this.extensionContent.push(monitor['file']);
-          }
-        );
-      }
+      ((extensionNames as any)[key]?.contents || []).forEach(
+        (fileName: string) => {
+          contentPaths.add(stripFilesPrefix(fileName));
+        }
+      );
     }
+
+    this.extensionContent = Array.from(contentPaths);
   }
 
   private setBreadcrumbConfig() {

@@ -192,11 +192,14 @@ export class ExtensionAddComponent implements OnDestroy {
       // Process each monitor file
       for (const monitorPath of monitorFiles) {
         const monitorName = this.extractMonitorName(monitorPath);
-        const metadataPath = `events/${monitorName}_metadata.evt`;
+        const monitorDir = monitorPath.includes('/')
+          ? monitorPath.slice(0, monitorPath.lastIndexOf('/') + 1)
+          : '';
+        const metadataPath = `${monitorDir}events/${monitorName}_metadata.evt`;
 
         // Try to find corresponding metadata file
         const metadataFile = zip.file(metadataPath);
-        
+
         // Mark metadata file as processed
         if (metadataFile) {
           processedFiles.add(metadataPath);
@@ -204,7 +207,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
         const monitorMetadata: MonitorMetadata = {
           custom: true,
-          file: monitorPath.split('/').pop()!,
+          file: monitorPath,
           id: `apamax.analyticsbuilder.custom.${monitorName}`,
           name: monitorName,
           type: 'file'
