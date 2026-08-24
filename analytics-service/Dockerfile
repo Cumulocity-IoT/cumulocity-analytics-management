@@ -25,4 +25,4 @@ RUN pip3 install -r requirements.txt
 COPY app.py c8y_agent.py solution_utils.py logging_config.py /apama_work/
 
 # Set the default command
-CMD ["python3", "app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:80", "--workers", "2", "--threads", "4", "--timeout", "120", "app:app"]

@@ -1,5 +1,6 @@
 pyc8y==4.0.0rc2
 flask
+gunicorn
 python-dotenv
 pyyaml
 requests
