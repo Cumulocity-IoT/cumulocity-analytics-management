@@ -1,4 +1,4 @@
-c8y_api
+pyc8y==4.0.0rc2
 flask
 python-dotenv
 pyyaml
