@@ -416,6 +416,17 @@ export class RepositoryService implements OnDestroy {
     return this.repositoryConfigService.setExpertMode(expertMode);
   }
 
+  /** Masked global PAT for display in "Manage repositories" — see `RepositoryConfigService.getGlobalAccessTokenMasked`. */
+  async getGlobalAccessTokenMasked(): Promise<string> {
+    return this.repositoryConfigService.getGlobalAccessTokenMasked();
+  }
+
+  /** Persists the global PAT, used as a fallback by any repository without its own token. */
+  async setGlobalAccessToken(token: string): Promise<void> {
+    await this.repositoryConfigService.setGlobalAccessToken(token);
+    this.invalidateCache();
+  }
+
   // ============================================================================
   // Public API - Extension Creation
   // ============================================================================

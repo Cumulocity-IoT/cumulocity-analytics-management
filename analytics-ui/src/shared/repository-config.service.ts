@@ -4,6 +4,7 @@ import { gettext } from '@c8y/ngx-components/gettext';
 import {
   DUMMY_ACCESS_TOKEN,
   EXPERT_MODE_OPTION_KEY,
+  GLOBAL_ACCESS_TOKEN_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
   SETTINGS_OPTION_CATEGORY,
@@ -119,17 +120,82 @@ export class RepositoryConfigService {
    * isn't directly usable against GitHub. Resolve the real token: use it
    * as-is if the caller just typed a new one (not the masked sentinel),
    * look up the stored value for an existing, untouched repository, or fall
-   * back to unauthenticated (empty) for a brand-new draft repository that
-   * hasn't been saved yet.
+   * back to the global PAT (and finally to unauthenticated/empty) when the
+   * repository has no token of its own.
    */
   async resolveAccessToken(repository: Repository): Promise<string> {
     if (repository.accessToken && repository.accessToken !== DUMMY_ACCESS_TOKEN) {
       return repository.accessToken;
     }
     if (repository.accessToken === DUMMY_ACCESS_TOKEN && repository.id && !repository.id.startsWith('temp-')) {
-      return this.getRepositoryAccessToken(repository.id);
+      const repositoryToken = await this.getRepositoryAccessToken(repository.id);
+      if (repositoryToken) {
+        return repositoryToken;
+      }
     }
-    return '';
+    return this.getGlobalAccessToken();
+  }
+
+  /**
+   * Returns the real (unmasked) global PAT, or `''` if none is set. Used
+   * only for resolving the token to actually send — never returned to the
+   * "Manage repositories" form (see `getGlobalAccessTokenMasked`).
+   */
+  async getGlobalAccessToken(): Promise<string> {
+    try {
+      const { data } = await this.tenantOptionsService.detail({
+        category: SETTINGS_OPTION_CATEGORY,
+        key: GLOBAL_ACCESS_TOKEN_OPTION_KEY
+      });
+      return data.value || '';
+    } catch {
+      return '';
+    }
+  }
+
+  /**
+   * Whether a global PAT is currently set, for display purposes — the real
+   * value is masked behind `DUMMY_ACCESS_TOKEN` just like a per-repository
+   * token, so it's never re-shown in the UI once saved.
+   */
+  async getGlobalAccessTokenMasked(): Promise<string> {
+    const token = await this.getGlobalAccessToken();
+    return token ? DUMMY_ACCESS_TOKEN : '';
+  }
+
+  /**
+   * Persists the global PAT. A value of `DUMMY_ACCESS_TOKEN` (the caller
+   * didn't touch the masked field) leaves the stored token untouched; an
+   * empty value clears it.
+   */
+  async setGlobalAccessToken(token: string): Promise<void> {
+    if (token === DUMMY_ACCESS_TOKEN) {
+      return;
+    }
+    try {
+      if (!token) {
+        try {
+          await this.tenantOptionsService.delete({
+            category: SETTINGS_OPTION_CATEGORY,
+            key: GLOBAL_ACCESS_TOKEN_OPTION_KEY
+          });
+        } catch {
+          // Nothing was set — clearing an already-empty token is a no-op.
+        }
+        return;
+      }
+      await this.tenantOptionsService.create({
+        category: SETTINGS_OPTION_CATEGORY,
+        key: GLOBAL_ACCESS_TOKEN_OPTION_KEY,
+        value: token
+      });
+    } catch (error) {
+      throw new RepositoryError(
+        'Failed to save global access token',
+        gettext('Failed to save the global access token. Please try again.'),
+        error instanceof Error ? error : undefined
+      );
+    }
   }
 
   /**

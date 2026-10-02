@@ -195,6 +195,15 @@ export const EXPERT_MODE_OPTION_KEY = 'expertMode';
  */
 export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
 
+/**
+ * Fallback Personal Access Token used for any repository that doesn't have
+ * its own token set. Stored the same way as the per-repo PAT/settings —
+ * directly as a Cumulocity tenant option. A per-repository token, when set,
+ * always takes precedence over this one (see
+ * `RepositoryConfigService.resolveAccessToken`).
+ */
+export const GLOBAL_ACCESS_TOKEN_OPTION_KEY = 'globalAccessToken';
+
 export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
 export const STATUS_MESSAGE_02 = 'Deployment was changed';
 

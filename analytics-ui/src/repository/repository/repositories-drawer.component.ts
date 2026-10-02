@@ -50,6 +50,11 @@ export class RepositoriesDrawerComponent implements OnInit {
     isSaving: boolean = false;
     showPATWarning: boolean = false;
 
+    globalAccessTokenForm: FormGroup;
+    isGlobalAccessTokenSet: boolean = false;
+    isSavingGlobalAccessToken: boolean = false;
+    popupGlobalPAT = `Used for any repository above that doesn't have its own Personal Access Token. A repository-specific token always takes precedence over this one.`;
+
     constructor(
         private repositoryService: RepositoryService,
         private fb: FormBuilder,
@@ -70,6 +75,10 @@ export class RepositoriesDrawerComponent implements OnInit {
                 autocomplete: 'new-password'
             }],
             enabled: [false]
+        });
+
+        this.globalAccessTokenForm = this.fb.group({
+            accessToken: ['', { autocomplete: 'new-password' }]
         });
 
         // Subscribe to form changes to update the temporary repository name
@@ -100,6 +109,10 @@ export class RepositoriesDrawerComponent implements OnInit {
     }
 
     async ngOnInit(): Promise<void> {
+        const maskedGlobalToken = await this.repositoryService.getGlobalAccessTokenMasked();
+        this.isGlobalAccessTokenSet = !!maskedGlobalToken;
+        this.globalAccessTokenForm.patchValue({ accessToken: maskedGlobalToken });
+
         this.repositories$ = this.repositoryService.getRepositories();
 
         // Wait for the real initial fetch to settle before deciding whether
@@ -318,6 +331,33 @@ export class RepositoriesDrawerComponent implements OnInit {
                 this.showPATWarning = false;
             }
         }
+    }
+
+    get isGlobalAccessTokenSaveDisabled(): boolean {
+        const currentValue = this.globalAccessTokenForm.get('accessToken')?.value || '';
+        return this.isSavingGlobalAccessToken || currentValue === DUMMY_ACCESS_TOKEN;
+    }
+
+    async saveGlobalAccessToken(): Promise<void> {
+        const token = this.globalAccessTokenForm.get('accessToken')?.value || '';
+        this.isSavingGlobalAccessToken = true;
+        try {
+            await this.repositoryService.setGlobalAccessToken(token);
+            this.isGlobalAccessTokenSet = !!token;
+            this.globalAccessTokenForm.patchValue({ accessToken: token ? DUMMY_ACCESS_TOKEN : '' });
+            this.alertService.success(token
+                ? gettext('Global access token saved successfully')
+                : gettext('Global access token cleared'));
+        } catch (error) {
+            console.error('Failed to save global access token:', error);
+            this.alertService.danger(gettext('Failed to save the global access token. Please try again.'));
+        } finally {
+            this.isSavingGlobalAccessToken = false;
+        }
+    }
+
+    clearGlobalAccessToken(): void {
+        this.globalAccessTokenForm.patchValue({ accessToken: '' });
     }
 
     private async addRepository(): Promise<void> {

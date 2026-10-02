@@ -2,13 +2,16 @@
 Cumulocity IoT Agent for managing tenants, repositories, and CEP operations.
 """
 
+import asyncio
 import json
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
-from c8y_api.app import MultiTenantCumulocityApp
-from c8y_api.model import Binary, TenantOption, ManagedObject
 from dotenv import load_dotenv
+
+from pyc8y.app import MultiTenantCumulocityApp
+from pyc8y.model.binary import Binary
+from pyc8y.model.tenant_option import TenantOption
 
 
 class C8YAgentError(Exception):
@@ -18,7 +21,15 @@ class C8YAgentError(Exception):
 
 
 class C8YAgent:
-    """Agent for interacting with Cumulocity IoT platform."""
+    """Agent for interacting with Cumulocity IoT platform.
+
+    pyc8y (unlike the previous c8y_api) is asyncio-only, while Flask's WSGI
+    routes are synchronous. Each public method therefore opens a dedicated
+    event loop and a fresh MultiTenantCumulocityApp/aiohttp session for the
+    duration of that one request via `_execute`, and tears both down before
+    returning - sessions can't be shared across separate `asyncio.run()`
+    calls (each creates and closes its own loop).
+    """
 
     # Constants
     DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_"
@@ -32,17 +43,32 @@ class C8YAgent:
         """Initialize the C8Y Agent."""
         self._logger = logging.getLogger(self.__class__.__name__)
         load_dotenv()
-        self.c8y_app = MultiTenantCumulocityApp()
 
-    def _get_tenant(self, request) -> object:
-        """Get tenant instance from request."""
-        try:
-            return self.c8y_app.get_tenant_instance(
-                headers=request.headers, cookies=request.cookies
-            )
-        except Exception as e:
-            self._logger.error(f"Failed to get tenant instance: {e}", exc_info=True)
-            raise C8YAgentError("Failed to authenticate with Cumulocity") from e
+    def _execute(self, request, work):
+        """Run `work(tenant)` inside a fresh, request-scoped tenant session.
+
+        Args:
+            request: Flask request object
+            work: async callable accepting the tenant-scoped CumulocityClient
+
+        Returns:
+            Whatever `work` returns.
+        """
+
+        async def _runner():
+            async with MultiTenantCumulocityApp() as c8y_app:
+                try:
+                    tenant = await c8y_app.get_tenant_instance(
+                        headers=request.headers, cookies=request.cookies
+                    )
+                except Exception as e:
+                    self._logger.error(
+                        f"Failed to get tenant instance: {e}", exc_info=True
+                    )
+                    raise C8YAgentError("Failed to authenticate with Cumulocity") from e
+                return await work(tenant)
+
+        return asyncio.run(_runner())
 
     # ============================================================================
     # Extension Management
@@ -52,88 +78,92 @@ class C8YAgent:
         self, request, extension_name: str, ext_file, build_info: Optional[Dict] = None
     ) -> str:
         """Upload an extension to Cumulocity."""
-        try:
-            binary = Binary(
-                c8y=self._get_tenant(request),
-                type="application/zip",
+
+        async def _work(tenant):
+            binary = await Binary(
+                c8y=tenant,
+                content_type="application/zip",
                 name=extension_name,
                 file=ext_file,
                 pas_extension=extension_name,
                 build_information=build_info or {},
             ).create()
-
-            self._logger.info(f"Uploaded extension: {extension_name}")
             return binary.id
+
+        try:
+            binary_id = self._execute(request, _work)
+            self._logger.info(f"Uploaded extension: {extension_name}")
+            return binary_id
 
         except Exception as e:
             self._logger.error(
                 f"Failed to upload extension {extension_name}: {e}", exc_info=True
             )
             raise C8YAgentError(f"Failed to upload extension: {e}") from e
-        
+
     def delete_extension(
         self, request, extension_id: Optional[str] = None, extension_name: Optional[str] = None
     ) -> int:
         """
         Delete extension(s) from Cumulocity inventory.
-        
+
         Args:
             request: Flask request object
             extension_id: ID of the extension to delete (takes precedence)
             extension_name: Name of extension(s) to delete
-            
+
         Returns:
             Number of extensions deleted
-            
+
         Raises:
             C8YAgentError: If deletion fails
             ValueError: If neither id nor name provided
         """
         if not extension_id and not extension_name:
             raise ValueError("Either extension_id or extension_name must be provided")
-        
-        try:
-            tenant = self._get_tenant(request)
-            deleted_count = 0
-            
+
+        async def _work(tenant):
             if extension_id:
-                # Delete by ID using binaries API
+                # Delete by ID - look the object up via the general inventory
+                # endpoint (Binaries exposes no single-object get), then
+                # delete it through the binaries API.
                 try:
-                    binary = tenant.binaries.get(extension_id)
-                    
-                    # Verify it's an extension
-                    if not hasattr(binary, 'pas_extension'):
-                        raise C8YAgentError(f"Object '{extension_id}' is not a valid extension")
-                    
-                    # Delete using binaries API
-                    tenant.binaries.delete(extension_id)
-                    self._logger.info(f"Deleted extension: {extension_id} ({binary.name})")
-                    deleted_count = 1
-                    
+                    managed_object = await tenant.inventory.get(extension_id)
                 except KeyError:
                     raise C8YAgentError(f"Extension with id '{extension_id}' not found")
-            
-            else:
-                # Delete by name - find all matching extensions
-                query = f"name eq '{extension_name}' and has(pas_extension)"
-                extensions = tenant.inventory.select(query=query)
 
-                extensions_list = list(extensions)
-                if not extensions_list:
-                    # Return 0 so callers can distinguish "not found" from errors
-                    return 0
-                
-                for extension in extensions_list:
-                    try:
-                        # Delete using binaries API instead of inventory
-                        tenant.binaries.delete(extension.id)
-                        self._logger.info(f"Deleted extension: {extension.id} ({extension.name})")
-                        deleted_count += 1
-                    except Exception as e:
-                        self._logger.warning(f"Failed to delete extension {extension.id}: {e}")
-            
+                if "pas_extension" not in managed_object:
+                    raise C8YAgentError(f"Object '{extension_id}' is not a valid extension")
+
+                await tenant.binaries.delete(extension_id)
+                self._logger.info(
+                    f"Deleted extension: {extension_id} ({managed_object.get('name')})"
+                )
+                return 1
+
+            # Delete by name - find all matching extensions
+            query = f"name eq '{extension_name}' and has(pas_extension)"
+            extensions = [mo async for mo in tenant.inventory.select(query=query, limit=None)]
+
+            if not extensions:
+                # Return 0 so callers can distinguish "not found" from errors
+                return 0
+
+            deleted_count = 0
+            for extension in extensions:
+                try:
+                    await tenant.binaries.delete(extension.id)
+                    self._logger.info(
+                        f"Deleted extension: {extension.id} ({extension.get('name')})"
+                    )
+                    deleted_count += 1
+                except Exception as e:
+                    self._logger.warning(f"Failed to delete extension {extension.id}: {e}")
+
             return deleted_count
 
+        try:
+            return self._execute(request, _work)
         except C8YAgentError:
             raise
         except Exception as e:
@@ -148,17 +178,21 @@ class C8YAgent:
 
     def restart_cep(self, request) -> None:
         """Restart CEP (best effort, non-critical)."""
+
+        async def _work(tenant):
+            await tenant.put(self.PATHS["CEP_RESTART"], json={})
+
         try:
-            self._get_tenant(request).put(self.PATHS["CEP_RESTART"], json={})
+            self._execute(request, _work)
             self._logger.info("CEP restart command sent")
         except Exception as e:
             self._logger.warning(f"CEP restart failed (non-critical): {e}")
 
     def get_cep_operationobject_id(self, request) -> Optional[Dict[str, str]]:
         """Get CEP operation object ID."""
-        try:
-            tenant = self._get_tenant(request)
-            response = tenant.get(self.PATHS["CEP_DIAGNOSTICS"])
+
+        async def _work(tenant):
+            response = await tenant.get(self.PATHS["CEP_DIAGNOSTICS"])
 
             app_id = response.get("microservice_application_id")
             microservice_name = response.get("microservice_name")
@@ -168,21 +202,25 @@ class C8YAgent:
                 return None
 
             query = f"applicationId eq '{app_id}' and name eq '{microservice_name}'"
-            managed_objects = tenant.inventory.select(query=query)
-
-            for mo in managed_objects:
-                return {"id": mo.id}
+            async for managed_object in tenant.inventory.select(query=query, limit=1):
+                return {"id": managed_object.id}
 
             return None
 
+        try:
+            return self._execute(request, _work)
         except Exception as e:
             self._logger.error(f"Failed to get CEP operation object ID: {e}")
             return None
 
     def get_cep_ctrl_status(self, request) -> Optional[Dict]:
         """Get CEP control status."""
+
+        async def _work(tenant):
+            return await tenant.get(self.PATHS["CEP_DIAGNOSTICS"])
+
         try:
-            return self._get_tenant(request).get(self.PATHS["CEP_DIAGNOSTICS"])
+            return self._execute(request, _work)
         except Exception as e:
             self._logger.error(f"Failed to get CEP status: {e}")
             return None
@@ -193,10 +231,12 @@ class C8YAgent:
 
     def load_repositories(self, request) -> List[Dict]:
         """Load all configured repositories."""
+
+        async def _work(tenant):
+            return await self._load_repositories(tenant)
+
         try:
-            tenant = self._get_tenant(request)
-            options = tenant.tenant_options.get_all(category=self.CATEGORY)
-            return [self._parse_repository(opt, opt.key) for opt in options]
+            return self._execute(request, _work)
         except Exception as e:
             self._logger.error(f"Failed to load repositories: {e}")
             return []
@@ -205,10 +245,13 @@ class C8YAgent:
         self, request, repository_id: str, replace_access_token: bool = True
     ) -> Optional[Dict]:
         """Load a specific repository."""
+
+        async def _work(tenant):
+            value = await tenant.tenant_options.get_value(self.CATEGORY, repository_id)
+            return self._parse_repository_value(value, repository_id, replace_access_token)
+
         try:
-            tenant = self._get_tenant(request)
-            option = tenant.tenant_options.get(category=self.CATEGORY, key=repository_id)
-            return self._parse_repository(option, repository_id, replace_access_token)
+            return self._execute(request, _work)
         except KeyError:
             self._logger.warning(f"Repository not found: {repository_id}")
             return None
@@ -220,22 +263,23 @@ class C8YAgent:
         self, request, repositories: List[Dict]
     ) -> Tuple[Dict, int]:
         """Update multiple repositories."""
-        try:
-            tenant = self._get_tenant(request)
 
-            existing_repos = self.load_repositories(request)
+        async def _work(tenant):
+            existing_repos = await self._load_repositories(tenant)
             new_ids = {r["id"] for r in repositories if r.get("id")}
             existing_ids = {r["id"] for r in existing_repos if r.get("id")}
             to_delete = existing_ids - new_ids
 
             # Update/create
             for repo in repositories:
-                self._save_repository(tenant, repo)
+                await self._save_repository(tenant, repo)
 
             # Delete obsolete
             for repo_id in to_delete:
-                self._delete_repository(tenant, repo_id)
+                await self._delete_repository(tenant, repo_id)
 
+        try:
+            self._execute(request, _work)
             self._logger.info(f"Updated {len(repositories)} repositories")
             return {"message": "Repositories updated successfully"}, 200
 
@@ -247,13 +291,21 @@ class C8YAgent:
     # Private Helpers
     # ============================================================================
 
-    def _parse_repository(
+    async def _load_repositories(self, tenant) -> List[Dict]:
+        """Load all repositories for the configured category as parsed dicts."""
+        try:
+            values = await tenant.tenant_options.get_values(self.CATEGORY)
+        except KeyError:
+            return []
+        return [self._parse_repository_value(v, k) for k, v in values.items()]
+
+    def _parse_repository_value(
         self,
-        repo_data,
+        value_str,
         repository_id: Optional[str] = None,
         replace_access_token: bool = True,
     ) -> Dict:
-        """Parse repository data into standard format."""
+        """Parse a repository's stored tenant-option value into standard format."""
         default = {
             "id": repository_id,
             "name": "",
@@ -263,22 +315,10 @@ class C8YAgent:
         }
 
         try:
-            # Extract value
-            if hasattr(repo_data, "value"):
-                value_str = repo_data.value
-                repository_id = repository_id or repo_data.key
-            elif isinstance(repo_data, dict):
-                value_str = repo_data.get("value", "{}")
-            elif isinstance(repo_data, str):
-                value_str = repo_data
-            else:
-                return default
-
-            # Parse JSON
             try:
                 value_dict = json.loads(value_str)
-            except json.JSONDecodeError:
-                return {**default, "name": value_str[:100]}
+            except (json.JSONDecodeError, TypeError):
+                return {**default, "name": str(value_str)[:100]}
 
             result = {
                 "id": repository_id or value_dict.get("id"),
@@ -296,9 +336,9 @@ class C8YAgent:
 
         except Exception as e:
             self._logger.error(f"Error parsing repository: {e}")
-            return {**default, "name": str(repo_data)[:100]}
+            return {**default, "name": str(value_str)[:100]}
 
-    def _save_repository(self, tenant, repository: Dict) -> None:
+    async def _save_repository(self, tenant, repository: Dict) -> None:
         """Save a single repository."""
         repo_id = repository.get("id")
         if not repo_id:
@@ -308,8 +348,8 @@ class C8YAgent:
         existing_token = ""
         existing_url = None
         try:
-            existing = tenant.tenant_options.get(category=self.CATEGORY, key=repo_id)
-            existing_data = json.loads(existing.value)
+            existing_value = await tenant.tenant_options.get_value(self.CATEGORY, repo_id)
+            existing_data = json.loads(existing_value)
             existing_token = existing_data.get("accessToken", "")
             existing_url = existing_data.get("url")
         except KeyError:
@@ -345,17 +385,18 @@ class C8YAgent:
 
         # Save
         option = TenantOption(
+            c8y=tenant,
             category=self.CATEGORY,
             key=repo_id,
             value=json.dumps(value_dict),
         )
-        tenant.tenant_options.create(option)
+        await option.create()
         self._logger.info(f"Saved repository: {repo_id}")
 
-    def _delete_repository(self, tenant, repo_id: str) -> None:
+    async def _delete_repository(self, tenant, repo_id: str) -> None:
         """Delete a single repository."""
         try:
-            tenant.tenant_options.delete_by(category=self.CATEGORY, key=repo_id)
+            await tenant.tenant_options.delete(category=self.CATEGORY, key=repo_id)
             self._logger.info(f"Deleted repository: {repo_id}")
         except Exception as e:
             self._logger.warning(f"Failed to delete repository {repo_id}: {e}")
