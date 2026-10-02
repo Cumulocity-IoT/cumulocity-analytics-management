@@ -1,4 +1,4 @@
-pyc8y==4.0.0rc2
+pyc8y==4.0.0rc3
 flask
 gunicorn
 python-dotenv
