@@ -33,7 +33,7 @@ export class AnalyticsTabFactory implements TabFactory {
         path: 'c8y-pkg-analytics-extension/manage',
         priority: 960,
         label: 'Manage extensions',
-        icon: 'extension',
+        icon: 'plugin',
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
