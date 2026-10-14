@@ -33,12 +33,12 @@ import {
   CoreModule,
   Pagination
 } from '@c8y/ngx-components';
-import {
-  AnalyticsService,
+import {AnalyticsService,
   BooleanRendererComponent,
-  CepBlock
-} from '../shared';
+  CepBlock, PAGE_LABELS, ROUTES } from '../shared';
 import { LabelRendererComponent } from '../shared/component/label-renderer.component';
+
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Component({
   selector: 'a17t-block-grid',
@@ -49,6 +49,9 @@ import { LabelRendererComponent } from '../shared/component/label-renderer.compo
   imports: [CoreModule]
 })
 export class BlockGridComponent implements OnInit {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   loading: boolean = true;
 
   refresh: EventEmitter<any> = new EventEmitter<any>();
@@ -56,7 +59,7 @@ export class BlockGridComponent implements OnInit {
   blocks: CepBlock[] = [];
   actionControls: ActionControl[] = [];
 
-  titleBlock: string = 'Analytics Builder blocks';
+  titleBlock: string = gettext('Blocks in the engine');
 
   columnsBlocks: Column[] = [
     {

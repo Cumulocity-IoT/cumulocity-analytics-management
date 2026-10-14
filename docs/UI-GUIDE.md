@@ -20,9 +20,12 @@ is the plugin's NgModule. It is **required** by the c8y plugin mechanism and sta
 it imports the (standalone) components and registers the c8y hooks (`hookRoute`, `hookTab`,
 `hookNavigator`, `hookWizard`, Formly types). All feature components are standalone (see ADR-001).
 
-Routes (all under `c8y-pkg-analytics-extension/`): `block`, `monitoring`, `repository`, `release`,
-`manage` (+ `manage/details/:name`). `manage` uses resolvers (`backendResolver`, `extensionResolver`
-in `manage/utils.ts`).
+Routes (all under `c8y-pkg-analytics-extension/`, defined once in `ROUTES` in `shared/analytics.constants.ts`):
+`manage` (+ `manage/details/:name`), `installed-blocks`, `repository`, `monitoring`, `release`. `manage` uses resolvers
+(`backendResolver`, `extensionResolver` in `manage/resolvers.ts`). Page names (tab, page title, breadcrumb) come from
+`PAGE_LABELS` in the same file: Extensions, Installed blocks, Repositories, Monitoring. Use these constants, never literals.
+Label style: sentence case, product names capitalised (Streaming Analytics, Analytics Builder); every label goes through
+`gettext()` (TS) or the `translate` pipe/directive (templates).
 
 ### Source layout
 

@@ -1,9 +1,9 @@
-<c8y-title translate>Monitoring Streaming Analytics</c8y-title>
+<c8y-title translate>Streaming Analytics monitoring</c8y-title>
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'monitoring'" [label]="'Monitoring' | translate"
-    [path]="'c8y-pkg-analytics-extension/monitoring'">
+  <c8y-breadcrumb-item [icon]="'monitoring'" [label]="labels.monitoring | translate"
+    [path]="routes.monitoring">
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
@@ -27,11 +27,11 @@
 <div class="card card--grid content-fullpage grid__col--6-6--md">
   <div class="inner-scroll bg-level-0 p-r-8">
     <div class="card-header separator">
-      <p class="card-title">{{ 'Status CEP' | translate }}</p>
+      <p class="card-title">{{ 'Engine status' | translate }}</p>
     </div>
     <div class="card-block large-padding bg-inherit overflow-visible">
       @if (cepOperationObjectId && ((cepCtrlStatusLabels$ | async)?.length ?? 0) > 0) {
-      <c8y-properties-list [title]="'CEP Engine Status'" [emptyLabel]="'--'"
+      <c8y-properties-list [title]="'Engine status details' | translate" [emptyLabel]="'--'"
         [properties]="(cepCtrlStatusLabels$ | async) || []">
       </c8y-properties-list>
       }

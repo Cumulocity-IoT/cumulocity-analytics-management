@@ -23,8 +23,8 @@
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-modules'" [label]="'Manage extensions' | translate"
-    [path]="'c8y-pkg-analytics-extension/manage'">
+  <c8y-breadcrumb-item [icon]="'plugin'" [label]="labels.extensions | translate"
+    [path]="routes.manage">
   </c8y-breadcrumb-item>
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>

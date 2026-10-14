@@ -12,7 +12,7 @@ import {
 import { BsModalRef } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
-import { AnalyticsService } from '../shared';
+import { AnalyticsService, PAGE_LABELS, ROUTES } from '../shared';
 import { AlertService, CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 
@@ -24,6 +24,9 @@ import { gettext } from '@c8y/ngx-components/gettext';
   imports: [CommonModule, FormsModule, CoreModule]
 })
 export class EngineMonitoringComponent implements OnInit {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   cepOperationObjectId!: string;
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
     new BehaviorSubject<PropertiesListItem[]>([]);

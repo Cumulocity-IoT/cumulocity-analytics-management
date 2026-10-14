@@ -31,6 +31,8 @@ import { RepositoriesDrawerComponent } from './repository/drawer/repositories-dr
 import { ReleaseDeployWizardComponent } from './repository/release-deploy/release-deploy-wizard.component';
 import { ReleaseListComponent } from './repository/release-list/release-list.component';
 
+import { ROUTES } from './shared/analytics.constants';
+
 // Import resolvers
 import { extensionResolver, backendResolver } from './manage/resolvers';
 
@@ -86,23 +88,23 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
 
     // Route hooks from all modules
     hookRoute({
-      path: 'c8y-pkg-analytics-extension/block',
+      path: ROUTES.installedBlocks,
       component: BlockGridComponent
     }),
     hookRoute({
-      path: 'c8y-pkg-analytics-extension/monitoring',
+      path: ROUTES.monitoring,
       component: EngineMonitoringComponent
     }),
     hookRoute({
-      path: 'c8y-pkg-analytics-extension/repository',
+      path: ROUTES.repository,
       component: RepositoryBlockGridComponent
     }),
     hookRoute({
-      path: 'c8y-pkg-analytics-extension/release',
+      path: ROUTES.release,
       component: ReleaseListComponent
     }),
     hookRoute({
-      path: 'c8y-pkg-analytics-extension/manage',
+      path: ROUTES.manage,
       children: [
         {
           path: '',

@@ -17,7 +17,7 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { AnalyticsService, CepEngineStatus } from '../shared';
+import { AnalyticsService, CepEngineStatus, PAGE_LABELS, ROUTES } from '../shared';
 import { ActivatedRoute } from '@angular/router';
 import { ExtensionCardComponent } from './extension-card.component';
 
@@ -29,6 +29,9 @@ import { ExtensionCardComponent } from './extension-card.component';
   imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   // Observables for template
   // `null` means "not yet known" (engine down, or the post-restart load is
   // still in flight) — distinct from a resolved, genuinely empty `[]` — so

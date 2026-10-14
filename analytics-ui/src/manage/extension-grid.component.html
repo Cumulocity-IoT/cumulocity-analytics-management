@@ -1,12 +1,12 @@
-<c8y-title>{{ 'All extensions' | translate }}</c8y-title>
+<c8y-title>{{ labels.extensions | translate }}</c8y-title>
 
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate" />
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate" />
   <c8y-breadcrumb-item
-    [icon]="'c8y-modules'"
-    [label]="'Manage extensions' | translate"
-    [path]="'c8y-pkg-analytics-extension/manage'" />
+    [icon]="'plugin'"
+    [label]="labels.extensions | translate"
+    [path]="routes.manage" />
 </c8y-breadcrumb>
 
 <!-- Safe Mode Warning -->

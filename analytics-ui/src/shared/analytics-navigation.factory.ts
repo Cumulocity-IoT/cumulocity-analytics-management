@@ -7,13 +7,14 @@ import {
   Permissions
 } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
+import { ROUTES } from './analytics.constants';
 
 @Injectable()
 export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   protected extensionsNode = new NavigatorNode({
     label: gettext('Analytics extensions'),
     icon: 'plugin',
-    path: 'c8y-pkg-analytics-extension/manage',
+    path: ROUTES.manage,
     parent: gettext('Ecosystem'),
     priority: 200,
     preventDuplicates: true
@@ -22,7 +23,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   protected communityReleaseNode = new NavigatorNode({
     label: gettext('Community blocks release'),
     icon: 'cloud-download',
-    path: 'c8y-pkg-analytics-extension/release',
+    path: ROUTES.release,
     parent: gettext('Ecosystem'),
     priority: 190,
     preventDuplicates: true

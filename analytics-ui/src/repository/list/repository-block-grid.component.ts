@@ -33,13 +33,11 @@ import {
   Pagination,
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import {
-  BooleanRendererComponent,
+import {BooleanRendererComponent,
   DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
-  RepositoryService
-} from '../../shared';
+  RepositoryService, PAGE_LABELS, ROUTES } from '../../shared';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
 import { catchError, of } from 'rxjs';
 import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
@@ -59,6 +57,9 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
 export class RepositoryBlockGridComponent implements OnInit {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
