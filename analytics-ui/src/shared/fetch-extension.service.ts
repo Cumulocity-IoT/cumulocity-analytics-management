@@ -3,7 +3,7 @@ import { EventService, IdentityService, IEvent } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { CepError } from './cep-error';
-import { uuidCustom } from './utils';
+import { createShortId } from './utils';
 
 export const FETCH_EXTENSION_EVENT_TYPE = 'c8y_FetchExtension';
 export const FETCH_EXTENSION_PROXY_EXTERNAL_ID_TYPE = 'c8y_Serial';
@@ -103,7 +103,7 @@ export class FetchExtensionService {
    */
   async sendFetchExtensionEvent(url: string, name: string, accessToken?: string): Promise<FetchExtensionRequest> {
     const sourceId = await this.resolveProxySourceId();
-    const requestId = uuidCustom();
+    const requestId = createShortId();
 
     const event: IEvent = {
       source: { id: sourceId },

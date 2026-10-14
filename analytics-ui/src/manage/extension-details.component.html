@@ -48,7 +48,7 @@
             </tr>
           </thead>
           <tbody>
-            @if (!extensionFromCep || extensionFromCep?.analytics?.length == 0) {
+            @if (!extensionFromCep || extensionFromCep?.analytics?.length === 0) {
               <tr>
                 <td colspan="3">
                   <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
@@ -114,7 +114,7 @@
           <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
           </c8y-properties-list>
         }
-        @if (buildInformation.length == 0) {
+        @if (buildInformation.length === 0) {
           <div class="c8y-empty-state">
             <h1 [c8yIcon]="'monitoring'"></h1>
             <p>

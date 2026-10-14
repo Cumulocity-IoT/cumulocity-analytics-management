@@ -29,7 +29,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
   });
 
   constructor(private permissions: Permissions,
-    private as: AppStateService,
+    private as: AppStateService
   ) {}
 
   get(): NavigatorNode | NavigatorNode[] {

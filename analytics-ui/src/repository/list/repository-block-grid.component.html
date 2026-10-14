@@ -110,9 +110,9 @@
 <div [ngClass]="{ drawerOpen: showConfigRepositories }">
   <div class="bottom-drawer">
     @if (showConfigRepositories) {
-      <a17t-name-repositories-drawer (cancel)="onRepositoryCancel()"
+      <a17t-repositories-drawer (cancelled)="onRepositoryCancel()"
         (commit)="onRepositoryCommit($event)" [hideInstalled]="hideInstalled">
-      </a17t-name-repositories-drawer>
+      </a17t-repositories-drawer>
     }
   </div>
 </div>
@@ -120,7 +120,7 @@
 <div [ngClass]="{ drawerOpen: showDeployRelease }">
   <div class="bottom-drawer">
     @if (showDeployRelease) {
-      <a17t-release-deploy-wizard (cancel)="onDeployReleaseCancel()"
+      <a17t-release-deploy-wizard (cancelled)="onDeployReleaseCancel()"
         (commit)="onDeployReleaseCommit()">
       </a17t-release-deploy-wizard>
     }

@@ -4,7 +4,7 @@ import { Component } from '@angular/core';
 import { FieldType, FormlyModule } from '@ngx-formly/core';
 
 @Component({
-  selector: 'app-extension-list',
+  selector: 'a17t-extension-list',
   template: `
     @if (!to.hidden) {
       <div class="extension-list-container">

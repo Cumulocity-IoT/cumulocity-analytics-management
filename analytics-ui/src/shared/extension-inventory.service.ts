@@ -36,7 +36,7 @@ export class ExtensionInventoryService {
       const all: IManagedObject[] = [];
       let currentPage = 1;
 
-      while (true) {
+      for (;;) {
         const { data, paging } = await this.inventoryService.list({
           pageSize: this.DEFAULT_PAGE_SIZE,
           withTotalPages: true,

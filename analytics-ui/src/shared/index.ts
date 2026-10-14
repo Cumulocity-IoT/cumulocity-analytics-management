@@ -1,5 +1,5 @@
 export * from './component/boolean-renderer.component';
-export * from './component/custom-switch-field';
+export * from './component/custom-switch-field.component';
 export * from './component/confirmation-modal.component';
 export * from './wizard/extension-add-wizard.component';
 export * from './wizard/extension-add.component';
@@ -19,7 +19,6 @@ export * from './extension-builder.service';
 export * from './github-content.service';
 export * from './github-release.service';
 export * from './repository-error';
-export * from './test-http.service';
 export * from './analytics.constants';
 export * from './analytics.model';
 export * from './utils';

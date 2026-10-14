@@ -121,6 +121,9 @@ class C8YAgent:
         """
         if not extension_id and not extension_name:
             raise ValueError("Either extension_id or extension_name must be provided")
+        if not extension_id and any(c in extension_name for c in "'\\"):
+            # The name is interpolated into an inventory query below
+            raise ValueError("Extension name contains invalid characters")
 
         async def _work(tenant):
             if extension_id:

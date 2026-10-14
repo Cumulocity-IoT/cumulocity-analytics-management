@@ -29,3 +29,8 @@ setEnv.sh
 .env
 attic
 .angular
+.venv/
+__pycache__/
+htmlcov/
+.coverage
+analytics-ui/coverage/

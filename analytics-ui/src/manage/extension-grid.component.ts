@@ -22,7 +22,7 @@ import { ActivatedRoute } from '@angular/router';
 import { ExtensionCardComponent } from './extension-card.component';
 
 @Component({
-  selector: 'a17t-extension',
+  selector: 'a17t-extension-grid',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
   standalone: true,
@@ -104,7 +104,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   getCepMicroserviceUrl(): string {
-    return `/apps/administration/index.html#/ecosystem/microservice/microservices`;
+    return '/apps/administration/index.html#/ecosystem/microservice/microservices';
   }
 
   trackByExtension(_: number, extension: IManagedObject): string {

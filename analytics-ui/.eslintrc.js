@@ -1,3 +1,5 @@
+const namingRules = require('./.eslintrc.naming').rules;
+
 module.exports = {
   root: true,
   env: {
@@ -99,6 +101,7 @@ module.exports = {
             allowTemplateLiterals: false
           }
         ],
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', destructuredArrayIgnorePattern: '^_' }],
         '@typescript-eslint/no-inferrable-types': 'off',
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/ban-types': [
@@ -119,7 +122,7 @@ module.exports = {
           { type: 'element', prefix: ['c8y', 'a17t'], style: 'kebab-case' }
         ],
         'import/no-unused-modules': 'error',
-        '@angular-eslint/component-class-suffix': 'off',
+        ...namingRules,
       }
     },
     {

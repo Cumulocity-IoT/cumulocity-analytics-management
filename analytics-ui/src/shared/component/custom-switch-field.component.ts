@@ -25,7 +25,7 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
 import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
 
 @Component({
-  selector: 'a17t-custom-switch',
+  selector: 'a17t-custom-switch-field',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <label
@@ -65,4 +65,4 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
   standalone: true,
   imports: [ReactiveFormsModule, FormlyModule, CoreModule, HumanizePipe]
 })
-export class CustomSwitchField extends FieldType {}
+export class CustomSwitchFieldComponent extends FieldType {}

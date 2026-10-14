@@ -67,7 +67,7 @@ export class CepStatusService implements OnDestroy {
     try {
       await this.subscribeToOperationObjectUpdates();
     } catch (error) {
-      this.handleError(error, 'Failed to reinitialize monitoring', false);
+      this.handleError(error, 'Failed to reinitialize monitoring');
     }
   }
 
@@ -75,7 +75,7 @@ export class CepStatusService implements OnDestroy {
     if (!this.cachedCepStatus) {
       this.cachedCepStatus = this.loadCepStatus().catch(error => {
         this.cachedCepStatus = null;
-        throw this.handleError(error, 'Failed to get Cep status', false);
+        throw this.handleError(error, 'Failed to get Cep status');
       });
     }
     return this.cachedCepStatus;
@@ -116,7 +116,7 @@ export class CepStatusService implements OnDestroy {
     } catch (error) {
       this.cepRestartService.restartFailed();
       // Alert already surfaced above; just log and propagate.
-      throw this.handleError(error, 'Failed to restart Cep engine', false);
+      throw this.handleError(error, 'Failed to restart Cep engine');
     }
   }
 
@@ -187,25 +187,25 @@ export class CepStatusService implements OnDestroy {
       return false;
     }
 
-    try {
-      const response = await this.fetchClient.fetch(
-        `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-        { method: 'GET' }
-      );
-      // A 404 here is Cumulocity's platform-level "no such microservice
-      // instance" routing error, not an application-level status response —
-      // analytics-service always returns valid JSON for this endpoint when
-      // it's actually running, so any 404 means it isn't.
-      return response.status !== 404;
-    } catch {
-      return false;
-    }
+    // A network failure is deliberately NOT caught here: it propagates to
+    // `isBackendServiceDeployed()`, which reports "unavailable" for this call
+    // but doesn't cache it, so a transient blip can't pin the whole session
+    // to browser-only mode.
+    const response = await this.fetchClient.fetch(
+      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
+      { method: 'GET' }
+    );
+    // A 404 here is Cumulocity's platform-level "no such microservice
+    // instance" routing error, not an application-level status response —
+    // analytics-service always returns valid JSON for this endpoint when
+    // it's actually running, so any 404 means it isn't.
+    return response.status !== 404;
   }
 
   async getCepOperationObjectId(): Promise<string | undefined> {
     if (!this.cachedCepOperationObjectId) {
       this.cachedCepOperationObjectId = this.loadCepOperationObjectId().catch(async error => {
-        this.handleError(error, 'Failed to get Cep operation object ID', false);
+        this.handleError(error, 'Failed to get Cep operation object ID');
         // Don't cache failures — clear so a later call can retry
         this.cachedCepOperationObjectId = null;
         const isBackendAvailable = await this.isBackendServiceAvailable();
@@ -299,7 +299,7 @@ export class CepStatusService implements OnDestroy {
     try {
       await this.subscribeToOperationObjectUpdates();
     } catch (error) {
-      this.handleError(error, 'Failed to initialize monitoring', false);
+      this.handleError(error, 'Failed to initialize monitoring');
     }
   }
 
@@ -321,8 +321,7 @@ export class CepStatusService implements OnDestroy {
     } catch (error) {
       throw this.handleError(
         error,
-        'Failed to subscribe to operation object updates',
-        false
+        'Failed to subscribe to operation object updates'
       );
     }
   }
@@ -374,7 +373,7 @@ export class CepStatusService implements OnDestroy {
     }
   }
 
-  private handleError(error: unknown, logMessage: string, showAlert: boolean = false): Error {
+  private handleError(error: unknown, logMessage: string): Error {
     // Expected, self-recovering backend conditions (mid-restart, or a transient
     // 502/503/504 because the engine is unreachable / still starting) are kept
     // out of the error stream and don't raise user-facing alerts.

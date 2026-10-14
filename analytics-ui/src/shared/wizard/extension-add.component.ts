@@ -235,7 +235,7 @@ export class ExtensionAddComponent implements OnDestroy {
             console.warn(`Failed to parse metadata for ${monitorName}:`, error);
           }
         }
-        
+
         monitors.push(monitorMetadata);
       }
 
@@ -393,20 +393,16 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private async performUpload(mode: UploadMode): Promise<void> {
-    try {
-      const result = await this.uploadExtensionHandler(
-        this.state.file!,
-        this.state.extension!,
-        mode
-      );
+    const result = await this.uploadExtensionHandler(
+      this.state.file!,
+      this.state.extension!,
+      mode
+    );
 
-      if (result) {
-        this.handleUploadSuccess(mode);
-      } else {
-        this.handleUploadFailure();
-      }
-    } catch (error) {
-      throw error;
+    if (result) {
+      this.handleUploadSuccess(mode);
+    } else {
+      this.handleUploadFailure();
     }
   }
 

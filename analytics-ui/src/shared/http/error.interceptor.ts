@@ -41,7 +41,7 @@ export class ErrorInterceptor implements HttpInterceptor {
   ): Observable<HttpEvent<unknown>> {
     this.requestCount++;
     const requestId = `${Date.now()}-${this.requestCount}`;
-    
+
     // Add request headers
     const modifiedRequest = request.clone({
       setHeaders: {

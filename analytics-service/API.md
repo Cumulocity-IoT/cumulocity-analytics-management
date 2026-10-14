@@ -1,338 +1,137 @@
-# Analytics Service API Documentation
+# Analytics Service API
+
+Aligned with `app.py` on 2026-10-14. The route docstrings in `app.py` carry the full detail.
 
 ## Base URL
 
 ```
-https://<cumulocity-tenant>.cumulocity.com/service/analytics-ext-service
+https://<tenant>.cumulocity.com/service/analytics-ext-service
 ```
+
+Locally (`python app.py`): `http://localhost:80`.
 
 ## Authentication
 
-All requests require HTTP Basic Authentication with Cumulocity credentials:
+Every request must carry the caller's Cumulocity credentials (Basic auth, OAuth cookie/token) or it is
+rejected by the platform. The service forwards the request headers/cookies to Cumulocity and acts as that
+user/tenant. `GET /health` needs no authentication.
 
-```
-Authorization: Basic <base64(tenant/username:password)>
-```
+## Responses and errors
 
-## Response Format
+There is no common response envelope; each endpoint returns its own body (JSON, plain text or a zip file).
+Errors are always:
 
-All responses are JSON with the following structure:
-
-### Success Response (2xx)
 ```json
-{
-  "status": "success",
-  "data": {},
-  "message": "Operation completed successfully"
-}
+{ "error": "Human-readable message" }
 ```
 
-### Error Response (4xx, 5xx)
-```json
-{
-  "status": "error",
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Human-readable error message",
-    "details": {}
-  },
-  "timestamp": "2026-05-28T12:00:00Z"
-}
-```
+| Status | Meaning |
+|--------|---------|
+| 200 | OK (also zip download when `upload` is false) |
+| 201 | Extension(s) uploaded |
+| 207 | `/extension/yaml`: partial success, see `failed_sections` |
+| 400 | Invalid body/parameters/URL, download failed, all YAML sections failed |
+| 401, 403, 404, 429 | Passed through from GitHub (rate limit and SSO errors have explicit messages), or not found |
+| 500 | Build/upload failure or unexpected error |
+
+There is no rate limiting in the service itself.
 
 ---
 
-## Endpoints
+## Health and engine status
 
-### Health Check
+### `GET /health`
+`200 {"status": "UP"}`. Static liveness, no dependency checks.
 
-#### `GET /health`
+### `GET /cep/id`
+`200 {"id": "<managed object id>"}` of the CEP microservice; `404` if it cannot be determined.
 
-Check service health status
-
-**Response:**
-```json
-{
-  "timestamp": "2026-05-28T12:00:00Z",
-  "uptime_seconds": 3600,
-  "status": "healthy",
-  "checks": {
-    "system": {
-      "status": "healthy",
-      "memory_percent": 45,
-      "cpu_percent": 20,
-      "disk_usage_percent": 60
-    },
-    "cumulocity": {
-      "status": "healthy",
-      "message": "Cumulocity credentials available"
-    },
-    "github": {
-      "status": "healthy",
-      "message": "GitHub API reachable"
-    }
-  }
-}
-```
+### `GET /cep/status`
+`200` raw diagnostics of the Apama control process (`status`, `is_safe_mode`, `microservice_application_id`, ...); `404` if unavailable.
 
 ---
 
-### Extensions
+## Repositories
 
-#### `GET /extension`
+Repositories are stored as tenant options. Access tokens are returned as `_DUMMY_ACCESS_CODE_`.
 
-List all uploaded extensions
+### `GET /repository/configuration`
+`200` array of `{id, name, url, accessToken, enabled}`.
 
-**Query Parameters:**
-- `limit` (optional): Number of results to return (default: 50)
-- `offset` (optional): Pagination offset (default: 0)
+### `POST /repository/configuration`
+Body: array of `{id, name, url, accessToken?, enabled?}` (all three of `id`, `name`, `url` required per item).
+**Replaces** the stored list: repositories not in the body are deleted.
+`accessToken`: omitted or `_DUMMY_ACCESS_CODE_` keeps the stored token, `""` clears it, any other value sets it;
+changing `url` without a new token clears the stored token.
+`200 {"message": "Repositories updated successfully"}`, `400` for a non-array body or items without `id/name/url`.
 
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "extensions": [
-      {
-        "name": "Sample_Extension",
-        "version": "1.0.0",
-        "created": "2026-05-28T10:00:00Z",
-        "blocks": ["BlockA", "BlockB"],
-        "source": "uploaded"
-      }
-    ],
-    "total": 1
-  }
-}
-```
+### `GET /repository/contentList`
+Query: `url` (GitHub web URL, required), `repository_id` (optional, selects the stored PAT).
+Header `X-Repository-Access-Token` (optional) overrides the stored PAT, e.g. to test a draft repository.
+Returns the GitHub Contents API listing as JSON.
+
+### `GET /repository/content`
+Query: `url` (required; **https URL on github.com, api.github.com or raw.githubusercontent.com only**),
+`repository_id`, `extract_fqn_cep_block=true` + `cep_block_name` to return the fully qualified block name
+(`package` + name) instead of the file content. Same PAT header as above.
+Returns `text/plain`.
 
 ---
 
-#### `POST /extension`
+## Building extensions
 
-Upload or build a new extension
+Common body fields: `extension_name` (`[A-Za-z0-9_-]+`), `repository: {id}`, and the booleans
+`upload` (default false), `deploy` (restart CEP after upload), `rebuild` (delete existing extension(s) of that
+name first; `404` if none exists).
 
-**Request Body:**
-```json
-{
-  "extension_name": "My_Extension",
-  "upload": true,
-  "monitors": [
-    "https://raw.githubusercontent.com/org/repo/main/Block.mon"
-  ],
-  "repositories": [
-    {
-      "url": "https://github.com/org/repo",
-      "path": "blocks",
-      "branch": "main"
-    }
-  ]
-}
-```
+- `upload=false`: `200` with the extension zip (`application/zip`, attachment `<name>.zip`).
+- `upload=true`: `201 {"id": "<binary id>", "message": "Extension uploaded"}`.
 
-**Parameters:**
-- `extension_name` (required): Name of the extension
-- `upload` (optional, default: true): Upload to Cumulocity inventory after build
-- `monitors` (optional): Array of .mon file URLs to build extension from
-- `repositories` (optional): Array of GitHub repository configs to build from
+`rebuild` deletes the old extension **before** the new one is built.
 
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "extension_id": "ext_123",
-    "name": "My_Extension",
-    "size_bytes": 5242880,
-    "url": "https://cumulocity.com/inventory/My_Extension.zip",
-    "blocks": ["BlockA", "BlockB"],
-    "uploaded": true
-  }
-}
-```
+### `POST /extension/repository`
+Builds from the whole repository path configured in `repository.id`.
 
-**Error Codes:**
-- `INVALID_EXTENSION_NAME`: Extension name contains invalid characters
-- `EXTENSION_EXISTS`: Extension with this name already exists
-- `BUILD_FAILED`: Failed to build extension from repositories
-- `UPLOAD_FAILED`: Failed to upload extension to Cumulocity
+### `POST /extension/list`
+Additionally requires `monitors`: an array with **exactly one** `{url, name, type}` where `url` is a GitHub
+Contents API URL and `type` is `file` or `dir`. The monitor is stored in the extension's build information.
+
+### `POST /extension/yaml`
+Body: `yaml: {url}` (raw URL of the YAML file), optional `sections` (names; empty = all), plus the common fields.
+Each section (`<name>: {files: [...]}`) becomes one extension named after the section. Sections without files
+are skipped; invalid names are reported as failed.
+
+- Download mode returns the zip of the first processed section.
+- Upload mode: `201 {"uploaded_extensions": [{"name", "id"}]}`; `207` with `failed_sections` and `message` if
+  some failed; `400` if none succeeded. With `deploy=true` CEP is restarted once, after all sections, if at least one succeeded.
 
 ---
 
-#### `GET /extension/<name>`
+## Deleting extensions
 
-Get extension details
+### `DELETE /extension/{id}`
+Deletes by managed object id (must be an extension). `200 {"message": "Extension deleted successfully"}`;
+`404` for any agent error (unknown id, not an extension, auth problem).
 
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "name": "Sample_Extension",
-    "version": "1.0.0",
-    "size_bytes": 1024000,
-    "created": "2026-05-28T10:00:00Z",
-    "blocks": [
-      {
-        "name": "SampleBlock",
-        "category": "Analytics",
-        "custom": true
-      }
-    ]
-  }
-}
-```
-
----
-
-#### `DELETE /extension/<name>`
-
-Delete an extension
-
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "message": "Extension deleted successfully"
-  }
-}
-```
-
----
-
-### Repositories
-
-#### `GET /repository`
-
-List configured repositories
-
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "repositories": [
-      {
-        "id": "repo_123",
-        "url": "https://github.com/org/repo",
-        "path": "blocks",
-        "branch": "main",
-        "enabled": true,
-        "created": "2026-05-28T09:00:00Z"
-      }
-    ]
-  }
-}
-```
-
----
-
-#### `POST /repository`
-
-Add a new repository
-
-**Request Body:**
-```json
-{
-  "url": "https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk",
-  "path": "samples/blocks",
-  "branch": "main"
-}
-```
-
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "id": "repo_123",
-    "url": "https://github.com/org/repo",
-    "blocks_found": 15
-  }
-}
-```
-
----
-
-#### `DELETE /repository/<id>`
-
-Remove a repository
-
-**Response:**
-```json
-{
-  "status": "success",
-  "data": {
-    "message": "Repository removed successfully"
-  }
-}
-```
-
----
-
-## Error Codes
-
-| Code | Status | Description |
-|------|--------|-------------|
-| INVALID_REQUEST | 400 | Invalid request parameters |
-| UNAUTHORIZED | 401 | Authentication failed |
-| FORBIDDEN | 403 | Insufficient permissions |
-| NOT_FOUND | 404 | Resource not found |
-| CONFLICT | 409 | Resource already exists |
-| GITHUB_ERROR | 502 | GitHub API error |
-| CUMULOCITY_ERROR | 502 | Cumulocity API error |
-| INTERNAL_ERROR | 500 | Internal server error |
-
----
-
-## Rate Limiting
-
-Requests are limited to:
-- 100 requests per minute per user
-- 1000 requests per hour per user
-
-Rate limit headers:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 99
-X-RateLimit-Reset: 1685276400
-```
+### `DELETE /extension?name=<name>`
+Deletes every extension with that name. `200 {"message": ..., "deleted_count": n}`, `400` without `name`
+(or with `'`/`\` in it), `404` if none found.
 
 ---
 
 ## Examples
 
-### Build Extension from Repository
-
 ```bash
-curl -X POST https://tenant.cumulocity.com/service/analytics-ext-service/extension \
-  -H "Authorization: Basic $(echo -n 'tenant/user:pass' | base64)" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "extension_name": "Custom_Blocks",
-    "upload": true,
-    "repositories": [{
-      "url": "https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk",
-      "path": "samples/blocks",
-      "branch": "main"
-    }]
-  }'
+# build and deploy one extension from a configured repository
+curl -u "$TENANT/$USER:$PASS" -H 'Content-Type: application/json' \
+  -X POST "$BASE/extension/repository" \
+  -d '{"extension_name":"MyBlocks","repository":{"id":"repo-1"},"upload":true,"deploy":true}'
+
+# download the zip instead
+curl -u "$TENANT/$USER:$PASS" -H 'Content-Type: application/json' \
+  -X POST "$BASE/extension/repository" -o MyBlocks.zip \
+  -d '{"extension_name":"MyBlocks","repository":{"id":"repo-1"}}'
+
+# liveness
+curl "$BASE/health"
 ```
-
-### Check Service Health
-
-```bash
-curl https://tenant.cumulocity.com/service/analytics-ext-service/health \
-  -H "Authorization: Basic $(echo -n 'tenant/user:pass' | base64)"
-```
-
----
-
-## Changelog
-
-### v1.0.0
-- Initial API release
-- Extension upload and management
-- Repository management
-- Health checks

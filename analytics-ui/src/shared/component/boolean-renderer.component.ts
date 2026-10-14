@@ -23,7 +23,7 @@ import { CellRendererContext } from '@c8y/ngx-components';
 import { CoreModule } from '@c8y/ngx-components';
 
 @Component({
-  selector: 'a17t-boolean',
+  selector: 'a17t-boolean-renderer',
   template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> ',
   standalone: true,
   imports: [CoreModule]

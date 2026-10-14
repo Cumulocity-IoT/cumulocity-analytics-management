@@ -42,7 +42,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
 
   sendingFetchEvent = false;
 
-  @Output() cancel = new EventEmitter<void>();
+  @Output() cancelled = new EventEmitter<void>();
   @Output() commit = new EventEmitter<void>();
 
   constructor(
@@ -148,7 +148,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
     );
     this.alertService.info(
       `Downloading "${this.selectedAsset.name}" — once it's done, drag it from your browser's ` +
-        `download tray straight onto the box below (fastest), or click the box to browse for it.`
+        'download tray straight onto the box below (fastest), or click the box to browse for it.'
     );
     this.phase = 'upload';
   }
@@ -187,7 +187,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
         );
       this.alertService.info(
         `Sent fetch request for "${this.selectedAsset.name}" (requestId ${requestId}) — this only reaches ` +
-          `the FetchExtensionListener EPL app's log for now, it does not deploy the extension yet.`
+          'the FetchExtensionListener EPL app\'s log for now, it does not deploy the extension yet.'
       );
     } catch {
       // FetchExtensionService already showed a danger alert with the
@@ -198,7 +198,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
   }
 
   onCancel(): void {
-    this.cancel.emit();
+    this.cancelled.emit();
   }
 
   onUploadCompleted(): void {

@@ -1,7 +1,7 @@
 /* Widen the dialog for the source-code editor. Scoped via :has() to this
    modal only (its host renders inside the .modal-dialog wrapper) so other
    modals keep their default width. */
-.modal-dialog:has(a17t-name-extension-modal) {
+.modal-dialog:has(a17t-editor-modal) {
   max-width: 90vw;
   width: 1100px;
 }

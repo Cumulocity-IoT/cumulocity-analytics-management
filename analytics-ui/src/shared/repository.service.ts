@@ -9,7 +9,8 @@ import {
   combineLatest,
   from,
   lastValueFrom,
-  of
+  of,
+  throwError
 } from 'rxjs';
 import {
   catchError,
@@ -341,7 +342,9 @@ export class RepositoryService implements OnDestroy {
 
   async refreshRepositories(): Promise<void> {
     try {
-      await lastValueFrom(this.loadRepositoriesFromConfig().pipe(take(1)));
+      // Don't swallow load failures here (unlike the initial load): otherwise a
+      // failed refresh would alert twice and still announce success.
+      await lastValueFrom(this.loadRepositoriesFromConfig(false).pipe(take(1)));
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
@@ -482,7 +485,7 @@ export class RepositoryService implements OnDestroy {
     }
   }
 
-  private loadRepositoriesFromConfig(): Observable<Repository[]> {
+  private loadRepositoriesFromConfig(swallowErrors: boolean = true): Observable<Repository[]> {
     return from(this.repositoryConfigService.fetchRepositories()).pipe(
       switchMap(repos => repos.length > 0 ? of(repos) : from(this.seedDefaultRepository())),
       tap(repos => {
@@ -492,6 +495,9 @@ export class RepositoryService implements OnDestroy {
         });
       }),
       catchError(error => {
+        if (!swallowErrors) {
+          return throwError(() => error);
+        }
         this.handleError(
           error,
           'Failed to load repositories from tenant options',
@@ -595,7 +601,7 @@ export class RepositoryService implements OnDestroy {
 
     if (error && typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj['message'];
+      const { message } = errorObj;
       if (typeof message === 'string') {
         return message;
       }

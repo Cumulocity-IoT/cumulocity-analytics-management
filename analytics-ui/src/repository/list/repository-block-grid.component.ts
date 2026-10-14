@@ -42,23 +42,23 @@ import {
 } from '../../shared';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
 import { catchError, of } from 'rxjs';
-import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
-import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
-import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
+import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
+import { RepositoriesDrawerComponent } from '../drawer/repositories-drawer.component';
 import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
-  selector: 'a17t-sample-grid',
-  templateUrl: 'block-grid.component.html',
-  styleUrls: ['./block-grid.component.css'],
+  selector: 'a17t-repository-block-grid',
+  templateUrl: 'repository-block-grid.component.html',
+  styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
-export class BlockGridComponent implements OnInit {
+export class RepositoryBlockGridComponent implements OnInit {
   @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
@@ -257,7 +257,7 @@ export class BlockGridComponent implements OnInit {
         invalid.push(sample);
         return;
       }
-      if (sample.type == "file" && !sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
+      if (sample.type == 'file' && !sample.file.endsWith('.mon') && sample.file !== DESCRIPTOR_YAML) {
         invalid.push(sample);
         hasInvalidType = true;
       }
@@ -305,15 +305,15 @@ export class BlockGridComponent implements OnInit {
         sections: selectedSections
       };
 
-      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
         class: 'modal-md',
         initialState
       });
 
       if (modalRef.content) {
         modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel()
-          modalRef.hide()
+          this.dataGrid.cancel();
+          modalRef.hide();
         });
       }
 
@@ -323,15 +323,15 @@ export class BlockGridComponent implements OnInit {
         monitors: selectedMonitors
       };
 
-      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
         class: 'modal-md',
         initialState
       });
 
       if (modalRef.content) {
         modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel()
-          modalRef.hide()
+          this.dataGrid.cancel();
+          modalRef.hide();
         });
       }
     }

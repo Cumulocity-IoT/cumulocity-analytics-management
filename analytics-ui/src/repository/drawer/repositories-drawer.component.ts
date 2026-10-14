@@ -8,14 +8,14 @@ import {
     DUMMY_ACCESS_TOKEN,
     Repository,
     RepositoryService,
-    uuidCustom
+    createShortId
 } from '../../shared';
 import { ConfirmationModalComponent } from '../../shared/component/confirmation-modal.component';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
-    selector: 'a17t-name-repositories-drawer',
+    selector: 'a17t-repositories-drawer',
     templateUrl: './repositories-drawer.component.html',
     encapsulation: ViewEncapsulation.None,
     standalone: true,
@@ -23,7 +23,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
 })
 export class RepositoriesDrawerComponent implements OnInit {
     @Input() hideInstalled: boolean = false;
-    @Output() cancel = new EventEmitter<void>();
+    @Output() cancelled = new EventEmitter<void>();
     @Output() commit = new EventEmitter<Repository>();
 
     repositories$!: Observable<Repository[]>;
@@ -40,7 +40,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     // Store original form values to detect changes
     originalFormValues: any = null;
 
-    popupPAT = `Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!`;
+    popupPAT = 'Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!';
 
     GITHUB_API = 'https://api.github.com/repos/';
     GITHUB_URL = 'https://github.com/';
@@ -53,7 +53,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     globalAccessTokenForm: FormGroup;
     isGlobalAccessTokenSet: boolean = false;
     isSavingGlobalAccessToken: boolean = false;
-    popupGlobalPAT = `Used for any repository above that doesn't have its own Personal Access Token. A repository-specific token always takes precedence over this one.`;
+    popupGlobalPAT = 'Used for any repository above that doesn\'t have its own Personal Access Token. A repository-specific token always takes precedence over this one.';
 
     constructor(
         private repositoryService: RepositoryService,
@@ -106,7 +106,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         } catch (e) {
             return { invalidUrl: true };
         }
-    }
+    };
 
     async ngOnInit(): Promise<void> {
         const maskedGlobalToken = await this.repositoryService.getGlobalAccessTokenMasked();
@@ -305,7 +305,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         this.showPATWarning = false;
 
         this.tempNewRepository = {
-            id: 'temp-' + uuidCustom(),
+            id: `temp-${ createShortId()}`,
             name: 'New repository',
             url: '',
             enabled: false
@@ -364,7 +364,7 @@ export class RepositoriesDrawerComponent implements OnInit {
         if (this.repositoryForm.valid) {
             const newRepository: Repository = this.repositoryForm.value;
             newRepository.url = this.GITHUB_URL + this.repositoryForm.value.url;
-            newRepository.id = uuidCustom();
+            newRepository.id = createShortId();
             newRepository.enabled = false;
 
             await this.repositoryService.addRepository(newRepository);
@@ -507,7 +507,7 @@ export class RepositoriesDrawerComponent implements OnInit {
             } else {
                 this.deselectRepository();
             }
-            this.cancel.emit();
+            this.cancelled.emit();
         } else if (this.hasUnsavedChanges) {
             const initialState = {
                 title: 'Unsaved Changes',
@@ -530,13 +530,13 @@ export class RepositoriesDrawerComponent implements OnInit {
                         }
                         // Revert enabled changes
                         this.repositoryService.cancelChanges();
-                        this.cancel.emit();
+                        this.cancelled.emit();
                     }
                     confirmCancelModalRef.hide();
                 }
             );
         } else {
-            this.cancel.emit();
+            this.cancelled.emit();
         }
     }
 
@@ -552,7 +552,7 @@ export class RepositoriesDrawerComponent implements OnInit {
  */
 openInGitHub(): void {
     const urlValue = this.repositoryForm.get('url')?.value || '';
-    
+
     if (!urlValue || urlValue.trim() === '') {
         this.alertService.warning(gettext('Please enter a repository URL first'));
         return;
@@ -560,14 +560,14 @@ openInGitHub(): void {
 
     // Construct the full GitHub URL
     const fullUrl = this.GITHUB_URL + urlValue.trim();
-    
+
     // Validate the URL before opening
     try {
         new URL(fullUrl);
-        
+
         // Open in new window/tab
         window.open(fullUrl, '_blank', 'noopener,noreferrer');
-        
+
         // Check if popup was blocked
         // if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
         //     this.alertService.warning(
