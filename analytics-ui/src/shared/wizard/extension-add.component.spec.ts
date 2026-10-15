@@ -99,6 +99,21 @@ describe('ExtensionAddComponent', () => {
       expect(mode).toBe('add');
     });
 
+    it('keeps the whole file name when it has no extension', async () => {
+      create();
+      const file = await zipFile('README', { 'files/Foo.mon': MON });
+      await component.onFile(file);
+      expect(uploaded()[1]['name']).toBe('README');
+    });
+
+    it('strips only the last extension of other files and keeps dot-only names', async () => {
+      for (const [fileName, expected] of [['pkg.v2.tar', 'pkg.v2'], ['.zip', '.zip'], ['.hidden', '.hidden']]) {
+        create();
+        await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+        expect(uploaded()[1]['name']).withContext(fileName).toBe(expected);
+      }
+    });
+
     it('reports success, completes the progress and leaves the loading state', async () => {
       create();
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));

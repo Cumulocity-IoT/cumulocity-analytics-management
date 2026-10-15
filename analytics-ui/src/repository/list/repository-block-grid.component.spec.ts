@@ -94,8 +94,14 @@ describe('RepositoryBlockGridComponent', () => {
     it('selects whole items instead of single ones and updates the title', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'extensions.yaml' })]));
       await create(true);
-      expect(component.titleSample).toContain('contains extensions.yaml');
+      expect(component.titleSample).toBe('Blocks from repositories (contains extensions.yaml)');
       expect(component.singleSelection).toBeFalse();
+    });
+
+    it('titles a plain file listing without stray spaces', async () => {
+      repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'A.mon' })]));
+      await create(true);
+      expect(component.titleSample).toBe('Blocks from repositories (list assets)');
     });
   });
 

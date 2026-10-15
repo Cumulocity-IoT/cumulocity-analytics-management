@@ -373,11 +373,13 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private extractExtensionName(fileName: string): string {
-    // Remove .zip extension if present, otherwise remove the last extension
-    if (fileName.toLowerCase().endsWith('.zip')) {
-      return fileName.slice(0, -4);
-    }
-    return fileName.split('.').slice(0, -1).join('.');
+    // Remove .zip extension if present, otherwise remove the last extension.
+    // A name without an extension ("README") or that is only an extension
+    // (".zip", ".hidden") stays as it is, an empty extension name is never valid.
+    const stripped = fileName.toLowerCase().endsWith('.zip')
+      ? fileName.slice(0, -4)
+      : fileName.split('.').slice(0, -1).join('.');
+    return stripped || fileName;
   }
 
   private async findExistingExtension(
