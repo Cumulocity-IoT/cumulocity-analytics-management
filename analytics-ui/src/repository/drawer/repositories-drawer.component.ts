@@ -52,6 +52,12 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     globalAccessTokenForm: FormGroup;
     isGlobalAccessTokenSet: boolean = false;
+
+    /** Which token is used for the selected repository: its own, the global fallback, or none. */
+    get tokenSource(): 'repository' | 'global' | 'none' {
+        if (this.repositoryForm?.get('accessToken')?.value) return 'repository';
+        return this.isGlobalAccessTokenSet ? 'global' : 'none';
+    }
     isSavingGlobalAccessToken: boolean = false;
     popupGlobalPAT = 'Used for any repository above that doesn\'t have its own Personal Access Token. A repository-specific token always takes precedence over this one.';
 

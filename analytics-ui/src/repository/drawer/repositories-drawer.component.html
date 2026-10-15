@@ -2,16 +2,14 @@
   <div class="card card--fullpage d-col flex-grow">
     <!-- Header -->
     <div class="card-header separator" style="justify-content: center">
-      <h4 class="card-title d-flex">
-        <i [c8yIcon]="'change-theme'" class="icon-32 m-r-16"></i>
-        <span class="m-t-8">{{ 'Manage repositories' | translate }}</span>
+      <h4 class="card-title d-flex a-i-center">
+        <i [c8yIcon]="'change-theme'" class="icon-24 m-r-8"></i>
+        <span>{{ 'Manage repositories' | translate }}</span>
       </h4>
     </div>
 
-<div class="card content-fullpage split-view--4-8 grid__row--single flex-grow" style="padding:0">
-  <!-- Left Panel: Repository List -->
-  <div class="inner-scroll split-view__list bg-level-1 d-flex flex-column">
-    <div class="p-l-16 p-r-16 p-t-8 p-b-8 flex-no-shrink separator-bottom">
+    <!-- Global token: full-width bar -->
+    <div class="p-l-24 p-r-24 p-t-16 p-b-16 separator-bottom flex-no-shrink">
       <form [formGroup]="globalAccessTokenForm" autocomplete="off">
         <c8y-form-group class="m-b-0">
           <label for="globalAccessToken">
@@ -38,8 +36,13 @@
         </c8y-form-group>
       </form>
     </div>
+
+<div class="card content-fullpage split-view--4-8 grid__row--single flex-grow" style="padding:0">
+  <!-- Left Panel: Repository List -->
+  <div class="inner-scroll split-view__list bg-level-1 d-flex flex-column">
     <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
-      <div class="input-group input-group-search">
+      <div class="d-flex a-i-center" style="gap: 8px;">
+      <div class="input-group input-group-search flex-grow">
         <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
           [(ngModel)]="searchTerm" (keyup)="searchRepositories($event)" />
         <span class="input-group-btn">
@@ -57,6 +60,11 @@
             </button>
           }
         </span>
+      </div>
+      <button type="button" class="btn btn-primary btn-icon flex-no-shrink" [title]="'Add repository' | translate"
+        [attr.aria-label]="'Add repository' | translate" (click)="createCustomRepository()">
+        <i c8yIcon="plus-circle"></i>
+      </button>
       </div>
     </div>
 
@@ -124,19 +132,20 @@
         <form [formGroup]="repositoryForm" autocomplete="off">
           <fieldset>
             <input type="hidden" formControlName="id" />
+            <div class="d-flex j-c-between a-i-center m-b-24 p-b-16 separator-bottom">
+              <h5 class="m-0 text-truncate">{{ repositoryForm.value.name || ('New repository' | translate) }}</h5>
+              @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+                <label class="c8y-switch flex-no-shrink m-b-0 m-l-16">
+                  <input type="checkbox" formControlName="enabled"
+                    (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
+                  <span></span>
+                  <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
+                </label>
+              }
+            </div>
             <c8y-form-group>
-              <div class="d-flex j-c-between a-i-center">
-                <label for="name" class="m-b-0">{{ 'Name' | translate }}</label>
-                @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-                  <label class="c8y-switch flex-no-shrink m-b-0">
-                    <input type="checkbox" formControlName="enabled"
-                      (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
-                    <span></span>
-                    <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
-                  </label>
-                }
-              </div>
-              <input type="text" id="name" formControlName="name" class="form-control m-t-8"
+              <label for="name">{{ 'Name' | translate }}</label>
+              <input type="text" id="name" formControlName="name" class="form-control"
                 (change)="warnAboutPATReset()" [placeholder]="'Repository name' | translate" />
             </c8y-form-group>
             <c8y-form-group>
@@ -166,6 +175,10 @@
             <c8y-form-group>
               <label for="accessToken">
                 <span>{{ 'Personal Access Token' | translate }}</span>
+                <span class="label m-l-8"
+                  [ngClass]="{ 'label-success': tokenSource === 'repository', 'label-info': tokenSource === 'global', 'label-default': tokenSource === 'none' }">
+                  {{ (tokenSource === 'repository' ? 'Repository token' : tokenSource === 'global' ? 'Using global token' : 'No token') | translate }}
+                </span>
                 <button type="button" placement="right" [popover]="popupPAT" class="btn-help"
                 aria-label="Help content" [outsideClick]="true"></button>
                 <ng-template #popupPAT>
@@ -179,8 +192,15 @@
               </ng-template>
             </label>
             <input type="password" id="accessToken" formControlName="accessToken"
-              [placeholder]="(isGlobalAccessTokenSet ? 'Optional — leave empty to use the global access token' : 'e.g.: your github Personal Access Token (PAT) — optional for public repositories') | translate"
+              [placeholder]="(isGlobalAccessTokenSet ? 'Leave empty to use the global token' : 'Optional for public repositories') | translate"
               class="form-control" />
+            <small class="help-block">
+              @switch (tokenSource) {
+                @case ('repository') { <i c8yIcon="lock" class="m-r-4"></i>{{ 'This repository uses its own token. The global token is ignored.' | translate }} }
+                @case ('global') { <i c8yIcon="globe" class="m-r-4"></i>{{ 'No token set here — the global token is used. Enter one to override it.' | translate }} }
+                @default { <i c8yIcon="unlocked" class="m-r-4"></i>{{ 'No token configured. Only public repositories can be accessed.' | translate }} }
+              }
+            </small>
             <!-- Warning message displayed under the input -->
             @if (showPATWarning) {
               <c8y-messages class="m-t-8 m-b-8">
@@ -191,24 +211,6 @@
               </c8y-messages>
             }
           </c8y-form-group>
-          <div class="btn-toolbar d-flex" style="gap: 8px;">
-            <button (click)="testRepository()" class="btn btn-default" style="min-width:120px;"
-              [title]="'Test the connection (PAT optional for public repositories)' | translate"
-              [disabled]="repositoryForm.get('url')?.invalid || isSaving">
-              {{ 'Test connection' | translate }}
-            </button>
-            <button type="button" class="btn btn-default" [title]="'Add repository' | translate"
-              (click)="createCustomRepository()">
-              <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
-            </button>
-            @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-              <button type="button" [title]="'Delete repository' | translate" class="btn btn-danger"
-                (click)="deleteButtonClicked()"
-                [disabled]="deleteDisabled">
-                <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
-              </button>
-            }
-          </div>
         </fieldset>
       </form>
     </div>
@@ -218,16 +220,31 @@
 </div>
 </div>
 
-    <!-- Outer card footer: form actions centered -->
+    <!-- Outer card footer: destructive action left, primary actions right -->
     @if (showAddRepository) {
-      <div class="card-footer separator p-24 flex-no-shrink text-center">
-        <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
-          {{ 'Cancel' | translate }}
-        </button>
-        <button type="button" [title]="'Save' | translate" class="btn btn-primary m-l-8" (click)="onSave()"
-          [disabled]="isSaveDisabled">
-          {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
-        </button>
+      <div class="card-footer separator p-16 flex-no-shrink d-flex a-i-center j-c-between">
+        <div>
+          @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+            <button type="button" [title]="'Delete repository' | translate" class="btn btn-link text-danger"
+              (click)="deleteButtonClicked()" [disabled]="deleteDisabled">
+              <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+            </button>
+          }
+        </div>
+        <div class="d-flex" style="gap: 8px;">
+          <button type="button" class="btn btn-default" (click)="testRepository()"
+            [title]="'Test the connection (PAT optional for public repositories)' | translate"
+            [disabled]="repositoryForm.get('url')?.invalid || isSaving">
+            {{ 'Test connection' | translate }}
+          </button>
+          <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
+            {{ 'Cancel' | translate }}
+          </button>
+          <button type="button" [title]="'Save' | translate" class="btn btn-primary" (click)="onSave()"
+            [disabled]="isSaveDisabled">
+            {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
+          </button>
+        </div>
       </div>
     }
   </div>
