@@ -268,8 +268,7 @@ Enable TypeScript strict mode and eliminate `any` types throughout the codebase.
 **Authors:** Development Team
 
 > **Implementation status (2026-10-14):** Backend: pytest with about 166 tests, ~91% line coverage (target 70% met).
-> Frontend: Karma/Jasmine with about 400 specs covering all services, the dormant interceptor and two components
-> (~81% lines of the loaded files); most components are not yet covered, so the 70% component target is not met.
+> Frontend: Karma/Jasmine with about 580 specs covering all services and components (~96% lines), so the 80%/70% targets are met.
 > CI (`check-push.yml`) runs lint, naming rules and both test suites on every push/PR. Not done: Cypress/E2E tests, PR coverage comments, gating the release workflow on these checks.
 > Jest/Protractor are not used. See [BACKEND-GUIDE.md](./BACKEND-GUIDE.md#testing) and [UI-GUIDE.md](./UI-GUIDE.md#testing).
 

@@ -478,7 +478,10 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private cleanup(): void {
-    if (this.state.extension && !this.state.isComplete) {
+    // Only a half-created extension may be rolled back. When it already exists
+    // (requiresUpdate) `state.extension` is the user's installed extension: cleaning
+    // up after a cancelled, declined or failed update must never delete it.
+    if (this.state.extension && !this.state.isComplete && !this.state.requiresUpdate) {
       this.analyticsService.cancelExtensionCreation(this.state.extension);
     }
 

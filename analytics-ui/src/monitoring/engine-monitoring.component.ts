@@ -109,7 +109,7 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageAlarm = this.currentPageAlarm + options.direction;
           if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
-          filterAlarm = { currentPage: this.currentPageAlarm };
+          filterAlarm = { ...filterAlarm, currentPage: this.currentPageAlarm };
         }
         if (options.status) {
           (filterAlarm as any)['status'] = options.status;
@@ -123,7 +123,7 @@ export class EngineMonitoringComponent implements OnInit {
         if (options.direction) {
           this.currentPageEvent = this.currentPageEvent + options.direction;
           if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterEvent = { currentPage: this.currentPageEvent };
+          filterEvent = { ...filterEvent, currentPage: this.currentPageEvent };
         }
       }),
       switchMap(() => this.eventService.list(filterEvent)),

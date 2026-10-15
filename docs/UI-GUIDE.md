@@ -165,6 +165,9 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
+| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | expert-mode gating, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
+| `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid`; `monitoring/engine-monitoring` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks, engine status/alarms/events paging |
+| `shared/wizard/extension-add(-wizard)`, `shared/component/*` specs | zip analysis and upload/update flow, confirmation dialog, renderers, Formly switch |
 
 Conventions:
 
@@ -174,10 +177,11 @@ Conventions:
 - Spy on `window.fetch` for GitHub code (see `github-release.service.spec.ts`).
 - Do not leave specs without expectations; the runner warns about them.
 
-Status: all services under `src/shared/` and the EPL config service have specs (about 400 specs, ~81% line
-coverage of the files that are loaded; that figure excludes files without any spec). Components without specs:
-`extension-add`, both block grids, `extension-card`, `extension-details`, `engine-monitoring`, the release
-wizard/list, the create-extension and editor modals, `extension-list`, and the small renderers/modals.
+Status: every service and component has a spec (about 580 specs, ~96% line coverage). The only files without specs are
+bootstrap/entry files (`main.ts`, `bootstrap.ts`, `polyfills.ts`, `i18n.ts`, `app.config.ts`), the plugin module and barrel
+files. Component specs replace the template and test component logic (renderers and the Formly list field render their
+real templates); full DOM/template integration is not covered. `angular.json` maps `.ttf/.woff` to the `file` loader so
+specs can import components that pull in the Monaco editor.
 There are no E2E tests.
 
 ---

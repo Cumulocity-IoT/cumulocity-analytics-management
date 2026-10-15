@@ -22,7 +22,6 @@ import { Component, OnInit } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
 import { CoreModule } from '@c8y/ngx-components';
-import { gettext } from '@c8y/ngx-components/gettext';
 import { AnalyticsService, CepExtension, PAGE_LABELS, ROUTES } from '../shared';
 
 @Component({
@@ -139,9 +138,9 @@ export class ExtensionDetailsComponent implements OnInit {
 
   private setBreadcrumbConfig() {
     this.breadcrumbConfig = {
-      icon: 'c8y-modules',
-      label: gettext('Extensions'),
-      path: 'c8y-pkg-analytics-extension/manage'
+      icon: 'plugin',
+      label: PAGE_LABELS.extensions,
+      path: ROUTES.manage
     };
   }
 }

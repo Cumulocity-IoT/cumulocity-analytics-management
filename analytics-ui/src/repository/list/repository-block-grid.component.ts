@@ -267,7 +267,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       setTimeout(() => {
         this.dataGrid.setItemsSelected(invalid, false);
         if (hasInvalidType) {
-          this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!");
+          this.alertService.warning("Only files with extension '.mon', directories or 'extensions.yaml' are selectable!");
         }
       }, 0);
     }
