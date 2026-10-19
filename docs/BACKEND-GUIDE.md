@@ -95,7 +95,7 @@ Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (loca
 | GET | `/repository/contentList?url=&repository_id=` | GitHub directory listing for a web URL |
 | GET | `/repository/content?url=&repository_id=[&extract_fqn_cep_block=true&cep_block_name=]` | File content or the fully qualified block name |
 | POST | `/extension/repository` | Build from a whole repository path |
-| POST | `/extension/list` | Build from exactly one file or directory (`monitors[0]`) |
+| POST | `/extension/list` | Build from one or more files or directories (`monitors`) |
 | POST | `/extension/yaml` | Build one extension per section of a YAML spec |
 | DELETE | `/extension/{id}` | Delete by managed object id |
 | DELETE | `/extension?name=` | Delete all extensions with that name |

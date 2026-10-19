@@ -16,6 +16,7 @@ import {
   catchError,
   distinctUntilChanged,
   map,
+  pairwise,
   shareReplay,
   switchMap,
   take,
@@ -124,6 +125,17 @@ export class RepositoryService implements OnDestroy {
     private readonly extensionBuilderService: ExtensionBuilderService
   ) {
     this.initialLoad = this.initializeRepositories();
+
+    // When a correlator restart completes, the deployed blocks may have changed
+    // (e.g. an extension was deleted): refresh the "installed" status. The
+    // analytics caches are cleared by AnalyticsService itself on the same edge.
+    this.analyticsService.restarting$
+      .pipe(pairwise(), takeUntil(this.destroy$))
+      .subscribe(([was, now]) => {
+        if (was && !now) {
+          this.invalidateCache();
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -345,6 +357,7 @@ export class RepositoryService implements OnDestroy {
       // Don't swallow load failures here (unlike the initial load): otherwise a
       // failed refresh would alert twice and still announce success.
       await lastValueFrom(this.loadRepositoriesFromConfig(false).pipe(take(1)));
+      this.analyticsService.clearAllCaches();
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
@@ -363,6 +376,8 @@ export class RepositoryService implements OnDestroy {
 
   /** Reload repository items (clears cache and triggers refresh) */
   reload(): void {
+    // "Installed" is derived from the deployed blocks, which are cached separately
+    this.analyticsService.clearAllCaches();
     this.invalidateCache();
   }
 

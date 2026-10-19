@@ -192,6 +192,31 @@ class TestRepositories:
         tenant.tenant_options.get_value.return_value = json.dumps({"accessToken": "t"})
         assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "t"
 
+    def test_load_repository_falls_back_to_global_token(self, agent, tenant):
+        async def get_value(category, key):
+            if category == C8YAgent.CATEGORY:
+                return json.dumps({"name": "n"})
+            assert (category, key) == (C8YAgent.SETTINGS_CATEGORY, C8YAgent.GLOBAL_ACCESS_TOKEN_KEY)
+            return "global"
+
+        tenant.tenant_options.get_value.side_effect = get_value
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "global"
+        # the masked/display variant never leaks or substitutes the global token
+        assert agent.load_repository(REQ, "x")["accessToken"] == ""
+
+    def test_load_repository_own_token_wins_over_global(self, agent, tenant):
+        tenant.tenant_options.get_value.return_value = json.dumps({"accessToken": "own"})
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "own"
+
+    def test_load_repository_without_any_token(self, agent, tenant):
+        async def get_value(category, key):
+            if category == C8YAgent.CATEGORY:
+                return json.dumps({"name": "n"})
+            raise KeyError(key)
+
+        tenant.tenant_options.get_value.side_effect = get_value
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == ""
+
     def test_update_deletes_repositories_not_in_request(self, agent, tenant, monkeypatch):
         tenant.tenant_options.get_values.return_value = {"old": "{}", "keep": "{}"}
         saved = []
@@ -338,3 +363,20 @@ class TestExecute:
 
         with pytest.raises(C8YAgentError, match="authenticate"):
             C8YAgent()._execute(request, work)
+
+
+class TestCepErrorLogging:
+    def test_gateway_error_is_a_short_warning(self, agent, tenant, caplog):
+        tenant.get.side_effect = ValueError('Invalid GET request. Status: 502, Response:\n {"error":"x"}')
+        with caplog.at_level("WARNING"):
+            assert agent.get_cep_ctrl_status(REQ) is None
+        record = caplog.records[-1]
+        assert record.levelname == "WARNING"
+        assert "HTTP 502" in record.getMessage()
+        assert '"error"' not in record.getMessage()
+
+    def test_other_errors_stay_errors(self, agent, tenant, caplog):
+        tenant.get.side_effect = ValueError("Invalid GET request. Status: 500, Response: boom")
+        with caplog.at_level("WARNING"):
+            agent.get_cep_ctrl_status(REQ)
+        assert caplog.records[-1].levelname == "ERROR"

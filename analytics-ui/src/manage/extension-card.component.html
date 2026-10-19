@@ -1,4 +1,4 @@
-<div class="card pointer card--d-col">
+<div class="card pointer card--d-col" [class.suspected-cause]="extension['suspectedCause']">
   <div (click)="detail()" class="card-block text-center card-column-20">
     <div class="card-appicon">
       <c8y-app-icon [app]="$any(extension)" [contextPath]="extension['contextPath']" [name]="extension['name']"></c8y-app-icon>
@@ -8,12 +8,12 @@
     </span>
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
-    <div class="text-center">
+    <div class="text-center m-b-4">
       <span [class]="extension['loaded'] === true ? 'label label-success' : 'label label-warning'">
         {{ (extension['loaded'] === true ? 'Loaded' : 'Not loaded') | translate }}
       </span>
     </div>
-    <div class="text-center">
+    <div class="text-center m-b-4">
       <span [class]="extension['build_information'] ? 'label label-primary' : 'label label-default'">
         {{ 'Build type: ' + getBuildType() | translate }}
       </span>
@@ -36,6 +36,16 @@
     }
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
+    @if (extension['suspectedCause']) {
+      <div class="text-center m-b-8">
+        <span class="label label-danger" title="{{ 'Last updated extension, the usual cause of safe mode' | translate }}">
+          {{ 'Suspected cause' | translate }}
+        </span>
+        <button class="label label-danger suspect-delete m-l-4" (click)="delete()">
+          <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+        </button>
+      </div>
+    }
     <div class="text-center m-b-8">
       <span>{{ extension['lastUpdated'] | c8yDate: 'medium' }}</span>
     </div>

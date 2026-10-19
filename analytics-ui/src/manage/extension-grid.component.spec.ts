@@ -51,6 +51,7 @@ describe('ExtensionGridComponent', () => {
       'getCacheReloadRequests$',
       'clearAllCaches',
       'getEnrichedExtensions',
+      'getCepStatus',
       'restartCepEngine',
       'isExpectedTransientError',
       'uploadExtension'
@@ -58,6 +59,7 @@ describe('ExtensionGridComponent', () => {
     analytics.getCepOperationObjectStream$.and.returnValue(cep$);
     analytics.getCacheReloadRequests$.and.returnValue(cacheReload$);
     analytics.getEnrichedExtensions.and.resolveTo([mo('1'), mo('2')]);
+    analytics.getCepStatus.and.resolveTo({} as never);
     analytics.isExpectedTransientError.and.returnValue(false);
     alerts = jasmine.createSpyObj<AlertService>('AlertService', ['add']);
     wizard = jasmine.createSpyObj<WizardModalService>('WizardModalService', ['show']);
@@ -112,6 +114,57 @@ describe('ExtensionGridComponent', () => {
       tick(100);
       flush();
       expect(values).toEqual([null, [mo('1'), mo('2')]]);
+    }));
+
+    it('does not blame an extension that was last updated long ago', fakeAsync(async () => {
+      cep$.next(cepObject('UP', true));
+      analytics.getEnrichedExtensions.and.resolveTo([
+        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject
+      ]);
+      await create();
+      const values = collect();
+      tick(100);
+      flush();
+      const last = values[values.length - 1] as IManagedObject[];
+      expect(last[0]['suspectedCause']).toBe(false);
+    }));
+
+    it('detects safe mode from the engine status when the operation object lacks the flag', async () => {
+      analytics.getCepStatus.and.resolveTo({ is_safe_mode: true } as never);
+      await create();
+      const modes: boolean[] = [];
+      component.isSafeMode$.subscribe(m => modes.push(m));
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(modes).toEqual([false, true]);
+    });
+
+    it('marks every extension as not loaded while the engine is in safe mode', fakeAsync(async () => {
+      cep$.next(cepObject('UP', true));
+      analytics.getEnrichedExtensions.and.resolveTo([
+        { ...mo('1'), loaded: true, blocksCount: 3 } as IManagedObject
+      ]);
+      await create();
+      const values = collect();
+      tick(100);
+      flush();
+      const last = values[values.length - 1] as IManagedObject[];
+      expect(last[0]['loaded']).toBe(false);
+      expect(last[0]['blocksCount']).toBe(0);
+    }));
+
+    it('flags the most recently updated extension as the suspected cause in safe mode', fakeAsync(async () => {
+      cep$.next(cepObject('UP', true));
+      analytics.getEnrichedExtensions.and.resolveTo([
+        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject,
+        { ...mo('2'), lastUpdated: new Date(Date.now() - 3600000).toISOString() } as IManagedObject
+      ]);
+      await create();
+      const values = collect();
+      tick(100);
+      flush();
+      const last = values[values.length - 1] as IManagedObject[];
+      expect(last.map(e => e['suspectedCause'])).toEqual([false, true]);
     }));
 
     it('keeps a genuinely empty list distinct from "not yet known"', fakeAsync(async () => {

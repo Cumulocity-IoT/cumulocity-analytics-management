@@ -64,6 +64,20 @@
 </c8y-action-bar-item>
 
 <!-- Content -->
+@if (isSafeMode$ | async) {
+  <div class="alert alert-warning m-b-16 safe-mode-banner" role="alert">
+    <strong>{{ 'The correlator is in safe mode.' | translate }}</strong>
+    {{
+      'It restarted repeatedly, so no extensions are loaded. The extension that was added or updated last is the most likely cause; it is marked below. Delete or fix it, then restart to leave safe mode.'
+        | translate
+    }}
+    <a
+      href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+      target="_blank">
+      {{ 'Learn more' | translate }}
+    </a>
+  </div>
+}
 @if (cepStatus$ | async; as status) {
   <!-- CEP Down -->
   @if (status === 'down') {

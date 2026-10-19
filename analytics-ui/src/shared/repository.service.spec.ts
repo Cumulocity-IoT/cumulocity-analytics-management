@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { AlertService } from '@c8y/ngx-components';
-import { firstValueFrom, of, throwError } from 'rxjs';
+import { BehaviorSubject, firstValueFrom, of, throwError } from 'rxjs';
 import { CepBlock, Repository, RepositoryItem } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { ExtensionBuilderService } from './extension-builder.service';
@@ -19,6 +19,7 @@ const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('RepositoryService', () => {
   let analytics: jasmine.SpyObj<AnalyticsService>;
+  let restarting$: BehaviorSubject<boolean>;
   let alerts: jasmine.SpyObj<AlertService>;
   let mode: jasmine.SpyObj<RepositoryModeService>;
   let config: jasmine.SpyObj<RepositoryConfigService>;
@@ -37,7 +38,9 @@ describe('RepositoryService', () => {
   };
 
   beforeEach(() => {
-    analytics = jasmine.createSpyObj('AnalyticsService', ['getDeployedBlocks']);
+    restarting$ = new BehaviorSubject<boolean>(false);
+    analytics = jasmine.createSpyObj('AnalyticsService', ['getDeployedBlocks', 'clearAllCaches']);
+    (analytics as any).restarting$ = restarting$;
     analytics.getDeployedBlocks.and.resolveTo([]);
     alerts = jasmine.createSpyObj('AlertService', ['success', 'danger']);
     mode = jasmine.createSpyObj('RepositoryModeService', ['isBackendMode']);
@@ -282,6 +285,8 @@ describe('RepositoryService', () => {
       items.invalidateCache.calls.reset();
       service.reload();
       expect(items.invalidateCache).toHaveBeenCalled();
+      // "installed" comes from the deployed blocks, cached outside the item cache
+      expect(analytics.clearAllCaches).toHaveBeenCalled();
 
       config.fetchRepositories.and.resolveTo([repo('y')]);
       await service.reloadAll();
@@ -405,6 +410,15 @@ describe('RepositoryService', () => {
       expect(builder.createExtensionFromYaml).toHaveBeenCalledWith('E', yaml, ['S'], r, false, false, false);
       expect(builder.createExtensionFromRepository).toHaveBeenCalledWith('E', r, false, true, false);
     });
+  });
+
+  it('refreshes the items when a correlator restart completes, not when it starts', async () => {
+    await create();
+    items.invalidateCache.calls.reset();
+    restarting$.next(true);
+    expect(items.invalidateCache).not.toHaveBeenCalled();
+    restarting$.next(false);
+    expect(items.invalidateCache).toHaveBeenCalled();
   });
 
   it('invalidates the item cache when destroyed', async () => {

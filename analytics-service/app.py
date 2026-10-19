@@ -437,15 +437,15 @@ def create_extension_from_repository():
 @handle_errors
 def create_extension_from_list():
     """
-    Create an Apama extension from a single file or directory.
+    Create an Apama extension from one or more files or directories.
     
-    Downloads a specific file (.mon) or directory from the repository and builds it
-    into an extension.
+    Downloads the selected files (.mon) and/or directories from the repository and
+    builds them into a single extension.
     
     Request Body:
         {
             "extension_name": "MyExtension",     // Required: Name for the extension
-            "monitors": [                         // Required: Array with exactly one item
+            "monitors": [                         // Required: Array with at least one item
                 {
                     "url": "https://api.github.com/repos/.../MyBlock.mon",
                     "name": "MyBlock",
@@ -461,15 +461,17 @@ def create_extension_from_list():
         }
     
     Behavior:
-        - monitors must contain exactly one item (file or directory)
+        - monitors must contain at least one item (file or directory)
         - If type="file": Downloads single .mon file
         - If type="dir": Downloads entire directory recursively
+        - All items are merged into the same build directory; on a name clash
+          the later item overwrites the earlier one
         - rebuild behavior same as /extension/repository
     
     Returns:
         200: Success (download mode)
         201: Success (upload mode)
-        400: Invalid request (wrong number of monitors, build failed)
+        400: Invalid request (no monitors, build failed)
         404: Repository not found OR rebuild requested but no existing extension found
         
     Response Body (upload mode):
@@ -502,8 +504,8 @@ def create_extension_from_list():
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
-    if len(monitors) != 1:
-        return create_error_response("Exactly one monitor is required", 400)
+    if not isinstance(monitors, list) or not monitors:
+        return create_error_response("At least one monitor is required", 400)
     if not repository or not repository.get("id"):
         return create_error_response("Parameter repository with id is required", 400)
 
@@ -531,21 +533,20 @@ def create_extension_from_list():
             logger.error(error_msg)
             return create_error_response(error_msg, 400)
 
-    monitor = monitors[0]
-
-    if monitor.get("type") == "dir":
-        # Directory selections recurse through the whole subtree, so use a single
-        # Git Trees API listing instead of one Content API request per directory.
-        def source_fetcher(work_dir, headers):
-            web_url = content_api_to_github_web_url(monitor["url"])
-            parsed = parse_github_web_url(web_url)
-            _download_directory_via_tree(
-                parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"],
-                headers, work_dir,
-            )
-    else:
-        def source_fetcher(work_dir, headers):
-            _download_github_content(monitor["url"], headers, work_dir)
+    def source_fetcher(work_dir, headers):
+        for monitor in monitors:
+            if monitor.get("type") == "dir":
+                # Directory selections recurse through the whole subtree, so use a
+                # single Git Trees API listing instead of one Content API request
+                # per directory.
+                web_url = content_api_to_github_web_url(monitor["url"])
+                parsed = parse_github_web_url(web_url)
+                _download_directory_via_tree(
+                    parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"],
+                    headers, work_dir,
+                )
+            else:
+                _download_github_content(monitor["url"], headers, work_dir)
 
     return _build_and_process_extension(
         extension_name=extension_name,

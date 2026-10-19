@@ -93,8 +93,8 @@ name first; `404` if none exists).
 Builds from the whole repository path configured in `repository.id`.
 
 ### `POST /extension/list`
-Additionally requires `monitors`: an array with **exactly one** `{url, name, type}` where `url` is a GitHub
-Contents API URL and `type` is `file` or `dir`. The monitor is stored in the extension's build information.
+Additionally requires `monitors`: an array with **one or more** `{url, name, type}` where `url` is a GitHub
+Contents API URL and `type` is `file` or `dir`. The monitors are stored in the extension's build information.
 
 ### `POST /extension/yaml`
 Body: `yaml: {url}` (raw URL of the YAML file), optional `sections` (names; empty = all), plus the common fields.

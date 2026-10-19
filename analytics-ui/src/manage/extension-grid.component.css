@@ -2,3 +2,11 @@
 .safe-mode-pulse {
   animation-duration: var(--c8y-animation-duration, 1.5s);
 }
+
+/* The content area can be a flex container; make the banner span its full width. */
+.safe-mode-banner {
+  flex: 0 0 100%;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}

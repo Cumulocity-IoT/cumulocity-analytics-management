@@ -5,6 +5,7 @@ import {
   IResult,
 } from '@c8y/client';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { pairwise } from 'rxjs/operators';
 import {
   CepBlock,
   CepExtension,
@@ -60,6 +61,17 @@ export class AnalyticsService {
     this.extensionChanged$ = this.extensionInventoryService.extensionChanged$;
     this.uploadProgress$ = this.extensionInventoryService.uploadProgress$;
     this.restarting$ = this.cepRestartService.restarting$;
+    // The correlator's deployed blocks/extensions only reflect an upload or
+    // delete once it has restarted. Caches filled before that (the delete itself
+    // clears them while the old state is still served) would keep reporting
+    // removed blocks as installed, so drop them when the restart completes.
+    this.restarting$
+      .pipe(pairwise())
+      .subscribe(([was, now]) => {
+        if (was && !now) {
+          this.clearAllCaches();
+        }
+      });
   }
 
   // ============================================================================

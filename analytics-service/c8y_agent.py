@@ -4,6 +4,7 @@ Cumulocity IoT Agent for managing tenants, repositories, and CEP operations.
 
 import asyncio
 import json
+import re
 import logging
 from typing import Dict, List, Optional, Tuple
 
@@ -34,6 +35,10 @@ class C8YAgent:
     # Constants
     DUMMY_ACCESS_TOKEN = "_DUMMY_ACCESS_CODE_"
     CATEGORY = "analytics-management.repository"
+    # Global PAT written by the UI ("Manage repositories"), used by every
+    # repository that has no token of its own.
+    SETTINGS_CATEGORY = "analytics-management.settings"
+    GLOBAL_ACCESS_TOKEN_KEY = "globalAccessToken"
     PATHS = {
         "CEP_DIAGNOSTICS": "/service/cep/diagnostics/apamaCtrlStatus",
         "CEP_RESTART": "/service/cep/restart",
@@ -191,6 +196,24 @@ class C8YAgent:
         except Exception as e:
             self._logger.warning(f"CEP restart failed (non-critical): {e}")
 
+    _GATEWAY_STATUS_RE = re.compile(r"Status: (502|503|504)\b")
+
+    def _log_cep_error(self, message: str, error: Exception) -> None:
+        """Log a CEP lookup failure; a gateway error is expected during restarts.
+
+        While the apama-ctrl microservice restarts, the platform answers every
+        diagnostics call with 502/503/504, and the UI polls continuously, so
+        that is one short warning instead of an ERROR with the response body.
+        """
+        match = self._GATEWAY_STATUS_RE.search(str(error))
+        if match:
+            self._logger.warning(
+                f"{message}: CEP not reachable (HTTP {match.group(1)}), "
+                "expected while it restarts"
+            )
+        else:
+            self._logger.error(f"{message}: {error}")
+
     def get_cep_operationobject_id(self, request) -> Optional[Dict[str, str]]:
         """Get CEP operation object ID."""
 
@@ -213,7 +236,7 @@ class C8YAgent:
         try:
             return self._execute(request, _work)
         except Exception as e:
-            self._logger.error(f"Failed to get CEP operation object ID: {e}")
+            self._log_cep_error("Failed to get CEP operation object ID", e)
             return None
 
     def get_cep_ctrl_status(self, request) -> Optional[Dict]:
@@ -225,7 +248,7 @@ class C8YAgent:
         try:
             return self._execute(request, _work)
         except Exception as e:
-            self._logger.error(f"Failed to get CEP status: {e}")
+            self._log_cep_error("Failed to get CEP status", e)
             return None
 
     # ============================================================================
@@ -251,7 +274,10 @@ class C8YAgent:
 
         async def _work(tenant):
             value = await tenant.tenant_options.get_value(self.CATEGORY, repository_id)
-            return self._parse_repository_value(value, repository_id, replace_access_token)
+            repo = self._parse_repository_value(value, repository_id, replace_access_token)
+            if not repo["accessToken"] and not replace_access_token:
+                repo["accessToken"] = await self._get_global_access_token(tenant)
+            return repo
 
         try:
             return self._execute(request, _work)
@@ -293,6 +319,15 @@ class C8YAgent:
     # ============================================================================
     # Private Helpers
     # ============================================================================
+
+    async def _get_global_access_token(self, tenant) -> str:
+        """The tenant-wide fallback PAT, or '' if none is set."""
+        try:
+            return await tenant.tenant_options.get_value(
+                self.SETTINGS_CATEGORY, self.GLOBAL_ACCESS_TOKEN_KEY
+            ) or ""
+        except KeyError:
+            return ""
 
     async def _load_repositories(self, tenant) -> List[Dict]:
         """Load all repositories for the configured category as parsed dicts."""
