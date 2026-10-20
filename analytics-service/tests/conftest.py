@@ -41,7 +41,7 @@ def client(agent_mock):
 
 @pytest.fixture
 def fake_response():
-    """Factory for minimal `requests.Response` look-alikes."""
+    """Factory for minimal `requests.Response` look-alike."""
 
     def _make(status=200, json_data=None, text="", content=None, headers=None):
         resp = MagicMock()
