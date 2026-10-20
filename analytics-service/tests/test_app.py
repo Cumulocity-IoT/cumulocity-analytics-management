@@ -510,6 +510,21 @@ class TestExtensionFromList:
         body["monitors"] = monitors
         assert client.post(self.URL, json=body).status_code == 400
 
+    @pytest.mark.parametrize("monitor", [
+        None,
+        "x",
+        {},
+        {"url": 5},
+        {"url": "https://evil.example.com/o/r/contents/A.mon"},
+        {"url": "http://api.github.com/repos/o/r/contents/A.mon"},
+        {"url": "https://api.github.com/repos/other/r/contents/A.mon"},
+        {"url": "https://api.github.com/repos/o/r/contents/A.mon", "type": "bogus"},
+    ])
+    def test_rejects_invalid_or_foreign_monitors(self, client, agent_mock, monitor):
+        agent_mock.load_repository.return_value = REPO
+        resp = client.post(self.URL, json=self._body(monitors=[monitor]))
+        assert resp.status_code == 400
+
     def test_file_upload_records_monitors_in_build_info(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
         agent_mock.upload_extension.return_value = "7"

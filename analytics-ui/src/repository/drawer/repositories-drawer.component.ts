@@ -40,7 +40,7 @@ export class RepositoriesDrawerComponent implements OnInit {
     // Store original form values to detect changes
     originalFormValues: any = null;
 
-    popupPAT = 'Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!';
+    popupPAT = 'Enter Personal Access Token (PAT) created <a href="https://github.com/settings/tokens/new" target="_blank" rel="noopener noreferrer">here</a>. Select the scope <code>public_repo</code> and enable SSO for the token!';
 
     GITHUB_API = 'https://api.github.com/repos/';
     GITHUB_URL = 'https://github.com/';

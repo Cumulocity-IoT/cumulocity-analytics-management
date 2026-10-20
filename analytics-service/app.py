@@ -506,12 +506,21 @@ def create_extension_from_list():
         return create_error_response(name_error, 400)
     if not isinstance(monitors, list) or not monitors:
         return create_error_response("At least one monitor is required", 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(repository, dict) or not repository.get("id"):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
         return create_error_response("Repository not found", 404)
+
+    for monitor in monitors:
+        if not isinstance(monitor, dict):
+            return create_error_response("Each monitor must be an object with a url", 400)
+        if monitor.get("type", "file") not in ("file", "dir"):
+            return create_error_response("Monitor type must be 'file' or 'dir'", 400)
+        url_error = _url_error_for_repository(monitor.get("url"), repo_config)
+        if url_error:
+            return create_error_response(f"Monitor {url_error}", 400)
 
     # Handle rebuild
     if rebuild:
@@ -684,6 +693,10 @@ def create_extension_from_yaml():
     if not repo_config:
         return create_error_response("Repository not found", 404)
 
+    url_error = _url_error_for_repository(yaml_data.get("url"), repo_config)
+    if url_error:
+        return create_error_response(f"Yaml {url_error}", 400)
+
     return _process_yaml_sections(
         yaml_data=yaml_data,
         sections=sections,
@@ -783,6 +796,30 @@ def _is_github_url(url: str) -> bool:
     """True only for https URLs on GitHub hosts (the PAT must never be sent elsewhere)."""
     parsed = urllib.parse.urlparse(url)
     return parsed.scheme == "https" and parsed.hostname in _ALLOWED_GITHUB_HOSTS
+
+
+def _github_owner_repo(url: str) -> Optional[tuple]:
+    """(owner, repo) of a GitHub web, content-API or raw URL, lower-cased; None if not derivable."""
+    parsed = urllib.parse.urlparse(url)
+    parts = [p for p in parsed.path.split("/") if p]
+    if parsed.hostname == "api.github.com":
+        parts = parts[1:] if parts[:1] == ["repos"] else []
+    if len(parts) < 2:
+        return None
+    return parts[0].lower(), parts[1].lower()
+
+
+def _url_error_for_repository(url, repo_config: Dict) -> Optional[str]:
+    """Error message unless ``url`` is an https GitHub URL inside the configured repository.
+
+    Requests to these URLs carry the repository's PAT, so they must not be able to
+    point at another host or another GitHub repository.
+    """
+    if not isinstance(url, str) or not _is_github_url(url):
+        return "url must be an https GitHub url"
+    if _github_owner_repo(url) != _github_owner_repo(repo_config.get("url", "")):
+        return "url must belong to the configured repository"
+    return None
 
 
 _VALID_EXTENSION_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")

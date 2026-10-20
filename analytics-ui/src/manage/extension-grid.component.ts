@@ -132,9 +132,16 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     // Extract safe mode
     // The operation object does not always carry the flag; the engine status
     // endpoint (the one the Monitoring tab shows) is the reliable source.
+    // Realtime updates re-emit the object often; only re-query when the engine
+    // status or the flag actually changes.
     this.isSafeMode$ = cepObject$.pipe(
-      switchMap(mo =>
-        mo?.['c8y_Status']?.['is_safe_mode'] === true
+      map(mo => ({
+        flag: mo?.['c8y_Status']?.['is_safe_mode'] === true,
+        status: mo?.['c8y_Status']?.['status']
+      })),
+      distinctUntilChanged((a, b) => a.flag === b.flag && a.status === b.status),
+      switchMap(({ flag }) =>
+        flag
           ? of(true)
           : from(this.analyticsService.getCepStatus().then(status => status?.is_safe_mode === true)).pipe(
               catchError(() => of(false)),

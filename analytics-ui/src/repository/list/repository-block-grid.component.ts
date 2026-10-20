@@ -33,11 +33,15 @@ import {
   Pagination,
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
-import {BooleanRendererComponent,
+import {
+  BooleanRendererComponent,
   DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
-  RepositoryService, PAGE_LABELS, ROUTES } from '../../shared';
+  RepositoryService,
+  PAGE_LABELS,
+  ROUTES
+} from '../../shared';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
 import { catchError, of } from 'rxjs';
 import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';

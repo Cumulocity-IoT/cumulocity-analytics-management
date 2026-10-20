@@ -14,7 +14,7 @@
   <c8y-action-bar-item [placement]="'left'">
     <a
       href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
-      target="_blank"
+      target="_blank" rel="noopener noreferrer"
       class="safe-mode-warning">
       <i c8yIcon="warning" class="animated fadeIn infinite safe-mode-pulse"></i>
       <span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' | translate }}</span>
@@ -27,7 +27,7 @@
   @if (cepStatus$ | async; as status) {
     <div class="c8y-realtime p-r-8">
       <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
-      <a [href]="getCepMicroserviceUrl()" target="_blank" class="m-l-4">
+      <a [href]="getCepMicroserviceUrl()" target="_blank" rel="noopener noreferrer" class="m-l-4">
         {{ 'Streaming Analytics' | translate }}
       </a>
     </div>
@@ -73,7 +73,7 @@
     }}
     <a
       href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
-      target="_blank">
+      target="_blank" rel="noopener noreferrer">
       {{ 'Learn more' | translate }}
     </a>
   </div>
