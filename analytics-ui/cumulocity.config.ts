@@ -59,10 +59,17 @@ export default {
         to: 'resources/images/extension-update-modal.png',
       },
       {
-        from: '../resources/images-optimized/extension-safe-mode.png',
-        to: 'resources/images/extension-safe-mode.png',
+        from: '../resources/images-optimized/extension-safe-mode-complete.png',
+        to: 'resources/images/extension-safe-mode-complete.png',
       },
-
+      {
+        from: '../resources/images-optimized/repository-access-denied.png',
+        to: 'resources/images/repository-access-denied.png',
+      },
+      {
+        from: '../resources/images-optimized/repository-personal-access-token.png',
+        to: 'resources/images/repository-personal-access-token.png',
+      },
       {
         from: '../resources/images-optimized/block-use-in-model.png',
         to: 'resources/images/block-use-in-model.png',
