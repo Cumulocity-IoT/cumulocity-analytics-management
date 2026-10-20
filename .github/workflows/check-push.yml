@@ -4,13 +4,12 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - '**'
+      - main
   pull_request:
 
+# Checks only read the repository.
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: check-${{ github.workflow }}-${{ github.ref }}
@@ -20,12 +19,13 @@ jobs:
   typos:
     name: Spell Check with Typos
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - name: Checkout Actions Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Check spelling
-        uses: crate-ci/typos@master
+        uses: crate-ci/typos@v1
 
   ui:
     name: UI - lint, naming, tests

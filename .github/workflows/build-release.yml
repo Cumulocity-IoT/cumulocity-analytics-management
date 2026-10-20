@@ -1,53 +1,43 @@
-# This workflow will build a plugin to upload analytics extensions (Aanalytics Builder))
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
+# Builds the web plugin and the analytics-ext-service microservice and attaches
+# both archives to the GitHub release of the pushed tag (v*).
+# Tags with a suffix (e.g. v2.8.0-rc.1) are published as pre-releases.
 
 name: Build Plugin
 
 on:
   workflow_dispatch:
   push:
-    # Sequence of patterns matched against refs/tags
     tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-    # branches:
-    #   - main
-    #   - next
-    #   - beta
-    #   - '*.x'
-    #   - '*.*.x'
+      - 'v*' # v1.0, v20.15.10, v2.8.0-rc.1, ...
 
+# Least privilege by default; only the release job may write.
 permissions:
-  contents: write
-  issues: write
-  pull-requests: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  # This workflow contains a single job called "build"
   build_ui:
-    # The type of runner that the job will run on
+    name: Build UI plugin
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./analytics-ui
     outputs:
       version: ${{ steps.save-version.outputs.version }}
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
       - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
-          ref: ${{ github.ref_name }}
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
           cache: 'npm'
-          cache-dependency-path: '**/package-lock.json'
+          cache-dependency-path: analytics-ui/package-lock.json
 
       - name: Sync package.json version with tag
         if: startsWith(github.ref, 'refs/tags/v')
@@ -59,13 +49,16 @@ jobs:
 
       - name: Save Version
         id: save-version
-        run: echo "version=$(cat package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
+        run: echo "version=$(jq -r '.version' package.json)" >> "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci
 
-      # - name: Linting
-      #   run: npm run lint
+      - name: Lint
+        run: npm run lint:check
+
+      - name: Unit tests
+        run: npm run test:ci
 
       - name: Build
         run: npm run build
@@ -73,11 +66,7 @@ jobs:
       - name: Zip build
         run: |
           cd dist/c8y-pkg-analytics-extension
-          zip -r -q ../../build.zip *
-          cd ../../..
-        # ls analytics-ui/
-        # ls analytics-ui/dist/
-        # rm -r dist/*
+          zip -r -q ../../build.zip .
 
       - name: Upload build artifact UI
         uses: actions/upload-artifact@v4
@@ -85,89 +74,81 @@ jobs:
           name: build-artifact-ui
           if-no-files-found: error
           retention-days: 1
-          path: |
-           analytics-ui/build.zip
-  build_service:
-    needs: [build_ui]
+          path: analytics-ui/build.zip
 
-    # The type of runner that the job will run on
+  build_service:
+    name: Build backend microservice
+    needs: [build_ui]
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: ./analytics-service
-        
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-      # start building backend
-      # - name: Save Version
-      #   id: save-version
-      #   run: echo "version=$(cat ../analytics-ui/package.json | jq '.version' | xargs)" >> $GITHUB_OUTPUT
-
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          fetch-depth: 0
-          ref: ${{ github.ref_name }}
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: analytics-service/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Unit tests
+        run: python -m pytest
 
       - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@v2
+        uses: docker/setup-buildx-action@v3
 
       - name: Build backend
-        run: |
-          ./build.sh ${{ needs.build_ui.outputs.version }}
+        run: ./build.sh "${{ needs.build_ui.outputs.version }}"
+
       - name: Upload build artifact service
         uses: actions/upload-artifact@v4
         with:
           name: build-artifact-service
           if-no-files-found: error
           retention-days: 1
-          path: |
-            ./analytics-service/dist/analytics-ext-service.zip
+          path: analytics-service/dist/analytics-ext-service.zip
+
   release-assets:
-    needs: [build_ui, build_service]
-    # if: ${{ needs.release.outputs.initial-version != needs.release.outputs.version }}
     name: Release assets
+    needs: [build_ui, build_service]
+    # workflow_dispatch runs have no tag to attach assets to
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: write
     steps:
       - name: Download artifact service
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-service
-          path: |
-            ./analytics-service
-      - name: Debug file 
-        run: | 
-          ls -lah ./analytics-service
-          pwd
-      - name: Release Backend
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            ./analytics-service/*.zip
-          tag_name: ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
+          path: release
 
-      - name: Download build artifact UI
+      - name: Download artifact UI
         uses: actions/download-artifact@v4
         with:
           name: build-artifact-ui
-          path: |
-           ./analytics-ui
-      - name: Rename file
+          path: release
+
+      - name: Rename UI archive
         run: |
-          # Strip leading "v" from the triggering tag to produce a clean asset name,
-          # e.g. tag "v2.8.0-rc.1" -> "c8y-pkg-analytics-extension-2.8.0-rc.1.zip"
+          # Tag "v2.8.0-rc.1" -> "c8y-pkg-analytics-extension-2.8.0-rc.1.zip"
           REF_VERSION="${GITHUB_REF_NAME#v}"
-          mv ./analytics-ui/build.zip ./analytics-ui/c8y-pkg-analytics-extension-${REF_VERSION}.zip
-          ls -lah ./analytics-ui
-          pwd
-      - name: Release UI
-        uses: softprops/action-gh-release@v1
+          mv release/build.zip "release/c8y-pkg-analytics-extension-${REF_VERSION}.zip"
+          ls -lah release
+
+      # One release step for both archives: two separate steps race to create the release.
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          files:
-            ./analytics-ui/*.zip
+          files: release/*.zip
           tag_name: ${{ github.ref_name }}
           prerelease: ${{ contains(github.ref_name, '-') }}
+          generate_release_notes: true
