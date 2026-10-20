@@ -7,15 +7,18 @@
     "url": "git@github.com:Cumulocity-IoT/cumulocity-analytics-management.git"
   },
   "scripts": {
+    "prestart": "node scripts/optimize-images.js",
     "start": "ng serve",
     "start:admin": "ng serve --shell administration",
     "start:ab": "ng serve --shell streaminganalytics",
     "start:cockpit": "ng serve --shell cockpit",
+    "prebuild": "node scripts/optimize-images.js",
     "build": "ng build",
     "test": "ng test --watch=false --browsers=ChromeHeadless",
     "test:watch": "ng test",
     "test:coverage": "ng test --watch=false --browsers=ChromeHeadless --code-coverage",
     "test:ci": "ng test --watch=false --browsers=ChromeHeadlessCI --code-coverage",
+    "optimize-images": "node scripts/optimize-images.js",
     "deploy": "ng deploy",
     "format": "prettier --write 'src/**/*.ts'",
     "lint": "eslint --ext .ts,.html . --fix",
@@ -71,6 +74,7 @@
     "karma-jasmine-html-reporter": "~2.1.0",
     "less": "^4.2.0",
     "prettier": "^3.6.2",
+    "sharp": "^0.35.5",
     "typescript": "5.9.3"
   }
 }

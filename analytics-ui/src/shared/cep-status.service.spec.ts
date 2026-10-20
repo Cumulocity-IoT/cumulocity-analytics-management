@@ -155,9 +155,25 @@ describe('CepStatusService', () => {
       applications.isAvailable.and.resolveTo({ data: true } as never);
       const service = await create();
       expect(await service.isBackendServiceAvailable()).toBeTrue();
-      config.getUseBackendServiceEnabled.and.resolveTo(false);
+      await service.setBackendServiceEnabled(false);
       expect(await service.isBackendServiceAvailable()).toBeFalse();
       expect(await service.isBackendServiceDeployed()).toBeTrue(); // deployment state is independent of the preference
+    });
+
+    it('recheckBackendServiceDeployed bypasses the cached deployment probe', async () => {
+      applications.isAvailable.and.resolveTo({ data: false } as never);
+      const service = await create();
+      expect(await service.isBackendServiceDeployed()).toBeFalse();
+      applications.isAvailable.and.resolveTo({ data: true } as never);
+      expect(await service.isBackendServiceDeployed()).toBeFalse(); // still cached
+      expect(await service.recheckBackendServiceDeployed()).toBeTrue();
+    });
+
+    it('caches the preference read until it is changed', async () => {
+      const service = await create();
+      await service.isBackendServiceEnabled();
+      await service.isBackendServiceEnabled();
+      expect(config.getUseBackendServiceEnabled).toHaveBeenCalledTimes(1);
     });
 
     it('setBackendServiceEnabled persists the preference and clears the mode-dependent caches', async () => {

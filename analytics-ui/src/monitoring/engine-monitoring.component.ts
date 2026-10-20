@@ -56,41 +56,9 @@ export class EngineMonitoringComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    const humanize = new HumanizePipe();
-
-    this.init();
     this.loadBackendStatus();
-    const operationObjectId = await this.analyticsService.getCepOperationObjectId();
-    this.cepOperationObjectId = operationObjectId || '';
-    const cepCtrlStatus = await this.analyticsService.getCepStatus();
-    const cepCtrlStatusLabels: any[] = [];
-    Object.keys(cepCtrlStatus).forEach((key) => {
-      if (
-        ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
-      ) {
-        if ('is_safe_mode' === key) {
-          cepCtrlStatusLabels.push({
-            label: humanize.transform(key),
-            type: 'link',
-            value: cepCtrlStatus[key]?.toString() ?? '',
-            // eslint-disable-next-line @typescript-eslint/no-unused-vars
-            action:  (_e: any) =>
-              window.open(
-                'https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode',
-                '_blank',
-                'noopener,noreferrer'
-              )
-          });
-        } else {
-          cepCtrlStatusLabels.push({
-            label: humanize.transform(key),
-            type: 'string',
-            value: cepCtrlStatus[key]
-          });
-        }
-      }
-    });
-    this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
+    await this.init();
+    await this.refreshCepStatusLabels();
 
     let filterAlarm: any = {
       pageSize: 5,
@@ -133,6 +101,39 @@ export class EngineMonitoringComponent implements OnInit {
     this.nextPageEvent$.next({ direction: 0 });
   }
 
+  private async refreshCepStatusLabels(): Promise<void> {
+    const humanize = new HumanizePipe();
+    const cepCtrlStatus = await this.analyticsService.getCepStatus();
+    const cepCtrlStatusLabels: any[] = [];
+    Object.keys(cepCtrlStatus).forEach((key) => {
+      if (
+        ['number_extensions', 'is_safe_mode', 'microservice_name'].includes(key)
+      ) {
+        if ('is_safe_mode' === key) {
+          cepCtrlStatusLabels.push({
+            label: humanize.transform(key),
+            type: 'link',
+            value: cepCtrlStatus[key]?.toString() ?? '',
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            action:  (_e: any) =>
+              window.open(
+                'https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode',
+                '_blank',
+                'noopener,noreferrer'
+              )
+          });
+        } else {
+          cepCtrlStatusLabels.push({
+            label: humanize.transform(key),
+            type: 'string',
+            value: cepCtrlStatus[key]
+          });
+        }
+      }
+    });
+    this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
+  }
+
   private async init() {
     const operationObjectId = await this.analyticsService.getCepOperationObjectId();
     this.cepOperationObjectId = operationObjectId || '';
@@ -145,6 +146,17 @@ export class EngineMonitoringComponent implements OnInit {
     ]);
     this.backendDeployed = deployed;
     this.backendEnabled = enabled;
+  }
+
+  async recheckBackend(): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      this.backendDeployed = await this.analyticsService.recheckBackendServiceDeployed();
+      await this.init();
+      await this.refreshCepStatusLabels();
+    } finally {
+      this.backendTogglePending = false;
+    }
   }
 
   async toggleBackendEnabled(enabled: boolean): Promise<void> {
@@ -160,6 +172,7 @@ export class EngineMonitoringComponent implements OnInit {
       // Status/operation-object reads are mode-dependent — re-fetch so the
       // page reflects whichever endpoint the new mode actually uses.
       await this.init();
+      await this.refreshCepStatusLabels();
     } catch (error) {
       this.backendEnabled = !enabled;
       this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));

@@ -194,6 +194,11 @@ export class AnalyticsService {
     return this.cepStatusService.isBackendServiceDeployed();
   }
 
+  /** Re-probes whether the backend is deployed, bypassing the session cache. */
+  async recheckBackendServiceDeployed(): Promise<boolean> {
+    return this.cepStatusService.recheckBackendServiceDeployed();
+  }
+
   /** The user's "use backend service when deployed" preference. */
   async isBackendServiceEnabled(): Promise<boolean> {
     return this.cepStatusService.isBackendServiceEnabled();

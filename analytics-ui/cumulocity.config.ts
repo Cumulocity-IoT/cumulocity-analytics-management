@@ -47,57 +47,57 @@ export default {
     ],
     copy: [
       {
-        from: '../resources/images/extension-add-extension.png',
-        to: 'resources/images/extension-add-extension.png',
+        from: '../resources/images-optimized/extension-upload.png',
+        to: 'resources/images/extension-upload.png',
       },
       {
-        from: '../resources/images/block-list.png',
+        from: '../resources/images-optimized/block-list.png',
         to: 'resources/images/block-list.png',
       },
       {
-        from: '../resources/images/extension-update-extension-modal.png',
-        to: 'resources/images/extension-update-extension-modal.png',
+        from: '../resources/images-optimized/extension-update-modal.png',
+        to: 'resources/images/extension-update-modal.png',
       },
       {
-        from: '../resources/images/extension-safe-mode.png',
+        from: '../resources/images-optimized/extension-safe-mode.png',
         to: 'resources/images/extension-safe-mode.png',
       },
 
       {
-        from: '../resources/images/use-analytics-builder-block.png',
-        to: 'resources/images/use-analytics-builder-block.png',
+        from: '../resources/images-optimized/block-use-in-model.png',
+        to: 'resources/images/block-use-in-model.png',
       },
       {
-        from: '../resources/images/extension-manage-extension.png',
-        to: 'resources/images/extension-manage-extension.png',
+        from: '../resources/images-optimized/extension-manage.png',
+        to: 'resources/images/extension-manage.png',
       },
       {
-        from: '../resources/images/repository-samples-manage-repository.png',
-        to: 'resources/images/repository-samples-manage-repository.pn',
+        from: '../resources/images-optimized/repository-manage.png',
+        to: 'resources/images/repository-manage.png',
       },
       {
-        from: '../resources/images/repository-samples-view-code-modal.png',
-        to: 'resources/images/repository-samples-view-code-modal.png',
+        from: '../resources/images-optimized/repository-view-code-modal.png',
+        to: 'resources/images/repository-view-code-modal.png',
       },
       {
-        from: '../resources/images/extension-create-extension-modal.png',
-        to: 'resources/images/extension-create-extension-modal.png',
+        from: '../resources/images-optimized/extension-create-modal.png',
+        to: 'resources/images/extension-create-modal.png',
       },
       {
-        from: '../resources/images/plugin-installation.png',
+        from: '../resources/images-optimized/plugin-installation.png',
         to: 'resources/images/plugin-installation.png',
       },
       {
-        from: '../resources/images/use-block-detail.png',
-        to: 'resources/images/use-block-detail.png',
+        from: '../resources/images-optimized/block-example-detail.png',
+        to: 'resources/images/block-example-detail.png',
       },
       {
-        from: '../resources/images/extension-manage-build-information.png',
-        to: 'resources/images/extension-manage-build-information.png',
+        from: '../resources/images-optimized/extension-build-information.png',
+        to: 'resources/images/extension-build-information.png',
       },
       {
-        from: '../resources/images/monitoring-cep.png',
-        to: 'resources/images/monitoring-cep.png',
+        from: '../resources/images-optimized/monitoring-engine.png',
+        to: 'resources/images/monitoring-engine.png',
       },
       {
         from: '../README.md',

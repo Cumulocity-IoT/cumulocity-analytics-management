@@ -32,6 +32,7 @@ export class CepStatusService implements OnDestroy {
   private cachedCepOperationObjectId: Promise<string | undefined> | null = null;
   private cachedCepStatus: Promise<CepStatusObject> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
+  private cachedBackendEnabled: Promise<boolean> | null = null;
 
   private readonly realtime: Realtime;
   private readonly destroy$ = new Subject<void>();
@@ -165,7 +166,10 @@ export class CepStatusService implements OnDestroy {
 
   /** The user's "use backend service" preference — see `USE_BACKEND_SERVICE_OPTION_KEY`. */
   async isBackendServiceEnabled(): Promise<boolean> {
-    return this.repositoryConfigService.getUseBackendServiceEnabled();
+    if (!this.cachedBackendEnabled) {
+      this.cachedBackendEnabled = this.repositoryConfigService.getUseBackendServiceEnabled();
+    }
+    return this.cachedBackendEnabled;
   }
 
   /**
@@ -176,7 +180,19 @@ export class CepStatusService implements OnDestroy {
    */
   async setBackendServiceEnabled(enabled: boolean): Promise<void> {
     await this.repositoryConfigService.setUseBackendServiceEnabled(enabled);
+    this.cachedBackendEnabled = Promise.resolve(enabled);
     this.clearCache();
+  }
+
+  /**
+   * Drops the cached deployment probe (and the mode-dependent caches) so the
+   * next `isBackendServiceDeployed()` call re-checks — for when the
+   * microservice was deployed or removed while the page was open.
+   */
+  recheckBackendServiceDeployed(): Promise<boolean> {
+    this.cachedBackendAvailability = null;
+    this.clearCache();
+    return this.isBackendServiceDeployed();
   }
 
   private async checkBackendServiceAvailable(): Promise<boolean> {

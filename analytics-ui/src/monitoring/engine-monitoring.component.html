@@ -13,7 +13,9 @@
     @if (backendDeployed) {
       <span class="label label-success m-r-16">{{ 'Backend service deployed' | translate }}</span>
     } @else {
-      <span class="label label-default m-r-16">{{ 'Backend service not deployed' | translate }}</span>
+      <span class="label label-default m-r-8">{{ 'Backend service not deployed' | translate }}</span>
+      <button type="button" class="btn btn-link m-r-16" [disabled]="backendTogglePending"
+        (click)="recheckBackend()">{{ 'Re-check' | translate }}</button>
     }
     <label class="c8y-switch flex-no-shrink m-b-0" [class.disabled]="!backendDeployed || backendTogglePending">
       <input type="checkbox" [checked]="backendEnabled" [disabled]="!backendDeployed || backendTogglePending"
@@ -39,7 +41,7 @@
       <div class="c8y-empty-state">
         <h1 [c8yIcon]="'settings'"></h1>
         <p>
-          <strong>This information is not available, since the support microservice is not deployed or the Analytics
+          <strong translate>This information is not available, since the support microservice is not deployed or the Analytics
             Engine is about to restart.</strong><br />
           <small translate>Deploy microservice <code>analytics-ext-service</code>.</small><br />
         </p>
