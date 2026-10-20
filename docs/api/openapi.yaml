@@ -245,10 +245,11 @@ paths:
   /extension/list:
     post:
       tags: [Extensions]
-      summary: Build an Apama extension from a single file or directory
+      summary: Build an Apama extension from one or more files or directories
       description: |
-        `monitors` must contain exactly one item — either a single `.mon` file
+        `monitors` must contain at least one item — each either a `.mon` file
         (`type: "file"`) or a directory to download recursively (`type: "dir"`).
+        All items are merged into one build directory.
       operationId: createExtensionFromList
       requestBody:
         required: true
@@ -271,7 +272,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ExtensionUploadedResponse"
         "400":
-          description: Invalid request (wrong number of monitors, or build failed)
+          description: Invalid request (no monitors, or build failed)
         "404":
           description: Repository not found, or `rebuild` requested but no existing extension was found to delete
 

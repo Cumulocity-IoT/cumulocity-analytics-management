@@ -8,3 +8,21 @@ msgstr ""
 
 msgid "Module Federation widget"
 msgstr "Module Federation Dingsbums"
+
+msgid "Extensions"
+msgstr "Erweiterungen"
+
+msgid "Installed blocks"
+msgstr "Installierte Blöcke"
+
+msgid "Blocks in the engine"
+msgstr "Blöcke in der Engine"
+
+msgid "Streaming Analytics monitoring"
+msgstr "Streaming-Analytics-Überwachung"
+
+msgid "Engine status"
+msgstr "Engine-Status"
+
+msgid "Engine status details"
+msgstr "Details zum Engine-Status"

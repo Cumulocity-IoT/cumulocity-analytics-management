@@ -82,7 +82,7 @@ export class ExtensionBuilderService {
    * exclude-list) and uploads it via the same `AnalyticsService.uploadExtension`
    * path used everywhere else in the app — no backend involved. Never
    * throws: mirrors the backend path's `IFetchResponse`-shaped result so
-   * callers (e.g. `ExtensionCreateComponent`) don't need to branch on mode.
+   * callers (e.g. `ExtensionCreateModalComponent`) don't need to branch on mode.
    */
   private async createExtensionFromListDirect(
     name: string,
@@ -100,7 +100,7 @@ export class ExtensionBuilderService {
       }
 
       // No success alert here — matches the backend path's convention: this
-      // service only alerts on failure, the caller (ExtensionCreateComponent)
+      // service only alerts on failure, the caller (ExtensionCreateModalComponent)
       // owns the success toast.
       return { status: 200 } as unknown as IFetchResponse;
     } catch (error) {

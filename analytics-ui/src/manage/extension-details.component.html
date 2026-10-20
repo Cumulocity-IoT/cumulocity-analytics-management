@@ -23,8 +23,8 @@
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-modules'" [label]="'Manage extensions' | translate"
-    [path]="'c8y-pkg-analytics-extension/manage'">
+  <c8y-breadcrumb-item [icon]="'plugin'" [label]="labels.extensions | translate"
+    [path]="routes.manage">
   </c8y-breadcrumb-item>
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
@@ -48,7 +48,7 @@
             </tr>
           </thead>
           <tbody>
-            @if (!extensionFromCep || extensionFromCep?.analytics?.length == 0) {
+            @if (!extensionFromCep || extensionFromCep?.analytics?.length === 0) {
               <tr>
                 <td colspan="3">
                   <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
@@ -114,7 +114,7 @@
           <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
           </c8y-properties-list>
         }
-        @if (buildInformation.length == 0) {
+        @if (buildInformation.length === 0) {
           <div class="c8y-empty-state">
             <h1 [c8yIcon]="'monitoring'"></h1>
             <p>

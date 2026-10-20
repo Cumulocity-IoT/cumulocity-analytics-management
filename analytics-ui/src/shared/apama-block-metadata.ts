@@ -298,7 +298,7 @@ function parseOutputs(blockBody: string): ParsedBlockOutput[] {
   const outputs: ParsedBlockOutput[] = [];
   let match: RegExpExecArray | null;
   while ((match = outputPattern.exec(blockBody))) {
-    const id = match[1];
+    const [, id] = match;
     const docComment = findPrecedingDocComment(blockBody, match.index);
     const doc = docComment ? parseDocComment(docComment) : null;
     outputs.push({

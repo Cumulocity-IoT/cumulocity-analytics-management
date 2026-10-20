@@ -14,7 +14,7 @@ import { GitHubContentService } from './github-content.service';
 import { RepositoryBackendService } from './repository-backend.service';
 import { RepositoryError } from './repository-error';
 import { RepositoryModeService } from './repository-mode.service';
-import { extractBlockFqns, getFileExtension, removeFileExtension, uuidCustom } from './utils';
+import { extractBlockFqns, getFileExtension, removeFileExtension, createShortId } from './utils';
 
 /**
  * Fetches, enriches, and caches a repository's items (`.mon` files,
@@ -96,7 +96,7 @@ export class RepositoryItemsService {
     );
 
     if (yamlItems.length > 0) {
-      const yamlItem = yamlItems[0];
+      const [yamlItem] = yamlItems;
       return this.getSectionsFromExtensionYAML(yamlItem).pipe(
         map(sectionNames => this.createYamlSectionItems(sectionNames, yamlItem))
       );
@@ -277,7 +277,7 @@ export class RepositoryItemsService {
   private createYamlSectionItems(sectionNames: string[], yamlItem: RepositoryItem): RepositoryItem[] {
     return sectionNames.map(name => ({
       ...yamlItem,
-      id: uuidCustom(),
+      id: createShortId(),
       name,
       isYamlSection: true,
       extensionsYamlItem: yamlItem

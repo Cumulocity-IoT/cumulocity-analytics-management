@@ -12,7 +12,7 @@ import {
 import { BsModalRef } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { shareReplay, switchMap, tap } from 'rxjs/operators';
-import { AnalyticsService } from '../shared';
+import { AnalyticsService, PAGE_LABELS, ROUTES } from '../shared';
 import { AlertService, CoreModule, HumanizePipe, PropertiesListItem } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 
@@ -24,6 +24,9 @@ import { gettext } from '@c8y/ngx-components/gettext';
   imports: [CommonModule, FormsModule, CoreModule]
 })
 export class EngineMonitoringComponent implements OnInit {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   cepOperationObjectId!: string;
   cepCtrlStatusLabels$: BehaviorSubject<PropertiesListItem[]> =
     new BehaviorSubject<PropertiesListItem[]>([]);
@@ -53,12 +56,53 @@ export class EngineMonitoringComponent implements OnInit {
   ) {}
 
   async ngOnInit(): Promise<void> {
-    const humanize = new HumanizePipe();
-
-    this.init();
     this.loadBackendStatus();
-    const operationObjectId = await this.analyticsService.getCepOperationObjectId();
-    this.cepOperationObjectId = operationObjectId || '';
+    await this.init();
+    await this.refreshCepStatusLabels();
+
+    let filterAlarm: any = {
+      pageSize: 5,
+      source: this.cepOperationObjectId,
+      currentPage: 1,
+      withTotalPages: true
+    };
+    let filterEvent: any = {
+      pageSize: 5,
+      source: this.cepOperationObjectId,
+      currentPage: 1,
+      withTotalPages: true
+    };
+    this.alarms$ = this.nextPageAlarm$.pipe(
+      tap((options) => {
+        if (options.direction) {
+          this.currentPageAlarm = this.currentPageAlarm + options.direction;
+          if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
+          filterAlarm = { ...filterAlarm, currentPage: this.currentPageAlarm };
+        }
+        if (options.status) {
+          (filterAlarm as any)['status'] = options.status;
+        }
+      }),
+      switchMap(() => this.alarmService.list(filterAlarm)),
+      shareReplay()
+    );
+    this.events$ = this.nextPageEvent$.pipe(
+      tap((options) => {
+        if (options.direction) {
+          this.currentPageEvent = this.currentPageEvent + options.direction;
+          if (this.currentPageEvent < 1) this.currentPageEvent = 1;
+          filterEvent = { ...filterEvent, currentPage: this.currentPageEvent };
+        }
+      }),
+      switchMap(() => this.eventService.list(filterEvent)),
+      shareReplay()
+    );
+    this.nextPageAlarm$.next({ direction: 0 });
+    this.nextPageEvent$.next({ direction: 0 });
+  }
+
+  private async refreshCepStatusLabels(): Promise<void> {
+    const humanize = new HumanizePipe();
     const cepCtrlStatus = await this.analyticsService.getCepStatus();
     const cepCtrlStatusLabels: any[] = [];
     Object.keys(cepCtrlStatus).forEach((key) => {
@@ -88,46 +132,6 @@ export class EngineMonitoringComponent implements OnInit {
       }
     });
     this.cepCtrlStatusLabels$.next(cepCtrlStatusLabels);
-
-    let filterAlarm: any = {
-      pageSize: 5,
-      source: this.cepOperationObjectId,
-      currentPage: 1,
-      withTotalPages: true
-    };
-    let filterEvent: any = {
-      pageSize: 5,
-      source: this.cepOperationObjectId,
-      currentPage: 1,
-      withTotalPages: true
-    };
-    this.alarms$ = this.nextPageAlarm$.pipe(
-      tap((options) => {
-        if (options.direction) {
-          this.currentPageAlarm = this.currentPageAlarm + options.direction;
-          if (this.currentPageAlarm < 1) this.currentPageAlarm = 1;
-          filterAlarm = { currentPage: this.currentPageAlarm };
-        }
-        if (options.status) {
-          (filterAlarm as any)['status'] = options.status;
-        }
-      }),
-      switchMap(() => this.alarmService.list(filterAlarm)),
-      shareReplay()
-    );
-    this.events$ = this.nextPageEvent$.pipe(
-      tap((options) => {
-        if (options.direction) {
-          this.currentPageEvent = this.currentPageEvent + options.direction;
-          if (this.currentPageEvent < 1) this.currentPageEvent = 1;
-          filterEvent = { currentPage: this.currentPageEvent };
-        }
-      }),
-      switchMap(() => this.eventService.list(filterEvent)),
-      shareReplay()
-    );
-    this.nextPageAlarm$.next({ direction: 0 });
-    this.nextPageEvent$.next({ direction: 0 });
   }
 
   private async init() {
@@ -144,6 +148,17 @@ export class EngineMonitoringComponent implements OnInit {
     this.backendEnabled = enabled;
   }
 
+  async recheckBackend(): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      this.backendDeployed = await this.analyticsService.recheckBackendServiceDeployed();
+      await this.init();
+      await this.refreshCepStatusLabels();
+    } finally {
+      this.backendTogglePending = false;
+    }
+  }
+
   async toggleBackendEnabled(enabled: boolean): Promise<void> {
     this.backendTogglePending = true;
     try {
@@ -157,6 +172,7 @@ export class EngineMonitoringComponent implements OnInit {
       // Status/operation-object reads are mode-dependent — re-fetch so the
       // page reflects whichever endpoint the new mode actually uses.
       await this.init();
+      await this.refreshCepStatusLabels();
     } catch (error) {
       this.backendEnabled = !enabled;
       this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));

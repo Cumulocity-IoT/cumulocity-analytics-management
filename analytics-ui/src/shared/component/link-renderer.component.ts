@@ -23,7 +23,7 @@ import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-  template: `<a [href]="context.value" target="'_blank'"
+  template: `<a [href]="context.value" target="_blank" rel="noopener noreferrer"
     ><span>{{
       context.item.type === 'file' ? context.item.file : context.item.file + '/'
     }}</span></a

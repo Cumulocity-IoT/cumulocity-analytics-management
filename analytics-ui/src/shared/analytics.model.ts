@@ -1,4 +1,4 @@
-import { uuidCustom } from './utils';
+import { createShortId } from './utils';
 
 export interface ApplicationState {
   label: string;
@@ -11,7 +11,7 @@ export enum Wizards {
   RELEASE_DEPLOY = 'deployFromGitHubRelease'
 }
 
-export enum ERROR_TYPE {
+export enum ErrorType {
   TYPE_VALIDATION = 'TYPE_VALIDATION',
   ALREADY_SUBSCRIBED = 'ALREADY_SUBSCRIBED',
   INTERNAL_ERROR = 'INTERNAL_ERROR',
@@ -158,9 +158,7 @@ export const EXTENSION_ENDPOINT = 'extension';
 export const CEP_ENDPOINT = 'cep';
 export const REPOSITORY_CONTENT_ENDPOINT = 'repository/content';
 export const REPOSITORY_CONTENT_LIST_ENDPOINT = 'repository/contentList';
-export const REPOSITORY_CONFIGURATION_ENDPOINT = 'repository/configuration';
 export const APPLICATION_ANALYTICS_BUILDER_SERVICE = 'analytics-ext-service';
-export const ANALYTICS_REPOSITORIES_TYPE = 'c8y_CEP_repository';
 
 /**
  * Tenant option category repository config is stored under, read/written
@@ -204,11 +202,9 @@ export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
  */
 export const GLOBAL_ACCESS_TOKEN_OPTION_KEY = 'globalAccessToken';
 
-export const STATUS_MESSAGE_01 = 'Recording apama-ctrl safe mode state';
-export const STATUS_MESSAGE_02 = 'Deployment was changed';
 
-export const CEP_METADATA_FILE_EXTENSION_1 = '.json';
-export const CEP_METADATA_FILE_EXTENSION_2 = '.zip';
+export const CEP_METADATA_JSON_SUFFIX = '.json';
+export const CEP_DIAGNOSTICS_ZIP_SUFFIX = '.zip';
 export const GITHUB_BASE = 'https://api.github.com';
 export const REPO_OWNER = 'Cumulocity-IoT';
 export const REPO_BLOCKSDK = `${GITHUB_BASE}/repos/${REPO_OWNER}/apama-analytics-builder-block-sdk/contents/samples/blocks`;
@@ -228,7 +224,7 @@ export const DEFAULT_REPOSITORY_URL = `https://github.com/${REPO_OWNER}/analytic
 /** Seeded when a tenant has no repositories configured yet — see `RepositoryService.loadRepositoriesFromConfig`. */
 export function createDefaultRepository(): Repository {
   return {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Community Blocks (analytics-builder-blocks-contrib)',
     url: DEFAULT_REPOSITORY_URL,
     accessToken: '',
@@ -237,31 +233,31 @@ export function createDefaultRepository(): Repository {
 }
 export const REPO_SAMPLES = [
   {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Block SDK Quick Start Samples',
     url: REPO_ANALYTICS_MANAGEMENT,
     enabled: true
   },
   {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Block SDK Samples',
     url: REPO_BLOCKSDK,
     enabled: true
   },
   {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Contrib Samples Block',
     url: REPO_CONTRIB_BLOCK,
     enabled: false
   },
   {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Contrib Samples Simulation-Block',
     url: REPO_CONTRIB_SIMULATION,
     enabled: false
   },
   {
-    id: uuidCustom(),
+    id: createShortId(),
     name: 'Contrib Samples Cumulocity-Block',
     url: REPO_CONTRIB_CUMULOCITY,
     enabled: false
@@ -269,7 +265,7 @@ export const REPO_SAMPLES = [
 ] as Repository[];
 
 
-export const DESCRIPTOR_YAML = "extensions.yaml";
+export const DESCRIPTOR_YAML = 'extensions.yaml';
 
 
 export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';

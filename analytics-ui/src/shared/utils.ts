@@ -1,6 +1,6 @@
 import { CepBlock } from './analytics.model';
 
-export function uuidCustom(): string {
+export function createShortId(): string {
   const id = Math.random().toString(36).slice(-6);
   return id;
 }
@@ -17,7 +17,7 @@ export function removeFileExtension(name: string): string {
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);
-  return (result && result != null) ? result[0] : '';
+  return result ? `.${result[1]}` : '';
 }
 
 /** Finds the index of the `{` opening the declaration at `declIndex`, then its matching `}`. */
@@ -126,8 +126,7 @@ export /**
       throw new Error('Invalid GitHub URL: missing user or repository');
     }
 
-    const user = pathParts[0];
-    const repo = pathParts[1];
+    const [user, repo] = pathParts;
     let branch = DEFAULT_BRANCH;
 
     // Check if the URL points to a specific branch/tag/commit

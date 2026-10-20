@@ -1,4 +1,4 @@
-import { Component, Input, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -21,7 +21,7 @@ import { ExtensionAddComponent } from './extension-add.component';
   standalone: true,
   imports: [ExtensionAddComponent]
 })
-export class ExtensionAddWizardComponent implements OnInit {
+export class ExtensionAddWizardComponent {
   @Input() mode!: UploadMode;
   @Input() extensionToReplace!: IManagedObject;
   @Input() headerText!: string;
@@ -32,7 +32,6 @@ export class ExtensionAddWizardComponent implements OnInit {
     private analyticsService: AnalyticsService,
     private wizardComponent: WizardComponent
   ) {}
-  ngOnInit(): void {}
 
   onCancelled(): void {
     this.wizardComponent.close();

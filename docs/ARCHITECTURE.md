@@ -1,5 +1,7 @@
 # Architecture & Development Guides
 
+> The ADRs record decisions; each now carries an **Implementation status** note (aligned with the code on 2026-10-14). Decisions are not all implemented, check the status before relying on one.
+
 ## Quick Navigation
 
 - **[UI Development Guide](./UI-GUIDE.md)** - Frontend architecture, components, testing, and best practices
@@ -12,9 +14,14 @@
 
 ## ADR-001: Use Standalone Angular Components Over NgModule
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - IMPLEMENTED (plugin module retained)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14):** All feature components are standalone. `analytics-extension.module.ts`
+> is deliberately kept as the plugin's NgModule: the Cumulocity plugin mechanism requires it to register routes,
+> tabs, navigation and wizard hooks. The "remove the NgModule" part of the decision does not apply to that file.
+> The bundle-size estimate below was never measured.
 
 ### Context
 The analytics-ui was using a mixture of NgModule-based and standalone components. With Angular 20, standalone components are the recommended approach for new code.
@@ -47,9 +54,17 @@ Migrate all components to standalone Angular 20 components and remove the NgModu
 
 ## ADR-002: Error Handling with Retry Logic via HTTP Interceptors
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - NOT ENABLED  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14): not enabled.** `ErrorInterceptor`, `ErrorHandlerService` and `HttpModule`
+> exist in `src/shared/http/` and are unit tested, but nothing imports `HttpModule`, so no request goes through them.
+> Application code uses the c8y `FetchClient` and native `fetch()`, not Angular `HttpClient`, so registering the
+> interceptor would affect almost no calls. Retrying every method would also be unsafe for non-idempotent
+> `POST /extension/*` calls (build + upload). The listed "Features Implemented" exist in the code only.
+> Open decision: enable with GET-only retries (and an opt-out for alerts), or remove the code. Error handling in
+> practice is per area (`CepError`, `GitHubReleaseError`, `RepositoryError`, grid-level transient retry).
 
 ### Context
 HTTP requests were failing without proper retry logic or user-friendly error handling. Different parts of the application handled errors inconsistently.
@@ -83,9 +98,13 @@ Implement a centralized HTTP interceptor with automatic retry logic and standard
 
 ## ADR-003: Structured Logging with JSON Format
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - IMPLEMENTED (partially)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14):** `logging_config.py` provides JSON logging (`LOG_FORMAT=json` or
+> `ENV=production`), text logging otherwise, a rotating file handler in production and `LOG_LEVEL`/`LOG_FILE`.
+> Not implemented: request ids, per-request access logging, automatic redaction (the code avoids logging secrets instead).
 
 ### Context
 The analytics-service used basic string logging which was difficult to parse, aggregate, and analyze in production environments.
@@ -119,9 +138,13 @@ Implement structured logging with JSON format for production environments.
 
 ## ADR-004: Use Pydantic for Request Validation
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - PLANNED (not implemented)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14): not implemented.** `pydantic` is in `requirements.txt` but unused.
+> Routes validate input by hand (`isinstance` checks, `_validate_extension_name`, required-field checks) and return
+> `{"error": ...}` with 400. All roadmap steps below are open.
 
 ### Context
 The analytics-service had limited input validation, relying on manual validation scattered throughout the code.
@@ -154,9 +177,13 @@ Adopt Pydantic for declarative request validation and serialization.
 
 ## ADR-005: Implement Health Checks Endpoint
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - PARTIAL (static liveness only)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14):** `GET /health` returns `{"status": "UP"}` without checking anything.
+> `health_check.py` (system/Cumulocity/GitHub checks) is not imported by `app.py` and not copied into the Docker image.
+> Decide whether to wire it in (keeping external calls out of the liveness probe) or delete it.
 
 ### Context
 The analytics-service had no way to check its health status or external dependencies status. This made it difficult to diagnose issues and configure monitoring.
@@ -189,9 +216,13 @@ Implement a comprehensive `/health` endpoint that checks system, Cumulocity, and
 
 ## ADR-006: Enable TypeScript Strict Mode
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - PARTIAL  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14):** `tsconfig.json` has `strict: true`, but `tsconfig.app.json` (used by the build)
+> overrides it with `strict: false`, and roughly 40 `any` usages remain in non-test code. Specs compile under strict.
+> `noUnusedLocals` is not enabled. Enabling strict mode for the app build is still open.
 
 ### Context
 The analytics-ui had loose TypeScript configuration with `any` types and missing null checks, leading to runtime errors.
@@ -232,9 +263,14 @@ Enable TypeScript strict mode and eliminate `any` types throughout the codebase.
 
 ## ADR-007: Testing Strategy
 
-**Status:** ACCEPTED  
+**Status:** ACCEPTED - IMPLEMENTED (unit level, in CI); E2E open  
 **Date:** 2026-05-28  
 **Authors:** Development Team
+
+> **Implementation status (2026-10-14):** Backend: pytest with about 166 tests, ~91% line coverage (target 70% met).
+> Frontend: Karma/Jasmine with about 580 specs covering all services and components (~96% lines), so the 80%/70% targets are met.
+> CI (`check-push.yml`) runs lint, naming rules and both test suites on every push/PR. Not done: Cypress/E2E tests, PR coverage comments, gating the release workflow on these checks.
+> Jest/Protractor are not used. See [BACKEND-GUIDE.md](./BACKEND-GUIDE.md#testing) and [UI-GUIDE.md](./UI-GUIDE.md#testing).
 
 ### Context
 The project had no comprehensive testing strategy or automated test execution.
@@ -282,12 +318,12 @@ Implement multi-layered testing approach with unit, integration, and E2E tests.
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| 001 | Standalone Components | ACCEPTED | 2026-05-28 |
-| 002 | HTTP Error Interceptor | ACCEPTED | 2026-05-28 |
-| 003 | Structured Logging | ACCEPTED | 2026-05-28 |
-| 004 | Pydantic Validation | ACCEPTED | 2026-05-28 |
-| 005 | Health Checks | ACCEPTED | 2026-05-28 |
-| 006 | TypeScript Strict Mode | ACCEPTED | 2026-05-28 |
-| 007 | Testing Strategy | ACCEPTED | 2026-05-28 |
+| 001 | Standalone Components | Implemented (plugin NgModule kept) | 2026-05-28 |
+| 002 | HTTP Error Interceptor | **Not enabled** | 2026-05-28 |
+| 003 | Structured Logging | Implemented (partially) | 2026-05-28 |
+| 004 | Pydantic Validation | Planned | 2026-05-28 |
+| 005 | Health Checks | Partial (static `/health`) | 2026-05-28 |
+| 006 | TypeScript Strict Mode | Partial (app build not strict) | 2026-05-28 |
+| 007 | Testing Strategy | Implemented (unit, in CI); E2E open | 2026-05-28 |
 
 For more information on ADRs, see: https://adr.github.io/

@@ -14,7 +14,7 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule]
 })
-export class ExtensionCreateComponent implements OnInit {
+export class ExtensionCreateModalComponent implements OnInit {
   @Output() closeSubject: Subject<unknown> = new Subject();
   @Input() monitors!: RepositoryItem[];
   @Input() sections!: string[];
@@ -111,7 +111,7 @@ export class ExtensionCreateComponent implements OnInit {
           );
         } else {
           this.alertService.success(
-            `The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.`
+            'The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.'
           );
         }
       }
@@ -122,7 +122,7 @@ export class ExtensionCreateComponent implements OnInit {
       // to a response with `.status` — RepositoryBackendService already
       // alerts before throwing, so just log and fall through to close like
       // any other failure path, instead of leaving the modal stuck loading.
-      console.error('[ExtensionCreateComponent] Failed to create extension:', error);
+      console.error('[ExtensionCreateModalComponent] Failed to create extension:', error);
     } finally {
       this.loading = false;
       this.closeSubject.next(true);

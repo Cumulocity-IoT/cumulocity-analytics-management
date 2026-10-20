@@ -23,7 +23,7 @@ import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
 
 @Component({
-  selector: 'a17t-label-renderer-api',
+  selector: 'a17t-label-renderer',
   template: `
     <div>
       <span class="text-12 label label-primary">{{ context.value }}</span>

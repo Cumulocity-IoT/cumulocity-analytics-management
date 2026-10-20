@@ -22,24 +22,25 @@ import { Injectable } from '@angular/core';
 import { TabFactory, Tab } from '@c8y/ngx-components';
 import { Router } from '@angular/router';
 import { Observable, of } from 'rxjs';
+import { PAGE_LABELS, ROUTE_ROOT, ROUTES } from './analytics.constants';
 @Injectable()
 export class AnalyticsTabFactory implements TabFactory {
   constructor(private router: Router) {}
 
   get(): Observable<Tab[]> {
     const tabs: Tab[] = [];
-    if (this.router.url.match(/c8y-pkg-analytics-extension/g)) {
+    if (this.router.url.includes(ROUTE_ROOT)) {
       tabs.push({
-        path: 'c8y-pkg-analytics-extension/manage',
+        path: ROUTES.manage,
         priority: 960,
-        label: 'Manage extensions',
-        icon: 'extension',
+        label: PAGE_LABELS.extensions,
+        icon: 'plugin',
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: 'c8y-pkg-analytics-extension/block',
+        path: ROUTES.installedBlocks,
         priority: 940,
-        label: 'Blocks installed',
+        label: PAGE_LABELS.installedBlocks,
         icon: 'flow-chart',
         orientation: 'horizontal'
       } as Tab);
@@ -49,16 +50,16 @@ export class AnalyticsTabFactory implements TabFactory {
       // repo's source tree still depends on it, which degrades gracefully
       // on that page rather than requiring the whole tab to be hidden.
       tabs.push({
-        path: 'c8y-pkg-analytics-extension/repository',
+        path: ROUTES.repository,
         priority: 920,
-        label: 'Repositories',
+        label: PAGE_LABELS.repositories,
         icon: 'test',
         orientation: 'horizontal'
       } as Tab);
       tabs.push({
-        path: 'c8y-pkg-analytics-extension/monitoring',
+        path: ROUTES.monitoring,
         priority: 900,
-        label: 'Monitoring',
+        label: PAGE_LABELS.monitoring,
         icon: 'monitoring',
         orientation: 'horizontal'
       } as Tab);

@@ -1,6 +1,6 @@
-import { inject } from "@angular/core";
-import { ResolveFn } from "@angular/router";
-import { AnalyticsService, CepExtension } from "../shared";
+import { inject } from '@angular/core';
+import { ResolveFn } from '@angular/router';
+import { AnalyticsService, CepExtension } from '../shared';
 
 export const extensionResolver: ResolveFn<CepExtension | null> = async (route) => {
     const analyticsService = inject(AnalyticsService);

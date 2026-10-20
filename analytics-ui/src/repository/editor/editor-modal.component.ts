@@ -15,7 +15,7 @@ import { EplConfigService } from './epl-config.service';
 let initializedMonaco = false;
 
 @Component({
-  selector: 'a17t-name-extension-modal',
+  selector: 'a17t-editor-modal',
   styleUrls: ['./editor-modal.component.css'],
   templateUrl: './editor-modal.component.html',
   encapsulation: ViewEncapsulation.None,
@@ -37,7 +37,7 @@ export class EditorModalComponent {
   constructor(private configService: EplConfigService) {
     this.editorOptions = {
       minimap: { enabled: false },
-      renderValidationDecorations: "off",
+      renderValidationDecorations: 'off',
       automaticLayout: true,
       language: this.configService.getLanguageName(),
       theme: this.configService.getThemeName()
@@ -50,7 +50,7 @@ export class EditorModalComponent {
 
   assignSchema() {
     if (!this.editorComponent.monaco || !this.editorComponent.editor) return;
-    const monaco = this.editorComponent.monaco;
+    const {monaco} = this.editorComponent;
     try {
       if (!initializedMonaco) {
         monaco.languages.register(this.configService.getCustomLangExtensionPoint());

@@ -4,8 +4,8 @@ import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   Category,
-  CEP_METADATA_FILE_EXTENSION_1,
-  CEP_METADATA_FILE_EXTENSION_2,
+  CEP_METADATA_JSON_SUFFIX,
+  CEP_DIAGNOSTICS_ZIP_SUFFIX,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_PATH_EN,
   CEP_PATH_METADATA_EN,
@@ -34,13 +34,13 @@ export class ExtensionEnrichmentService {
 
   // Order matters: first match wins. UTILITY also serves as the default fallback.
   private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> = [
-    [Category.INPUT,             ['input', 'trigger', 'measurement', 'event']],
-    [Category.OUTPUT,            ['output', 'send', 'http', 'email', 'alarm']],
-    [Category.AGGREGATE,         ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']],
-    [Category.CALCULATION,       ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']],
-    [Category.LOGIC,             ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
+    [Category.INPUT, ['input', 'trigger', 'measurement', 'event']],
+    [Category.OUTPUT, ['output', 'send', 'http', 'email', 'alarm']],
+    [Category.AGGREGATE, ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']],
+    [Category.CALCULATION, ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']],
+    [Category.LOGIC, ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
     [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
-    [Category.UTILITY,           ['random', 'generator', 'constant', 'noise', 'walk']],
+    [Category.UTILITY, ['random', 'generator', 'constant', 'noise', 'walk']],
   ];
 
   constructor(
@@ -181,8 +181,8 @@ export class ExtensionEnrichmentService {
     // Some inventory entries keep the ".zip" suffix in their name; normalize
     // it so lookups against the correlator (which never uses ".zip") match.
     const cleanName = removeFileExtension(extension['name']);
-    const metadataKey = cleanName + CEP_METADATA_FILE_EXTENSION_1;
-    const diagnosticsKey = cleanName + CEP_METADATA_FILE_EXTENSION_2;
+    const metadataKey = cleanName + CEP_METADATA_JSON_SUFFIX;
+    const diagnosticsKey = cleanName + CEP_DIAGNOSTICS_ZIP_SUFFIX;
 
     // Direction-agnostic match: handles entries returned as either "foo.json"
     // (exact) or "foo" (extension stripped). Matching only one direction is
@@ -279,7 +279,7 @@ export class ExtensionEnrichmentService {
 
     if (error && typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj['message'];
+      const { message } = errorObj;
       if (typeof message === 'string') {
         return message;
       }

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
@@ -32,7 +32,7 @@ interface BuildInformation {
   standalone: true,
   imports: [CoreModule, BsDropdownModule, PopoverModule]
 })
-export class ExtensionCardComponent implements OnInit {
+export class ExtensionCardComponent {
   @Input() extension!: IManagedObject;
   @Input() isBackendServiceAvailable!: boolean;
   @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
@@ -46,8 +46,6 @@ export class ExtensionCardComponent implements OnInit {
     private readonly bsModalService: BsModalService,
     private readonly wizardModalService: WizardModalService
   ) {}
-
-  ngOnInit(): void {}
 
   async detail(): Promise<void> {
     await this.router.navigate(['details', this.extension['name']], {

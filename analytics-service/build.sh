@@ -18,6 +18,67 @@
 #
 # @authors Christof Strack
 
+# Build the analytics-ext-service microservice archive that can be uploaded in
+# Administration > Ecosystem > Microservices.
+#
+# USAGE
+#   ./build.sh [-h|--help]
+#   ./build.sh <version> [<platform>] [<archive-name>]
+#
+# ARGUMENTS
+#   version        Version written into cumulocity.json ("{VERSION}-SNAPSHOT" is the template). Required.
+#   platform       Docker target platform for the image. Default: linux/amd64
+#   archive-name   Base name of the resulting zip. Default: analytics-ext-service
+#
+# EXAMPLES
+#   ./build.sh 1.0.0                        # -> dist/analytics-ext-service.zip
+#   ./build.sh 1.0.0 linux/arm64            # build the image for arm64
+#   ./build.sh 1.0.0 linux/amd64 my-name    # -> dist/my-name.zip
+#
+# WHAT IT DOES
+#   1. Recreates ./build and ./dist (existing content is deleted).
+#   2. Copies app.py, c8y_agent.py, solution_utils.py, logging_config.py and
+#      requirements.txt to ./build and renders cumulocity.json and the Dockerfile.
+#   3. If ./cumulocity-analytics-ext-service.json exists, merges it into
+#      cumulocity.json (needs jq; keys of the extension file win).
+#   4. Builds the Docker image (docker buildx), saves it to dist/image.tar and zips
+#      it together with cumulocity.json into dist/<archive-name>.zip (needs zip).
+#
+# REQUIREMENTS
+#   docker with buildx, zip, and jq (only for the optional manifest extension).
+#   Run it from the analytics-service directory.
+#
+# EXIT CODES
+#   0 success, 2 invalid arguments, any other non-zero value: a build step failed.
+
+usage() {
+  # print the documentation block above (from "Build the" to the line before the blank line after REQUIREMENTS)
+  sed -n '/^# Build the analytics-ext-service/,/^#   0 success/p' "$0" | sed -e 's/^# \{0,1\}//'
+}
+
+case "$1" in
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  -*)
+    echo "Unknown option: $1" >&2
+    echo >&2
+    usage >&2
+    exit 2
+    ;;
+  "")
+    echo "Missing <version>." >&2
+    echo >&2
+    usage >&2
+    exit 2
+    ;;
+esac
+
+# Stop at the first failing command (docker build, docker save, zip) instead of
+# printing "Created uploadable archive" for a broken result.
+set -e
+
 NAME="analytics-ext-service"
 VERSION="$1"
 IMG_ARCH="$2"

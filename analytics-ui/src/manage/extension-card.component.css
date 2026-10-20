@@ -64,3 +64,15 @@
 .card-block + .card-block {
   margin-top: 0 !important;
 }
+
+/* Subtle highlight for the extension suspected of causing safe mode */
+.suspected-cause {
+  border: 1px solid var(--c8y-brand-warning, #ff8000);
+  box-shadow: inset 3px 0 0 var(--c8y-brand-warning, #ff8000);
+}
+
+/* Delete button styled as a label so it matches the "Suspected cause" badge height */
+.suspect-delete {
+  border: 0;
+  cursor: pointer;
+}

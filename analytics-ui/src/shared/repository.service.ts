@@ -9,12 +9,14 @@ import {
   combineLatest,
   from,
   lastValueFrom,
-  of
+  of,
+  throwError
 } from 'rxjs';
 import {
   catchError,
   distinctUntilChanged,
   map,
+  pairwise,
   shareReplay,
   switchMap,
   take,
@@ -123,6 +125,17 @@ export class RepositoryService implements OnDestroy {
     private readonly extensionBuilderService: ExtensionBuilderService
   ) {
     this.initialLoad = this.initializeRepositories();
+
+    // When a correlator restart completes, the deployed blocks may have changed
+    // (e.g. an extension was deleted): refresh the "installed" status. The
+    // analytics caches are cleared by AnalyticsService itself on the same edge.
+    this.analyticsService.restarting$
+      .pipe(pairwise(), takeUntil(this.destroy$))
+      .subscribe(([was, now]) => {
+        if (was && !now) {
+          this.invalidateCache();
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -341,7 +354,10 @@ export class RepositoryService implements OnDestroy {
 
   async refreshRepositories(): Promise<void> {
     try {
-      await lastValueFrom(this.loadRepositoriesFromConfig().pipe(take(1)));
+      // Don't swallow load failures here (unlike the initial load): otherwise a
+      // failed refresh would alert twice and still announce success.
+      await lastValueFrom(this.loadRepositoriesFromConfig(false).pipe(take(1)));
+      this.analyticsService.clearAllCaches();
       this.invalidateCache();
       this.alertService.success(gettext('Repositories refreshed successfully'));
     } catch (error) {
@@ -360,6 +376,8 @@ export class RepositoryService implements OnDestroy {
 
   /** Reload repository items (clears cache and triggers refresh) */
   reload(): void {
+    // "Installed" is derived from the deployed blocks, which are cached separately
+    this.analyticsService.clearAllCaches();
     this.invalidateCache();
   }
 
@@ -482,7 +500,7 @@ export class RepositoryService implements OnDestroy {
     }
   }
 
-  private loadRepositoriesFromConfig(): Observable<Repository[]> {
+  private loadRepositoriesFromConfig(swallowErrors: boolean = true): Observable<Repository[]> {
     return from(this.repositoryConfigService.fetchRepositories()).pipe(
       switchMap(repos => repos.length > 0 ? of(repos) : from(this.seedDefaultRepository())),
       tap(repos => {
@@ -492,6 +510,9 @@ export class RepositoryService implements OnDestroy {
         });
       }),
       catchError(error => {
+        if (!swallowErrors) {
+          return throwError(() => error);
+        }
         this.handleError(
           error,
           'Failed to load repositories from tenant options',
@@ -595,7 +616,7 @@ export class RepositoryService implements OnDestroy {
 
     if (error && typeof error === 'object' && 'message' in error) {
       const errorObj = error as Record<string, unknown>;
-      const message = errorObj['message'];
+      const { message } = errorObj;
       if (typeof message === 'string') {
         return message;
       }

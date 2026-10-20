@@ -1,9 +1,11 @@
 /*
- * $Copyright (c) 2024 Cumulocity GmbH, Duesseldorf, Germany , and/or its 
+ * $Copyright (c) 2024 Cumulocity GmbH, Duesseldorf, Germany , and/or its
  * subsidiaries and/or its affiliates and/or their licensors.
- * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in 
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in
  * your License Agreement with Cumulocity GmbH
  */
+
+/* eslint-disable no-useless-escape -- regular expressions copied from the EPL/Monaco grammar; kept verbatim */
 
 import { Injectable } from '@angular/core';
 import eplTokenProvider from './epl-token.provider';
@@ -62,9 +64,9 @@ export class EplConfigService {
 
 	/**
 	 * Get editing configuration for EPL Language.
-	 * 
-	 * As per monaco documentation : 
-	 * The language configuration interface defines the contract between extensions and various editor features, 
+	 *
+	 * As per monaco documentation :
+	 * The language configuration interface defines the contract between extensions and various editor features,
 	 * like automatic bracket insertion, automatic indentation etc.
 	 */
 	public getEPLLanguageConfig(): monaco.languages.LanguageConfiguration {

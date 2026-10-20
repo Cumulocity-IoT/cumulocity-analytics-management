@@ -38,27 +38,32 @@ import {
   DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
-  RepositoryService
+  RepositoryService,
+  PAGE_LABELS,
+  ROUTES
 } from '../../shared';
 import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
 import { catchError, of } from 'rxjs';
-import { ExtensionCreateComponent } from '../create-extension/extension-create-modal.component';
-import { LabelRendererComponent } from '../../shared/renderer/label.renderer';
-import { RepositoriesDrawerComponent } from '../repository/repositories-drawer.component';
+import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
+import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
+import { RepositoriesDrawerComponent } from '../drawer/repositories-drawer.component';
 import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
 @Component({
-  selector: 'a17t-sample-grid',
-  templateUrl: 'block-grid.component.html',
-  styleUrls: ['./block-grid.component.css'],
+  selector: 'a17t-repository-block-grid',
+  templateUrl: 'repository-block-grid.component.html',
+  styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
   standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
-export class BlockGridComponent implements OnInit {
+export class RepositoryBlockGridComponent implements OnInit {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
@@ -155,7 +160,7 @@ export class BlockGridComponent implements OnInit {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
         // console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
 
-        const type = isYaml ? ' contains extensions.yaml ': ' list assets' ;
+        const type = isYaml ? 'contains extensions.yaml' : 'list assets';
         this.titleSample = `Blocks from repositories (${type})`;
         this.singleSelection = false;
         // Only recreate the grid if the selection type actually changes
@@ -257,7 +262,7 @@ export class BlockGridComponent implements OnInit {
         invalid.push(sample);
         return;
       }
-      if (sample.type == "file" && !sample.file.endsWith(".mon") && sample.file !== DESCRIPTOR_YAML) {
+      if (sample.type == 'file' && !sample.file.endsWith('.mon') && sample.file !== DESCRIPTOR_YAML) {
         invalid.push(sample);
         hasInvalidType = true;
       }
@@ -266,7 +271,7 @@ export class BlockGridComponent implements OnInit {
       setTimeout(() => {
         this.dataGrid.setItemsSelected(invalid, false);
         if (hasInvalidType) {
-          this.alertService.warning("Only files with extension '.mon', directories or 'expansions.yaml' are selectable!");
+          this.alertService.warning("Only files with extension '.mon', directories or 'extensions.yaml' are selectable!");
         }
       }, 0);
     }
@@ -305,15 +310,15 @@ export class BlockGridComponent implements OnInit {
         sections: selectedSections
       };
 
-      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
         class: 'modal-md',
         initialState
       });
 
       if (modalRef.content) {
         modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel()
-          modalRef.hide()
+          this.dataGrid.cancel();
+          modalRef.hide();
         });
       }
 
@@ -323,15 +328,15 @@ export class BlockGridComponent implements OnInit {
         monitors: selectedMonitors
       };
 
-      const modalRef = this.bsModalService.show(ExtensionCreateComponent, {
+      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
         class: 'modal-md',
         initialState
       });
 
       if (modalRef.content) {
         modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel()
-          modalRef.hide()
+          this.dataGrid.cancel();
+          modalRef.hide();
         });
       }
     }

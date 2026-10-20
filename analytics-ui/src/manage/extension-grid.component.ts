@@ -17,18 +17,21 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { AnalyticsService, CepEngineStatus } from '../shared';
+import { AnalyticsService, CepEngineStatus, PAGE_LABELS, ROUTES } from '../shared';
 import { ActivatedRoute } from '@angular/router';
 import { ExtensionCardComponent } from './extension-card.component';
 
 @Component({
-  selector: 'a17t-extension',
+  selector: 'a17t-extension-grid',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
   standalone: true,
   imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
+  readonly labels = PAGE_LABELS;
+  readonly routes = ROUTES;
+
   // Observables for template
   // `null` means "not yet known" (engine down, or the post-restart load is
   // still in flight) — distinct from a resolved, genuinely empty `[]` — so
@@ -49,6 +52,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   // Just after the engine reports "up", its diagnostics endpoints can still
   // return 502 for a few seconds. Retry transient load failures with a short
   // backoff so the extensions appear once the engine is fully ready.
+  private readonly SUSPECT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   private readonly MAX_LOAD_RETRIES = 6;
   private readonly LOAD_RETRY_STEP = 1500;
   private readonly MAX_LOAD_RETRY_DELAY = 6000;
@@ -104,7 +108,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   getCepMicroserviceUrl(): string {
-    return `/apps/administration/index.html#/ecosystem/microservice/microservices`;
+    return '/apps/administration/index.html#/ecosystem/microservice/microservices';
   }
 
   trackByExtension(_: number, extension: IManagedObject): string {
@@ -126,9 +130,26 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     );
 
     // Extract safe mode
+    // The operation object does not always carry the flag; the engine status
+    // endpoint (the one the Monitoring tab shows) is the reliable source.
+    // Realtime updates re-emit the object often; only re-query when the engine
+    // status or the flag actually changes.
     this.isSafeMode$ = cepObject$.pipe(
-      map(mo => mo?.['c8y_Status']?.['is_safe_mode'] ?? false),
-      distinctUntilChanged()
+      map(mo => ({
+        flag: mo?.['c8y_Status']?.['is_safe_mode'] === true,
+        status: mo?.['c8y_Status']?.['status']
+      })),
+      distinctUntilChanged((a, b) => a.flag === b.flag && a.status === b.status),
+      switchMap(({ flag }) =>
+        flag
+          ? of(true)
+          : from(this.analyticsService.getCepStatus().then(status => status?.is_safe_mode === true)).pipe(
+              catchError(() => of(false)),
+              startWith(false)
+            )
+      ),
+      distinctUntilChanged(),
+      shareReplay(1)
     );
 
     // Combined reload trigger
@@ -146,14 +167,38 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     );
 
     // Extensions stream
-    this.extensions$ = combineLatest([reload$, this.cepStatus$]).pipe(
-      switchMap(([_, status]) =>
+    this.extensions$ = combineLatest([reload$, this.cepStatus$, this.isSafeMode$]).pipe(
+      switchMap(([_, status, safeMode]) =>
         status === 'up'
-          ? this.loadExtensions$()
+          ? this.loadExtensions$().pipe(map(extensions => (safeMode ? this.markAsNotLoaded(extensions) : extensions)))
           : of(null)
       ),
       shareReplay(1)
     );
+  }
+
+  // In safe mode the correlator loads no extensions, but its metadata
+  // endpoints still list the ones deployed before, so enrichment reports them
+  // as loaded. Override that: nothing is loaded while safe mode is active.
+  // The most recently updated extension is the usual cause of the restart
+  // loop, so it is flagged as the suspected cause.
+  private markAsNotLoaded(extensions: IManagedObject[] | null): IManagedObject[] | null {
+    if (!extensions) return extensions;
+    const lastUpdated = (e: IManagedObject) => Date.parse(e['lastUpdated'] ?? e['creationTime'] ?? '') || 0;
+    const suspect = extensions.reduce<IManagedObject | null>(
+      (latest, e) => (!latest || lastUpdated(e) > lastUpdated(latest) ? e : latest),
+      null
+    );
+    // Safe mode lasts until the engine is restarted, so after the culprit is
+    // deleted the next-newest extension would otherwise be blamed. Only a
+    // recent change can plausibly have triggered the restart loop.
+    const isRecent = !!suspect && Date.now() - lastUpdated(suspect) < this.SUSPECT_MAX_AGE_MS;
+    return extensions.map(extension => ({
+      ...extension,
+      loaded: false,
+      blocksCount: 0,
+      suspectedCause: isRecent && extension === suspect
+    }));
   }
 
   private loadExtensions$(): Observable<IManagedObject[] | null> {

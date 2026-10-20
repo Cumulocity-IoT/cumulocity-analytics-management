@@ -206,14 +206,16 @@ def update_repositories():
         
         [{"id": "repo-1", "name": "Test", "url": "https://...", "enabled": true}]
     """
-    repositories = request.get_json()
+    repositories = request.get_json(silent=True)
 
     if not isinstance(repositories, list):
         return create_error_response("Request body must be an array", 400)
 
     required_fields = {"id", "name", "url"}
     for repo in repositories:
-        if not all(field in repo for field in required_fields):
+        if not isinstance(repo, dict) or not all(
+            field in repo for field in required_fields
+        ):
             return create_error_response(
                 "Each repository must have id, name, and url", 400
             )
@@ -303,8 +305,11 @@ def get_content():
     if not encoded_url:
         return create_error_response("URL parameter is required", 400)
 
-    headers = _get_repository_headers(repository_id, access_token)
     decoded_url = urllib.parse.unquote(encoded_url)
+    if not _is_github_url(decoded_url):
+        return create_error_response("URL must be an https GitHub URL", 400)
+
+    headers = _get_repository_headers(repository_id, access_token)
 
     response = requests.get(decoded_url, headers=headers, timeout=30)
     error = _github_error_response(response)
@@ -377,7 +382,9 @@ def create_extension_from_repository():
             "deploy": true
         }
     """
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return create_error_response("Request body must be a JSON object", 400)
     extension_name = data.get("extension_name")
     repository = data.get("repository")
     upload = data.get("upload", False)
@@ -430,15 +437,15 @@ def create_extension_from_repository():
 @handle_errors
 def create_extension_from_list():
     """
-    Create an Apama extension from a single file or directory.
+    Create an Apama extension from one or more files or directories.
     
-    Downloads a specific file (.mon) or directory from the repository and builds it
-    into an extension.
+    Downloads the selected files (.mon) and/or directories from the repository and
+    builds them into a single extension.
     
     Request Body:
         {
             "extension_name": "MyExtension",     // Required: Name for the extension
-            "monitors": [                         // Required: Array with exactly one item
+            "monitors": [                         // Required: Array with at least one item
                 {
                     "url": "https://api.github.com/repos/.../MyBlock.mon",
                     "name": "MyBlock",
@@ -454,15 +461,17 @@ def create_extension_from_list():
         }
     
     Behavior:
-        - monitors must contain exactly one item (file or directory)
+        - monitors must contain at least one item (file or directory)
         - If type="file": Downloads single .mon file
         - If type="dir": Downloads entire directory recursively
+        - All items are merged into the same build directory; on a name clash
+          the later item overwrites the earlier one
         - rebuild behavior same as /extension/repository
     
     Returns:
         200: Success (download mode)
         201: Success (upload mode)
-        400: Invalid request (wrong number of monitors, build failed)
+        400: Invalid request (no monitors, build failed)
         404: Repository not found OR rebuild requested but no existing extension found
         
     Response Body (upload mode):
@@ -482,7 +491,9 @@ def create_extension_from_list():
             "upload": true
         }
     """
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return create_error_response("Request body must be a JSON object", 400)
     extension_name = data.get("extension_name")
     monitors = data.get("monitors", [])
     repository = data.get("repository")
@@ -493,14 +504,23 @@ def create_extension_from_list():
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
-    if len(monitors) != 1:
-        return create_error_response("Exactly one monitor is required", 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(monitors, list) or not monitors:
+        return create_error_response("At least one monitor is required", 400)
+    if not isinstance(repository, dict) or not repository.get("id"):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
         return create_error_response("Repository not found", 404)
+
+    for monitor in monitors:
+        if not isinstance(monitor, dict):
+            return create_error_response("Each monitor must be an object with a url", 400)
+        if monitor.get("type", "file") not in ("file", "dir"):
+            return create_error_response("Monitor type must be 'file' or 'dir'", 400)
+        url_error = _url_error_for_repository(monitor.get("url"), repo_config)
+        if url_error:
+            return create_error_response(f"Monitor {url_error}", 400)
 
     # Handle rebuild
     if rebuild:
@@ -522,21 +542,20 @@ def create_extension_from_list():
             logger.error(error_msg)
             return create_error_response(error_msg, 400)
 
-    monitor = monitors[0]
-
-    if monitor.get("type") == "dir":
-        # Directory selections recurse through the whole subtree, so use a single
-        # Git Trees API listing instead of one Content API request per directory.
-        def source_fetcher(work_dir, headers):
-            web_url = content_api_to_github_web_url(monitor["url"])
-            parsed = parse_github_web_url(web_url)
-            _download_directory_via_tree(
-                parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"],
-                headers, work_dir,
-            )
-    else:
-        def source_fetcher(work_dir, headers):
-            _download_github_content(monitor["url"], headers, work_dir)
+    def source_fetcher(work_dir, headers):
+        for monitor in monitors:
+            if monitor.get("type") == "dir":
+                # Directory selections recurse through the whole subtree, so use a
+                # single Git Trees API listing instead of one Content API request
+                # per directory.
+                web_url = content_api_to_github_web_url(monitor["url"])
+                parsed = parse_github_web_url(web_url)
+                _download_directory_via_tree(
+                    parsed["owner"], parsed["repo"], parsed["branch"], parsed["path"],
+                    headers, work_dir,
+                )
+            else:
+                _download_github_content(monitor["url"], headers, work_dir)
 
     return _build_and_process_extension(
         extension_name=extension_name,
@@ -655,7 +674,9 @@ def create_extension_from_yaml():
         3. Build and deploy: upload = true, deploy = true
         4. Replace existing: rebuild = true, upload = true
     """
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return create_error_response("Request body must be a JSON object", 400)
     yaml_data = data.get("yaml", {})
     sections = data.get("sections", [])
     repository = data.get("repository")
@@ -671,6 +692,10 @@ def create_extension_from_yaml():
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
         return create_error_response("Repository not found", 404)
+
+    url_error = _url_error_for_repository(yaml_data.get("url"), repo_config)
+    if url_error:
+        return create_error_response(f"Yaml {url_error}", 400)
 
     return _process_yaml_sections(
         yaml_data=yaml_data,
@@ -762,6 +787,39 @@ def delete_extensions_by_name():
 # ============================================================================
 # Private Helper Functions
 # ============================================================================
+
+
+_ALLOWED_GITHUB_HOSTS = {"github.com", "api.github.com", "raw.githubusercontent.com"}
+
+
+def _is_github_url(url: str) -> bool:
+    """True only for https URLs on GitHub hosts (the PAT must never be sent elsewhere)."""
+    parsed = urllib.parse.urlparse(url)
+    return parsed.scheme == "https" and parsed.hostname in _ALLOWED_GITHUB_HOSTS
+
+
+def _github_owner_repo(url: str) -> Optional[tuple]:
+    """(owner, repo) of a GitHub web, content-API or raw URL, lower-cased; None if not derivable."""
+    parsed = urllib.parse.urlparse(url)
+    parts = [p for p in parsed.path.split("/") if p]
+    if parsed.hostname == "api.github.com":
+        parts = parts[1:] if parts[:1] == ["repos"] else []
+    if len(parts) < 2:
+        return None
+    return parts[0].lower(), parts[1].lower()
+
+
+def _url_error_for_repository(url, repo_config: Dict) -> Optional[str]:
+    """Error message unless ``url`` is an https GitHub URL inside the configured repository.
+
+    Requests to these URLs carry the repository's PAT, so they must not be able to
+    point at another host or another GitHub repository.
+    """
+    if not isinstance(url, str) or not _is_github_url(url):
+        return "url must be an https GitHub url"
+    if _github_owner_repo(url) != _github_owner_repo(repo_config.get("url", "")):
+        return "url must belong to the configured repository"
+    return None
 
 
 _VALID_EXTENSION_NAME_RE = re.compile(r"^[a-zA-Z0-9_-]+$")
@@ -995,12 +1053,12 @@ def _download_github_content(
 
         try:
             content_response = response.json()
+            if not isinstance(content_response, list):
+                # A single file whose content happens to be valid JSON
+                raise ValueError("Single file response")
             if isinstance(content_response, list):
+                # Root-folder stripping happens once, when each item is processed below
                 for content_item in content_response:
-                    if skip_root_folder:
-                        content_item["path"] = remove_root_folders(
-                            content_item["path"], 1
-                        )
                     _download_github_content(
                         url, headers, work_dir, skip_root_folder, content_item
                     )
@@ -1031,8 +1089,6 @@ def _download_github_content(
 
         if isinstance(dir_contents, list):
             for dir_item in dir_contents:
-                if skip_root_folder:
-                    dir_item["path"] = remove_root_folders(dir_item["path"], 1)
                 _download_github_content(
                     url, headers, work_dir, skip_root_folder, dir_item
                 )
@@ -1171,7 +1227,7 @@ def _process_yaml_sections(
     uploaded_extensions = []
     failed_sections = []
 
-    for idx, section_name in enumerate(sections_to_process):
+    for section_name in sections_to_process:
         name_error = _validate_extension_name(section_name)
         if name_error:
             logger.warning(f"Skipping section '{section_name}': {name_error}")
@@ -1267,7 +1323,7 @@ def _process_yaml_sections(
                         "section": section_name,
                         "error": error_msg
                     })
-            elif idx == 0:
+            else:
                 return result
         except Exception as e:
             error_msg = f"Failed to build section '{section_name}': {e}"
@@ -1281,7 +1337,7 @@ def _process_yaml_sections(
         if deploy and uploaded_extensions:
             agent.restart_cep(request)
 
-        if failed_sections:
+        if uploaded_extensions and failed_sections:
             return jsonify({
                 "uploaded_extensions": uploaded_extensions,
                 "failed_sections": failed_sections,

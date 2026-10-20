@@ -21,9 +21,10 @@ the in-app help text shown by `extension-layout-help-modal.component.html`
 
 - The user sees a list of names for each top-level `.mon` file and top-level
   directory (e.g. "Difference", "Offset", "Python"). The selection grid allows
-  toggling several of these at once, but only a single file or directory may be
-  submitted per build — the backend rejects a build request with more than one
-  `monitors` entry (`400`, see `/extension/list` in [openapi.yaml](openapi.yaml)).
+  toggling several of these at once, and all selected files and directories are
+  submitted together and built into a single extension (`monitors` array, see
+  `/extension/list` in [openapi.yaml](openapi.yaml)). Their contents are merged
+  into one build directory; on a name clash the later item wins.
 
 ## 2. Configuration file `extensions.yaml`
 

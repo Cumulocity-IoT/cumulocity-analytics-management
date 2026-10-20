@@ -1,9 +1,11 @@
 /*
- * $Copyright (c) 2024 Cumulocity GmbH, Duesseldorf, Germany , and/or its 
+ * $Copyright (c) 2024 Cumulocity GmbH, Duesseldorf, Germany , and/or its
  * subsidiaries and/or its affiliates and/or their licensors.
- * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in 
+ * Use, reproduction, transfer, publication or disclosure is prohibited except as specifically provided for in
  * your License Agreement with Cumulocity GmbH
  */
+
+/* eslint-disable no-useless-escape -- regular expressions copied from the EPL/Monaco grammar; kept verbatim */
 
 export const eplTokenProvider = {
 	keyword: [
@@ -78,7 +80,7 @@ export const eplTokenProvider = {
 			[/[;,.]/, 'delimiter'],
 
 			// strings
-			[/"([^"\\]|\\.)*$/, 'string.invalid'],  // non-terminated string
+			[/"([^"\\]|\\.)*$/, 'string.invalid'], // non-terminated string
 			[/"/, 'string', '@string'],
 
 			// characters

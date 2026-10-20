@@ -1,512 +1,202 @@
 # Analytics Service Backend Development Guide
 
+> Last aligned with the code: 2026-10-14. Items marked **Planned** are *not* implemented (see [Planned work](#planned-work)).
+
 ## Overview
 
-The analytics-service is a Python/Flask application that provides a RESTful API for managing custom Analytics Builder blocks and their deployment in Cumulocity IoT. This guide covers architecture, API design, deployment, and best practices.
+`analytics-service` is a Python/Flask microservice (context path `analytics-ext-service`) that
+builds Apama Analytics Builder extensions from GitHub sources and uploads them to Cumulocity.
+It also manages the GitHub repository configuration (stored as tenant options) and exposes the
+status of the Streaming Analytics (CEP/Apama) engine.
+
+Endpoint details live in the route docstrings in `app.py` and in [API.md](../analytics-service/API.md).
+
+---
+
+## Project structure
+
+```
+analytics-service/
+├── app.py               # Flask app: all routes + build/download helpers
+├── c8y_agent.py         # Cumulocity access (pyc8y): extensions, tenant options, CEP
+├── solution_utils.py    # GitHub URL helpers, handle_errors decorator, small utils
+├── logging_config.py    # Logging setup (text or JSON)
+├── health_check.py      # NOT used: not imported by app.py, not copied into the image
+├── cumulocity.json      # Microservice manifest (roles, resources, contextPath)
+├── Dockerfile           # Apama builder base image + SDK clone + gunicorn
+├── build.sh             # Renders manifest/Dockerfile into build/ and zips to dist/
+├── local_deploy.sh      # Local deployment helper
+├── requirements.txt     # Unpinned dependencies (runtime + test)
+├── pytest.ini
+└── tests/               # conftest.py, test_app.py, test_c8y_agent.py, test_solution_utils.py
+```
+
+### Technology stack
+
+- Python 3.11+ (developed on 3.12), Flask, gunicorn (2 workers x 4 threads, 120 s timeout)
+- `pyc8y` 4.1.0 (asyncio-only; `C8YAgent._execute` runs one event loop per request)
+- `requests`, `pyyaml`, `python-dotenv`
+- Base image `public.ecr.aws/apama/apama-builder` with the Analytics Builder block SDK cloned to
+  `/apama_work/apama-analytics-builder-block-sdk` (the build step shells out to `analytics_builder`)
+- Tests: pytest, pytest-cov, pytest-mock, pytest-asyncio
+
+`pydantic` and `psutil` are listed in `requirements.txt` but are not used by the service code
+(`psutil` only by the unused `health_check.py`).
 
 ---
 
 ## Architecture
 
-### Project Structure
-
 ```
-analytics-service/
-├── app.py                          # Flask application entry point
-├── c8y_agent.py                   # Cumulocity IoT integration
-├── solution_utils.py              # Utility functions
-├── cumulocity.json                # Cumulocity configuration
-├── Dockerfile                     # Container configuration
-├── requirements.txt               # Python dependencies
-├── logging_config.py              # Logging configuration
-├── health_check.py                # Health check endpoint
-├── API.md                         # API documentation
-├── local_deploy.sh                # Local deployment script
-├── build.sh                       # Build script
-├── build/                         # Build artifacts
-└── tests/                         # Test suite
-    ├── __init__.py
-    ├── conftest.py
-    └── test_app.py
+Flask routes (app.py)
+   │  validate input, translate errors to HTTP
+   ├── GitHub (requests): content API, git trees API, raw.githubusercontent.com
+   ├── Apama SDK (subprocess): `analytics_builder build extension`
+   └── C8YAgent (c8y_agent.py) ── pyc8y ──> Cumulocity (inventory/binaries, tenant options, CEP endpoints)
 ```
 
-### Technology Stack
+- **Authentication/tenant:** the service is multi-tenant. Every request is forwarded with the
+  caller's headers/cookies; `MultiTenantCumulocityApp.get_tenant_instance` resolves the tenant
+  session. A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
+- **Repositories:** stored as tenant options in category `analytics-management.repository`,
+  one option per repository id, JSON value `{name, url, enabled, accessToken?}`.
+  Tokens are masked as `_DUMMY_ACCESS_CODE_` in API responses; sending the sentinel (or omitting
+  the field) keeps the stored token, sending `""` clears it, changing the URL without a new token
+  clears it.
+- **Extensions:** uploaded as Cumulocity binaries with fragments `pas_extension` (the name) and
+  `build_information` (how it was built). Deleting uses the binaries API.
+- **Build pipeline** (`_build_and_process_extension`): download sources into a temp dir ->
+  build zip with the SDK -> either return the zip (`upload=false`) or upload (`upload=true`),
+  optionally restart CEP (`deploy=true`).
 
-- **Framework:** Flask 3.x
-- **Server:** Gunicorn (production)
-- **Container:** Docker
-- **Python Version:** 3.11+
-- **Testing:** pytest with coverage
-- **Logging:** Python logging with JSON format
+### Security properties worth preserving
+
+- `_safe_join` rejects path traversal for every file written from remote content.
+- `/repository/content` only fetches `https` URLs on `github.com`, `api.github.com` and
+  `raw.githubusercontent.com`, so the stored/supplied PAT is never sent elsewhere.
+- PATs can be supplied per request via the `X-Repository-Access-Token` header (used by
+  "Test connection") to keep them out of URLs and access logs.
+- Extension names are validated (`^[a-zA-Z0-9_-]+$`); delete-by-name rejects `'` and `\`
+  because the name is interpolated into an inventory query.
 
 ---
 
-## API Design
+## API overview
 
-### Base URL
+Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (locally `http://localhost:80/` via `python app.py`).
 
-```
-Production: https://{tenant}.cumulocity.com/service/analytics-service/
-Development: http://localhost:5000/
-```
+| Method | Path | Purpose |
+|--------|------|---------|
+| GET | `/health` | Liveness: always `{"status": "UP"}` (200), no auth, no dependency checks |
+| GET | `/cep/id` | Managed object id of the CEP microservice (404 if unknown) |
+| GET | `/cep/status` | Raw CEP diagnostics status (404 if unavailable) |
+| GET | `/repository/configuration` | List repositories (tokens masked) |
+| POST | `/repository/configuration` | Replace the repository list (missing ids are deleted); body must be an array of objects with `id`, `name`, `url` |
+| GET | `/repository/contentList?url=&repository_id=` | GitHub directory listing for a web URL |
+| GET | `/repository/content?url=&repository_id=[&extract_fqn_cep_block=true&cep_block_name=]` | File content or the fully qualified block name |
+| POST | `/extension/repository` | Build from a whole repository path |
+| POST | `/extension/list` | Build from one or more files or directories (`monitors`) |
+| POST | `/extension/yaml` | Build one extension per section of a YAML spec |
+| DELETE | `/extension/{id}` | Delete by managed object id |
+| DELETE | `/extension?name=` | Delete all extensions with that name |
 
-### Authentication
+The three build endpoints share `extension_name`, `repository.id`, `upload`, `deploy`, `rebuild`.
+`rebuild=true` deletes the existing extension(s) **before** building and returns 404 if none exist.
 
-All endpoints except `/health` require Cumulocity authentication:
-- Basic Auth or OAuth 2.0
-- Tenant ID in header or URL
+### Responses and errors
 
-### Response Format
+There is **no common response envelope**. Success bodies are endpoint specific
+(e.g. `{"id": "...", "message": "Extension uploaded"}`, a zip, a JSON array, plain text).
+Errors are always `{"error": "<message>"}` produced by `create_error_response`.
 
-**Success Response (200-299):**
-```json
-{
-  "success": true,
-  "data": { /* response data */ },
-  "timestamp": "2026-05-28T10:30:00Z"
-}
-```
+| Status | Used for |
+|--------|----------|
+| 200 | Success / zip download |
+| 201 | Extension(s) uploaded |
+| 207 | `/extension/yaml`: some sections uploaded, some failed (`failed_sections` lists them) |
+| 400 | Invalid body/parameters, GitHub URL, download failure, all YAML sections failed, `ValueError` |
+| 401/403/404/429 | Passed through from GitHub (rate limit and SSO get explicit messages) or 404 for unknown repository/extension |
+| 500 | Build failure, upload failure, unexpected errors |
 
-**Error Response (400+):**
-```json
-{
-  "success": false,
-  "error": "Error message",
-  "code": "ERROR_CODE",
-  "timestamp": "2026-05-28T10:30:00Z"
-}
-```
+`handle_errors` wraps each route: `HTTPError` -> its status, `ValueError` -> 400, anything else -> 500.
+Known quirks: delete-by-id maps every `C8YAgentError` (including auth) to 404; delete-by-name maps it to 500.
 
-### Rate Limiting
-
-- **Limit:** 100 requests per minute per user
-- **Headers:** `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
-- **Status Code:** 429 Too Many Requests
-
----
-
-## Health Checks Endpoint
-
-**Status:** ✅ Implemented (ADR-005)
-
-**Location:** `health_check.py`
-
-### Endpoint
-
-```
-GET /health
-```
-
-### Response
-
-```json
-{
-  "status": "healthy",
-  "uptime": 3600,
-  "timestamp": "2026-05-28T10:30:00Z",
-  "checks": {
-    "system": {
-      "status": "healthy",
-      "memory": {
-        "available_mb": 2048,
-        "used_percent": 45.5
-      },
-      "cpu": {
-        "percent": 25.0
-      },
-      "disk": {
-        "available_gb": 50,
-        "used_percent": 30.0
-      }
-    },
-    "cumulocity": {
-      "status": "healthy",
-      "credentials_available": true
-    },
-    "github": {
-      "status": "healthy",
-      "response_time_ms": 150
-    }
-  }
-}
-```
-
-### Status Levels
-
-- **healthy:** All checks passed
-- **degraded:** Some non-critical checks failed
-- **unhealthy:** Critical checks failed
-
-### Checks Performed
-
-1. **System Resources**
-   - Available memory
-   - CPU usage
-   - Disk space
-   - Thresholds: memory < 10%, cpu < 90%, disk < 10%
-
-2. **Cumulocity Connectivity**
-   - Credentials availability
-   - Authentication token validity
-
-3. **GitHub API Connectivity**
-   - API endpoint reachability
-   - Response time monitoring
-
-4. **Service Uptime**
-   - Time since service start
+There is no rate limiting in the service (Cumulocity's gateway applies platform limits).
 
 ---
 
-## Structured Logging
+## Logging
 
-**Status:** ✅ Implemented (ADR-003)
+**Location:** `logging_config.py` (`setup_logging()` at import time).
 
-**Location:** `logging_config.py`
+| Variable | Default | Effect |
+|----------|---------|--------|
+| `LOG_LEVEL` | `INFO` | Level for root logger and handlers |
+| `LOG_FORMAT` | unset | `json` -> JSON on the console |
+| `ENV` | `development` | `production` -> JSON on console **and** a rotating file handler |
+| `LOG_FILE` | `/tmp/analytics-service.log` | File path (production only); 10 MB x 5 backups |
 
-### Features
+If the file handler cannot be opened the service falls back to console-only logging.
+JSON records contain `timestamp, level, logger, message, function, line` (+ `exception`).
 
-- **JSON Logging (Production):** Machine-readable log format for aggregation
-- **Text Logging (Development):** Human-readable format with colors
-- **Rotating Handler:** Automatic log rotation based on file size
-- **Request Correlation:** Unique IDs for request tracing
-- **Data Redaction:** Automatic removal of sensitive information
-
-### Configuration
-
-**Environment Variables:**
-```bash
-LOG_LEVEL=INFO              # DEBUG, INFO, WARNING, ERROR, CRITICAL
-LOG_FORMAT=json             # json or text
-LOG_FILE=logs/app.log       # Log file path
-LOG_MAX_BYTES=10485760      # 10MB
-LOG_BACKUP_COUNT=5          # Keep 5 old files
-```
-
-### Log Format
-
-**JSON Log Example:**
-```json
-{
-  "timestamp": "2026-05-28T10:30:00Z",
-  "level": "INFO",
-  "logger": "app",
-  "message": "Request started",
-  "request_id": "550e8400-e29b-41d4-a716-446655440000",
-  "method": "POST",
-  "path": "/extension",
-  "status": 201,
-  "duration_ms": 250,
-  "user": "admin@tenant.com"
-}
-```
-
-### Redacted Fields
-
-The following sensitive fields are automatically redacted:
-- Authorization headers
-- API tokens
-- Passwords
-- SSH keys
-- Access tokens
+Not implemented: request ids/correlation, access logs with duration/user, automatic redaction.
+`app.py` logs only token *presence*, never the value; keep it that way.
 
 ---
 
-## Testing Infrastructure
+## Configuration and deployment
 
-**Status:** ✅ Setup Complete
+The service reads credentials from the Cumulocity microservice environment (bootstrap user,
+handled by `pyc8y`'s `MultiTenantCumulocityApp`); `.env` is loaded via `python-dotenv` for local runs.
+`GITHUB_TOKEN`, `FLASK_ENV`, `PORT` and `WORKERS` are **not** read. The GitHub token is a
+per-repository (or global, UI-managed) setting.
 
-**Location:** `tests/`
-
-### Framework
-
-- **Test Runner:** pytest
-- **Coverage Tool:** pytest-cov
-- **Fixtures:** Defined in `conftest.py`
-
-### Test Files
-
-- `test_app.py` - Application and endpoint tests
-- `conftest.py` - pytest configuration and fixtures
-
-### Running Tests
+Required microservice roles (`cumulocity.json`): option management read/admin, inventory read/create/admin,
+application management read, CEP management admin.
 
 ```bash
-# Run all tests
-pytest
+# build the microservice zip (version, optional arch/image name)
+cd analytics-service && ./build.sh 1.0.0   # -> dist/analytics-ext-service.zip, upload in Administration > Ecosystem
 
-# Run with coverage report
-pytest --cov=. --cov-report=html --cov-report=term
-
-# Run specific test
-pytest tests/test_app.py::test_health_check
-
-# Run with verbose output
-pytest -vv
-
-# Run only integration tests
-pytest -m integration
+# run locally (needs Cumulocity env/.env; the Apama SDK path is only present in the Docker image)
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python app.py
 ```
 
-### Coverage Reports
-
-```bash
-# Generate HTML coverage report
-pytest --cov=. --cov-report=html
-
-# View report
-open htmlcov/index.html
-```
-
-### Target Coverage
-
-- Minimum 80% for services
-- Minimum 70% for utils
-- Minimum 60% for routes
+CI (`.github/workflows/build-release.yml`) builds the UI and the microservice on `v*` tags;
+`check-push.yml` (every push and pull request) runs the spell check, the UI checks and the service tests
+(`python -m pytest --cov=.` on Python 3.12). The release workflow does not depend on them.
 
 ---
 
-## Request Validation
+## Testing
 
-**Status:** ✅ Implementation Roadmap (ADR-004)
-
-Using Pydantic for declarative request validation:
-
-```python
-from pydantic import BaseModel, Field
-
-class ExtensionRequest(BaseModel):
-    name: str = Field(..., min_length=1, max_length=255)
-    description: str = Field(default="", max_length=1000)
-    github_url: str = Field(..., regex=r'https://github\.com/.*')
-    version: str = Field(default="1.0.0")
-
-# Automatic validation on request deserialization
-@app.post('/extension')
-def create_extension(req: ExtensionRequest):
-    # req is already validated
-    pass
+```bash
+cd analytics-service
+.venv/bin/python -m pytest                 # all tests
+.venv/bin/python -m pytest --cov=. --cov-report=term
+.venv/bin/python -m pytest tests/test_app.py -k yaml
 ```
 
-### Benefits
+| File | Covers |
+|------|--------|
+| `tests/test_solution_utils.py` | URL conversion, parsing helpers, `handle_errors` |
+| `tests/test_app.py` | every endpoint, GitHub error mapping, download helpers, path traversal, build pipeline (SDK and GitHub stubbed) |
+| `tests/test_c8y_agent.py` | repository token semantics, delete/upload/CEP, auth failure (fake async tenant) |
 
-- Declarative schemas
-- Automatic type validation
-- Self-documenting API
-- Consistent error messages
-- Request serialization
+Conventions: Cumulocity is replaced via the `agent_mock` fixture (routes) or `run_agent_work`
+(agent); GitHub via `monkeypatch` on `app.requests.get`; the SDK build via `_build_extension`.
+No test needs network access or credentials. Coverage is about 91% (`health_check.py` is unused and uncovered).
 
 ---
 
-## Deployment
+## Planned work
 
-### Docker Build
+None of the following exists today. Track decisions in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-```bash
-# Build image
-docker build -t analytics-service:latest .
-
-# Run container
-docker run -p 5000:5000 \
-  -e CUMULOCITY_BASEURL=https://tenant.cumulocity.com \
-  -e CUMULOCITY_USERNAME=admin \
-  -e CUMULOCITY_PASSWORD=password \
-  analytics-service:latest
-```
-
-### Environment Configuration
-
-**Required Environment Variables:**
-```bash
-CUMULOCITY_BASEURL=https://tenant.cumulocity.com
-CUMULOCITY_USERNAME=admin
-CUMULOCITY_PASSWORD=password
-GITHUB_TOKEN=ghp_xxxxxxxxxxxx
-```
-
-**Optional Environment Variables:**
-```bash
-FLASK_ENV=production              # production or development
-LOG_LEVEL=INFO
-LOG_FORMAT=json                   # json or text
-PORT=5000
-WORKERS=4                         # Gunicorn workers
-```
-
-### Local Deployment
-
-```bash
-# Setup virtual environment
-python -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run local server
-python app.py
-```
-
-### Production Deployment
-
-**Using Gunicorn:**
-```bash
-gunicorn -w 4 -b 0.0.0.0:5000 app:app
-```
-
-**Docker Compose:**
-```yaml
-version: '3.8'
-services:
-  analytics-service:
-    build: .
-    ports:
-      - "5000:5000"
-    environment:
-      - FLASK_ENV=production
-      - LOG_FORMAT=json
-    volumes:
-      - ./logs:/app/logs
-```
-
----
-
-## API Endpoints
-
-### Extension Management
-
-**GET /extension**
-- List all extensions
-- Query parameters: `skip=0`, `limit=50`
-- Response: List of extensions with metadata
-
-**POST /extension**
-- Upload and build extension
-- Request body: ExtensionRequest
-- Response: Deployment result
-
-**GET /extension/{name}**
-- Get extension details
-- Response: Extension with full metadata
-
-**DELETE /extension/{name}**
-- Delete extension
-- Response: Deletion confirmation
-
-### Repository Management
-
-**GET /repository**
-- List all repositories
-- Response: List of repositories
-
-**POST /repository**
-- Add new repository
-- Request body: RepositoryRequest
-- Response: Repository confirmation
-
-**DELETE /repository/{id}**
-- Remove repository
-- Response: Deletion confirmation
-
-### Health & Status
-
-**GET /health**
-- Health check with system metrics
-- Response: Health status with checks
-
----
-
-## Error Handling
-
-### HTTP Status Codes
-
-| Code | Meaning |
-|------|---------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request |
-| 401 | Unauthorized |
-| 403 | Forbidden |
-| 404 | Not Found |
-| 409 | Conflict |
-| 429 | Too Many Requests |
-| 500 | Internal Server Error |
-| 503 | Service Unavailable |
-
-### Error Response Example
-
-```json
-{
-  "success": false,
-  "error": "Invalid extension configuration",
-  "code": "VALIDATION_ERROR",
-  "details": {
-    "field": "github_url",
-    "message": "Invalid GitHub URL format"
-  },
-  "timestamp": "2026-05-28T10:30:00Z"
-}
-```
-
----
-
-## Dependencies
-
-**Core Dependencies:**
-```
-Flask==3.0.0
-Gunicorn==21.0.0
-Requests==2.31.0
-python-dotenv==1.0.0
-```
-
-**Development Dependencies:**
-```
-pytest==7.4.0
-pytest-cov==4.1.0
-black==23.0.0
-pylint==2.17.0
-```
-
-### Managing Dependencies
-
-```bash
-# Add new dependency
-pip install package-name
-pip freeze > requirements.txt
-
-# Update dependencies
-pip install --upgrade -r requirements.txt
-```
-
----
-
-## Common Issues and Solutions
-
-### Issue: Cumulocity Authentication Failure
-**Solution:** 
-- Verify credentials in environment variables
-- Check tenant URL format
-- Ensure user has necessary permissions
-
-### Issue: GitHub Rate Limiting
-**Solution:**
-- Use GitHub token instead of basic auth
-- Check remaining API rate limit in logs
-- Implement caching for frequently accessed repos
-
-### Issue: High Memory Usage
-**Solution:**
-- Check health endpoint for memory metrics
-- Review log file size and rotation settings
-- Consider using Gunicorn worker limits
-
----
-
-## Next Steps
-
-1. **Request Validation:** Implement Pydantic models for all endpoints
-2. **Database:** Add persistence layer for extension metadata
-3. **Caching:** Implement Redis for response caching
-4. **Monitoring:** Setup APM (Application Performance Monitoring)
-5. **Security:** Implement rate limiting and DDoS protection
+1. **Request validation with Pydantic** (ADR-004) - replace the hand-written checks in the routes.
+2. **Rich `/health`** (ADR-005) - wire up `health_check.py` (and copy it in the Dockerfile) or delete it.
+   Keep external calls out of any liveness probe.
+3. **Pinned dependencies** and separate runtime/dev requirement files.
+4. **Safer rebuild** - delete the old extension only after a successful build.
+5. **Request correlation ids and log redaction.**

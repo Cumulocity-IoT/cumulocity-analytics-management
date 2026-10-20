@@ -1,12 +1,12 @@
-<c8y-title>{{ 'All extensions' | translate }}</c8y-title>
+<c8y-title>{{ labels.extensions | translate }}</c8y-title>
 
 <c8y-breadcrumb>
   <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate" />
   <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate" />
   <c8y-breadcrumb-item
-    [icon]="'c8y-modules'"
-    [label]="'Manage extensions' | translate"
-    [path]="'c8y-pkg-analytics-extension/manage'" />
+    [icon]="'plugin'"
+    [label]="labels.extensions | translate"
+    [path]="routes.manage" />
 </c8y-breadcrumb>
 
 <!-- Safe Mode Warning -->
@@ -14,7 +14,7 @@
   <c8y-action-bar-item [placement]="'left'">
     <a
       href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
-      target="_blank"
+      target="_blank" rel="noopener noreferrer"
       class="safe-mode-warning">
       <i c8yIcon="warning" class="animated fadeIn infinite safe-mode-pulse"></i>
       <span class="text-warning p-r-8 p-l-4">{{ 'Safe Mode' | translate }}</span>
@@ -27,7 +27,7 @@
   @if (cepStatus$ | async; as status) {
     <div class="c8y-realtime p-r-8">
       <i [c8yIcon]="status === 'up' ? 'ok text-success' : 'warning text-warning'"></i>
-      <a [href]="getCepMicroserviceUrl()" target="_blank" class="m-l-4">
+      <a [href]="getCepMicroserviceUrl()" target="_blank" rel="noopener noreferrer" class="m-l-4">
         {{ 'Streaming Analytics' | translate }}
       </a>
     </div>
@@ -64,6 +64,20 @@
 </c8y-action-bar-item>
 
 <!-- Content -->
+@if (isSafeMode$ | async) {
+  <div class="alert alert-warning m-b-16 safe-mode-banner" role="alert">
+    <strong>{{ 'The correlator is in safe mode.' | translate }}</strong>
+    {{
+      'It restarted repeatedly, so no extensions are loaded. The extension that was added or updated last is the most likely cause; it is marked below. Delete or fix it, then restart to leave safe mode.'
+        | translate
+    }}
+    <a
+      href="https://cumulocity.com/guides/streaming-analytics/troubleshooting/#safe-mode-on-startup"
+      target="_blank" rel="noopener noreferrer">
+      {{ 'Learn more' | translate }}
+    </a>
+  </div>
+}
 @if (cepStatus$ | async; as status) {
   <!-- CEP Down -->
   @if (status === 'down') {

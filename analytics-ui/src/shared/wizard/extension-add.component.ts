@@ -235,7 +235,7 @@ export class ExtensionAddComponent implements OnDestroy {
             console.warn(`Failed to parse metadata for ${monitorName}:`, error);
           }
         }
-        
+
         monitors.push(monitorMetadata);
       }
 
@@ -373,11 +373,13 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private extractExtensionName(fileName: string): string {
-    // Remove .zip extension if present, otherwise remove the last extension
-    if (fileName.toLowerCase().endsWith('.zip')) {
-      return fileName.slice(0, -4);
-    }
-    return fileName.split('.').slice(0, -1).join('.');
+    // Remove .zip extension if present, otherwise remove the last extension.
+    // A name without an extension ("README") or that is only an extension
+    // (".zip", ".hidden") stays as it is, an empty extension name is never valid.
+    const stripped = fileName.toLowerCase().endsWith('.zip')
+      ? fileName.slice(0, -4)
+      : fileName.split('.').slice(0, -1).join('.');
+    return stripped || fileName;
   }
 
   private async findExistingExtension(
@@ -393,20 +395,16 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private async performUpload(mode: UploadMode): Promise<void> {
-    try {
-      const result = await this.uploadExtensionHandler(
-        this.state.file!,
-        this.state.extension!,
-        mode
-      );
+    const result = await this.uploadExtensionHandler(
+      this.state.file!,
+      this.state.extension!,
+      mode
+    );
 
-      if (result) {
-        this.handleUploadSuccess(mode);
-      } else {
-        this.handleUploadFailure();
-      }
-    } catch (error) {
-      throw error;
+    if (result) {
+      this.handleUploadSuccess(mode);
+    } else {
+      this.handleUploadFailure();
     }
   }
 
@@ -482,7 +480,10 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private cleanup(): void {
-    if (this.state.extension && !this.state.isComplete) {
+    // Only a half-created extension may be rolled back. When it already exists
+    // (requiresUpdate) `state.extension` is the user's installed extension: cleaning
+    // up after a cancelled, declined or failed update must never delete it.
+    if (this.state.extension && !this.state.isComplete && !this.state.requiresUpdate) {
       this.analyticsService.cancelExtensionCreation(this.state.extension);
     }
 

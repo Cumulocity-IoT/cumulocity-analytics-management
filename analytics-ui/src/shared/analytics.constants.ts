@@ -1,95 +1,45 @@
 import { gettext } from '@c8y/ngx-components/gettext';
-import { ERROR_TYPE } from './analytics.model';
-import { PropertiesListItem } from '@c8y/ngx-components';
+import { ErrorType } from './analytics.model';
 
 export const ERROR_MESSAGES = {
-  [ERROR_TYPE.TYPE_VALIDATION]: gettext(
+  [ErrorType.TYPE_VALIDATION]: gettext(
     'Wrong file format. Expected a *.zip file with a valid manifest.'
   ),
-  [ERROR_TYPE.ALREADY_SUBSCRIBED]: gettext(
+  [ErrorType.ALREADY_SUBSCRIBED]: gettext(
     'Could not subscribe to the microservice because another application with the same context path is already subscribed.'
   ),
-  [ERROR_TYPE.NO_MANIFEST_FILE]: gettext('Could not find a manifest.'),
-  [ERROR_TYPE.INVALID_PACKAGE]: gettext(
+  [ErrorType.NO_MANIFEST_FILE]: gettext('Could not find a manifest.'),
+  [ErrorType.INVALID_PACKAGE]: gettext(
     'You have not uploaded a valid package.'
   ),
-  [ERROR_TYPE.INVALID_APPLICATION]: gettext(
+  [ErrorType.INVALID_APPLICATION]: gettext(
     'You have not uploaded a valid application.'
   ),
-  [ERROR_TYPE.INTERNAL_ERROR]: gettext(
+  [ErrorType.INTERNAL_ERROR]: gettext(
     'An internal error occurred, try to upload again.'
   )
 };
 
-export const APP_STATE = {
-  SUBSCRIBED: {
-    label: gettext('Subscribed`application`'),
-    class: 'label-primary'
-  },
-  CUSTOM: {
-    label: gettext('Custom`application`'),
-    class: 'label-info'
-  },
-  EXTERNAL: {
-    label: gettext('External`application`'),
-    class: 'label-warning'
-  },
-  UNPACKED: {
-    label: gettext('Unpacked`application`'),
-    class: 'label-success'
-  },
-  PACKAGE_APP: {
-    label: gettext('Application'),
-    class: 'label-success'
-  },
-  PACKAGE_PLUGIN: {
-    label: gettext('Plugins'),
-    class: 'label-info'
-  }
+/** Root path of all pages contributed by this plugin. */
+export const ROUTE_ROOT = 'c8y-pkg-analytics-extension';
+
+/** Route paths. Labels for the same pages: `PAGE_LABELS`. */
+export const ROUTES = {
+  manage: `${ROUTE_ROOT}/manage`,
+  installedBlocks: `${ROUTE_ROOT}/installed-blocks`,
+  repository: `${ROUTE_ROOT}/repository`,
+  monitoring: `${ROUTE_ROOT}/monitoring`,
+  release: `${ROUTE_ROOT}/release`
 };
 
-export const packageProperties: PropertiesListItem[] = [
-  {
-    label: gettext('Version'),
-    key: 'version'
-  },
-  {
-    label: gettext('Author'),
-    key: 'author'
-  },
-  {
-    label: gettext('Keywords'),
-    key: 'keywords'
-  },
-  {
-    label: gettext('Source'),
-    key: 'repository',
-    transform: (repository: unknown) => {
-      if (repository && typeof repository === 'object') {
-        const repo = repository as Record<string, unknown>;
-        return repo['url'] ? repo['url'] : repository;
-      }
-      return repository;
-    },
-    type: 'link',
-    action: () => {
-      // Action handled by link type
-    }
-  } as any,
-  {
-    label: gettext('Homepage'),
-    key: 'homepage',
-    type: 'link',
-    action: () => {
-      // Action handled by link type
-    }
-  },
-  {
-    label: gettext('Required platform version'),
-    key: 'requiredPlatformVersion'
-  },
-  {
-    label: gettext('License'),
-    key: 'license'
-  }
-];
+/**
+ * One name per page, used for the tab, the page title and the breadcrumb.
+ * Defined with `gettext()` so the strings are extracted for translation;
+ * templates translate them with the `translate` pipe.
+ */
+export const PAGE_LABELS = {
+  extensions: gettext('Extensions'),
+  installedBlocks: gettext('Installed blocks'),
+  repositories: gettext('Repositories'),
+  monitoring: gettext('Monitoring')
+};
