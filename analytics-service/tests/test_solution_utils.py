@@ -157,3 +157,42 @@ class TestErrorHandling:
         resp = bad()
         assert resp.status_code == 500
         assert "kaboom" in resp.get_data(as_text=True)
+
+
+class TestUrlHardening:
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://github.com/o/r/tree/main/../x",
+            "https://github.com/o/r/tree/main/%2e%2e/x",
+            "https://github.com/o/r/tree/main/a/./b",
+            "https://github.com/../r",
+            "https://github.com/o/../tree/main",
+            "https://github.com.evil.com/o/r",
+            "https://evil.com/github.com/o/r",
+            "https://github.com/o/r/tree/main/a%2Fb",
+        ],
+    )
+    def test_web_url_rejects_unsafe(self, url):
+        with pytest.raises(ValueError):
+            parse_github_web_url(url)
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.github.com/repos/o/r/contents/../../x?ref=main",
+            "https://api.github.com.evil.com/repos/o/r/contents/x",
+            "https://api.github.com/repos/o/r/contents/x?ref=..",
+        ],
+    )
+    def test_content_api_url_rejects_unsafe(self, url):
+        with pytest.raises(ValueError):
+            content_api_to_github_web_url(url)
+
+    def test_identifier_validators(self):
+        from solution_utils import is_valid_identifier, is_valid_numeric_id
+
+        assert is_valid_identifier("a1_b-2") and not is_valid_identifier("a/b")
+        assert not is_valid_identifier(None) and not is_valid_identifier("")
+        assert is_valid_numeric_id("123") and not is_valid_numeric_id("12a")
+        assert not is_valid_numeric_id(123)

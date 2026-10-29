@@ -36,6 +36,9 @@ from solution_utils import (
     create_error_response,
     github_web_url_to_content_api,
     handle_errors,
+    has_unsafe_path_segment,
+    is_valid_identifier,
+    is_valid_numeric_id,
     parse_boolean,
     parse_github_web_url,
     remove_root_folders,
@@ -219,6 +222,10 @@ def update_repositories():
             return create_error_response(
                 "Each repository must have id, name, and url", 400
             )
+        if not is_valid_identifier(repo["id"]):
+            return create_error_response(
+                "Repository id may only contain letters, digits, hyphens and underscores", 400
+            )
 
     return agent.update_repositories(request, repositories)
 
@@ -257,8 +264,8 @@ def get_content_list():
     if not encoded_url:
         return create_error_response("URL parameter is required", 400)
 
-    headers = _get_repository_headers(repository_id, access_token)
     decoded_url = urllib.parse.unquote(encoded_url)
+    headers = _get_repository_headers(repository_id, access_token, url=decoded_url)
     content_url = github_web_url_to_content_api(decoded_url)
 
     logger.info(f"Fetching content list from: {content_url}")
@@ -309,7 +316,7 @@ def get_content():
     if not _is_github_url(decoded_url):
         return create_error_response("URL must be an https GitHub URL", 400)
 
-    headers = _get_repository_headers(repository_id, access_token)
+    headers = _get_repository_headers(repository_id, access_token, url=decoded_url)
 
     response = requests.get(decoded_url, headers=headers, timeout=30)
     error = _github_error_response(response)
@@ -394,7 +401,7 @@ def create_extension_from_repository():
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
@@ -506,7 +513,7 @@ def create_extension_from_list():
         return create_error_response(name_error, 400)
     if not isinstance(monitors, list) or not monitors:
         return create_error_response("At least one monitor is required", 400)
-    if not isinstance(repository, dict) or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
@@ -684,10 +691,12 @@ def create_extension_from_yaml():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
-    if not yaml_data or not yaml_data.get("url"):
+    if not isinstance(yaml_data, dict) or not yaml_data.get("url"):
         return create_error_response("Parameter yaml with url is required", 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
+    if not isinstance(sections, list):
+        return create_error_response("Parameter sections must be an array", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
@@ -728,6 +737,9 @@ def delete_extension_by_id(extension_id):
     Example:
         DELETE /extension/12345678
     """
+    if not is_valid_numeric_id(extension_id):
+        return create_error_response("Extension id must be numeric", 400)
+
     try:
         agent.delete_extension(request, extension_id=extension_id)
         return jsonify({"message": "Extension deleted successfully"}), 200
@@ -817,6 +829,8 @@ def _url_error_for_repository(url, repo_config: Dict) -> Optional[str]:
     """
     if not isinstance(url, str) or not _is_github_url(url):
         return "url must be an https GitHub url"
+    if has_unsafe_path_segment(urllib.parse.urlparse(url).path):
+        return "url must not contain relative path segments"
     if _github_owner_repo(url) != _github_owner_repo(repo_config.get("url", "")):
         return "url must belong to the configured repository"
     return None
@@ -837,8 +851,13 @@ def _validate_extension_name(name: str) -> Optional[str]:
 def _get_repository_headers(
     repository_id: Optional[str] = None,
     access_token: Optional[str] = None,
+    url: Optional[str] = None,
 ) -> Dict[str, str]:
     """Get headers for GitHub API requests with authentication.
+
+    When ``url`` is given together with ``repository_id``, the stored PAT is only
+    attached if the URL lies inside that repository (ValueError otherwise), so a
+    stored token cannot be used against another repository or API endpoint.
 
     Resolution order for the PAT:
       1. ``access_token`` argument (typically sourced from the ``X-Repository-Access-Token``
@@ -855,7 +874,13 @@ def _get_repository_headers(
         return headers
 
     if repository_id:
+        if not is_valid_identifier(repository_id):
+            raise ValueError("Invalid repository_id")
         repo_config = agent.load_repository(request, repository_id, replace_access_token=False)
+        if repo_config and url is not None:
+            url_error = _url_error_for_repository(url, repo_config)
+            if url_error:
+                raise ValueError(f"Parameter {url_error}")
         if repo_config and repo_config.get("accessToken"):
             headers["Authorization"] = f"Bearer {repo_config['accessToken']}"
             logger.info("Repository %s: sending request WITH stored PAT", repository_id)
@@ -1176,9 +1201,13 @@ def _build_and_process_extension(
                         download_name=f"{extension_name}.zip",
                     )
 
+                # Stored on the extension's managed object, which every inventory
+                # reader can see, so it must never carry the access token.
                 build_info = {
                     "build_type": build_type,
-                    "repository": repository,
+                    "repository": {
+                        k: repository.get(k) for k in ("id", "name", "url")
+                    },
                     **(build_info_extra or {}),
                 }
                 ext_id = agent.upload_extension(request, extension_name, ext_file, build_info)
@@ -1235,7 +1264,15 @@ def _process_yaml_sections(
             continue
 
         section_data = yaml_structure[section_name]
-        files = section_data.get("files", [])
+        files = section_data.get("files", []) if isinstance(section_data, dict) else []
+        if not isinstance(files, list) or not all(
+            isinstance(f, str) and f and not f.startswith("/") for f in files
+        ):
+            logger.warning(f"Section '{section_name}' has an invalid files list")
+            failed_sections.append(
+                {"section": section_name, "error": "files must be a list of relative paths"}
+            )
+            continue
 
         if not files:
             logger.warning(f"Section '{section_name}' has no files")

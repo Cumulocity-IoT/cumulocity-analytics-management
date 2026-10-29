@@ -50,11 +50,16 @@ class C8YAgent:
         load_dotenv()
 
     def _execute(self, request, work):
-        """Run `work(tenant)` inside a fresh, request-scoped tenant session.
+        """Run `work(tenant)` inside a fresh, request-scoped session of the calling user.
+
+        The client authenticates with the caller's own credentials, so Cumulocity
+        enforces the caller's roles on every call. (`get_tenant_instance` would use
+        the microservice's service user and give every authenticated user of the
+        tenant its privileges.)
 
         Args:
             request: Flask request object
-            work: async callable accepting the tenant-scoped CumulocityClient
+            work: async callable accepting the user-scoped CumulocityClient
 
         Returns:
             Whatever `work` returns.
@@ -63,12 +68,12 @@ class C8YAgent:
         async def _runner():
             async with MultiTenantCumulocityApp() as c8y_app:
                 try:
-                    tenant = await c8y_app.get_tenant_instance(
+                    tenant = await c8y_app.get_user_instance(
                         headers=request.headers, cookies=request.cookies
                     )
                 except Exception as e:
                     self._logger.error(
-                        f"Failed to get tenant instance: {e}", exc_info=True
+                        f"Failed to get user instance: {e}", exc_info=True
                     )
                     raise C8YAgentError("Failed to authenticate with Cumulocity") from e
                 return await work(tenant)

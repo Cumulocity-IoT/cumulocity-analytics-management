@@ -14,7 +14,9 @@ Locally (`python app.py`): `http://localhost:80`.
 
 Every request must carry the caller's Cumulocity credentials (Basic auth, OAuth cookie/token) or it is
 rejected by the platform. The service forwards the request headers/cookies to Cumulocity and acts as that
-user/tenant. `GET /health` needs no authentication.
+user: Cumulocity enforces that user's roles on every call, so callers need the matching roles (inventory
+admin to delete or upload extensions, option management admin to change repositories, CEP management admin
+to restart CEP). `GET /health` needs no authentication.
 
 ## Responses and errors
 

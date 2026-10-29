@@ -352,7 +352,7 @@ class TestExecute:
             async def __aexit__(self, *a):
                 return False
 
-            async def get_tenant_instance(self, **kw):
+            async def get_user_instance(self, **kw):
                 raise RuntimeError("401")
 
         monkeypatch.setattr(c8y_agent, "MultiTenantCumulocityApp", FakeApp)

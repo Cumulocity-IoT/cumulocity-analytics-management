@@ -677,3 +677,148 @@ class TestDeleteExtension:
     def test_by_name_agent_error_is_500(self, client, agent_mock):
         agent_mock.delete_extension.side_effect = C8YAgentError("x")
         assert client.delete("/extension?name=Foo").status_code == 500
+
+
+# ------------------------------------------------------------ security hardening
+
+
+class TestRepositoryBinding:
+    """The stored PAT must only reach URLs inside the configured repository."""
+
+    def test_content_list_other_repo_is_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/other/private", "repository_id": "repo-1"},
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_content_other_repo_is_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/content",
+            query_string={
+                "url": "https://raw.githubusercontent.com/other/private/main/A.mon",
+                "repository_id": "repo-1",
+            },
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_content_list_dot_segments_are_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/o/r/tree/main/../../../x", "repository_id": "repo-1"},
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_bad_repository_id_is_rejected(self, client, agent_mock):
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/o/r", "repository_id": "../../x"},
+        )
+        assert resp.status_code == 400
+        agent_mock.load_repository.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.github.com/repos/o/r/contents/../../../other/private/contents/x",
+            "https://api.github.com/repos/o/r/contents/%2e%2e/%2e%2e/x",
+            "https://github.com/o/r/tree/main/../../x",
+        ],
+    )
+    def test_url_with_dot_segments_is_not_in_repository(self, url):
+        assert app_module._url_error_for_repository(url, REPO)
+
+    def test_list_monitor_with_dot_segments_is_400(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        resp = client.post(
+            "/extension/list",
+            json={
+                "extension_name": "E",
+                "repository": {"id": "repo-1"},
+                "monitors": [{
+                    "url": "https://api.github.com/repos/o/r/contents/../../../other/private/contents/A.mon",
+                    "type": "file",
+                }],
+            },
+        )
+        assert resp.status_code == 400
+
+
+class TestIdentifierValidation:
+    @pytest.mark.parametrize("bad", ["../x", "a/b", "a b", "", "x" * 65, "a?b=c"])
+    def test_repository_config_rejects_bad_id(self, client, agent_mock, bad):
+        resp = client.post(
+            "/repository/configuration", json=[{"id": bad, "name": "n", "url": "u"}]
+        )
+        assert resp.status_code == 400
+        agent_mock.update_repositories.assert_not_called()
+
+    @pytest.mark.parametrize("bad", ["../x", "1%3Fx=y", "abc", "1%2F2"])
+    def test_delete_by_id_rejects_non_numeric(self, client, agent_mock, bad):
+        resp = client.delete(f"/extension/{bad}")
+        assert resp.status_code in (400, 404)
+        agent_mock.delete_extension.assert_not_called()
+
+    @pytest.mark.parametrize("bad", [{"id": "../x"}, {"id": 5}, "repo-1"])
+    def test_extension_routes_reject_bad_repository(self, client, agent_mock, bad):
+        for url, extra in (
+            ("/extension/repository", {}),
+            ("/extension/list", {"monitors": [{"url": "https://github.com/o/r"}]}),
+        ):
+            resp = client.post(url, json={"extension_name": "E", "repository": bad, **extra})
+            assert resp.status_code == 400
+        agent_mock.load_repository.assert_not_called()
+
+
+class TestBuildInfoHasNoToken:
+    def test_upload_build_info_omits_access_token(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.upload_extension.return_value = "1"
+        client.post(
+            "/extension/repository",
+            json={"extension_name": "E", "repository": {"id": "repo-1"}, "upload": True},
+        )
+        build_info = agent_mock.upload_extension.call_args.args[3]
+        assert build_info["repository"] == {
+            "id": "repo-1", "name": "Repo", "url": REPO["url"],
+        }
+        assert "ghp_secret" not in str(build_info)
+
+
+class TestYamlFilesValidation:
+    def _run(self, monkeypatch, fake_response, yaml_text, build_env_installed=True):
+        monkeypatch.setattr(
+            app_module.requests, "get", MagicMock(return_value=fake_response(200, text=yaml_text))
+        )
+        with app_module.app.test_request_context():
+            return app_module._process_yaml_sections(
+                {"url": "https://raw.githubusercontent.com/o/r/main/e.yaml"},
+                [], REPO, upload=True, deploy=False,
+            )
+
+    def test_traversal_in_files_fails_the_section(self, agent_mock, monkeypatch, fake_response, build_env):
+        out = self._run(monkeypatch, fake_response, "Evil:\n  files:\n    - ../../../other/private/x.mon\n")
+        assert out.status_code == 400
+        agent_mock.upload_extension.assert_not_called()
+
+    @pytest.mark.parametrize("files", ["abc", "[1, 2]", "['/etc/passwd']"])
+    def test_malformed_files_fail_the_section(self, agent_mock, monkeypatch, fake_response, build_env, files):
+        out = self._run(monkeypatch, fake_response, f"S:\n  files: {files}\n")
+        assert out.status_code == 400
+        agent_mock.upload_extension.assert_not_called()
+
+    def test_non_dict_section_fails_without_crashing(self, agent_mock, monkeypatch, fake_response, build_env):
+        out = self._run(monkeypatch, fake_response, "S: just-a-string\n")
+        assert out.status_code == 400
