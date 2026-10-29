@@ -9,12 +9,13 @@ The changes are in three commits on the branch `feature/c8y-iot-build-pipeline`:
 | `8678f15` | Authorization, token handling, URL and ID validation |
 | `28aedef` | Unprivileged container, pinned build inputs |
 | `17e4336` and `a608732` | A change to token storage and its revert. The net effect is none. |
+| Role concept | Three application roles replace the platform roles as the access check |
 
 ## Summary
 
 | Area | Before | After | Action required |
 |------|--------|-------|-----------------|
-| Authorization | Every authenticated user of a tenant acted with the privileges of the microservice's service user | Every call runs with the roles of the calling user | Check that your users have the roles in [Required roles](#required-roles) |
+| Authorization | Every authenticated user of a tenant acted with the privileges of the microservice's service user | The service checks one of three new application roles on every route | Assign the new roles, see [Assign the new roles](#1-assign-the-new-roles) |
 | Extension build information | The GitHub personal access token (PAT) was stored in the `build_information` of each uploaded extension | Only `id`, `name`, and `url` of the repository are stored | Rotate tokens and clean up existing extensions |
 | GitHub URLs | Paths with `..` segments were accepted, and a stored token could be sent to another repository | Such URLs return `400`, and a stored token is only sent to URLs inside its own repository | Check your repository IDs and branch names |
 | IDs | Repository IDs and extension IDs were not validated | Strict formats, see [Behavior changes for API clients](#behavior-changes-for-api-clients) | Check existing repository IDs |
@@ -23,23 +24,40 @@ The changes are in three commits on the branch `feature/c8y-iot-build-pipeline`:
 
 ## Before you deploy
 
-### 1. Check user roles
+### 1. Assign the new roles
 
-The service used to call Cumulocity with its own service user, so a user without any inventory, option, or CEP roles could still delete extensions, restart CEP, or overwrite the repository configuration. The platform now checks the roles of the user who sends the request.
+The service used to call Cumulocity with its own service user and never checked who the caller was. A user without any roles could delete extensions, restart CEP, or overwrite the repository configuration. The service now checks one of three application roles on every route, which the microservice manifest declares:
 
-The service user roles in `cumulocity.json` are unchanged. They show which permissions the operations need. Confirm the exact role for each operation on a test tenant.
+| Role | Allows |
+|------|--------|
+| `ROLE_ANALYTICS_MANAGEMENT_READ` | Read CEP status, list repositories, browse repository content, and build an extension as a download |
+| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | Everything in READ, and build with `upload=true` |
+| `ROLE_ANALYTICS_MANAGEMENT_ADMIN` | Everything in CREATE, and change repositories, delete extensions, rebuild (`rebuild=true`), and restart CEP (`deploy=true`) |
 
-| Operation | Endpoints | Roles the caller needs |
-|-----------|-----------|------------------------|
-| Read CEP status | `GET /cep/id`, `GET /cep/status` | `ROLE_CEP_MANAGEMENT_READ` or `ROLE_CEP_MANAGEMENT_ADMIN`, and `ROLE_INVENTORY_READ` |
-| Read repositories | `GET /repository/configuration`, `/repository/contentList`, `/repository/content` | `ROLE_OPTION_MANAGEMENT_READ` |
-| Change repositories | `POST /repository/configuration` | `ROLE_OPTION_MANAGEMENT_ADMIN` |
-| Build and download | `POST /extension/repository`, `/extension/list`, `/extension/yaml` with `upload=false` | `ROLE_OPTION_MANAGEMENT_READ` |
-| Build and upload | the same endpoints with `upload=true` | `ROLE_INVENTORY_CREATE` |
-| Rebuild or delete | `rebuild=true`, `DELETE /extension`, `DELETE /extension/{id}` | `ROLE_INVENTORY_ADMIN` |
-| Deploy | `deploy=true` | `ROLE_CEP_MANAGEMENT_ADMIN` |
+A higher role includes the lower ones, so assign one role per person. The service enforces this rule. Cumulocity does not.
 
-A caller without the matching role now receives an error from the platform instead of a successful response. Assign the roles to the user groups that manage extensions before the upgrade.
+| Endpoint | Role |
+|----------|------|
+| `GET /cep/id`, `GET /cep/status` | READ |
+| `GET /repository/configuration`, `/repository/contentList`, `/repository/content` | READ |
+| `POST /extension/repository`, `/extension/list`, `/extension/yaml` | READ, or CREATE with `upload=true`, or ADMIN with `rebuild=true` or `deploy=true` |
+| `POST /repository/configuration` | ADMIN |
+| `DELETE /extension`, `DELETE /extension/{id}` | ADMIN |
+| `GET /health` | None |
+
+The platform calls run as the microservice's service user. Callers no longer need the platform roles `ROLE_OPTION_MANAGEMENT_ADMIN`, `ROLE_INVENTORY_ADMIN`, or `ROLE_CEP_MANAGEMENT_ADMIN` to use the service. The service user keeps the `requiredRoles` from `cumulocity.json`.
+
+Steps:
+
+1. Deploy the new version. The platform creates the three roles when the microservice is subscribed. If you update an existing subscription, check in **Administration > Roles** that they exist.
+2. Create or reuse user groups, and assign the roles. For example, give viewers READ, release engineers CREATE, and application owners ADMIN.
+3. Test with one user per role before you remove old assignments.
+
+A caller without a valid login receives `401`. A caller without the required role receives `403` with the message `Missing required role <role>`. Both checks run before the service reads the request body, loads a repository, or changes anything.
+
+#### The UI still bypasses these roles
+
+The UI saves repository options and uploads extension binaries directly to Cumulocity with the platform roles of the logged-in user, not through this service. Anyone with `ROLE_OPTION_MANAGEMENT_ADMIN` or `ROLE_INVENTORY_ADMIN` can therefore still change repositories and upload or delete extensions in the UI, whatever application role they hold. The new roles protect the microservice API and the actions that use it, such as building from a repository, browsing repository content, and reading CEP status. Closing the bypass requires routing the UI's writes through the service, which is not part of this change.
 
 ### 2. Rotate the GitHub tokens
 
@@ -89,6 +107,8 @@ These requests now return an error. Before, most of them were accepted.
 
 | Request | Response |
 |---------|----------|
+| Any route except `GET /health` without a valid login | `401` |
+| Any route without the required role, see [Assign the new roles](#1-assign-the-new-roles) | `403` |
 | `POST /repository/configuration` with an `id` that does not match the ID rule | `400` |
 | `POST /extension/*` with a `repository.id` that is missing, not a string, or does not match the ID rule | `400` |
 | `DELETE /extension/{id}` where `id` is not numeric | `400` |
@@ -135,15 +155,19 @@ Redeploy the previous microservice image. Nothing is stored in a new format, so 
 
 ## Notes for developers
 
-- `C8YAgent._execute` calls `get_user_instance`. Do not switch back to `get_tenant_instance` for request handling, because it authenticates as the service user.
+- `C8YAgent._execute` runs as the service user, so it does not check the caller. A `before_request` hook in `app.py` does that: it reads the caller's roles with their own credentials (`C8YAgent.get_caller_roles`) and compares them with the role the route declares through `@requires_role`. The hook denies a route that declares no role. Use `@public` only for routes that must work without a login.
+- Checks that depend on the request body, such as `upload`, `rebuild`, and `deploy`, use `_build_role_error`. Call it before the first side effect, and keep its truthiness identical to how the route acts on the flags.
+- `tests/test_authorization.py` fails if a route declares no role, if the declared roles differ from its table, or if a role does not allow exactly itself and the roles above it. Update the table when you add a route.
 - Validation helpers are in `solution_utils.py` (`is_valid_identifier`, `is_valid_numeric_id`, `has_unsafe_path_segment`). Use them for any new value that ends up in a URL, a tenant option key, or an inventory query.
 - Install the test dependencies with `pip install -r requirements-dev.txt` in `analytics-service`. The CI workflows do this already. Run `pytest` to execute the 218 tests.
 - To update the base image, pull `public.ecr.aws/apama/apama-builder:latest`, test it, and replace the digest in the `FROM` line. To update the SDK, change the `SDK_COMMIT` build argument in the `Dockerfile`.
 
 ## Verify after deployment
 
-1. Open the Manage repositories dialog as a user with option management admin, and save a repository. The save succeeds.
-2. Repeat the save as a user without option roles. The platform rejects it.
-3. Build and upload an extension, then read `build_information.repository` of the new extension. It contains `id`, `name`, and `url`, and no `accessToken`.
-4. Call `GET /repository/contentList` with a `repository_id` and a URL from a different repository. The response is `400`.
-5. Confirm in the pod that the process runs as UID 1724: `kubectl exec <pod> -- id`.
+1. As a user with only `ROLE_ANALYTICS_MANAGEMENT_READ`, call `GET /cep/status` and build an extension as a download. Both succeed. Call `POST /extension/repository` with `"upload": true`. The response is `403`.
+2. As a user with `ROLE_ANALYTICS_MANAGEMENT_CREATE`, upload an extension. It succeeds. Repeat with `"deploy": true`. The response is `403`.
+3. As a user with `ROLE_ANALYTICS_MANAGEMENT_ADMIN`, save a repository, rebuild an extension, and delete it. All succeed.
+4. As a user without any of the three roles, call `GET /cep/status`. The response is `403`.
+5. Build and upload an extension, then read `build_information.repository` of the new extension. It contains `id`, `name`, and `url`, and no `accessToken`.
+6. Call `GET /repository/contentList` with a `repository_id` and a URL from a different repository. The response is `400`.
+7. Confirm in the pod that the process runs as UID 1724: `kubectl exec <pod> -- id`.

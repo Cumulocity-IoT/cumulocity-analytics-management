@@ -14,9 +14,21 @@ Locally (`python app.py`): `http://localhost:80`.
 
 Every request must carry the caller's Cumulocity credentials (Basic auth, OAuth cookie/token) or it is
 rejected by the platform. The service forwards the request headers/cookies to Cumulocity and acts as that
-user: Cumulocity enforces that user's roles on every call, so callers need the matching roles (inventory
-admin to delete or upload extensions, option management admin to change repositories, CEP management admin
-to restart CEP). `GET /health` needs no authentication.
+user: Cumulocity checks the credentials, and the service then checks the caller's application role.
+`GET /health` needs no authentication. A missing or invalid login returns `401`, a missing role returns
+`403` with `{"error": "Missing required role ..."}`.
+
+The service declares three roles. A higher role includes the lower ones, so one assignment per person is
+enough.
+
+| Role | Allows |
+|------|--------|
+| `ROLE_ANALYTICS_MANAGEMENT_READ` | CEP status, list repositories, browse repository content, build an extension as a download |
+| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | everything in READ, and build with `upload=true` |
+| `ROLE_ANALYTICS_MANAGEMENT_ADMIN` | everything in CREATE, and change repositories, delete extensions, `rebuild=true`, and `deploy=true` (CEP restart) |
+
+The platform calls themselves run as the microservice's service user, so callers need none of the
+platform roles such as `ROLE_INVENTORY_ADMIN`.
 
 ## Responses and errors
 

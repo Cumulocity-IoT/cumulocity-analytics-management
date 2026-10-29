@@ -352,7 +352,7 @@ class TestExecute:
             async def __aexit__(self, *a):
                 return False
 
-            async def get_user_instance(self, **kw):
+            async def get_tenant_instance(self, **kw):
                 raise RuntimeError("401")
 
         monkeypatch.setattr(c8y_agent, "MultiTenantCumulocityApp", FakeApp)
@@ -380,3 +380,64 @@ class TestCepErrorLogging:
         with caplog.at_level("WARNING"):
             agent.get_cep_ctrl_status(REQ)
         assert caplog.records[-1].levelname == "ERROR"
+
+
+class TestGetCallerRoles:
+    @staticmethod
+    def _install(monkeypatch, user_get=None, instance_error=None):
+        class FakeUser:
+            async def get(self, path):
+                assert path == "/user/currentUser"
+                if isinstance(user_get, Exception):
+                    raise user_get
+                return user_get
+
+        class FakeApp:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get_user_instance(self, **kw):
+                if instance_error:
+                    raise instance_error
+                return FakeUser()
+
+            async def get_tenant_instance(self, **kw):
+                raise AssertionError("roles must be read with the caller's credentials")
+
+        monkeypatch.setattr(c8y_agent, "MultiTenantCumulocityApp", FakeApp)
+        return MagicMock(headers={}, cookies={})
+
+    def test_returns_effective_role_ids(self, monkeypatch):
+        request = self._install(monkeypatch, user_get={
+            "userName": "u",
+            "effectiveRoles": [{"id": "ROLE_ANALYTICS_MANAGEMENT_READ"}, {"id": "ROLE_X", "self": "..."}, {}, "junk"],
+        })
+        assert C8YAgent().get_caller_roles(request) == {"ROLE_ANALYTICS_MANAGEMENT_READ", "ROLE_X"}
+
+    def test_no_roles(self, monkeypatch):
+        request = self._install(monkeypatch, user_get={"userName": "u"})
+        assert C8YAgent().get_caller_roles(request) == set()
+
+    @pytest.mark.parametrize("status", [401, 403])
+    def test_rejected_credentials(self, monkeypatch, status):
+        request = self._install(
+            monkeypatch, user_get=ValueError(f"Invalid GET request. Status: {status}, Response: x")
+        )
+        with pytest.raises(c8y_agent.C8YAuthenticationError):
+            C8YAgent().get_caller_roles(request)
+
+    def test_missing_credentials(self, monkeypatch):
+        request = self._install(monkeypatch, instance_error=RuntimeError("no Authorization header"))
+        with pytest.raises(c8y_agent.C8YAuthenticationError):
+            C8YAgent().get_caller_roles(request)
+
+    def test_other_failures_are_not_authentication_errors(self, monkeypatch):
+        request = self._install(
+            monkeypatch, user_get=ValueError("Invalid GET request. Status: 500, Response: boom")
+        )
+        with pytest.raises(C8YAgentError) as exc:
+            C8YAgent().get_caller_roles(request)
+        assert not isinstance(exc.value, c8y_agent.C8YAuthenticationError)

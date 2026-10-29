@@ -26,6 +26,9 @@ def agent_mock(monkeypatch):
     import app as app_module
 
     mock = MagicMock(name="agent")
+    # Existing tests exercise route behavior, so the default caller may do everything;
+    # test_authorization.py sets narrower roles.
+    mock.get_caller_roles.return_value = {app_module.ROLE_ADMIN}
     monkeypatch.setattr(app_module, "agent", mock)
     return mock
 

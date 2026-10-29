@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Set, Tuple
 
 from dotenv import load_dotenv
 
@@ -17,6 +17,12 @@ from pyc8y.model.tenant_option import TenantOption
 
 class C8YAgentError(Exception):
     """Custom exception for C8Y Agent errors."""
+
+    pass
+
+
+class C8YAuthenticationError(C8YAgentError):
+    """The caller's credentials were not accepted by Cumulocity."""
 
     pass
 
@@ -49,17 +55,20 @@ class C8YAgent:
         self._logger = logging.getLogger(self.__class__.__name__)
         load_dotenv()
 
-    def _execute(self, request, work):
-        """Run `work(tenant)` inside a fresh, request-scoped session of the calling user.
+    # Matches the platform's wording, e.g. "Invalid GET request. Status: 401, Response: ..."
+    _AUTH_STATUS_RE = re.compile(r"Status: (401|403)\b")
 
-        The client authenticates with the caller's own credentials, so Cumulocity
-        enforces the caller's roles on every call. (`get_tenant_instance` would use
-        the microservice's service user and give every authenticated user of the
-        tenant its privileges.)
+    def _execute(self, request, work):
+        """Run `work(tenant)` inside a fresh, request-scoped tenant session.
+
+        The session uses the microservice's service user, so it can do whatever
+        the manifest's `requiredRoles` allow. It does NOT check who the caller
+        is: the Flask layer must have authorized the request first (see the
+        role check in app.py). Use `get_caller_roles` to learn the caller's roles.
 
         Args:
             request: Flask request object
-            work: async callable accepting the user-scoped CumulocityClient
+            work: async callable accepting the tenant-scoped CumulocityClient
 
         Returns:
             Whatever `work` returns.
@@ -68,15 +77,57 @@ class C8YAgent:
         async def _runner():
             async with MultiTenantCumulocityApp() as c8y_app:
                 try:
-                    tenant = await c8y_app.get_user_instance(
+                    tenant = await c8y_app.get_tenant_instance(
                         headers=request.headers, cookies=request.cookies
                     )
                 except Exception as e:
                     self._logger.error(
-                        f"Failed to get user instance: {e}", exc_info=True
+                        f"Failed to get tenant instance: {e}", exc_info=True
                     )
                     raise C8YAgentError("Failed to authenticate with Cumulocity") from e
                 return await work(tenant)
+
+        return asyncio.run(_runner())
+
+    def get_caller_roles(self, request) -> Set[str]:
+        """Roles of the user who sent the request, as Cumulocity sees them.
+
+        Reads `/user/currentUser` with the caller's own credentials, so the
+        platform authenticates the caller and the result cannot be forged by
+        request headers. Every user may read their own record, so this needs no
+        extra role.
+
+        Raises:
+            C8YAuthenticationError: the credentials were rejected
+            C8YAgentError: the roles could not be read for another reason
+        """
+
+        async def _runner():
+            async with MultiTenantCumulocityApp() as c8y_app:
+                try:
+                    user = await c8y_app.get_user_instance(
+                        headers=request.headers, cookies=request.cookies
+                    )
+                except Exception as e:
+                    # No usable credentials in the request (building the session needs no network)
+                    self._logger.warning(f"Could not authenticate caller: {e}")
+                    raise C8YAuthenticationError(
+                        "Failed to authenticate with Cumulocity"
+                    ) from e
+                try:
+                    current_user = await user.get("/user/currentUser")
+                except Exception as e:
+                    if self._AUTH_STATUS_RE.search(str(e)):
+                        raise C8YAuthenticationError(
+                            "Failed to authenticate with Cumulocity"
+                        ) from e
+                    self._logger.error(f"Failed to read caller roles: {e}", exc_info=True)
+                    raise C8YAgentError("Failed to read the roles of the caller") from e
+                return {
+                    role["id"]
+                    for role in current_user.get("effectiveRoles", [])
+                    if isinstance(role, dict) and role.get("id")
+                }
 
         return asyncio.run(_runner())
 

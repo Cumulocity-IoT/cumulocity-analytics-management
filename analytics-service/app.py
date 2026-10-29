@@ -27,9 +27,9 @@ from typing import Dict, List, Optional
 
 import requests
 import yaml
-from flask import Flask, jsonify, make_response, request, send_file
+from flask import Flask, g, jsonify, make_response, request, send_file
 
-from c8y_agent import C8YAgent, C8YAgentError
+from c8y_agent import C8YAgent, C8YAgentError, C8YAuthenticationError
 from logging_config import setup_logging
 from solution_utils import (
     content_api_to_github_web_url,
@@ -49,8 +49,112 @@ from solution_utils import (
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# No static folder: every route must declare its role (see _authorize_request)
+app = Flask(__name__, static_folder=None)
 agent = C8YAgent()
+
+
+# ============================================================================
+# Authorization
+# ============================================================================
+#
+# Platform calls run as the microservice's service user, so this layer decides
+# who may do what. Callers hold one of three roles, and a higher role includes
+# the lower ones:
+#
+#   READ    view status, repositories and repository content, build as download
+#   CREATE  build and upload extensions
+#   ADMIN   change repositories, delete and rebuild extensions, restart CEP
+
+ROLE_READ = "ROLE_ANALYTICS_MANAGEMENT_READ"
+ROLE_CREATE = "ROLE_ANALYTICS_MANAGEMENT_CREATE"
+ROLE_ADMIN = "ROLE_ANALYTICS_MANAGEMENT_ADMIN"
+
+# Roles that satisfy a requirement: the role itself and every higher one
+_SATISFIED_BY = {
+    ROLE_READ: {ROLE_READ, ROLE_CREATE, ROLE_ADMIN},
+    ROLE_CREATE: {ROLE_CREATE, ROLE_ADMIN},
+    ROLE_ADMIN: {ROLE_ADMIN},
+}
+
+
+def public(view):
+    """Mark a route as reachable without credentials."""
+    view.is_public = True
+    return view
+
+
+def requires_role(role: str):
+    """Declare the minimum role a route needs (checked in `_authorize_request`)."""
+    if role not in _SATISFIED_BY:
+        raise ValueError(f"Unknown role: {role}")
+
+    def decorator(view):
+        view.required_role = role
+        return view
+
+    return decorator
+
+
+def _has_role(roles, required: str) -> bool:
+    return bool(_SATISFIED_BY[required] & set(roles))
+
+
+def _forbidden(required: str):
+    return create_error_response(f"Missing required role {required}", 403)
+
+
+def _require_role(required: str):
+    """For checks that depend on the request body: an error response, or None if allowed.
+
+    Call it before the first side effect of the request.
+    """
+    if _has_role(getattr(g, "roles", ()), required):
+        return None
+    return _forbidden(required)
+
+
+def _build_role_error(upload, deploy, rebuild):
+    """Error response if the caller may not do what a build request asks for.
+
+    A plain build (download) needs READ, which every route already requires.
+    Uploading needs CREATE, and rebuilding (deletes the existing extension) or
+    deploying (restarts CEP) needs ADMIN. The truthiness matches how the
+    routes act on the flags.
+    """
+    if rebuild or deploy:
+        return _require_role(ROLE_ADMIN)
+    if upload:
+        return _require_role(ROLE_CREATE)
+    return None
+
+
+@app.before_request
+def _authorize_request():
+    """Deny by default: authenticate the caller and check the route's minimum role."""
+    if request.endpoint is None:  # unknown URL, Flask answers 404
+        return None
+
+    view = app.view_functions[request.endpoint]
+    if getattr(view, "is_public", False):
+        return None
+
+    required = getattr(view, "required_role", None)
+    if required is None:
+        logger.error("Route %s declares no role, denying", request.endpoint)
+        return create_error_response("Access denied", 403)
+
+    try:
+        g.roles = agent.get_caller_roles(request)
+    except C8YAuthenticationError:
+        return create_error_response("Authentication required", 401)
+    except C8YAgentError as e:
+        return create_error_response(str(e), 503)
+
+    if not _has_role(g.roles, required):
+        logger.warning("Denied %s %s: missing %s", request.method, request.path, required)
+        return _forbidden(required)
+    return None
 
 
 # ============================================================================
@@ -59,6 +163,7 @@ agent = C8YAgent()
 
 
 @app.route("/health")
+@public
 def health():
     """
     Health check endpoint.
@@ -78,6 +183,7 @@ def health():
 
 
 @app.route("/cep/id", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_cep_operationobject_id():
     """
@@ -104,6 +210,7 @@ def get_cep_operationobject_id():
 
 
 @app.route("/cep/status", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_cep_ctrl_status():
     """
@@ -143,6 +250,7 @@ def get_cep_ctrl_status():
 
 
 @app.route("/repository/configuration", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def load_repositories():
     """
@@ -174,6 +282,7 @@ def load_repositories():
 
 
 @app.route("/repository/configuration", methods=["POST"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def update_repositories():
     """
@@ -236,6 +345,7 @@ def update_repositories():
 
 
 @app.route("/repository/contentList", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_content_list():
     """
@@ -279,6 +389,7 @@ def get_content_list():
 
 
 @app.route("/repository/content", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_content():
     """
@@ -340,6 +451,7 @@ def get_content():
 
 
 @app.route("/extension/repository", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_repository():
     """
@@ -398,6 +510,10 @@ def create_extension_from_repository():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
+
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
@@ -441,6 +557,7 @@ def create_extension_from_repository():
 
 
 @app.route("/extension/list", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_list():
     """
@@ -507,6 +624,10 @@ def create_extension_from_list():
     upload = data.get("upload", False)
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
+
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
 
     name_error = _validate_extension_name(extension_name)
     if name_error:
@@ -576,6 +697,7 @@ def create_extension_from_list():
 
 
 @app.route("/extension/yaml", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_yaml():
     """
@@ -691,6 +813,10 @@ def create_extension_from_yaml():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
+
     if not isinstance(yaml_data, dict) or not yaml_data.get("url"):
         return create_error_response("Parameter yaml with url is required", 400)
     if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
@@ -717,6 +843,7 @@ def create_extension_from_yaml():
 
 
 @app.route("/extension/<extension_id>", methods=["DELETE"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def delete_extension_by_id(extension_id):
     """
@@ -748,6 +875,7 @@ def delete_extension_by_id(extension_id):
 
 
 @app.route("/extension", methods=["DELETE"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def delete_extensions_by_name():
     """

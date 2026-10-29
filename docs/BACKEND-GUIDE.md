@@ -57,9 +57,12 @@ Flask routes (app.py)
 ```
 
 - **Authentication/tenant:** the service is multi-tenant. Every request is forwarded with the
-  caller's headers/cookies; `MultiTenantCumulocityApp.get_user_instance` creates a session with the
-  caller's own credentials, so Cumulocity enforces the caller's roles (see
-  [MIGRATION-SECURITY-2026-10.md](MIGRATION-SECURITY-2026-10.md)). A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
+  caller's headers/cookies. `C8YAgent.get_caller_roles` reads the caller's roles with the caller's own
+  credentials (`get_user_instance`, `/user/currentUser`), and a `before_request` hook in `app.py`
+  checks them against the role each route declares with `@requires_role`. Routes without a role are
+  denied, and only `@public` routes (`/health`) skip the check. Platform calls then run as the
+  service user (`get_tenant_instance`), so they are only safe behind that hook. See
+  [MIGRATION-SECURITY-2026-10.md](MIGRATION-SECURITY-2026-10.md). A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
 - **Repositories:** stored as tenant options in category `analytics-management.repository`,
   one option per repository id, JSON value `{name, url, enabled, accessToken?}`.
   Tokens are masked as `_DUMMY_ACCESS_CODE_` in API responses; sending the sentinel (or omitting
