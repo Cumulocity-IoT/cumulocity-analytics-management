@@ -1,6 +1,6 @@
 {
   "apiVersion": "2",
-  "version": "{VERSION}-SNAPSHOT",
+  "version": "{VERSION}",
   "provider": {
     "name": "Cumulocity GmbH"
   },
