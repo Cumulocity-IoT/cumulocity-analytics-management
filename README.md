@@ -210,7 +210,7 @@ To build the backend as the microservice `analytics-ext-service`:
 ```
 # c8y microservices list --name analytics-ext-service | c8y microservices createBinary --file dist/analytics-ext-service.zip --timeout 360
 ```
-* or build and upload in one step with the active `c8y` session (the microservice must already exist):
+* or build and upload in one step with the active `c8y` session (creates the microservice on the first run, uploads a new version afterwards):
 ```
 # ./build.sh --push VERSION
 ```

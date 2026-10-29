@@ -27,8 +27,9 @@
 #
 # OPTIONS
 #   --push         After the build, upload the archive to the tenant of the active go-c8y-cli
-#                  session as a new version of the existing microservice (needs c8y, and a
-#                  session set with "set-session"). Without it, nothing leaves your machine.
+#                  session (needs c8y, and a session set with "set-session"). It creates the
+#                  microservice if it does not exist yet, otherwise it uploads a new version.
+#                  Without --push, nothing leaves your machine.
 #
 # ARGUMENTS
 #   version        Version written into cumulocity.json ("{VERSION}-SNAPSHOT" is the template). Required.
@@ -49,8 +50,9 @@
 #      cumulocity.json (needs jq; keys of the extension file win).
 #   4. Builds the Docker image (docker buildx), saves it to dist/image.tar and zips
 #      it together with cumulocity.json into dist/<archive-name>.zip (needs zip).
-#   5. With --push: uploads dist/<archive-name>.zip with "c8y microservices createBinary".
-#      The microservice "analytics-ext-service" must already exist on the tenant.
+#   5. With --push: uploads dist/<archive-name>.zip. A missing microservice is created with
+#      "c8y microservices create"; an existing one gets a new version with
+#      "c8y microservices createBinary".
 #
 # REQUIREMENTS
 #   docker with buildx, zip, jq (only for the optional manifest extension), and
@@ -165,6 +167,12 @@ echo "Created uploadable archive: $TARGET"
 if [ "$PUSH" = 1 ]; then
   echo ""
   echo "Uploading $TARGET to the active c8y session ..."
-  c8y microservices list --name "$NAME" | c8y microservices createBinary --file "$TARGET" --timeout 360
+  if [ -n "$(c8y microservices list --name "$NAME" --select id --output csv)" ]; then
+    echo "Microservice $NAME exists, uploading a new version ..."
+    c8y microservices list --name "$NAME" | c8y microservices createBinary --file "$TARGET" --timeout 360
+  else
+    echo "Microservice $NAME does not exist, creating it ..."
+    c8y microservices create --file "$TARGET" --name "$NAME" --timeout 360
+  fi
   echo "Uploaded $TARGET"
 fi
