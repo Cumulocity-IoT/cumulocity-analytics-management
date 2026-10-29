@@ -23,7 +23,12 @@
 #
 # USAGE
 #   ./build.sh [-h|--help]
-#   ./build.sh <version> [<platform>] [<archive-name>]
+#   ./build.sh [--push] <version> [<platform>] [<archive-name>]
+#
+# OPTIONS
+#   --push         After the build, upload the archive to the tenant of the active go-c8y-cli
+#                  session as a new version of the existing microservice (needs c8y, and a
+#                  session set with "set-session"). Without it, nothing leaves your machine.
 #
 # ARGUMENTS
 #   version        Version written into cumulocity.json ("{VERSION}-SNAPSHOT" is the template). Required.
@@ -34,6 +39,7 @@
 #   ./build.sh 1.0.0                        # -> dist/analytics-ext-service.zip
 #   ./build.sh 1.0.0 linux/arm64            # build the image for arm64
 #   ./build.sh 1.0.0 linux/amd64 my-name    # -> dist/my-name.zip
+#   ./build.sh --push 1.0.0-SNAPSHOT        # build, then upload to the active tenant
 #
 # WHAT IT DOES
 #   1. Recreates ./build and ./dist (existing content is deleted).
@@ -43,9 +49,12 @@
 #      cumulocity.json (needs jq; keys of the extension file win).
 #   4. Builds the Docker image (docker buildx), saves it to dist/image.tar and zips
 #      it together with cumulocity.json into dist/<archive-name>.zip (needs zip).
+#   5. With --push: uploads dist/<archive-name>.zip with "c8y microservices createBinary".
+#      The microservice "analytics-ext-service" must already exist on the tenant.
 #
 # REQUIREMENTS
-#   docker with buildx, zip, and jq (only for the optional manifest extension).
+#   docker with buildx, zip, jq (only for the optional manifest extension), and
+#   c8y (only for --push).
 #   Run it from the analytics-service directory.
 #
 # EXIT CODES
@@ -55,6 +64,17 @@ usage() {
   # print the documentation block above (from "Build the" to the line before the blank line after REQUIREMENTS)
   sed -n '/^# Build the analytics-ext-service/,/^#   0 success/p' "$0" | sed -e 's/^# \{0,1\}//'
 }
+
+# Take --push out of the arguments, wherever it appears, so the positional
+# arguments below keep their meaning.
+PUSH=0
+for arg in "$@"; do
+  shift
+  case "$arg" in
+    --push) PUSH=1 ;;
+    *) set -- "$@" "$arg" ;;
+  esac
+done
 
 case "$1" in
   -h|--help)
@@ -75,7 +95,13 @@ case "$1" in
     ;;
 esac
 
-# Stop at the first failing command (docker build, docker save, zip) instead of
+# Fail before the build, not after it, if the upload cannot work.
+if [ "$PUSH" = 1 ] && ! command -v c8y >/dev/null 2>&1; then
+  echo "--push needs the go-c8y-cli command 'c8y' on the PATH." >&2
+  exit 2
+fi
+
+# Stop at the first failing command (docker build, docker save, zip, c8y) instead of
 # printing "Created uploadable archive" for a broken result.
 set -e
 
@@ -135,3 +161,10 @@ zip -j "$DIST_DIR/$IMG_NAME.zip" "$BUILD_DIR/cumulocity.json" "$DIST_DIR/image.t
 
 echo ""
 echo "Created uploadable archive: $TARGET"
+
+if [ "$PUSH" = 1 ]; then
+  echo ""
+  echo "Uploading $TARGET to the active c8y session ..."
+  c8y microservices list --name "$NAME" | c8y microservices createBinary --file "$TARGET" --timeout 360
+  echo "Uploaded $TARGET"
+fi

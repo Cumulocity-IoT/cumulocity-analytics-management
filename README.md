@@ -22,6 +22,7 @@ A Cumulocity web plugin (plus an optional microservice) to manage Analytics Buil
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - architecture decision records
 - [docs/UI-GUIDE.md](docs/UI-GUIDE.md) and [docs/BACKEND-GUIDE.md](docs/BACKEND-GUIDE.md) - frontend and backend guides
 - [analytics-service/API.md](analytics-service/API.md) - backend API
+- [docs/MIGRATION-SECURITY-2026-10.md](docs/MIGRATION-SECURITY-2026-10.md) - migration guide for the October 2026 security hardening
 
 Run the tests with `npm test` in `analytics-ui` (frontend) or `pytest` in `analytics-service` (backend).
 
@@ -208,6 +209,10 @@ To build the backend as the microservice `analytics-ext-service`:
 * upload the created image:
 ```
 # c8y microservices list --name analytics-ext-service | c8y microservices createBinary --file dist/analytics-ext-service.zip --timeout 360
+```
+* or build and upload in one step with the active `c8y` session (the microservice must already exist):
+```
+# ./build.sh --push VERSION
 ```
 > **NOTE**
 For the first deployment create the microservice instead:

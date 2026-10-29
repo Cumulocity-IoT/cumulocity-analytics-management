@@ -23,10 +23,11 @@ analytics-service/
 ├── logging_config.py    # Logging setup (text or JSON)
 ├── health_check.py      # NOT used: not imported by app.py, not copied into the image
 ├── cumulocity.json      # Microservice manifest (roles, resources, contextPath)
-├── Dockerfile           # Apama builder base image + SDK clone + gunicorn
+├── Dockerfile           # Apama builder base image (pinned) + SDK at a pinned commit + gunicorn, runs as user apama
 ├── build.sh             # Renders manifest/Dockerfile into build/ and zips to dist/
 ├── local_deploy.sh      # Local deployment helper
-├── requirements.txt     # Unpinned dependencies (runtime + test)
+├── requirements.txt     # Pinned runtime dependencies
+├── requirements-dev.txt # Test dependencies (includes requirements.txt)
 ├── pytest.ini
 └── tests/               # conftest.py, test_app.py, test_c8y_agent.py, test_solution_utils.py
 ```
@@ -56,8 +57,9 @@ Flask routes (app.py)
 ```
 
 - **Authentication/tenant:** the service is multi-tenant. Every request is forwarded with the
-  caller's headers/cookies; `MultiTenantCumulocityApp.get_tenant_instance` resolves the tenant
-  session. A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
+  caller's headers/cookies; `MultiTenantCumulocityApp.get_user_instance` creates a session with the
+  caller's own credentials, so Cumulocity enforces the caller's roles (see
+  [MIGRATION-SECURITY-2026-10.md](MIGRATION-SECURITY-2026-10.md)). A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
 - **Repositories:** stored as tenant options in category `analytics-management.repository`,
   one option per repository id, JSON value `{name, url, enabled, accessToken?}`.
   Tokens are masked as `_DUMMY_ACCESS_CODE_` in API responses; sending the sentinel (or omitting
