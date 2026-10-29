@@ -103,10 +103,6 @@ export default {
         to: 'resources/images/extension-build-information.png',
       },
       {
-        from: '../resources/images-optimized/monitoring-engine.png',
-        to: 'resources/images/monitoring-engine.png',
-      },
-      {
         from: '../README.md',
         to: 'README.md',
       },
