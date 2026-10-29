@@ -157,6 +157,16 @@ describe('RepositoryItemsService', () => {
       expect(hidden.map(i => i.name)).toEqual(['Other']);
     });
 
+    it('marks a file without blocks as installed when a deployed extension contains it', async () => {
+      github.getContent.and.resolveTo([ghEntry('Helper.mon'), ghEntry('Other.mon')]);
+      github.getItemContent.and.callFake(async () => 'package p;\nevent Foo { }');
+
+      const items = await firstValueFrom(
+        service.getItemsForRepositories([repo()], [], false, new Set(['Helper.mon']))
+      );
+      expect(items.map(i => [i.name, i.installed])).toEqual([['Helper', true], ['Other', false]]);
+    });
+
     it('combines items of several repositories', async () => {
       github.getContent.and.callFake(async (r: Repository) => [ghEntry(`${r.id}.md`)]);
       const items = await firstValueFrom(service.getItemsForRepositories([repo('a'), repo('b')], [], false));

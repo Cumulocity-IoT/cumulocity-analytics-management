@@ -1,13 +1,14 @@
 # Analytics Builder Management
 
-A Cumulocity web plugin (plus an optional microservice) to manage Analytics Builder extensions in the Streaming Analytics application: upload and monitor custom block extensions, or build them online from blocks in GitHub repositories.
+A Cumulocity web plugin, with an optional microservice, that manages Analytics Builder extensions in the Streaming Analytics application. You upload custom block extensions, or build them online from blocks in GitHub repositories.
 
 ## Content
 - [Documentation](#documentation)
 - [Overview](#overview)
 - [Manage custom extensions](#manage-custom-extensions)
 - [Sample repositories and building custom extensions](#sample-repositories-and-building-custom-extensions)
-- [Monitoring](#monitoring)
+- [Backend service switch](#backend-service-switch)
+- [Access control](#access-control)
 - [Installation](#installation)
 - [Build the plugin](#build-the-plugin)
 - [Backend microservice](#backend-microservice)
@@ -22,126 +23,119 @@ A Cumulocity web plugin (plus an optional microservice) to manage Analytics Buil
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - architecture decision records
 - [docs/UI-GUIDE.md](docs/UI-GUIDE.md) and [docs/BACKEND-GUIDE.md](docs/BACKEND-GUIDE.md) - frontend and backend guides
 - [analytics-service/API.md](analytics-service/API.md) - backend API
+- [analytics-service/README.md](analytics-service/README.md) - backend microservice
 - [docs/MIGRATION-SECURITY-2026-10.md](docs/MIGRATION-SECURITY-2026-10.md) - migration guide for the October 2026 security hardening
 
 Run the tests with `npm test` in `analytics-ui` (frontend) or `pytest` in `analytics-service` (backend).
 
 ## Overview
 
-This solution extends the functionality of the standard Cumulocity Streaming Analytics application by incorporating a plugin to manage and add Analytics Builder Blocks as extensions. The current standard user interface lacks the capability to upload custom blocks packaged as **.zip** files. This plugin enhances the Streaming-Analytics UI by introducing these capabilities.
+The standard Streaming Analytics user interface cannot upload custom blocks packaged as **.zip** files. This plugin adds that capability and manages Analytics Builder blocks as extensions.
 
-The extension allows you to manage the complete lifecycle of an extension:
-* List, upload, download, update and delete Analytics Builder extensions.
+The plugin covers the lifecycle of an extension:
+* List, upload, download, update, and delete Analytics Builder extensions.
 * List installed blocks.
-* Manage GitHub repositories, which act as a source for dynamically building new extensions.
+* Manage GitHub repositories as the source for building new extensions.
 * Build new extensions from selected blocks and deploy them in the Streaming Analytics engine.
-* Monitor alarm status and events sent from the Analytics Builder engine to analyze deployment failures.
+* Show a Safe Mode warning when the engine did not load the extensions, and mark the suspected extension.
 
 Analytics Builder blocks are built using the [Analytics Builder Block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk). Externally built extensions can be uploaded in the UI.
 
 ![Extension installation](resources/images/extension-upload.png)
 
-The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks and the extension package they belong to.
+The plugin adds three tabs: **Extensions**, **Installed blocks**, and **Repositories**. The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks, and the extension package they belong to.
 
 ![Block list](resources/images/block-list.png)
 
 ## Manage custom extensions
-Custom extensions can be uploaded from your local system, downloaded and deleted. An upload, update or deletion only takes effect after you restart the Streaming Analytics engine.
+You can upload custom extensions from your local system, download them, and delete them. An upload, update or deletion only takes effect after you restart the Streaming Analytics engine.
 
 ### Upload custom extension
 
-Upload an externally built extension with the button **Add extension**. Drop the **.zip** file into the dialog; the extension is stored in the repository but not yet deployed. To deploy it, click **Restart to deploy extension** and wait for the notification confirming the engine restart.
-If an extension with the same name already exists, you are asked to confirm that it is replaced with the new version, or you can cancel.
+Upload an externally built extension with the button **Add extension**. Drop the **.zip** file into the dialog. The extension is stored in the inventory but not yet deployed. To deploy it, click **Restart to deploy extension** and wait for the notification confirming the engine restart.
+If an extension with the same name already exists, the plugin asks you to confirm the replacement. You can also cancel.
 
 ![Update extension](resources/images/extension-update-modal.png)
 
 After the restart the blocks are available in the Streaming Analytics application.
 
-### Safe mode
-
-If an extension could not be deployed, the engine may start in [Safe Mode](https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode), i.e. without loading any extension. A **Safe Mode** indicator then appears in the action bar of the **Extensions** tab, all extensions are shown as *Not loaded*, and the extension that was added or updated last is marked as the **suspected cause**.
-
-![Safe mode](resources/images/extension-safe-mode-complete.png)
-
-This usually happens when a faulty extension was deployed. Delete (or fix) the suspected extension, then restart the engine. If needed, check the logs of the microservice **apama-ctrl-Xc-Xg**.
-
-Deleting an extension removes its blocks. There is no check whether they are used in existing models, which can make those models undeployable.
-
-![Using a block in a model](resources/images/block-use-in-model.png)
-
-### Options for custom extension
-For a custom extension you have the following options:
-* Delete: deletes the custom extension permanently. To take effect you need to restart the streaming analytics engine.
-* Update: updates the custom extension with a new version of the extension. To take effect you need to restart the streaming analytics engine.
-* Details: lists the included blocks of the custom extension on a detail page.
-* Download: downloads the custom extension as a zip file.
-
-![Manage extension](resources/images/extension-manage.png)
-
-## Sample repositories and building custom extensions
-Block samples from GitHub repositories can be selected to build a custom extension online. First configure a GitHub repository on the **Repositories** tab. Configured repositories can be updated, deleted and enabled/disabled; only enabled repositories appear in the list of block samples.
-
-![Manage repositories](resources/images/repository-manage.png)
-
-You can also view the EPL (Event Processing Language) source code of a block:
-
-![View source code](resources/images/repository-view-code-modal.png)
-
-> **Rate limits and private repositories:** unauthenticated GitHub API requests are rate limited and cannot read private repositories; the list then stays empty and a `401` error is shown. Configure a personal access token for the repository to avoid this.
->
-> ![Access denied](resources/images/repository-access-denied.png)
->
-> ![Personal access token](resources/images/repository-personal-access-token.png)
-
-To build an extension, select blocks from the list of samples and click **Custom extension** in the table header. The dialog lets you:
-* name the custom extension,
-* upload it automatically to the Cumulocity inventory (otherwise it is downloaded to your machine and must be uploaded manually),
-* restart the Streaming Analytics engine to load the new extension.
-
-Building requires the [backend microservice](#backend-microservice).
-
-![Create extension](resources/images/extension-create-modal.png)
-
-Extensions built with the backend carry build information (build type, source repository), so they can be rebuilt from the same repository.
-
-![Build information](resources/images/extension-build-information.png)
-
-## Monitoring
-
-The **Monitoring** tab shows the engine status and the latest alarms and events of the Streaming Analytics engine. This is especially helpful if no extension is loaded after an upload.
-
-The property `is_safe_mode` indicates that the engine was started in [Safe Mode](https://cumulocity.com/docs/streaming-analytics/troubleshooting/#apama_safe_mode). In this case delete the most recently uploaded extension and restart the engine.
-
-![Monitoring](resources/images/monitoring-engine.png)
-
 ### Backend service switch
 
-The action bar shows whether the backend microservice is deployed. If it is, the **Use backend service** switch (stored as a tenant option, default on) controls whether the plugin uses the backend or works in browser-only mode, in which building extensions is not available. If you deploy or remove the microservice while the page is open, click **Re-check** to refresh the state.
+The action bar of the **Repositories** tab shows whether the backend microservice is deployed. If it is, the **Use backend service** switch controls whether the plugin uses the backend or works in browser-only mode. The tenant option stores the setting, and the default is on. In browser-only mode you cannot build extensions. If you deploy or remove the microservice while the page is open, click **Re-check** to refresh the state. Changing the switch reloads the repository list.
+
+## Access control
+
+### Application roles
+
+The microservice `analytics-ext-service` checks one of three application roles on every request. The microservice manifest declares the roles, and the platform creates them when you subscribe the microservice.
+
+| Role | Allows |
+|------|--------|
+| `ROLE_ANALYTICS_MANAGEMENT_READ` | Read the engine status, list repositories, browse repository content, and build an extension as a download |
+| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | Everything in READ, and build an extension with upload to the inventory |
+| `ROLE_ANALYTICS_MANAGEMENT_ADMIN` | Everything in CREATE, and change repositories, delete extensions, rebuild extensions, and restart the engine |
+
+A higher role includes the lower ones, so assign one role to each user. The microservice enforces this rule. Cumulocity does not.
+
+| Endpoint | Required role |
+|----------|---------------|
+| `GET /cep/id`, `GET /cep/status` | READ |
+| `GET /repository/configuration`, `GET /repository/contentList`, `GET /repository/content` | READ |
+| `POST /extension/repository`, `POST /extension/list`, `POST /extension/yaml` | READ; CREATE with `upload=true`; ADMIN with `rebuild=true` or `deploy=true` |
+| `POST /repository/configuration` | ADMIN |
+| `DELETE /extension`, `DELETE /extension/{id}` | ADMIN |
+| `GET /health` | None |
+
+A request without a valid login receives `401`. A request without the required role receives `403` with the message `Missing required role <role>`. The microservice checks the role before it reads the request body or changes anything.
+
+### Assign the roles
+
+1. Subscribe the microservice. In **Administration > Roles**, check that the three roles exist.
+2. Create or reuse user groups and assign the roles. For example, give viewers READ, release engineers CREATE, and application owners ADMIN.
+3. Test with one user per role before you remove old assignments.
+
+### Platform roles the plugin needs
+
+The application roles protect the microservice API only. The plugin also works with the platform roles of the signed-in user:
+
+| Platform role | Used for |
+|---------------|----------|
+| `ROLE_CEP_MANAGEMENT_READ` and `ROLE_CEP_MANAGEMENT_ADMIN` | Show the **Extensions** menu entry. The plugin hides the entry unless the user has both roles. |
+| `ROLE_INVENTORY_ADMIN` | Upload, update, and delete extensions. The plugin writes the extension binaries directly to the inventory. |
+| `ROLE_OPTION_MANAGEMENT_ADMIN` | Save repository settings. The plugin writes them directly as tenant options. |
+
+A user with `ROLE_INVENTORY_ADMIN` or `ROLE_OPTION_MANAGEMENT_ADMIN` can therefore change extensions and repositories in the plugin, whatever application role the user holds. The application roles restrict only the actions that use the microservice, such as building from a repository, browsing repository content, and reading the engine status. The migration guide describes this limit: [docs/MIGRATION-SECURITY-2026-10.md](docs/MIGRATION-SECURITY-2026-10.md).
+
+In browser-only mode, which applies when the microservice is not deployed or the **Use backend service** switch is off, only the platform roles apply.
+
+### Roles of the microservice itself
+
+The microservice calls Cumulocity as its own service user. The manifest `analytics-service/cumulocity.json` requests these roles for it: `ROLE_OPTION_MANAGEMENT_READ`, `ROLE_OPTION_MANAGEMENT_ADMIN`, `ROLE_INVENTORY_ADMIN`, `ROLE_APPLICATION_MANAGEMENT_READ`, `ROLE_INVENTORY_READ`, `ROLE_INVENTORY_CREATE`, and `ROLE_CEP_MANAGEMENT_ADMIN`. Callers do not need these roles to use the microservice.
 
 ## Installation
 
 The solution consists of two parts:
 * **Backend microservice** `analytics-ext-service` (optional, but required to build custom extensions). Download `analytics-ext-service.zip` from the [releases](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases) and subscribe it as described in the [Cumulocity documentation](https://cumulocity.com/docs/standard-tenant/ecosystem/#managing-microservices).
-* **Web plugin**, available as a community plugin and installed in Administration -> Extensions -> Analytics Extensions:
+* **Web plugin**, available as a community plugin and installed in Administration > Extensions > Analytics Extensions:
 
 ![Plugin installation](resources/images/plugin-installation.png)
 
 ### Add the plugin to a standard application
 
-1. Download `analytics-extension.zip` from the [releases](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases).
-2. In your tenant open Administration -> Ecosystem -> Extensions -> Add extension package and upload it.
-3. Clone the standard application (e.g. Streaming Analytics, Cockpit) under Administration -> Ecosystem -> Applications -> Clone, if you have not done so yet.
+1. Download `c8y-pkg-analytics-extension-<version>.zip` from the [releases](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases).
+2. In your tenant, open Administration > Ecosystem > Extensions > Add extension package and upload it.
+3. Clone the standard application, such as Streaming Analytics or Cockpit, under Administration > Ecosystem > Applications > Clone, if you have not done so yet.
 4. Install the plugin in the cloned application.
 
 The new application then appears in the app switcher.
 
 ## Build the plugin
 
-**Prerequisites:** Git, Node.js (v18+ or v20+; release builds use `v18.19.0`) and npm.
+**Prerequisites:** Git, Node.js 22 (the release builds use Node.js 22), and npm.
 
-**Main dependencies:** Angular 21, `@c8y/ngx-components` 1024.20, TypeScript 5.9, RxJS 7.8 (see [package.json](analytics-ui/package.json)).
+**Main dependencies:** Angular 21, `@c8y/ngx-components` 1024.22, TypeScript 5.9, RxJS 7.8 (see [package.json](analytics-ui/package.json)).
 
-Set the target tenant URL, username and password in your environment before starting.
+Set the target tenant URL, username, and password in your environment before you start.
 
 ```
 git clone https://github.com/Cumulocity-IoT/cumulocity-analytics-management.git
@@ -156,17 +150,17 @@ npm run lint       # optional: ESLint with auto-fix
 
 ## Backend microservice
 
-The microservice `analytics-ext-service` downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. You choose whether the extension is uploaded automatically or downloaded by the browser; a downloaded file has to be uploaded afterwards, see [Upload custom extension](#upload-custom-extension). The microservice is multi-tenant ready.
+The microservice `analytics-ext-service` downloads the sample blocks from the configured repositories and builds an analytics extension as a zip file. You choose whether the microservice uploads the extension automatically or the browser downloads it. You must upload a downloaded file afterwards, see [Upload custom extension](#upload-custom-extension). The microservice supports multiple tenants. It requires the application roles described in [Access control](#access-control).
 
 ### Prerequisites to build and deploy
-* Python 3.8+ 
-* Docker host/client 
-* [c8y-go-cli](https://goc8ycli.netlify.app) or c8y CLI
+* Python 3.12 (the version the CI pipeline uses)
+* Docker host or client
+* [go-c8y-cli](https://goc8ycli.netlify.app) (`c8y`)
 
 ### Local debugging with VS Code / Dev Container
-To run and debug the microservice locally you can use VS Code and the .devcontainer/devcontainer.json configuration. To test with real c8y microservice credentials create an .env-admin (Administrative Credentials to fetch BootStrap Credentials) file in the analytics service directory and start the container (F1 -> Open in Open Folder in container). The get_service_creds.py fetch the credentials and create the .env file containing the bootstrap credentials. 
+To run and debug the microservice locally, use VS Code with the `analytics-service/.devcontainer/devcontainer.json` configuration. To test with real microservice credentials, create an `.env-admin` file with administrative credentials in the analytics service directory. Then start the container (F1 > Open Folder in Container). The script `get_service_creds.py` fetches the bootstrap credentials and creates the `.env` file that contains them.
 
-To use your own credentials in the .env file comment the line `"postAttachCommand": "python3 .devcontainer/get_service_creds.py",` in devcontainer.json and create .env file with credentials of your liking. Env file format is:
+To use your own credentials, comment out the line `"postAttachCommand": "python3 .devcontainer/get_service_creds.py",` in `devcontainer.json` and create the `.env` file yourself. The file formats are:
 
 * Example .env-admin
 ```
@@ -184,9 +178,9 @@ C8Y_BOOTSTRAP_USER=servicebootstrap_analytics-ext-service
 C8Y_BOOTSTRAP_PASSWORD=<password>
 ```
 
-After the dev container has started you can debug flask-wrapper.py as a python file. 
+After the dev container has started, you can debug `app.py` as a Python file.
 
-To test the microservice you can issue the following curl command
+To test the microservice, run the following curl command:
 ```
 curl --location 'http://127.0.0.1:<container host port>/extension' \
 --header 'Content-Type: application/json' \
@@ -201,12 +195,12 @@ curl --location 'http://127.0.0.1:<container host port>/extension' \
 ### Build and deploy
 
 To build the backend as the microservice `analytics-ext-service`:
-* run script: 
+* run the script:
 ```
 # cd analytics-service
 # ./build.sh analytics-ext-service VERSION 
 ```
-* upload the created image:
+* upload the created archive:
 ```
 # c8y microservices list --name analytics-ext-service | c8y microservices createBinary --file dist/analytics-ext-service.zip --timeout 360
 ```
@@ -214,68 +208,53 @@ To build the backend as the microservice `analytics-ext-service`:
 ```
 # ./build.sh --push VERSION
 ```
-> **NOTE**
-For the first deployment create the microservice instead:
+> **Note:** for the first deployment, create the microservice instead:
 ```
 # c8y microservices create --file dist/analytics-ext-service.zip --name analytics-ext-service --timeout 360
 ```
 
 ## Analytics Builder block SDK
 
-Custom blocks are developed with the [Analytics Builder block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk), which also documents how to write blocks. The release section includes an example block for testing; it adds two inputs.
+Custom blocks are developed with the [Analytics Builder block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk), which also documents how to write blocks. The release section includes an example block for testing. The block adds two inputs.
 
 ![Example block](resources/images/block-example-detail.png)
 
 
 ## Troubleshooting
 
-* **Is an extension deployed?** Look for a message like the following in the analytics engine log (Administration -> Ecosystem -> Microservices -> apama-ctrl-1c-4g -> Logs):
+* **Is an extension deployed?** Look for a message like the following in the analytics engine log (Administration > Ecosystem > Microservices > apama-ctrl-1c-4g > Logs):
   `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
-* **No extension is loaded after an upload:** the engine is probably in [safe mode](#safe-mode); delete the suspected extension and restart.
-* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions).
-* **Cannot build extensions:** check that the backend microservice is deployed and the **Use backend service** switch is on, see [Monitoring](#backend-service-switch).
+* **No extension is loaded after an upload:** the engine is probably in [Safe Mode](#safe-mode); delete the suspected extension and restart.
+* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** turn on Expert mode.
+* **Cannot build extensions:** check that the backend microservice is deployed and the **Use backend service** switch is on, see [Backend service switch](#backend-service-switch).
 
 
 ## Repository layout for building extensions
 
-Two layouts were considered for building an extension from a GitHub repository folder:
+The extension builder supports two layouts for a GitHub repository path. The **Extension Builder Layouts** dialog on the **Repositories** tab describes them in the plugin.
 
-1. Directory is Extension
-This is the preferred because of its simplicity.
+### Directory is extension
 
-Mechanism: 
-* The extension builder inspects the top-level items in the configured repository path.
+The builder reads the top-level items of the configured repository path:
+* A `.mon` file, such as `Difference.mon`, becomes a single-file extension.
+* A directory, such as `Python`, becomes an extension that contains everything in the directory, including subdirectories such as `venv`.
 
-* If an item is a .mon file (e.g., Difference.mon), a single-file extension is created from just that file.
+The grid lists each top-level `.mon` file and directory. You can select several items. The builder combines all selected items into one extension.
 
-* If an item is a directory (e.g., Python), an extension is created by packaging all the content within that directory (including subdirectories like venv).
+### Configuration file `extensions.yaml`
 
-User UI: 
-* The user sees a list of names for each top-level .mon file and top-level directory (e.g., "Difference", "Offset", "Python"). Only one item (either directory or *.mon file) can be selected.
+A file named `extensions.yaml` among the top-level items defines the extension contents explicitly:
+* The file defines named sections. Each section lists the files to include, and the files are not limited to `.mon`.
+* The grid shows only the section names. You can select several sections and build them in one request.
+* The builder does not find the file in a subdirectory.
+* Without the file, the builder uses the directory layout.
 
-Key Benefit: Retains simple behavior for existing single-file blocks while easily supporting complex blocks that require multiple files and/or directories (like a Python environment).
+Building from either layout requires the [backend microservice](#backend-microservice).
 
-2. Configuration File `extensions.yaml`
-This layout uses a dedicated configuration file to define the extension's contents explicitly.
-
-Mechanism: 
-* The builder recursively inspects the directory for a specific configuration file `extensions.yaml`.
-
-* If the file exists, the builder reads it for the extension's metadata and a list of files/contents to include. Multiple *.mon files can be selected.
-
-* If no config file is present, it defaults to listing simple .mon files as before.
-
-User UI: 
-* If the config file is present, the UI should read it and only show the top-level keys defined in the file, not the embedded files or directories.
-
-Key Benefit: Highly flexible, allowing for specifying dependent bundles and explicit control over included content. (However, this was abandoned in favor of the simpler Directory is Extension approach).
-
-
-> **Note:** the solution was rebranded. Releases before 2.5.0 are still available in the [release section](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases).
+> **Note:** the solution was renamed. Releases before 2.5.0 are still available in the [release section](https://github.com/Cumulocity-IoT/cumulocity-analytics-management/releases).
 
 ------------------------------
 
-These tools are provided as-is and without warranty or support. They do not constitute part of the Cumulocity product. Users are free to use, fork and modify them, subject to the license agreement. While Cumulocity welcomes contributions, we cannot guarantee to include every contribution in the master project.
-_____________________
+We provide these tools as-is, without warranty or support. They are not part of the Cumulocity product. You can use, fork, and modify them under the license agreement. We welcome contributions, but we cannot guarantee to include every contribution in the main project.
 
-For more information you can Ask a Question in the [techcommunity cumulocity](https://techcommunity.cumulocity.com/).
+For more information, ask a question in the [Cumulocity tech community](https://techcommunity.cumulocity.com/).

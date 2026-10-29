@@ -27,6 +27,24 @@
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
+<c8y-action-bar-item [placement]="'right'" itemClass="navbar-form hidden-xs">
+  <div class="d-flex a-i-center">
+    @if (backendDeployed) {
+      <span class="label label-success m-r-16">{{ 'Backend service deployed' | translate }}</span>
+    } @else {
+      <span class="label label-default m-r-8">{{ 'Backend service not deployed' | translate }}</span>
+      <button type="button" class="btn btn-link m-r-16" [disabled]="backendTogglePending"
+        (click)="recheckBackend()">{{ 'Re-check' | translate }}</button>
+    }
+    <label class="c8y-switch flex-no-shrink m-b-0" [class.disabled]="!backendDeployed || backendTogglePending">
+      <input type="checkbox" [checked]="backendEnabled" [disabled]="!backendDeployed || backendTogglePending"
+        #backendSwitch (change)="toggleBackendEnabled(backendSwitch.checked)" />
+      <span></span>
+      <span class="m-l-8">{{ 'Use backend service' | translate }}</span>
+    </label>
+  </div>
+</c8y-action-bar-item>
+
 <c8y-action-bar-item [placement]="'right'">
   <button class="btn btn-link" title="{{ 'Deploy from GitHub Release' | translate }}" (click)="deployFromRelease()">
     <i c8yIcon="cloud-download"></i>

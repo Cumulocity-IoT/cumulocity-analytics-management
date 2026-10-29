@@ -549,12 +549,33 @@ export class RepositoryService implements OnDestroy {
           console.warn('Failed to get deployed blocks:', error);
           return of([]);
         })
-      )
+      ),
+      from(this.getDeployedFileNames())
     ]).pipe(
-      switchMap(([repos, loaded]) =>
-        this.repositoryItemsService.getItemsForRepositories(repos, loaded, hideInstalled)
+      switchMap(([repos, loaded, files]) =>
+        this.repositoryItemsService.getItemsForRepositories(repos, loaded, hideInstalled, files)
       )
     );
+  }
+
+  /** Base names of all files contained in the deployed extensions. */
+  private async getDeployedFileNames(): Promise<Set<string>> {
+    try {
+      const names = (await this.analyticsService.getExtensionNamesFromCep()) as unknown as Record<
+        string,
+        { contents?: string[] } | undefined
+      >;
+      const files = new Set<string>();
+      for (const entry of Object.values(names ?? {})) {
+        for (const path of Array.isArray(entry?.contents) ? entry.contents : []) {
+          files.add(path.substring(path.lastIndexOf('/') + 1));
+        }
+      }
+      return files;
+    } catch (error) {
+      console.warn('Failed to get deployed extension files:', error);
+      return new Set();
+    }
   }
 
   // ============================================================================

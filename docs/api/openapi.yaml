@@ -12,6 +12,15 @@ info:
     - GitHub repository content access (browse/download)
     - Apama Analytics Builder extension building, upload and deletion
 
+    Every path except `/health` requires one of the application roles
+    `ROLE_ANALYTICS_MANAGEMENT_READ`, `ROLE_ANALYTICS_MANAGEMENT_CREATE`, or
+    `ROLE_ANALYTICS_MANAGEMENT_ADMIN`. A higher role includes the lower ones. The
+    minimum role of each operation is given in `x-required-role`. The extension
+    build operations need READ for a download, CREATE when `upload` is `true`, and
+    ADMIN when `deploy` or `rebuild` is `true`. A missing or invalid login returns
+    `401`, a missing role returns `403`, and a failure to read the caller's roles
+    returns `503`.
+
     All paths below are relative to the microservice base path. When called from the
     Cumulocity UI plugin, requests are proxied through
     `service/analytics-ext-service/<path>` (see "Consumers" in `docs/api/README.md`
@@ -60,7 +69,14 @@ paths:
         that carries the CEP engine's realtime status (`c8y_Status`), so it can
         subscribe to it via the Cumulocity realtime API.
       operationId: getCepOperationObjectId
+      x-required-role: READ
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Success
           content:
@@ -84,7 +100,14 @@ paths:
         CEP correlator's own diagnostics endpoint
         (`service/cep/diagnostics/apamaCtrlStatus`) otherwise.
       operationId: getCepCtrlStatus
+      x-required-role: READ
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Success
           content:
@@ -103,7 +126,14 @@ paths:
         response for security; the UI resends that sentinel unchanged on update to
         mean "keep the existing token".
       operationId: loadRepositories
+      x-required-role: READ
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Success
           content:
@@ -119,6 +149,7 @@ paths:
         Creates, updates, or deletes repositories: any repository not present in
         the request body is deleted.
       operationId: updateRepositories
+      x-required-role: ADMIN
       requestBody:
         required: true
         content:
@@ -128,6 +159,12 @@ paths:
               items:
                 $ref: "#/components/schemas/Repository"
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Repositories updated successfully
           content:
@@ -152,6 +189,7 @@ paths:
         endpoint constant `REPOSITORY_CONTENT_LIST_ENDPOINT` =
         `repository/contentList`).
       operationId: getContentList
+      x-required-role: READ
       parameters:
         - $ref: "#/components/parameters/UrlParam"
         - $ref: "#/components/parameters/RepositoryIdParam"
@@ -168,9 +206,11 @@ paths:
         "400":
           $ref: "#/components/responses/BadRequest"
         "401":
-          description: Invalid or expired GitHub access token
+          description: No valid Cumulocity login, or an invalid or expired GitHub access token (passed through from GitHub)
         "403":
-          description: Access denied, GitHub API rate limit exceeded, or SSO authorization required for the token
+          description: The caller lacks the required role, or GitHub denied access, the API rate limit was exceeded, or SSO authorization is required for the token
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "404":
           description: Path not found in the repository
         "429":
@@ -186,6 +226,7 @@ paths:
         preview / FQN resolution (`RepositoryBackendService.getItemContent`,
         endpoint constant `REPOSITORY_CONTENT_ENDPOINT` = `repository/content`).
       operationId: getContent
+      x-required-role: READ
       parameters:
         - $ref: "#/components/parameters/UrlParam"
         - $ref: "#/components/parameters/RepositoryIdParam"
@@ -202,6 +243,12 @@ paths:
           schema:
             type: string
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Raw file content, or the extracted FQN string when `extract_fqn_cep_block=true`
           content:
@@ -217,6 +264,7 @@ paths:
       tags: [Extensions]
       summary: Build an Apama extension from an entire GitHub repository path
       operationId: createExtensionFromRepository
+      x-required-role: READ (CREATE with upload, ADMIN with deploy or rebuild)
       requestBody:
         required: true
         content:
@@ -224,15 +272,21 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateExtensionFromRepositoryRequest"
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
-          description: Success (download mode) — returns the built extension as a `.zip`
+          description: Success (download mode), returns the built extension as a `.zip`
           content:
             application/zip:
               schema:
                 type: string
                 format: binary
         "201":
-          description: Success (upload mode) — extension uploaded to Cumulocity
+          description: Success (upload mode), extension uploaded to Cumulocity
           content:
             application/json:
               schema:
@@ -247,10 +301,11 @@ paths:
       tags: [Extensions]
       summary: Build an Apama extension from one or more files or directories
       description: |
-        `monitors` must contain at least one item — each either a `.mon` file
+        `monitors` must contain at least one item, each either a `.mon` file
         (`type: "file"`) or a directory to download recursively (`type: "dir"`).
         All items are merged into one build directory.
       operationId: createExtensionFromList
+      x-required-role: READ (CREATE with upload, ADMIN with deploy or rebuild)
       requestBody:
         required: true
         content:
@@ -258,15 +313,21 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateExtensionFromListRequest"
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
-          description: Success (download mode) — returns the built extension as a `.zip`
+          description: Success (download mode), returns the built extension as a `.zip`
           content:
             application/zip:
               schema:
                 type: string
                 format: binary
         "201":
-          description: Success (upload mode) — extension uploaded to Cumulocity
+          description: Success (upload mode), extension uploaded to Cumulocity
           content:
             application/json:
               schema:
@@ -287,6 +348,7 @@ paths:
         each section is built and uploaded independently, and the response may
         report a partial success (`207`).
       operationId: createExtensionFromYaml
+      x-required-role: READ (CREATE with upload, ADMIN with deploy or rebuild)
       requestBody:
         required: true
         content:
@@ -294,21 +356,27 @@ paths:
             schema:
               $ref: "#/components/schemas/CreateExtensionFromYamlRequest"
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
-          description: Success (download mode) — returns the first built section's `.zip`
+          description: Success (download mode), returns the first built section's `.zip`
           content:
             application/zip:
               schema:
                 type: string
                 format: binary
         "201":
-          description: Success (upload mode) — all sections uploaded
+          description: Success (upload mode), all sections uploaded
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExtensionYamlUploadedResponse"
         "207":
-          description: Partial success (upload mode) — some sections failed
+          description: Partial success (upload mode), some sections failed
           content:
             application/json:
               schema:
@@ -323,14 +391,22 @@ paths:
       tags: [Extensions]
       summary: Delete a specific extension by its Cumulocity managed object ID
       operationId: deleteExtensionById
+      x-required-role: ADMIN
       parameters:
         - name: extension_id
           in: path
           required: true
-          description: Cumulocity managed object ID of the extension
+          description: Cumulocity managed object ID of the extension (numeric)
           schema:
             type: string
+            pattern: '^[0-9]+$'
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Extension deleted successfully
           content:
@@ -341,6 +417,8 @@ paths:
                   message:
                     type: string
                     example: Extension deleted successfully
+        "400":
+          $ref: "#/components/responses/BadRequest"
         "404":
           $ref: "#/components/responses/NotFound"
 
@@ -350,6 +428,7 @@ paths:
       summary: Delete one or more extensions by name
       description: Deletes every extension in inventory that shares the given name.
       operationId: deleteExtensionsByName
+      x-required-role: ADMIN
       parameters:
         - name: name
           in: query
@@ -358,6 +437,12 @@ paths:
           schema:
             type: string
       responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
         "200":
           description: Extension(s) deleted successfully
           content:
@@ -389,9 +474,13 @@ components:
       name: repository_id
       in: query
       required: false
-      description: Configured repository ID, used to resolve a stored access token
+      description: |
+        Configured repository ID, used to resolve a stored access token. When given
+        together with `url`, the URL must lie inside that repository, otherwise the
+        request returns `400` and the stored token is not sent.
       schema:
         type: string
+        pattern: '^[A-Za-z0-9_-]{1,64}$'
     RepositoryAccessTokenHeader:
       name: X-Repository-Access-Token
       in: header
@@ -407,6 +496,24 @@ components:
   responses:
     BadRequest:
       description: Invalid request body or parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: No valid Cumulocity login
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: The caller lacks the required application role (`Missing required role <role>`)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RolesUnavailable:
+      description: The roles of the caller could not be read
       content:
         application/json:
           schema:
@@ -448,6 +555,7 @@ components:
       properties:
         id:
           type: string
+          pattern: '^[A-Za-z0-9_-]{1,64}$'
           example: repo-1
         name:
           type: string
@@ -472,6 +580,7 @@ components:
       properties:
         id:
           type: string
+          pattern: '^[A-Za-z0-9_-]{1,64}$'
           example: repo-1
 
     Monitor:
@@ -529,7 +638,6 @@ components:
             monitors:
               type: array
               minItems: 1
-              maxItems: 1
               items:
                 $ref: "#/components/schemas/Monitor"
 

@@ -131,7 +131,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
     // Extract safe mode
     // The operation object does not always carry the flag; the engine status
-    // endpoint (the one the Monitoring tab shows) is the reliable source.
+    // endpoint is the reliable source.
     // Realtime updates re-emit the object often; only re-query when the engine
     // status or the flag actually changes.
     this.isSafeMode$ = cepObject$.pipe(

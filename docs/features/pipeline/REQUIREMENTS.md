@@ -1,4 +1,6 @@
-# CI Pipeline Integration – Requirements and Findings
+# CI pipeline integration: requirements and findings
+
+**Status: planned. Checked against the repository on 2026-10-29.** None of the three phases has started: the repository has no compliance workflow, no SBOM generation, no Helm chart, and no build descriptor. The statements about external repositories (`c8y-component-base`, the UI team's `compliance.yml`, `microservice-deployer`, the CICD guides) come from the earlier research and were not checked again.
 
 ## Goal
 
@@ -22,10 +24,11 @@ References:
 
 ## Current state of this repo
 
-- `.github/workflows/build-release.yml`: builds the UI plugin and the microservice on `v*` tags.
-- `.releaserc.json`: semantic-release for versioning.
-- `.github/workflows/check-push.yml`: push checks.
-- Missing: compliance workflow, SBOM generation, Helm chart, build descriptor.
+- `.github/workflows/build-release.yml`: runs on `v*` tags and on manual dispatch. The UI job syncs `package.json` with the tag, then runs lint, unit tests, and the build (Node.js 22). The service job runs the `pytest` tests (Python 3.12) and `analytics-service/build.sh`. A release job attaches `c8y-pkg-analytics-extension-<version>.zip` and `analytics-ext-service.zip` to the GitHub release; tags with a suffix, such as `v2.8.0-rc.1`, become pre-releases. Tags are created by hand.
+- `.github/workflows/check-push.yml`: runs on pushes to `main` and on pull requests. It checks spelling (`typos`), runs UI lint, naming rules, and tests, and runs the service tests.
+- `.releaserc.json`: a semantic-release configuration. No workflow runs semantic-release, so it does not drive versioning today.
+- `analytics-service/Dockerfile`: starts from `public.ecr.aws/apama/apama-builder`, pinned by digest, installs Python packages pinned in `requirements.txt`, and runs as the unprivileged `apama` user.
+- Missing: compliance workflow, SBOM generation, Helm chart (`helm/` does not exist), build descriptor.
 
 ## Findings from the referenced repos
 
@@ -73,7 +76,7 @@ Release stage:
 - Publish Docker images to `registry.stage.c8y.io/{component}/{artifact}:{version}`.
 - Publish Helm charts to `https://registry.stage.c8y.io/chartrepo/{component}`.
 - Update `products/{component}` in `c8y-iot-build-pipeline` (build descriptor) on the `Ready` branch.
-- Versioning: `{GA}.{minor}.{patch}`, for example `10.20.0.0`.
+- Versioning: `{GA}.{minor}.{patch}`, such as `10.20.0.0`.
 
 Test stages:
 
@@ -86,7 +89,7 @@ Test stages:
 - It uploads microservices (`--microservices`), webapps (`--applications`) and UI plugins (`--ui-plugins`) to a tenant.
 - Required arguments: `--hostname`, `--username`, `--password`, `--resource-base-url`.
 - Useful options:
-  - `--tag-ui-plugins`, `--rolling-tag-ui-plugins`
+  - `--tag-ui-plugins` and `--rolling-tag-ui-plugins`
   - `--install-ui-plugins <plugin>:<app1,app2>`
   - `--ui-plugins-availability`
   - `--revert`
@@ -98,7 +101,7 @@ Test stages:
 
 ### Phase 1: Compliance
 
-1. Generate a CycloneDX SBOM for the UI (npm, `package-lock.json`) and for the microservice (pip, `requirements.txt`). Upload them as `sbom-<version>-*` artifacts.
+1. Generate a CycloneDX SBOM for the UI (npm, `package-lock.json`) and for the microservice (pip, `requirements.txt`). Upload them as `sbom-<version>-*` artifacts. Add both steps to `build-release.yml`.
 2. Add `compliance.yml`, modelled on the UI team's workflow, with `component-name` set for this solution.
 3. Repackage the plugin zip and the microservice zip with `LICENSE`, `SBOM.json` and the third-party licenses file.
 4. Verify org secrets, variables and runner access. Test with `dry-run`, then enable it.
@@ -120,7 +123,7 @@ Test stages:
 ## Open questions
 
 1. One component or two? One compliance run and one chart for both?
-2. Which GA version? Does `{GA}.{minor}.{patch}` replace the current semver tags (`v2.8.0`)?
+2. Which GA version? Does `{GA}.{minor}.{patch}` replace the current semver tags (the latest is `v2.8.2`, and `package.json` is at `3.0.0`)?
 3. Is the delivery target Kubernetes-hosted Cumulocity (staging-resources zips plus Helm), or only the deployer chart?
 4. Is this repo the one to onboard? Are the org secrets, variables and custom runners available to it?
 5. Is compliance needed for the Docker base image OS packages? Which base image does the Dockerfile use?
@@ -146,14 +149,14 @@ Consequences:
 - `publish-cloud-release: true` and `idata-version: 0~Cloud` apply in the compliance workflow.
 - The compliance workflow needs an extra SBOM step for the Docker image packages.
 - The Helm chart goes in `helm/`.
-- Test authoring is a separate work item. It is the largest unknown.
+- Test authoring is a separate work item and the largest unknown.
 
 ## Still open
 
 - Delivery target (K8s-hosted with staging-resources zips plus Helm, or the deployer chart only).
 - Exact version prefix for Cloud/CD.
-- Base image of `analytics-service/Dockerfile` and the matching compliance option.
+- The matching compliance option for the base image. The base image is `public.ecr.aws/apama/apama-builder`, pinned by digest. It installs `git` and `libcap` with `dnf`, `yum`, `apt-get`, or `apk`, whichever the image provides. Confirm which package manager the image uses before choosing between `alpine-packages-from-docker-image` and an equivalent action.
 
 ## Suggested first step
 
-Build the SBOM and compliance workflow (Phase 1). It is no longer blocked by any open question.
+Build the SBOM and compliance workflow (Phase 1). No open question blocks it.

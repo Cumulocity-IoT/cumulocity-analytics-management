@@ -1,5 +1,15 @@
 # Raw-binary HTTP connectivity bundle (DIRECT_UPLOAD.md R1)
 
+## Current state (checked on 2026-10-29)
+
+This file is a round-by-round investigation log. The "Status" paragraph and the sections below describe the bundle as of Round 30, when `GitHubFetchChain` fetched the release asset. The bundle has changed since then:
+
+- `FetchExtension.yaml` now defines no chains (`connectivityPlugins: {}`, `dynamicChains: {}`). It stays in place, with `FetchExtension.properties`, because the extension scan appears to key off that file pair (Round 7).
+- The fetch runs in the Python EPL plug-in `plugins/GitHubFetchPlugin.py`, registered in `config/CorrelatorConfig.yaml`. The `stringCodec` of `GitHubFetchChain` cut a binary response at the first null byte, which every ZIP file contains, and `HTTPClientTransport` does not follow cross-host redirects. The plug-in is marked as a temporary diagnostic version, and this log has no round for it.
+- The upload still uses `FormRequest` and `CumulocityRequestInterface` from `repository/epl/FetchExtensionListener.mon`.
+- The yaml and properties files sit at the bundle root, not under `config/connectivity/`.
+- No end-to-end run of the plug-in version is recorded here. Treat "confirmed working end to end" below as true for the chain version only.
+
 **Status: CONFIRMED WORKING END TO END — a real GitHub release asset fetch + upload succeeded
 against a live tenant (Round 29/30). This bundle now only covers the GitHub fetch half — the
 upload half was removed (Round 26) in favor of the standard

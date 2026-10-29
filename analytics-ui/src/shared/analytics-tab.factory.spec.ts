@@ -9,21 +9,20 @@ describe('AnalyticsTabFactory', () => {
     expect(await tabsFor('/apps/administration/#/devices')).toEqual([]);
   });
 
-  it('offers the four tabs in display order on every analytics extension page', async () => {
+  it('offers the three tabs in display order on every analytics extension page', async () => {
     for (const url of ['/c8y-pkg-analytics-extension/manage', '/x/c8y-pkg-analytics-extension/repository']) {
       const tabs = await tabsFor(url);
       expect(tabs.map(t => t.path)).toEqual([
         'c8y-pkg-analytics-extension/manage',
         'c8y-pkg-analytics-extension/installed-blocks',
-        'c8y-pkg-analytics-extension/repository',
-        'c8y-pkg-analytics-extension/monitoring'
+        'c8y-pkg-analytics-extension/repository'
       ]);
     }
   });
 
   it('names the tabs after the page names and routes (single source: analytics.constants.ts)', async () => {
     const tabs = await tabsFor('/c8y-pkg-analytics-extension/manage');
-    expect(tabs.map(t => t.label)).toEqual(['Extensions', 'Installed blocks', 'Repositories', 'Monitoring']);
+    expect(tabs.map(t => t.label)).toEqual(['Extensions', 'Installed blocks', 'Repositories']);
     expect(tabs[1].path).toBe('c8y-pkg-analytics-extension/installed-blocks');
   });
 

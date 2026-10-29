@@ -2,14 +2,14 @@
 
 This guide describes what changed in the `analytics-service` microservice after the security review of 2026-10-29, and what you must do when you deploy the new version.
 
-The changes are in three commits on the branch `feature/c8y-iot-build-pipeline`:
+The changes are in these commits on the branch `feature/c8y-iot-build-pipeline`:
 
 | Commit | Change |
 |--------|--------|
 | `8678f15` | Authorization, token handling, URL and ID validation |
 | `28aedef` | Unprivileged container, pinned build inputs |
 | `17e4336` and `a608732` | A change to token storage and its revert. The net effect is none. |
-| Role concept | Three application roles replace the platform roles as the access check |
+| `e34dde5` | Three application roles replace the platform roles as the access check |
 
 ## Summary
 
@@ -159,7 +159,7 @@ Redeploy the previous microservice image. Nothing is stored in a new format, so 
 - Checks that depend on the request body, such as `upload`, `rebuild`, and `deploy`, use `_build_role_error`. Call it before the first side effect, and keep its truthiness identical to how the route acts on the flags.
 - `tests/test_authorization.py` fails if a route declares no role, if the declared roles differ from its table, or if a role does not allow exactly itself and the roles above it. Update the table when you add a route.
 - Validation helpers are in `solution_utils.py` (`is_valid_identifier`, `is_valid_numeric_id`, `has_unsafe_path_segment`). Use them for any new value that ends up in a URL, a tenant option key, or an inventory query.
-- Install the test dependencies with `pip install -r requirements-dev.txt` in `analytics-service`. The CI workflows do this already. Run `pytest` to execute the 218 tests.
+- Install the test dependencies with `pip install -r requirements-dev.txt` in `analytics-service`. The CI workflows do this already. Run `pytest` to execute the 316 tests (94% line coverage on 2026-10-29).
 - To update the base image, pull `public.ecr.aws/apama/apama-builder:latest`, test it, and replace the digest in the `FROM` line. To update the SDK, change the `SDK_COMMIT` build argument in the `Dockerfile`.
 
 ## Verify after deployment

@@ -1,50 +1,16 @@
 # Spec: Event-Driven Extension Deploy via `apama-ctrl` (CORS Workaround)
 
-**Status: R1's earlier "confirmed blocker" call was wrong — retracted, and real progress since.**
-The Analytics Builder Block SDK's own test suite disproved the blocker claim (a custom
-`config/connectivity/` bundle delivered via `analytics_builder build extension` + upload +
-restart does get read and connects, per real correlator log assertions). Since then, against a
-live `apama-ctrl`: moving the yaml/properties to the extension project's own root (not under
-`config/connectivity/` — an outside suggestion that contradicts every cited real example, but
-empirically got the chain recognized) made the `Unknown dynamicChain` error disappear entirely;
-the next real error was a genuine `apama.eventMap` config-schema mistake (`eventTypes` isn't a
-valid option there), now fixed using `defaultEventType`, confirmed against official docs and
-every real `apama.eventMap` usage found in `apama-in-c8y`. **Not yet re-verified against a live
-correlator** — see "Round 7–9" in `repository/connectivity-bundle/README.md` for the full
-evidence trail and what's still open.
+**Status: draft and experimental, not approved. Checked against the code on 2026-10-29.**
 
-Three tiers of confidence:
-- **Verified in practice** (real `apama-ctrl`, multiple rounds of test → fix): Q1 (proxy MO
-  lookup/create), Q2 (PAT delivery), and the `RECEIVED` status event — all in
-  `repository/epl/FetchExtensionListener.mon`, deployed as an EPL App.
-- **Best-effort draft, never run** (R1/R2/R3, Q4's remaining status transitions): the actual
-  fetch+upload, in the same file plus a new `repository/connectivity-bundle/` folder (custom
-  connectivity chains — required because the JSON-codec-only "generic" HTTP client API every
-  verified piece above uses would corrupt binary content; see R1). Written from documented Apama
-  connectivity-plugin behavior, not from a working test. `uploadHost` (the tenant's own API
-  hostname, needed to create the upload chain) is now resolved at startup via
-  `GET /tenant/currentTenant`'s `domain` field — reusing the already-verified `GenericRequest`
-  mechanism rather than an unconfirmed env-var-from-EPL path — but that specific field's
-  presence/shape is itself unverified against a real response; if it's wrong, `uploadHost` stays
-  empty and every request fails fast with a clear "server misconfigured" status rather than
-  silently pointing at the wrong host. Q3 (update-vs-create) also remains unresolved and
-  unimplemented — the current code always attempts a fresh upload, no existing-extension check.
-  Also fixed since first written, found by a real EPL parser (an IDE linter, not a guess): **EPL
-  has no ternary (`? :`) operator at all** — `emitStatus()` and `splitUrl()` both used one;
-  rewritten as plain `if`/`else` into a local variable. Worth remembering for any future EPL code
-  in this project, not just these two spots.
-- **Confirmed by a real EPL App activation failure, then fixed**: `FetchExtensionListener.mon`
-  originally called `new RawHttpChainFactory()` (a monitor type defined in the
-  `connectivity-bundle` extension) to create the connectivity chains — the EPL App failed to
-  activate until every reference to that monitor type was removed. *Event* types from the same
-  extension (`GitHubAssetRequest`/`Response`, etc.) resolve fine via `using`; it's specifically
-  monitor types that Cumulocity's per-EPL-App namespace isolation blocks across this boundary.
-  Fixed by calling `ConnectivityPlugins.createDynamicChain()` directly from
-  `FetchExtensionListener.mon` instead (a string-keyed runtime lookup against the extension's
-  YAML, not a compile-time type reference) — `RawHttpChainFactory` has been deleted from
-  `connectivity-bundle` entirely. See R1 and `repository/connectivity-bundle/README.md` for the
-  full writeup. This also retroactively answers Q1/R1's earlier open question about
-  Extension/EPL-App type visibility — no longer a guess.
+What exists in the repository:
+
+- `repository/epl/FetchExtensionListener.mon`, an EPL App. It looks up or creates the proxy managed object, listens for `c8y_FetchExtension` events, emits `c8y_FetchExtensionStatus` events (`RECEIVED`, `DOWNLOADING`, `UPLOADING`, `SUCCEEDED`, `FAILED`), fetches the asset, and uploads it with `FormRequest` and `CumulocityRequestInterface`.
+- `repository/connectivity-bundle/`, an Analytics Builder extension. It no longer defines a connectivity chain (`FetchExtension.yaml` is empty). The fetch runs in the Python EPL plug-in `plugins/GitHubFetchPlugin.py`, because the `stringCodec` of the earlier `GitHubFetchChain` cut a binary response at the first null byte, which every ZIP file contains. The plug-in is marked as a temporary diagnostic version.
+- `analytics-ui/src/shared/fetch-extension.service.ts` and the "Send via event (experimental)" button in the release wizard.
+
+What the records show: the proxy bootstrap, the event, and the `RECEIVED` status were verified against a live `apama-ctrl`. The earlier chain-based fetch and the `FormRequest` upload each ran against a live tenant. The current Python plug-in version has no recorded end-to-end run. The comment in `fetch-extension.service.ts` that says the listener only logs events is outdated.
+
+The sections below keep the investigation history. Where they describe a connectivity chain for the fetch (R1, R3, and the file path `config/connectivity/FetchExtension/FetchExtension.yaml`), the Python plug-in replaced that design, and the files now sit at the root of `repository/connectivity-bundle/`. Q2, Q3, Q6, and the security questions are still open.
 
 ## Background
 
@@ -210,7 +176,7 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
 
 - **Authorization surface.** Anyone able to post a `c8y_FetchExtension` event against the
   right `source` can apparently cause `apama-ctrl` to fetch an arbitrary URL and load the
-  result as an extension — i.e. arbitrary remote code execution into the CEP engine, gated
+  result as an extension — that is, arbitrary remote code execution into the CEP engine, gated
   only by event-creation permission on that source. This needs an explicit statement of who
   can trigger it (which role/permission) and why that's an acceptable trust boundary — today's
   browser-side upload flow is already gated by the user's own Cumulocity session and
@@ -228,7 +194,7 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
 - **SSRF.** The block will fetch a URL supplied (indirectly) by a browser client. Even scoped
   to "GitHub release assets," this is a fetch-arbitrary-URL primitive running server-side with
   the tenant's network access — worth at least a sentence on whether the URL is validated
-  against an allowlist (e.g. must resolve to `github.com`/`*.githubusercontent.com`) before the
+  against an allowlist (such as must resolve to `github.com`/`*.githubusercontent.com`) before the
   monitor fetches it.
 
 ## Open questions
@@ -343,7 +309,7 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
   anyone watching the Monitoring page) can filter/correlate the whole trail for a given request
   without needing a separate propagation mechanism through the eventual `Binary` managedObject —
   querying Events by `source` + a `requestId` match in `params` is enough. Still open: whether
-  `analytics-ui` should actively poll/subscribe to these status events (e.g. via the Events API
+  `analytics-ui` should actively poll/subscribe to these status events (such as via the Events API
   or a realtime notification) to reflect progress in the wizard UI itself, or whether pointing
   the user at the tenant's own Monitoring page is an acceptable v1 (no additional
   `analytics-ui` code needed for that path).

@@ -4,7 +4,7 @@
 
 **Cumulocity Analytics Management** is a comprehensive solution for managing custom Analytics Builder Blocks as extensions in Cumulocity IoT's Streaming Analytics application. It consists of two main components:
 
-- **Analytics UI Plugin**: An Angular-based web application that provides a user interface for managing analytics extensions, uploading custom blocks, and viewing monitoring information
+- **Analytics UI Plugin**: An Angular-based web application that provides a user interface for managing analytics extensions, uploading custom blocks, and checking the engine for Safe Mode
 - **Analytics Backend Microservice**: A Python-based microservice that builds analytics extensions from GitHub repositories and deploys them to the Streaming Analytics engine
 
 ### Key Capabilities
@@ -19,12 +19,11 @@
 ### Directory Structure
 ```
 cumulocity-analytics-management/
-├── analytics-ui/                 # Angular 20 frontend application
+├── analytics-ui/                 # Angular 21 frontend application
 │   ├── src/                      # TypeScript source code
 │   │   ├── app/                  # Main application module
 │   │   ├── block/                # Block grid components
 │   │   ├── manage/               # Extension management UI
-│   │   ├── monitoring/           # Engine monitoring components
 │   │   ├── repository/           # Repository management
 │   │   │   ├── create-extension/
 │   │   │   ├── editor/           # EPL code editor
@@ -173,8 +172,8 @@ npm run start:cockpit           # Serve with Cockpit shell
    - Verify blocks appear in Analytics Builder
 
 2. **Monitor deployment:**
-   - Check Monitoring tab for alarms/events
-   - Look for engine status and safe mode indicators
+   - Look for the Safe Mode indicator on the Extensions tab
+   - Check the logs of the apama-ctrl microservice
 
 ## What's the current progress?
 
@@ -208,7 +207,7 @@ npm run start:cockpit           # Serve with Cockpit shell
 3. Test extension upload and deployment workflow
 4. Review EPL code editor functionality
 5. Validate GitHub repository integration
-6. Check monitoring and alarm display features
+6. Check the Safe Mode indicator and the backend service switch on the Repositories tab
 
 ### Build Artifacts
 - **Frontend:** `/dist/` - Angular build output

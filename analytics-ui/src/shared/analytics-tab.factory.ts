@@ -56,13 +56,6 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'test',
         orientation: 'horizontal'
       } as Tab);
-      tabs.push({
-        path: ROUTES.monitoring,
-        priority: 900,
-        label: PAGE_LABELS.monitoring,
-        icon: 'monitoring',
-        orientation: 'horizontal'
-      } as Tab);
     }
     return of(tabs);
   }

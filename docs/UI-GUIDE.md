@@ -1,13 +1,13 @@
 # Analytics UI Development Guide
 
-> Last aligned with the code: 2026-10-14. Items marked **Planned** are *not* implemented (see [Planned work](#planned-work)).
+> Last aligned with the code: 2026-10-29. Items marked **Planned** are *not* implemented (see [Planned work](#planned-work)).
 
 ## Overview
 
 `analytics-ui` is a Cumulocity web SDK plugin (Angular 21, `@c8y/*` 1024.x) named
 `c8y-pkg-analytics-extension`. It adds pages to the Streaming Analytics / Administration shells
 to manage custom Analytics Builder blocks as extensions: browse blocks, deploy extensions,
-manage GitHub repositories and releases, and monitor the engine.
+manage GitHub repositories and releases, and check the engine status (safe mode, restart).
 
 ---
 
@@ -21,9 +21,10 @@ it imports the (standalone) components and registers the c8y hooks (`hookRoute`,
 `hookNavigator`, `hookWizard`, Formly types). All feature components are standalone (see ADR-001).
 
 Routes (all under `c8y-pkg-analytics-extension/`, defined once in `ROUTES` in `shared/analytics.constants.ts`):
-`manage` (+ `manage/details/:name`), `installed-blocks`, `repository`, `monitoring`, `release`. `manage` uses resolvers
+`manage` (+ `manage/details/:name`), `installed-blocks`, `repository`, `release`. `manage` uses resolvers
 (`backendResolver`, `extensionResolver` in `manage/resolvers.ts`). Page names (tab, page title, breadcrumb) come from
-`PAGE_LABELS` in the same file: Extensions, Installed blocks, Repositories, Monitoring. Use these constants, never literals.
+`PAGE_LABELS` in the same file: Extensions, Installed blocks, Repositories. Use these constants, never literals.
+The tab bar (`AnalyticsTabFactory`) shows these three tabs. The `release` route has no tab.
 Label style: sentence case, product names capitalised (Streaming Analytics, Analytics Builder); every label goes through
 `gettext()` (TS) or the `translate` pipe/directive (templates).
 
@@ -35,7 +36,6 @@ src/
 ├── bootstrap.ts, main.ts, app.config.ts, polyfills.ts, i18n.ts
 ├── block/                          # BlockGridComponent: blocks deployed in the engine
 ├── manage/                         # extension grid / card / details, resolvers.ts
-├── monitoring/                     # engine monitoring
 ├── repository/
 │   ├── list/                       # RepositoryBlockGridComponent, ExtensionListComponent (Formly field), help modal
 │   ├── create-extension/           # ExtensionCreateModalComponent
@@ -77,7 +77,8 @@ Enforced by `npm run lint:naming` (ESLint rules in `.eslintrc.naming.js`, which 
 Structure rules of thumb: feature folders contain only what that feature's routes use; anything used by two
 features moves to `shared/`; components do not call `FetchClient`/`fetch` or c8y data services directly, they go through a service
 (`AnalyticsService` or `RepositoryService` facades); one facade per area, focused services behind it.
-Known exception: `EngineMonitoringComponent` injects c8y's `EventService` itself (candidate for a service).
+Known exception: `RepositoryBlockGridComponent` injects `AnalyticsService` for the backend service switch
+(deployed state, enabled flag, Re-check) in addition to `RepositoryService`.
 
 ### Talking to backends
 
@@ -86,14 +87,35 @@ Almost all calls use the c8y `FetchClient` (`@c8y/client`) or the native `fetch(
 `CepError`/`fetchCepJSON` for engine calls, `GitHubReleaseError`, `RepositoryError`.
 The microservice is reached through `/service/analytics-ext-service/...`.
 
+### Repositories page
+
+`RepositoryBlockGridComponent` (route `repository`) has these controls in its action bar:
+
+- **Expert mode** switch: loads the repository items only when it is on (persisted as a tenant option).
+- **Backend service** label, **Re-check** button, and **Use backend service** switch. The label shows whether the
+  microservice `analytics-ext-service` is deployed. The switch (tenant option, default on) selects backend or
+  browser-only mode. Changing it reloads the repository items, because they load through the active mode.
+- **Hide installed** switch, **Deploy Release**, **Repositories** drawer, and **Reload**.
+
+The grid title names the source: "Blocks from *repository name* (*type*)" when all items come from one repository, and
+"Blocks from repositories (*type*)" otherwise. With a single repository the **Repository Name** column is hidden,
+because it would repeat on every row.
+
+**Installed status** (`RepositoryItemsService.getItemsForRepositories(repos, deployedBlocks, hideInstalled, deployedFiles)`):
+an item is installed if one of the block names its `.mon` file defines is deployed, or if its file name is in the
+contents of a deployed extension. The second rule covers files that define no block, such as a helper event
+definition (for example `EventsWindowContents.mon`). `RepositoryService` builds `deployedFiles` from
+`getExtensionNamesFromCep()` (the `contents` of each extension, base names only). The match uses the file name only, so a
+file with the same name in another repository is also shown as installed.
+
 ### Shared services
 
 | Service | Role |
 |---------|------|
-| `AnalyticsService` | Facade: extensions, blocks, upload, CEP status/restart, cache invalidation |
+| `AnalyticsService` | Facade: extensions, blocks, upload, CEP status/restart, backend service state, cache invalidation |
 | `RepositoryService` | Repository list, enable/disable state, unsaved-change tracking, global PAT, connection test |
 | `CepStatusService` / `CepRestartService` | Engine status stream, restart lifecycle and transient-error handling |
-| `ExtensionEnrichmentService` | Combines deployed extensions with block metadata |
+| `ExtensionEnrichmentService` | Combines deployed extensions with block metadata; reads the extension names and contents from the engine |
 | `GitHubReleaseService` / `GitHubContentService` | GitHub releases and content via `fetch` |
 
 ---
@@ -126,7 +148,7 @@ Configuration:
 - `tsconfig.json` sets `strict: true` and strict Angular template checking.
 - `tsconfig.app.json` (used by the build) **overrides `strict: false`** and `noImplicitOverride: false`.
   The application build is therefore *not* strict, while the spec build (`tsconfig.spec.json`) is.
-- About 40 explicit `any` usages remain in non-test code.
+- About 33 explicit `any` usages remain in non-test code.
 
 Guidelines for new code: prefer `unknown` + type guards over `any`, use optional chaining for
 possibly-null values, and keep new files compilable under the strict root config. Turning strict mode
@@ -157,7 +179,7 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `shared/cep-status.service.spec.ts` | realtime stream, backend availability probe/caching, status/id lookup with fallbacks, restart trigger |
 | `shared/extension-inventory|enrichment|builder.service.spec.ts` | inventory CRUD/paging, deployment status + block categorisation, client-side zip build |
 | `shared/analytics.service.spec.ts` | facade delegation and cache invalidation |
-| `shared/repository-config|backend|items.service.spec.ts`, `github-content|github-release.service.spec.ts`, `repository-mode.service.spec.ts` | tenant-option storage and token semantics, backend/GitHub content access, item listing/FQN/installed status |
+| `shared/repository-config|backend|items.service.spec.ts`, `github-content|github-release.service.spec.ts`, `repository-mode.service.spec.ts` | tenant-option storage and token semantics, backend/GitHub content access, item listing/FQN/installed status (including files without blocks) |
 | `shared/repository.service.spec.ts` | state, serialized mutations, unsaved changes, items stream, delegation |
 | `shared/fetch-extension.service.spec.ts` | `c8y_FetchExtension` event flow |
 | `shared/analytics-navigation|tab.factory.spec.ts` | permission-gated navigation, tab set |
@@ -165,8 +187,8 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
-| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | expert-mode gating, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
-| `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid`; `monitoring/engine-monitoring` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks, engine status/alarms/events paging |
+| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | expert-mode gating, backend service switch, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
+| `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks |
 | `shared/wizard/extension-add(-wizard)`, `shared/component/*` specs | zip analysis and upload/update flow, confirmation dialog, renderers, Formly switch |
 
 Conventions:
@@ -177,7 +199,7 @@ Conventions:
 - Spy on `window.fetch` for GitHub code (see `github-release.service.spec.ts`).
 - Do not leave specs without expectations; the runner warns about them.
 
-Status: every service and component has a spec (about 580 specs, ~96% line coverage). The only files without specs are
+Status: every service and component has a spec (588 specs, about 95% line coverage). The only files without specs are
 bootstrap/entry files (`main.ts`, `bootstrap.ts`, `polyfills.ts`, `i18n.ts`, `app.config.ts`), the plugin module and barrel
 files. Component specs replace the template and test component logic (renderers and the Formly list field render their
 real templates); full DOM/template integration is not covered. `angular.json` maps `.ttf/.woff` to the `file` loader so
@@ -204,7 +226,7 @@ npm start                   # ng serve against the configured Cumulocity tenant
 npm run start:admin         # administration shell
 npm run start:ab            # streaminganalytics shell
 npm run start:cockpit       # cockpit shell
-npm run build               # development build (`npm run build -- --configuration production` for prod)
+npm run build               # production build (the default; `npm run build -- --configuration development` for a development build)
 npm run lint                # eslint --fix
 npm run lint:check          # eslint without fixing (what CI runs; must be clean)
 npm run lint:naming         # naming/structure rules only (see Naming and structure)
@@ -213,8 +235,8 @@ npm run format              # prettier
 
 ### Key dependencies (see `package.json` for exact versions)
 
-Angular 21.2, TypeScript 5.9, RxJS 7.8, `@c8y/*` 1024.19, `ngx-bootstrap` 21.2, `jszip`, `js-yaml`.
-Karma 6 / Jasmine 5 for tests.
+Angular 21.2, TypeScript 5.9, RxJS 7.8, `@c8y/*` 1024.22, `ngx-bootstrap` 21.2, `jszip`, `js-yaml`.
+Karma 6 / Jasmine 5 for tests. `npm start` and `npm run build` first run `scripts/optimize-images.js`.
 
 ---
 
@@ -233,5 +255,5 @@ Karma 6 / Jasmine 5 for tests.
 2. Enable strict mode for the application build and remove `any` - ADR-006.
 3. Unit tests for the remaining components (see Testing).
 4. State management (NgRx) - only if the current service-based state becomes a problem.
-5. E2E tests (e.g. Cypress), accessibility pass, lazy loading and virtual scrolling for large lists.
+5. E2E tests (for example Cypress), accessibility pass, lazy loading and virtual scrolling for large lists.
 6. Component-level documentation.

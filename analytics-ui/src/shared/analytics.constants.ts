@@ -28,7 +28,6 @@ export const ROUTES = {
   manage: `${ROUTE_ROOT}/manage`,
   installedBlocks: `${ROUTE_ROOT}/installed-blocks`,
   repository: `${ROUTE_ROOT}/repository`,
-  monitoring: `${ROUTE_ROOT}/monitoring`,
   release: `${ROUTE_ROOT}/release`
 };
 
@@ -40,6 +39,5 @@ export const ROUTES = {
 export const PAGE_LABELS = {
   extensions: gettext('Extensions'),
   installedBlocks: gettext('Installed blocks'),
-  repositories: gettext('Repositories'),
-  monitoring: gettext('Monitoring')
+  repositories: gettext('Repositories')
 };

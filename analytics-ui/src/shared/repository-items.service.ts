@@ -47,7 +47,8 @@ export class RepositoryItemsService {
   getItemsForRepositories(
     repos: Repository[],
     deployedBlocks: CepBlock[],
-    hideInstalled: boolean
+    hideInstalled: boolean,
+    deployedFiles: ReadonlySet<string> = new Set()
   ): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
 
@@ -58,7 +59,7 @@ export class RepositoryItemsService {
     return forkJoin(
       enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
     ).pipe(
-      map(blocks => this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled)),
+      map(blocks => this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled, deployedFiles)),
       catchError(error => {
         this.handleError(
           error,
@@ -287,13 +288,18 @@ export class RepositoryItemsService {
   private addInstallationStatus(
     blocks: RepositoryItem[],
     loaded: CepBlock[],
-    hideInstalled: boolean
+    hideInstalled: boolean,
+    deployedFiles: ReadonlySet<string>
   ): RepositoryItem[] {
     const loadedIds = new Set(loaded.map(block => block.id));
     // A file can define more than one block (see `enrichRepositoryItem`), so
     // it counts as installed if any of them is deployed, not just `id`.
+    // A file that defines no block (e.g. a helper event definition such as
+    // EventsWindowContents.mon) never shows up in the deployed blocks, so it
+    // also counts as installed when a deployed extension contains that file.
     const isInstalled = (block: RepositoryItem) =>
-      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id));
+      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id)) ||
+      deployedFiles.has(block.file);
 
     if (hideInstalled) {
       return blocks.filter(block => !isInstalled(block));

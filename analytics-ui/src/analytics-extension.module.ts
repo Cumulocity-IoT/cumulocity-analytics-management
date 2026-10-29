@@ -17,7 +17,6 @@ import { FORMLY_CONFIG, FormlyModule } from '@ngx-formly/core';
 
 // Import standalone components
 import { BlockGridComponent } from './block/block-grid.component';
-import { EngineMonitoringComponent } from './monitoring/engine-monitoring.component';
 import { ExtensionGridComponent } from './manage/extension-grid.component';
 import { ExtensionCardComponent } from './manage/extension-card.component';
 import { ExtensionDetailsComponent } from './manage/extension-details.component';
@@ -47,7 +46,6 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
     DynamicFormsModule,
     // Import standalone components
     BlockGridComponent,
-    EngineMonitoringComponent,
     ExtensionGridComponent,
     ExtensionCardComponent,
     ExtensionDetailsComponent,
@@ -90,10 +88,6 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
     hookRoute({
       path: ROUTES.installedBlocks,
       component: BlockGridComponent
-    }),
-    hookRoute({
-      path: ROUTES.monitoring,
-      component: EngineMonitoringComponent
     }),
     hookRoute({
       path: ROUTES.repository,

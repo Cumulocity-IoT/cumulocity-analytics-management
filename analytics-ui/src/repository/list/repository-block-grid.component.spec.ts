@@ -2,7 +2,7 @@ import { fakeAsync, TestBed, tick } from '@angular/core/testing';
 import { AlertService } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, firstValueFrom, of, Subject, throwError } from 'rxjs';
-import { Repository, RepositoryItem, RepositoryService } from '../../shared';
+import { AnalyticsService, Repository, RepositoryItem, RepositoryService } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
 import { RepositoryBlockGridComponent } from './repository-block-grid.component';
@@ -16,6 +16,7 @@ describe('RepositoryBlockGridComponent', () => {
   let component: RepositoryBlockGridComponent;
   let repositories: jasmine.SpyObj<RepositoryService>;
   let alerts: jasmine.SpyObj<AlertService>;
+  let analytics: jasmine.SpyObj<AnalyticsService>;
   let modals: jasmine.SpyObj<BsModalService>;
   let repos$: BehaviorSubject<Repository[]>;
   let modalClose$: Subject<void>;
@@ -41,7 +42,13 @@ describe('RepositoryBlockGridComponent', () => {
     repositories.getRepositoryItemsAnalyzed.and.returnValue(of([]));
     repositories.setExpertMode.and.resolveTo();
     repositories.reloadAll.and.resolveTo();
-    alerts = jasmine.createSpyObj('AlertService', ['danger', 'warning']);
+    analytics = jasmine.createSpyObj('AnalyticsService', [
+      'isBackendServiceDeployed', 'isBackendServiceEnabled', 'recheckBackendServiceDeployed', 'setBackendServiceEnabled'
+    ]);
+    analytics.isBackendServiceDeployed.and.resolveTo(true);
+    analytics.isBackendServiceEnabled.and.resolveTo(false);
+    analytics.setBackendServiceEnabled.and.resolveTo();
+    alerts = jasmine.createSpyObj('AlertService', ['danger', 'warning', 'success']);
     modalClose$ = new Subject<void>();
     modalHide = jasmine.createSpy('hide');
     modals = jasmine.createSpyObj('BsModalService', ['show']);
@@ -51,12 +58,48 @@ describe('RepositoryBlockGridComponent', () => {
       imports: [RepositoryBlockGridComponent],
       providers: [
         { provide: RepositoryService, useValue: repositories },
+        { provide: AnalyticsService, useValue: analytics },
         { provide: AlertService, useValue: alerts },
         { provide: BsModalService, useValue: modals }
       ]
     });
     TestBed.overrideComponent(RepositoryBlockGridComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
     spyOn(console, 'error');
+  });
+
+  describe('backend service switch', () => {
+    it('reads the deployed and enabled state on init', async () => {
+      analytics.isBackendServiceEnabled.and.resolveTo(true);
+      await create();
+      expect(component.backendDeployed).toBeTrue();
+      expect(component.backendEnabled).toBeTrue();
+    });
+
+    it('persists the switch and reloads the items for the new mode', async () => {
+      await create();
+      await component.toggleBackendEnabled(true);
+      expect(analytics.setBackendServiceEnabled).toHaveBeenCalledWith(true);
+      expect(component.backendEnabled).toBeTrue();
+      expect(repositories.reload).toHaveBeenCalled();
+    });
+
+    it('reverts the switch and reports a failure', async () => {
+      analytics.setBackendServiceEnabled.and.rejectWith(new Error('nope'));
+      await create();
+      await component.toggleBackendEnabled(true);
+      expect(component.backendEnabled).toBeFalse();
+      expect(alerts.danger).toHaveBeenCalled();
+      expect(component.backendTogglePending).toBeFalse();
+    });
+
+    it('re-checks whether the backend service is deployed', async () => {
+      analytics.isBackendServiceDeployed.and.resolveTo(false);
+      analytics.recheckBackendServiceDeployed.and.resolveTo(true);
+      await create();
+      expect(component.backendDeployed).toBeFalse();
+      await component.recheckBackend();
+      expect(component.backendDeployed).toBeTrue();
+    });
   });
 
   describe('expert mode (loading items is opt-in)', () => {
@@ -94,14 +137,14 @@ describe('RepositoryBlockGridComponent', () => {
     it('selects whole items instead of single ones and updates the title', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'extensions.yaml' })]));
       await create(true);
-      expect(component.titleSample).toBe('Blocks from repositories (contains extensions.yaml)');
+      expect(component.titleSample).toBe('Blocks from R (contains extensions.yaml)');
       expect(component.singleSelection).toBeFalse();
     });
 
     it('titles a plain file listing without stray spaces', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'A.mon' })]));
       await create(true);
-      expect(component.titleSample).toBe('Blocks from repositories (list assets)');
+      expect(component.titleSample).toBe('Blocks from R (list assets)');
     });
   });
 

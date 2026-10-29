@@ -39,6 +39,7 @@ import {
   Repository,
   RepositoryItem,
   RepositoryService,
+  AnalyticsService,
   PAGE_LABELS,
   ROUTES
 } from '../../shared';
@@ -51,6 +52,7 @@ import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-w
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Component({
   selector: 'a17t-repository-block-grid',
@@ -79,6 +81,10 @@ export class RepositoryBlockGridComponent implements OnInit {
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
   showDeployRelease: boolean = false;
+
+  backendDeployed: boolean = false;
+  backendEnabled: boolean = false;
+  backendTogglePending: boolean = false;
 
   activeRepository!: Repository;
   repositoryItems$!: Observable<RepositoryItem[]>;
@@ -147,6 +153,7 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   constructor(
     public repositoryService: RepositoryService,
+    private analyticsService: AnalyticsService,
     public alertService: AlertService,
     private bsModalService: BsModalService
   ) {
@@ -161,7 +168,16 @@ export class RepositoryBlockGridComponent implements OnInit {
         // console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
 
         const type = isYaml ? 'contains extensions.yaml' : 'list assets';
-        this.titleSample = `Blocks from repositories (${type})`;
+        // With a single source repository the name is the same on every row:
+        // show it in the title and hide the column instead.
+        const repoNames = [...new Set(items.map(item => item.repositoryName))];
+        const singleRepo = repoNames.length === 1 && !!repoNames[0];
+        this.titleSample = singleRepo
+          ? `Blocks from ${repoNames[0]} (${type})`
+          : `Blocks from repositories (${type})`;
+        this.columnsSamples = this.columnsSamples.map(column =>
+          column.name === 'repositoryName' ? { ...column, visible: !singleRepo } : column
+        );
         this.singleSelection = false;
         // Only recreate the grid if the selection type actually changes
         // if (this.singleSelection !== isYaml) {
@@ -203,6 +219,48 @@ export class RepositoryBlockGridComponent implements OnInit {
     });
 
     this.initializeActiveRepository();
+    this.loadBackendStatus();
+  }
+
+  private async loadBackendStatus(): Promise<void> {
+    try {
+      [this.backendDeployed, this.backendEnabled] = await Promise.all([
+        this.analyticsService.isBackendServiceDeployed(),
+        this.analyticsService.isBackendServiceEnabled()
+      ]);
+    } catch (error) {
+      console.error('Failed to load backend service status:', error);
+    }
+  }
+
+  async recheckBackend(): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      this.backendDeployed = await this.analyticsService.recheckBackendServiceDeployed();
+    } catch (error) {
+      console.error('Failed to re-check the backend service:', error);
+    } finally {
+      this.backendTogglePending = false;
+    }
+  }
+
+  async toggleBackendEnabled(enabled: boolean): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      await this.analyticsService.setBackendServiceEnabled(enabled);
+      this.backendEnabled = enabled;
+      this.alertService.success(
+        enabled ? gettext('Backend service enabled') : gettext('Backend service disabled')
+      );
+      // Repository items are loaded through whichever mode is active.
+      this.repositoryService.reload();
+    } catch (error) {
+      this.backendEnabled = !enabled;
+      this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));
+      console.error('Failed to update backend service setting:', error);
+    } finally {
+      this.backendTogglePending = false;
+    }
   }
 
 
