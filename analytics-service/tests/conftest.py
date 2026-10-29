@@ -74,7 +74,7 @@ def run_agent_work(monkeypatch):
 
     def _install(agent, tenant):
         monkeypatch.setattr(
-            agent, "_execute", lambda request, work: asyncio.run(work(tenant))
+            agent, "_execute", lambda request, work, service=False: asyncio.run(work(tenant))
         )
         return agent
 

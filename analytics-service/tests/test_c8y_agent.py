@@ -1,5 +1,6 @@
 """Tests for C8YAgent using a fake async tenant (no network, no pyc8y calls)."""
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -99,62 +100,91 @@ class TestSaveRepository:
             tenant.tenant_options.get_value.side_effect = KeyError
         else:
             tenant.tenant_options.get_value.return_value = json.dumps(existing)
-        await agent._save_repository(tenant, repo)
+        return await agent._save_repository(tenant, repo)
 
     @pytest.mark.asyncio
     async def test_dummy_sentinel_keeps_stored_token(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant,
             {"id": "r", "name": "n", "url": "u", "accessToken": DUMMY},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert json.loads(created[0]["value"])["accessToken"] == "stored"
+        assert op is None
+        assert json.loads(created[0]["value"])["hasToken"] is True
 
     @pytest.mark.asyncio
     async def test_absent_token_keeps_stored_token(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u"},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert json.loads(created[0]["value"])["accessToken"] == "stored"
+        assert op is None
+        assert json.loads(created[0]["value"])["hasToken"] is True
 
     @pytest.mark.asyncio
-    async def test_new_token_replaces_stored(self, tenant, monkeypatch):
+    async def test_new_token_goes_to_credentials_not_option(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u", "accessToken": "new"},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert json.loads(created[0]["value"])["accessToken"] == "new"
+        assert op == ("set", "new")
+        value = json.loads(created[0]["value"])
+        assert value["hasToken"] is True
+        assert "new" not in created[0]["value"] and "accessToken" not in value
 
     @pytest.mark.asyncio
     async def test_empty_token_clears(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u", "accessToken": ""},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert "accessToken" not in json.loads(created[0]["value"])
+        assert op == ("delete", None)
+        assert "hasToken" not in json.loads(created[0]["value"])
 
     @pytest.mark.asyncio
     async def test_url_change_clears_token(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant, {"id": "r", "name": "n", "url": "https://other", "accessToken": DUMMY},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert "accessToken" not in json.loads(created[0]["value"])
+        assert op == ("delete", None)
+        assert "hasToken" not in json.loads(created[0]["value"])
 
     @pytest.mark.asyncio
     async def test_url_change_with_new_token_keeps_new_token(self, tenant, monkeypatch):
         created = self._saved(monkeypatch)
-        await self._save(
+        op = await self._save(
             C8YAgent(), tenant, {"id": "r", "name": "n", "url": "https://other", "accessToken": "fresh"},
-            existing={"url": "u", "accessToken": "stored"},
+            existing={"url": "u", "hasToken": True},
         )
-        assert json.loads(created[0]["value"])["accessToken"] == "fresh"
+        assert op == ("set", "fresh")
+        assert json.loads(created[0]["value"])["hasToken"] is True
+
+    @pytest.mark.asyncio
+    async def test_legacy_plaintext_token_is_migrated(self, tenant, monkeypatch):
+        created = self._saved(monkeypatch)
+        op = await self._save(
+            C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u", "accessToken": DUMMY},
+            existing={"url": "u", "accessToken": "legacy"},
+        )
+        assert op == ("set", "legacy")
+        assert "legacy" not in created[0]["value"]
+        assert json.loads(created[0]["value"])["hasToken"] is True
+
+    @pytest.mark.asyncio
+    async def test_legacy_token_dropped_when_url_changes(self, tenant, monkeypatch):
+        created = self._saved(monkeypatch)
+        op = await self._save(
+            C8YAgent(), tenant, {"id": "r", "name": "n", "url": "https://other"},
+            existing={"url": "u", "accessToken": "legacy"},
+        )
+        assert op == ("delete", None)
+        assert "legacy" not in created[0]["value"]
 
     @pytest.mark.asyncio
     async def test_new_repository(self, tenant, monkeypatch):
@@ -188,33 +218,89 @@ class TestRepositories:
         tenant.tenant_options.get_value.side_effect = KeyError
         assert agent.load_repository(REQ, "x") is None
 
-    def test_load_repository_unmasked(self, agent, tenant):
-        tenant.tenant_options.get_value.return_value = json.dumps({"accessToken": "t"})
-        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "t"
+    @staticmethod
+    def _options(tenant, values):
+        """Route get_value by (category, key); anything else raises KeyError."""
 
-    def test_load_repository_falls_back_to_global_token(self, agent, tenant):
         async def get_value(category, key):
-            if category == C8YAgent.CATEGORY:
-                return json.dumps({"name": "n"})
-            assert (category, key) == (C8YAgent.SETTINGS_CATEGORY, C8YAgent.GLOBAL_ACCESS_TOKEN_KEY)
-            return "global"
+            try:
+                return values[(category, key)]
+            except KeyError:
+                raise KeyError(key)
 
         tenant.tenant_options.get_value.side_effect = get_value
+
+    def test_load_repository_reads_token_from_credentials(self, agent, tenant):
+        self._options(tenant, {
+            (C8YAgent.CATEGORY, "x"): json.dumps({"name": "n", "hasToken": True}),
+            (C8YAgent.CREDENTIALS_CATEGORY, "credentials.x"): "secret",
+        })
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "secret"
+        assert agent.load_repository(REQ, "x")["accessToken"] == DUMMY
+
+    def test_load_repository_reads_token_with_service_user(self, tenant, monkeypatch):
+        calls = []
+        self._options(tenant, {
+            (C8YAgent.CATEGORY, "x"): json.dumps({"name": "n", "hasToken": True}),
+            (C8YAgent.CREDENTIALS_CATEGORY, "credentials.x"): "secret",
+        })
+        agent = C8YAgent()
+
+        def execute(request, work, service=False):
+            calls.append(service)
+            return asyncio.run(work(tenant))
+
+        monkeypatch.setattr(agent, "_execute", execute)
+        agent.load_repository(REQ, "x", replace_access_token=False)
+        assert calls == [False, True]
+        calls.clear()
+        agent.load_repository(REQ, "x")  # masked: never touches the secret
+        assert calls == [False]
+
+    def test_load_repository_unauthorized_user_never_reaches_secret(self, tenant, monkeypatch):
+        calls = []
+        agent = C8YAgent()
+
+        def execute(request, work, service=False):
+            calls.append(service)
+            raise RuntimeError("403")
+
+        monkeypatch.setattr(agent, "_execute", execute)
+        assert agent.load_repository(REQ, "x", replace_access_token=False) is None
+        assert calls == [False]
+
+    def test_load_repository_legacy_plaintext_token(self, agent, tenant):
+        tenant.tenant_options.get_value.return_value = json.dumps({"accessToken": "t"})
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "t"
+        assert agent.load_repository(REQ, "x")["accessToken"] == DUMMY
+
+    def test_load_repository_falls_back_to_global_token(self, agent, tenant):
+        self._options(tenant, {
+            (C8YAgent.CATEGORY, "x"): json.dumps({"name": "n"}),
+            (C8YAgent.SETTINGS_CATEGORY, C8YAgent.GLOBAL_ACCESS_TOKEN_KEY): "global",
+        })
         assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "global"
         # the masked/display variant never leaks or substitutes the global token
         assert agent.load_repository(REQ, "x")["accessToken"] == ""
 
+    def test_global_credentials_option_wins_over_plain_key(self, agent, tenant):
+        self._options(tenant, {
+            (C8YAgent.CATEGORY, "x"): json.dumps({"name": "n"}),
+            (C8YAgent.SETTINGS_CATEGORY, "credentials.globalAccessToken"): "new-global",
+            (C8YAgent.SETTINGS_CATEGORY, C8YAgent.GLOBAL_ACCESS_TOKEN_KEY): "old-global",
+        })
+        assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "new-global"
+
     def test_load_repository_own_token_wins_over_global(self, agent, tenant):
-        tenant.tenant_options.get_value.return_value = json.dumps({"accessToken": "own"})
+        self._options(tenant, {
+            (C8YAgent.CATEGORY, "x"): json.dumps({"hasToken": True}),
+            (C8YAgent.CREDENTIALS_CATEGORY, "credentials.x"): "own",
+            (C8YAgent.SETTINGS_CATEGORY, C8YAgent.GLOBAL_ACCESS_TOKEN_KEY): "global",
+        })
         assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == "own"
 
     def test_load_repository_without_any_token(self, agent, tenant):
-        async def get_value(category, key):
-            if category == C8YAgent.CATEGORY:
-                return json.dumps({"name": "n"})
-            raise KeyError(key)
-
-        tenant.tenant_options.get_value.side_effect = get_value
+        self._options(tenant, {(C8YAgent.CATEGORY, "x"): json.dumps({"name": "n"})})
         assert agent.load_repository(REQ, "x", replace_access_token=False)["accessToken"] == ""
 
     def test_update_deletes_repositories_not_in_request(self, agent, tenant, monkeypatch):
@@ -229,7 +315,73 @@ class TestRepositories:
 
         assert status == 200
         assert saved == ["keep", "new"]
-        tenant.tenant_options.delete.assert_awaited_once_with(category=C8YAgent.CATEGORY, key="old")
+        tenant.tenant_options.delete.assert_any_await(category=C8YAgent.CATEGORY, key="old")
+        # the deleted repository's token goes with it
+        tenant.tenant_options.delete.assert_any_await(
+            category=C8YAgent.CREDENTIALS_CATEGORY, key="credentials.old"
+        )
+
+    def test_update_writes_tokens_with_service_user_after_user_write(self, tenant, monkeypatch):
+        order = []
+        created = []
+
+        class FakeOption:
+            def __init__(self, **kw):
+                self.kw = kw
+
+            async def create(self):
+                created.append(self.kw)
+
+        monkeypatch.setattr(c8y_agent, "TenantOption", FakeOption)
+        tenant.tenant_options.get_values.return_value = {}
+        tenant.tenant_options.get_value.side_effect = KeyError
+        agent = C8YAgent()
+
+        def execute(request, work, service=False):
+            order.append(("service" if service else "user", len(created)))
+            return asyncio.run(work(tenant))
+
+        monkeypatch.setattr(agent, "_execute", execute)
+        _, status = agent.update_repositories(
+            REQ, [{"id": "r", "name": "n", "url": "u", "accessToken": "ghp_x"}]
+        )
+
+        assert status == 200
+        assert order == [("user", 0), ("service", 1)]  # repo option first, then the secret
+        assert created[0]["category"] == C8YAgent.CATEGORY
+        assert "ghp_x" not in created[0]["value"]
+        assert (created[1]["category"], created[1]["key"], created[1]["value"]) == (
+            C8YAgent.CREDENTIALS_CATEGORY, "credentials.r", "ghp_x",
+        )
+
+    def test_update_skips_service_user_without_token_changes(self, tenant, monkeypatch):
+        monkeypatch.setattr(c8y_agent, "TenantOption", MagicMock())
+        c8y_agent.TenantOption.return_value.create = AsyncMock()
+        tenant.tenant_options.get_values.return_value = {}
+        tenant.tenant_options.get_value.side_effect = KeyError
+        agent = C8YAgent()
+        calls = []
+
+        def execute(request, work, service=False):
+            calls.append(service)
+            return asyncio.run(work(tenant))
+
+        monkeypatch.setattr(agent, "_execute", execute)
+        agent.update_repositories(REQ, [{"id": "r", "name": "n", "url": "u"}])
+        assert calls == [False]
+
+    def test_update_denied_for_user_never_writes_tokens(self, monkeypatch):
+        agent = C8YAgent()
+        calls = []
+
+        def execute(request, work, service=False):
+            calls.append(service)
+            raise RuntimeError("403 forbidden")
+
+        monkeypatch.setattr(agent, "_execute", execute)
+        _, status = agent.update_repositories(REQ, [{"id": "r", "name": "n", "url": "u", "accessToken": "t"}])
+        assert status == 500
+        assert calls == [False]
 
     def test_update_failure_returns_500(self, agent, tenant):
         tenant.tenant_options.get_values.side_effect = RuntimeError("down")
@@ -363,6 +515,31 @@ class TestExecute:
 
         with pytest.raises(C8YAgentError, match="authenticate"):
             C8YAgent()._execute(request, work)
+
+
+class TestExecuteClientSelection:
+    @pytest.mark.parametrize("service,expected", [(False, "user"), (True, "tenant")])
+    def test_uses_user_instance_unless_service_requested(self, monkeypatch, service, expected):
+        class FakeApp:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get_user_instance(self, **kw):
+                return "user"
+
+            async def get_tenant_instance(self, **kw):
+                return "tenant"
+
+        monkeypatch.setattr(c8y_agent, "MultiTenantCumulocityApp", FakeApp)
+        request = MagicMock(headers={}, cookies={})
+
+        async def work(client):
+            return client
+
+        assert C8YAgent()._execute(request, work, service=service) == expected
 
 
 class TestCepErrorLogging:
