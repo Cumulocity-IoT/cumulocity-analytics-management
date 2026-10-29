@@ -1,0 +1,7 @@
+-r requirements.txt
+psutil==7.2.2
+pydantic==2.14.1
+pytest==9.2.0
+pytest-asyncio==1.4.1
+pytest-cov==7.1.0
+pytest-mock==3.17.0

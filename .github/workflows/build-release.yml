@@ -93,10 +93,10 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: analytics-service/requirements.txt
+          cache-dependency-path: analytics-service/requirements-dev.txt
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
 
       - name: Unit tests
         run: python -m pytest
