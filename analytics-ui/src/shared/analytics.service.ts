@@ -65,11 +65,15 @@ export class AnalyticsService {
     // delete once it has restarted. Caches filled before that (the delete itself
     // clears them while the old state is still served) would keep reporting
     // removed blocks as installed, so drop them when the restart completes.
+    // Views that loaded in the meantime (the engine status flips to "up" just
+    // before the restart is considered complete) are showing the pre-restart
+    // state, e.g. a new extension as "not loaded", so ask them to reload too.
     this.restarting$
       .pipe(pairwise())
       .subscribe(([was, now]) => {
         if (was && !now) {
           this.clearAllCaches();
+          this.triggerCacheReload(false);
         }
       });
   }

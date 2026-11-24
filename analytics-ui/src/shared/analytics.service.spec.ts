@@ -59,6 +59,18 @@ describe('AnalyticsService (facade)', () => {
       expect(received).toEqual([true, false]);
     });
 
+    it('clears the caches and asks views to reload when a restart completes', () => {
+      const received: boolean[] = [];
+      service.getCacheReloadRequests$().subscribe(v => received.push(v));
+
+      restart.restarting$.next(true);
+      expect(received).toEqual([]);
+      restart.restarting$.next(false);
+
+      expect(enrichment.invalidateCache).toHaveBeenCalled();
+      expect(received).toEqual([false]);
+    });
+
     it('clearAllCaches clears both the status and the enrichment caches', () => {
       service.clearAllCaches();
       expect(status.clearCache).toHaveBeenCalled();

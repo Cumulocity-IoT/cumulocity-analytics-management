@@ -184,11 +184,7 @@ export class RepositoryConfigService {
         }
         return;
       }
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: GLOBAL_ACCESS_TOKEN_OPTION_KEY,
-        value: token
-      });
+      await this.saveOption(SETTINGS_OPTION_CATEGORY, GLOBAL_ACCESS_TOKEN_OPTION_KEY, token);
     } catch (error) {
       throw new RepositoryError(
         'Failed to save global access token',
@@ -211,7 +207,8 @@ export class RepositoryConfigService {
         key: EXPERT_MODE_OPTION_KEY
       });
       return data.value === 'true';
-    } catch {
+    } catch (error) {
+      console.warn('[RepositoryConfigService] Could not read the Expert mode setting, using "off":', error);
       return false;
     }
   }
@@ -219,11 +216,7 @@ export class RepositoryConfigService {
   /** Persists the "Expert mode" preference as a tenant option (same storage as repository config/PAT, not `localStorage`). */
   async setExpertMode(expertMode: boolean): Promise<void> {
     try {
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY,
-        value: String(expertMode)
-      });
+      await this.saveOption(SETTINGS_OPTION_CATEGORY, EXPERT_MODE_OPTION_KEY, String(expertMode));
     } catch (error) {
       throw new RepositoryError(
         'Failed to save expert mode setting',
@@ -254,11 +247,7 @@ export class RepositoryConfigService {
   /** Persists the "use backend service" preference as a tenant option. */
   async setUseBackendServiceEnabled(enabled: boolean): Promise<void> {
     try {
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: USE_BACKEND_SERVICE_OPTION_KEY,
-        value: String(enabled)
-      });
+      await this.saveOption(SETTINGS_OPTION_CATEGORY, USE_BACKEND_SERVICE_OPTION_KEY, String(enabled));
     } catch (error) {
       throw new RepositoryError(
         'Failed to save backend service setting',
@@ -395,10 +384,20 @@ export class RepositoryConfigService {
       value['accessToken'] = accessToken;
     }
 
-    await this.tenantOptionsService.create({
-      category: REPOSITORY_OPTION_CATEGORY,
-      key: repo.id,
-      value: JSON.stringify(value)
-    });
+    await this.saveOption(REPOSITORY_OPTION_CATEGORY, repo.id, JSON.stringify(value));
+  }
+
+  /**
+   * Writes a tenant option whether or not it exists yet. A plain `create` is a
+   * POST, which the platform rejects for an existing category/key, so a value
+   * could be stored once and never changed again.
+   */
+  private async saveOption(category: string, key: string, value: string): Promise<void> {
+    try {
+      await this.tenantOptionsService.update({ category, key, value });
+    } catch {
+      // Not there yet: create it.
+      await this.tenantOptionsService.create({ category, key, value });
+    }
   }
 }

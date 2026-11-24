@@ -25,8 +25,9 @@ describe('RepositoryConfigService', () => {
 
   beforeEach(() => {
     fetchClient = jasmine.createSpyObj<FetchClient>('FetchClient', ['fetch']);
-    options = jasmine.createSpyObj<TenantOptionsService>('TenantOptionsService', ['create', 'delete', 'detail']);
+    options = jasmine.createSpyObj<TenantOptionsService>('TenantOptionsService', ['create', 'update', 'delete', 'detail']);
     options.create.and.resolveTo({} as never);
+    options.update.and.rejectWith(new Error('404')); // option does not exist yet
     options.delete.and.resolveTo({} as never);
     TestBed.configureTestingModule({
       providers: [
@@ -239,6 +240,13 @@ describe('RepositoryConfigService', () => {
       await service.setUseBackendServiceEnabled(false);
       expect(options.create.calls.argsFor(0)[0]).toEqual({ category: SETTINGS_OPTION_CATEGORY, key: EXPERT_MODE_OPTION_KEY, value: 'true' });
       expect(options.create.calls.argsFor(1)[0]).toEqual({ category: SETTINGS_OPTION_CATEGORY, key: USE_BACKEND_SERVICE_OPTION_KEY, value: 'false' });
+    });
+
+    it('updates an option that already exists instead of creating it again', async () => {
+      options.update.and.resolveTo({} as never);
+      await service.setExpertMode(false);
+      expect(options.update).toHaveBeenCalledOnceWith({ category: SETTINGS_OPTION_CATEGORY, key: EXPERT_MODE_OPTION_KEY, value: 'false' });
+      expect(options.create).not.toHaveBeenCalled();
     });
 
     it('wraps persistence failures in a RepositoryError', async () => {

@@ -18,7 +18,7 @@
  * @authors Christof Strack
  */
 
-import { Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -146,6 +146,9 @@ export class RepositoryBlockGridComponent implements OnInit {
   };
 
   private destroyRef = inject(DestroyRef);
+  // The shell may run Angular without zone.js, where a plain field changed after an
+  // `await` or inside a subscription is not rendered by itself.
+  private readonly cdr = inject(ChangeDetectorRef);
   // Drives repositoryItems$ below — starts at the same `false` default as
   // `expertMode` so nothing is fetched until the persisted setting (or a
   // user toggle) says otherwise.
@@ -196,11 +199,15 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   ngOnInit() {
     this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((samples) => (this.repositoryItems = samples));
+      .subscribe((samples) => {
+        this.repositoryItems = samples;
+        this.cdr.markForCheck();
+      });
 
     this.repositoryService.getExpertMode().then(expertMode => {
       this.expertMode = expertMode;
       this.expertMode$.next(expertMode);
+      this.cdr.markForCheck();
     });
 
     this.bulkActionControls.push({
@@ -228,6 +235,7 @@ export class RepositoryBlockGridComponent implements OnInit {
         this.analyticsService.isBackendServiceDeployed(),
         this.analyticsService.isBackendServiceEnabled()
       ]);
+      this.cdr.markForCheck();
     } catch (error) {
       console.error('Failed to load backend service status:', error);
     }
@@ -237,10 +245,12 @@ export class RepositoryBlockGridComponent implements OnInit {
     this.backendTogglePending = true;
     try {
       this.backendDeployed = await this.analyticsService.recheckBackendServiceDeployed();
+      this.cdr.markForCheck();
     } catch (error) {
       console.error('Failed to re-check the backend service:', error);
     } finally {
       this.backendTogglePending = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -249,6 +259,7 @@ export class RepositoryBlockGridComponent implements OnInit {
     try {
       await this.analyticsService.setBackendServiceEnabled(enabled);
       this.backendEnabled = enabled;
+      this.cdr.markForCheck();
       this.alertService.success(
         enabled ? gettext('Backend service enabled') : gettext('Backend service disabled')
       );
@@ -256,10 +267,12 @@ export class RepositoryBlockGridComponent implements OnInit {
       this.repositoryService.reload();
     } catch (error) {
       this.backendEnabled = !enabled;
+      this.cdr.markForCheck();
       this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));
       console.error('Failed to update backend service setting:', error);
     } finally {
       this.backendTogglePending = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -440,6 +453,7 @@ export class RepositoryBlockGridComponent implements OnInit {
    */
   async reloadAll(): Promise<void> {
     this.loading = true;
+    this.cdr.markForCheck();
     try {
       await this.repositoryService.reloadAll();
     } catch (error) {
@@ -447,6 +461,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       console.error('Failed to reload:', error);
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
@@ -466,6 +481,10 @@ export class RepositoryBlockGridComponent implements OnInit {
       await this.repositoryService.setExpertMode(this.expertMode);
     } catch (error) {
       console.error('Failed to persist Expert mode setting:', error);
+      // The toggle still works for this session, but it will be off again after a reload.
+      this.alertService.warning(
+        gettext('Expert mode could not be saved. It will be off again after reloading the page.')
+      );
     }
   }
 

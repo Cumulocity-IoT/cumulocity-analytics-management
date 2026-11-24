@@ -375,6 +375,15 @@ describe('RepositoryService', () => {
       expect(config.setExpertMode).toHaveBeenCalledWith(false);
     });
 
+    it('remembers the chosen expert mode even when it cannot be saved or read back', async () => {
+      config.setExpertMode.and.rejectWith(new Error('denied'));
+      config.getExpertMode.and.resolveTo(false); // what the tenant would still return
+
+      await expectAsync(service.setExpertMode(true)).toBeRejected();
+
+      expect(await service.getExpertMode()).toBeTrue();
+    });
+
     it('setGlobalAccessToken persists the token and invalidates the item cache (private repos may become readable)', async () => {
       config.setGlobalAccessToken.and.resolveTo();
       items.invalidateCache.calls.reset();

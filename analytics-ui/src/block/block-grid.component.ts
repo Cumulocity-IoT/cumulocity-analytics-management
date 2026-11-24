@@ -19,8 +19,10 @@
  */
 
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
+  inject,
   OnInit,
   ViewEncapsulation
 } from '@angular/core';
@@ -114,6 +116,10 @@ export class BlockGridComponent implements OnInit {
     currentPage: 1
   };
 
+  // The shell may run Angular without zone.js, where a plain field changed after an
+  // `await` is not rendered by itself. `markForCheck` asks for a render in either mode.
+  private readonly cdr = inject(ChangeDetectorRef);
+
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService
@@ -128,12 +134,15 @@ export class BlockGridComponent implements OnInit {
 
   async loadBlocks() {
     this.loading = true;
+    this.cdr.markForCheck();
     try {
       this.analyticsService.clearAllCaches();
       const blocks = await this.analyticsService.getDeployedBlocks();
       this.blocks = blocks;
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 }
