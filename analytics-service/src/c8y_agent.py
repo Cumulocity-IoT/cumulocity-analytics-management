@@ -162,8 +162,27 @@ class C8YAgent:
             )
             raise C8YAgentError(f"Failed to upload extension: {e}") from e
 
+    def count_extensions(self, request, extension_name: str) -> int:
+        """Number of extensions with the given name."""
+        if any(c in extension_name for c in "'\\"):
+            raise ValueError("Extension name contains invalid characters")
+
+        async def _work(tenant):
+            query = f"name eq '{extension_name}' and has(pas_extension)"
+            return len([mo async for mo in tenant.inventory.select(query=query, limit=None)])
+
+        try:
+            return self._execute(request, _work)
+        except Exception as e:
+            self._logger.error(f"Failed to look up extension {extension_name}: {e}", exc_info=True)
+            raise C8YAgentError(f"Failed to look up extension: {e}") from e
+
     def delete_extension(
-        self, request, extension_id: Optional[str] = None, extension_name: Optional[str] = None
+        self,
+        request,
+        extension_id: Optional[str] = None,
+        extension_name: Optional[str] = None,
+        exclude_id: Optional[str] = None,
     ) -> int:
         """
         Delete extension(s) from Cumulocity inventory.
@@ -172,6 +191,8 @@ class C8YAgent:
             request: Flask request object
             extension_id: ID of the extension to delete (takes precedence)
             extension_name: Name of extension(s) to delete
+            exclude_id: With extension_name, an extension to keep (the replacement
+                that was just uploaded)
 
         Returns:
             Number of extensions deleted
@@ -207,7 +228,10 @@ class C8YAgent:
 
             # Delete by name - find all matching extensions
             query = f"name eq '{extension_name}' and has(pas_extension)"
-            extensions = [mo async for mo in tenant.inventory.select(query=query, limit=None)]
+            extensions = [
+                mo async for mo in tenant.inventory.select(query=query, limit=None)
+                if not exclude_id or str(mo.id) != str(exclude_id)
+            ]
 
             if not extensions:
                 # Return 0 so callers can distinguish "not found" from errors

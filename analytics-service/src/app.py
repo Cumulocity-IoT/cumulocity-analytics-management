@@ -468,13 +468,13 @@ def create_extension_from_repository():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extension after a successful build (default: false)
         }
     
     Behavior:
         - If upload=false: Returns the .zip file for download
         - If upload=true: Uploads to Cumulocity and returns extension ID
-        - If rebuild=true: Deletes existing extension(s) with same name before building
+        - If rebuild=true: Deletes existing extension(s) with same name after the new one was uploaded
           - If no existing extension found, returns 404 error
         - If deploy=true: Restarts CEP engine after successful upload
     
@@ -524,25 +524,12 @@ def create_extension_from_repository():
     if not repo_config:
         return create_error_response("Repository not found", 404)
 
-    # Handle rebuild - delete existing extension(s) before building
+    # Rebuild replaces the existing extension AFTER the new one is built and
+    # uploaded (see _build_and_process_extension), so a failed build keeps it.
     if rebuild:
-        try:
-            deleted_count = agent.delete_extension(
-                request, extension_name=extension_name
-            )
-            if deleted_count == 0:
-                error_msg = (
-                    f"Rebuild requested but no existing extension named '{extension_name}' "
-                    "was found to delete. Cannot proceed with rebuild."
-                )
-                logger.error(error_msg)
-                return create_error_response(error_msg, 404)
-            
-            logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
-        except C8YAgentError as e:
-            error_msg = f"Failed to delete existing extension during rebuild: {e}"
-            logger.error(error_msg)
-            return create_error_response(error_msg, 400)
+        rebuild_error = _rebuild_precheck(extension_name)
+        if rebuild_error:
+            return rebuild_error
 
     return _build_and_process_extension(
         extension_name=extension_name,
@@ -553,6 +540,7 @@ def create_extension_from_repository():
         source_fetcher=lambda work_dir, headers: _download_full_repository(
             repo_config["url"], headers, work_dir
         ),
+        replace_existing=bool(rebuild),
     )
 
 
@@ -581,7 +569,7 @@ def create_extension_from_list():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extension after a successful build (default: false)
         }
     
     Behavior:
@@ -650,25 +638,11 @@ def create_extension_from_list():
         if url_error:
             return create_error_response(f"Monitor {url_error}", 400)
 
-    # Handle rebuild
+    # Rebuild replaces the existing extension after a successful build and upload.
     if rebuild:
-        try:
-            deleted_count = agent.delete_extension(
-                request, extension_name=extension_name
-            )
-            if deleted_count == 0:
-                error_msg = (
-                    f"Rebuild requested but no existing extension named '{extension_name}' "
-                    "was found to delete. Cannot proceed with rebuild."
-                )
-                logger.error(error_msg)
-                return create_error_response(error_msg, 404)
-            
-            logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
-        except C8YAgentError as e:
-            error_msg = f"Failed to delete existing extension during rebuild: {e}"
-            logger.error(error_msg)
-            return create_error_response(error_msg, 400)
+        rebuild_error = _rebuild_precheck(extension_name)
+        if rebuild_error:
+            return rebuild_error
 
     def source_fetcher(work_dir, headers):
         for monitor in monitors:
@@ -691,8 +665,9 @@ def create_extension_from_list():
         upload=upload,
         deploy=deploy,
         build_type="list",
-        build_info_extra={"monitors": monitors},
+        build_info_extra={"monitors": _sanitize_monitors(monitors)},
         source_fetcher=source_fetcher,
+        replace_existing=bool(rebuild),
     )
 
 
@@ -737,7 +712,7 @@ def create_extension_from_yaml():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after last upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extensions first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extensions after a successful build (default: false)
         }
     
     Sections Parameter Explained:
@@ -752,7 +727,7 @@ def create_extension_from_yaml():
           1. Downloads all files listed in section.files
           2. Builds extension named after the section
           3. Optionally uploads to Cumulocity
-        - If rebuild=true: Deletes existing extension for each section before building
+        - If rebuild=true: Deletes the existing extension of each section after its new one was uploaded
           - If any section's extension doesn't exist, that section fails but others continue
         - If deploy=true: Restarts CEP only after ALL sections are processed
     
@@ -1093,9 +1068,50 @@ def _github_error_response(response: requests.Response):
     )
 
 
+_MONITOR_FIELDS = ("id", "name", "file", "type", "url", "repositoryId", "repositoryName")
+_MAX_MONITORS = 500
+
+
+def _sanitize_monitors(monitors: List) -> List[Dict]:
+    """Keep only the known, plain fields of the monitors a client sent.
+
+    The list is stored on the extension's managed object, which every inventory
+    reader can see, so it must not carry arbitrary client data or grow unbounded.
+    """
+    cleaned = []
+    for monitor in monitors[:_MAX_MONITORS]:
+        entry = {
+            key: monitor[key][:1024]
+            for key in _MONITOR_FIELDS
+            if isinstance(monitor.get(key), str)
+        }
+        if isinstance(monitor.get("blockIds"), list):
+            entry["blockIds"] = [b[:512] for b in monitor["blockIds"][:50] if isinstance(b, str)]
+        cleaned.append(entry)
+    return cleaned
+
+
+def _rebuild_precheck(extension_name: str):
+    """Error response when a rebuild has nothing to replace, otherwise ``None``."""
+    try:
+        if agent.count_extensions(request, extension_name) > 0:
+            return None
+    except C8YAgentError as e:
+        error_msg = f"Failed to look up the existing extension during rebuild: {e}"
+        logger.error(error_msg)
+        return create_error_response(error_msg, 400)
+    error_msg = (
+        f"Rebuild requested but no existing extension named '{extension_name}' "
+        "was found to replace. Cannot proceed with rebuild."
+    )
+    logger.error(error_msg)
+    return create_error_response(error_msg, 404)
+
+
 def _extract_fqn(content: str, block_name: str) -> str:
     """Extract fully qualified name from monitor file."""
-    package_match = re.search(r"package\s+([\w.]+)\s*;", content)
+    # Anchored to a line start: "package x;" inside a comment or string is not the declaration.
+    package_match = re.search(r"^[ \t]*package\s+([\w.]+)\s*;", content, re.MULTILINE)
     if not package_match:
         raise ValueError("Package name not found in monitor file")
 
@@ -1269,6 +1285,9 @@ def _download_file(item: Dict, headers: Dict, full_path: str) -> None:
         f.write(content)
 
 
+BUILD_TIMEOUT_SECONDS = int(os.environ.get("BUILD_TIMEOUT_SECONDS", "600"))
+
+
 def _build_extension(work_dir: str, extension_name: str) -> str:
     """Build an Apama extension."""
     extension_file = f"{extension_name}.zip"
@@ -1287,6 +1306,7 @@ def _build_extension(work_dir: str, extension_name: str) -> str:
         check=True,
         capture_output=True,
         text=True,
+        timeout=BUILD_TIMEOUT_SECONDS,
     )
 
     return extension_path
@@ -1300,8 +1320,14 @@ def _build_and_process_extension(
     build_type: str,
     source_fetcher,
     build_info_extra: Optional[Dict] = None,
+    replace_existing: bool = False,
 ):
-    """Build and optionally upload an extension."""
+    """Build and optionally upload an extension.
+
+    With ``replace_existing`` the extensions of the same name that existed before
+    are deleted once the new one is uploaded, never before: a failed download or
+    build must not cost the user the extension that works.
+    """
     with tempfile.TemporaryDirectory() as work_dir:
         try:
             # `repository` here is already the loaded repo_config (with its
@@ -1315,6 +1341,11 @@ def _build_and_process_extension(
 
         try:
             extension_path = _build_extension(work_dir, extension_name)
+        except subprocess.TimeoutExpired:
+            logger.error(f"Build timed out after {BUILD_TIMEOUT_SECONDS}s")
+            return create_error_response(
+                f"Build timed out after {BUILD_TIMEOUT_SECONDS} seconds", 504
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Build failed: {e.stderr}", exc_info=True)
             return create_error_response(f"Build failed: {e.stderr}", 500)
@@ -1341,10 +1372,26 @@ def _build_and_process_extension(
                 ext_id = agent.upload_extension(request, extension_name, ext_file, build_info)
                 logger.info(f"Uploaded extension {extension_name} as {ext_id}")
 
+                body = {"id": ext_id, "message": "Extension uploaded"}
+                if replace_existing:
+                    try:
+                        replaced = agent.delete_extension(
+                            request, extension_name=extension_name, exclude_id=ext_id
+                        )
+                        logger.info(
+                            f"Replaced {replaced} existing extension(s) named {extension_name}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to remove the replaced extension: {e}", exc_info=True)
+                        body["warning"] = (
+                            "The new extension was uploaded, but the previous one with the same "
+                            f"name could not be deleted: {e}"
+                        )
+
                 if deploy:
                     agent.restart_cep(request)
 
-                return jsonify({"id": ext_id, "message": "Extension uploaded"}), 201
+                return jsonify(body), 201
 
         except Exception as e:
             logger.error(f"Processing failed: {e}", exc_info=True)
@@ -1406,37 +1453,14 @@ def _process_yaml_sections(
             logger.warning(f"Section '{section_name}' has no files")
             continue
 
-        # Handle rebuild for this section
+        # Rebuild replaces the existing extension after this section built and
+        # uploaded successfully, so a failed build keeps the current one.
         if rebuild and upload:
-            try:
-                deleted_count = agent.delete_extension(
-                    request, extension_name=section_name
-                )
-                if deleted_count == 0:
-                    error_msg = (
-                        f"Rebuild requested but no existing extension named '{section_name}' "
-                        "was found to delete. Cannot proceed with rebuild for this section."
-                    )
-                    logger.error(error_msg)
-                    failed_sections.append({
-                        "section": section_name,
-                        "error": error_msg
-                    })
-                    continue
-                
-                logger.info(
-                    f"Deleted {deleted_count} existing extension(s) "
-                    f"for section '{section_name}' rebuild"
-                )
-            except C8YAgentError as e:
-                error_msg = (
-                    f"Failed to delete existing extension for section "
-                    f"'{section_name}' during rebuild: {e}"
-                )
-                logger.error(error_msg)
+            rebuild_error = _rebuild_precheck(section_name)
+            if rebuild_error:
                 failed_sections.append({
                     "section": section_name,
-                    "error": str(e)
+                    "error": (rebuild_error[0] if isinstance(rebuild_error, tuple) else rebuild_error).get_json().get("error"),
                 })
                 continue
 
@@ -1467,6 +1491,7 @@ def _process_yaml_sections(
                     "files": files,
                 },
                 source_fetcher=fetch_section_files,
+                replace_existing=bool(rebuild and upload),
             )
 
             if upload:

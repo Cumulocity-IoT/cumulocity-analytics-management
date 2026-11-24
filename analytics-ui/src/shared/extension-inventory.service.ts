@@ -68,8 +68,10 @@ export class ExtensionInventoryService {
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
     try {
+      // An update uploads the new binary FIRST and removes the old one afterwards:
+      // a failed upload must not cost the user the extension that works.
       const extensionToCreate = mode === 'update'
-        ? await this.prepareExtensionForUpdate(extension)
+        ? this.prepareExtensionForUpdate(extension)
         : extension;
 
       const result = await this.inventoryBinaryService.create(file, extensionToCreate);
@@ -79,6 +81,10 @@ export class ExtensionInventoryService {
           `Upload failed with status ${result.res.status}`,
           gettext(`Could not upload extension "${extension['name']}". Please try again.`)
         );
+      }
+
+      if (mode === 'update') {
+        await this.removeReplacedExtension(extension, result.data as IManagedObject);
       }
 
       this.extensionChanged$.emit(result.data as IManagedObject);
@@ -148,15 +154,32 @@ export class ExtensionInventoryService {
     this.uploadProgress$.next(progress);
   }
 
-  private async prepareExtensionForUpdate(
-    extension: IManagedObject
-  ): Promise<Partial<IManagedObject>> {
-    await this.deleteExtension(extension, false);
-
+  /**
+   * Fields of the managed object to create for an update. `build_information`
+   * is kept: the caller already replaced it with the analysis of the NEW file,
+   * and dropping it would leave the extension without its file and block list.
+   */
+  private prepareExtensionForUpdate(extension: IManagedObject): Partial<IManagedObject> {
     return {
       name: extension['name'],
-      pas_extension: extension['name']
+      pas_extension: extension['name'],
+      ...(extension['build_information'] ? { build_information: extension['build_information'] } : {})
     };
+  }
+
+  /** Deletes the replaced binary once its replacement exists. Never fails the update. */
+  private async removeReplacedExtension(replaced: IManagedObject, replacement: IManagedObject): Promise<void> {
+    if (!replaced?.id || replaced.id === replacement?.id) {
+      return;
+    }
+    try {
+      await this.deleteExtension(replaced, false);
+    } catch {
+      // deleteExtension already showed an error alert; the new version is uploaded.
+      this.alertService.warning(
+        gettext(`The new version of "${replaced['name']}" was uploaded, but the previous version could not be deleted. Delete it manually.`)
+      );
+    }
   }
 
   private handleError(

@@ -51,6 +51,10 @@ export class RepositoryItemsService {
     deployedFiles: ReadonlySet<string> = new Set()
   ): Observable<RepositoryItem[]> {
     const enabledRepos = repos.filter(repo => repo.enabled);
+    // `analyzeRepositoryItems` builds the extensions.yaml sections after this
+    // listing and needs the same deployment state to mark them installed.
+    this.deployedFiles = deployedFiles;
+    this.hideInstalled = hideInstalled;
 
     if (!enabledRepos.length) {
       return of([]);
@@ -70,6 +74,9 @@ export class RepositoryItemsService {
       })
     );
   }
+
+  private deployedFiles: ReadonlySet<string> = new Set();
+  private hideInstalled = false;
 
   filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
     const hasExtensionsYaml = blocks.some(
@@ -99,7 +106,7 @@ export class RepositoryItemsService {
     if (yamlItems.length > 0) {
       const [yamlItem] = yamlItems;
       return this.getSectionsFromExtensionYAML(yamlItem).pipe(
-        map(sectionNames => this.createYamlSectionItems(sectionNames, yamlItem))
+        map(sections => this.createYamlSectionItems(sections, yamlItem))
       );
     }
 
@@ -265,24 +272,38 @@ export class RepositoryItemsService {
     } as RepositoryItem;
   }
 
-  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<string[]> {
+  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<Record<string, string[]>> {
     return this.getItemContent(item, false).pipe(
       map(content => this.parseYamlSections(content)),
       catchError(error => {
         console.warn(`Error processing ${DESCRIPTOR_YAML}:`, error);
-        return of([]);
+        return of({} as Record<string, string[]>);
       })
     );
   }
 
-  private createYamlSectionItems(sectionNames: string[], yamlItem: RepositoryItem): RepositoryItem[] {
-    return sectionNames.map(name => ({
-      ...yamlItem,
-      id: createShortId(),
-      name,
-      isYamlSection: true,
-      extensionsYamlItem: yamlItem
-    }));
+  /**
+   * A section lists the files of one extension. Its `.mon` files are what the
+   * engine loads, so the section counts as installed when every one of them is
+   * part of a deployed extension. A section without a `.mon` file never does.
+   */
+  private createYamlSectionItems(sections: Record<string, string[]>, yamlItem: RepositoryItem): RepositoryItem[] {
+    const items = Object.entries(sections).map(([name, files]) => {
+      const sectionFiles = files
+        .filter(file => file.toLowerCase().endsWith('.mon'))
+        .map(file => file.substring(file.lastIndexOf('/') + 1));
+      return {
+        ...yamlItem,
+        id: createShortId(),
+        name,
+        isYamlSection: true,
+        extensionsYamlItem: yamlItem,
+        sectionFiles,
+        installed:
+          sectionFiles.length > 0 && sectionFiles.every(file => this.deployedFiles.has(file))
+      } as RepositoryItem;
+    });
+    return this.hideInstalled ? items.filter(item => !item.installed) : items;
   }
 
   private addInstallationStatus(
@@ -311,16 +332,26 @@ export class RepositoryItemsService {
     }));
   }
 
-  private parseYamlSections(content: string): string[] {
+  private parseYamlSections(content: string): Record<string, string[]> {
     try {
       const yamlContent = jsyaml.load(content);
 
       if (yamlContent && typeof yamlContent === 'object') {
-        return Object.keys(yamlContent);
+        const sections: Record<string, string[]> = {};
+        for (const [name, files] of Object.entries(yamlContent as Record<string, unknown>)) {
+          // Either a plain list or a mapping with a `files` list.
+          const list = Array.isArray(files)
+            ? files
+            : (files as { files?: unknown } | null)?.files;
+          sections[name] = Array.isArray(list)
+            ? list.filter((file): file is string => typeof file === 'string')
+            : [];
+        }
+        return sections;
       }
 
       console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
-      return [];
+      return {};
     } catch (error) {
       throw new RepositoryError(
         `Error parsing ${DESCRIPTOR_YAML}`,

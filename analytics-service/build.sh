@@ -44,7 +44,7 @@
 #
 # WHAT IT DOES
 #   1. Recreates ./build and ./dist (existing content is deleted).
-#   2. Copies app.py, c8y_agent.py, solution_utils.py, logging_config.py and
+#   2. Copies src/app.py, src/c8y_agent.py, src/solution_utils.py, src/logging_config.py and
 #      requirements.txt to ./build and renders cumulocity.json and the Dockerfile.
 #   3. If ./cumulocity-analytics-ext-service.json exists, merges it into
 #      cumulocity.json (needs jq; keys of the extension file win).
@@ -138,10 +138,10 @@ mkdir -p "$DIST_DIR"
 
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
-cp ./app.py "$BUILD_DIR"
-cp ./solution_utils.py "$BUILD_DIR"
-cp ./c8y_agent.py "$BUILD_DIR"
-cp ./logging_config.py "$BUILD_DIR"
+cp ./src/app.py "$BUILD_DIR"
+cp ./src/solution_utils.py "$BUILD_DIR"
+cp ./src/c8y_agent.py "$BUILD_DIR"
+cp ./src/logging_config.py "$BUILD_DIR"
 sed -e "s/{VERSION}/$VERSION/g" ./cumulocity.json > "$BUILD_DIR/cumulocity.json"
 sed -e "s/{SAMPLE}/$NAME/g" ./Dockerfile > "$BUILD_DIR/Dockerfile"
 # extend cumulocity.json is defined

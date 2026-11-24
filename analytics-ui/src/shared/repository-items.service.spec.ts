@@ -76,6 +76,30 @@ describe('RepositoryItemsService', () => {
       expect(new Set(result.map(i => i.id)).size).toBe(2);
     });
 
+    it('marks a section installed when all its .mon files are deployed', async () => {
+      const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
+      github.getItemContent.and.resolveTo(
+        'Offset:\n  - Offset.mon\nPython:\n  files: [Python.mon, plugin.py]\nEmpty:\n  - readme.md\n');
+      github.getContent.and.resolveTo([]);
+      await firstValueFrom(service.getItemsForRepositories([repo()], [], false, new Set(['Offset.mon'])));
+
+      const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
+
+      expect(result.map(i => [i.name, i.installed])).toEqual([['Offset', true], ['Python', false], ['Empty', false]]);
+      expect(result[1].sectionFiles).toEqual(['Python.mon']);
+    });
+
+    it('drops installed sections when installed items are hidden', async () => {
+      const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
+      github.getItemContent.and.resolveTo('Offset:\n  - Offset.mon\nPython:\n  - Python.mon\n');
+      github.getContent.and.resolveTo([]);
+      await firstValueFrom(service.getItemsForRepositories([repo()], [], true, new Set(['Offset.mon'])));
+
+      const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
+
+      expect(result.map(i => i.name)).toEqual(['Python']);
+    });
+
     it('yields no sections for an unparsable or non-object yaml', async () => {
       const yaml = item({ file: 'extensions.yaml' });
       github.getItemContent.and.resolveTo('key: [unclosed');

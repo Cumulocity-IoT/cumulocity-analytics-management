@@ -1,3 +1,4 @@
+import { parseBlockMetadataEvt } from './apama-block-metadata';
 import { TestBed } from '@angular/core/testing';
 import { IFetchResponse } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
@@ -104,6 +105,17 @@ describe('ExtensionBuilderService', () => {
         'files/MyBlock.mon', 'files/events/E_messages.evt', 'files/events/E_metadata.evt', 'files/helper.py'
       ]);
       expect(await zip.file('files/events/E_metadata.evt')!.async('string')).toContain('com.acme.MyBlock');
+    });
+
+    it('writes each block once and also for files without a package', async () => {
+      github.getItemContent.and.callFake(async (i: RepositoryItem) =>
+        i.file === 'NoPackage.mon' ? 'event Bare { BlockBase $base; }' : MON);
+      await service.createExtensionFromList('E', [item('MyBlock.mon'), item('Copy.mon'), item('NoPackage.mon')], repository);
+
+      const evt = await (await uploadedZip()).file('files/events/E_metadata.evt')!.async('string');
+      const ids = parseBlockMetadataEvt(evt).map(b => b.id);
+      expect(ids).toContain('Bare');
+      expect(ids.filter(id => id === 'com.acme.MyBlock').length).toBe(1);
     });
 
     it('skips directories, build artefacts and .git content', async () => {

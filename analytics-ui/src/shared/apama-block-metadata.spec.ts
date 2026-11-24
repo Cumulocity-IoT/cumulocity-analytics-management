@@ -1,4 +1,4 @@
-import { buildBlockMessagesEvt, buildBlockMetadataEvt, ParsedBlockMetadata, parseApamaBlockMetadata } from './apama-block-metadata';
+import { buildBlockMessagesEvt, buildBlockMetadataEvt, ParsedBlockMetadata, parseApamaBlockMetadata, parseBlockMetadataEvt } from './apama-block-metadata';
 
 const MON = `package com.acme.blocks;
 
@@ -163,5 +163,26 @@ event Receive { BlockBase $base; action<Activation> $setOutput_received; action 
       const evt = buildBlockMetadataEvt('X', [tricky]);
       expect(payloadOf(evt).analytics[0].name).toBe('Say "hi" \\ there');
     });
+  });
+});
+
+describe('parseBlockMetadataEvt', () => {
+  const block = (id: string, description: string) =>
+    ({ id, name: id, description, category: 'Utilities', inputs: [], outputs: [], parameters: [] }) as ParsedBlockMetadata;
+
+  it('is the inverse of buildBlockMetadataEvt, also for quotes and backslashes in texts', () => {
+    const blocks = [block('a.One', 'Says "hi" and uses C:\\temp'), block('a.Two', 'Second')];
+    expect(parseBlockMetadataEvt(buildBlockMetadataEvt('Ext', blocks))).toEqual(blocks);
+  });
+
+  it('reads several events of one file and returns each block id once', () => {
+    const content = buildBlockMetadataEvt('E1', [block('a.One', 'x')]) + buildBlockMetadataEvt('E2', [block('a.One', 'y'), block('a.Two', 'z')]);
+    expect(parseBlockMetadataEvt(content).map(b => [b.id, b.description])).toEqual([['a.One', 'x'], ['a.Two', 'z']]);
+  });
+
+  it('yields nothing for content without a usable event', () => {
+    expect(parseBlockMetadataEvt('')).toEqual([]);
+    expect(parseBlockMetadataEvt('garbage')).toEqual([]);
+    expect(parseBlockMetadataEvt('x.BlockMetadata("E", "EN", "{not json")')).toEqual([]);
   });
 });

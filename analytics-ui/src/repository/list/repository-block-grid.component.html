@@ -27,22 +27,24 @@
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
-<c8y-action-bar-item [placement]="'right'" itemClass="navbar-form hidden-xs">
-  <div class="d-flex a-i-center">
-    @if (backendDeployed) {
-      <span class="label label-success m-r-16">{{ 'Backend service deployed' | translate }}</span>
-    } @else {
-      <span class="label label-default m-r-8">{{ 'Backend service not deployed' | translate }}</span>
-      <button type="button" class="btn btn-link m-r-16" [disabled]="backendTogglePending"
-        (click)="recheckBackend()">{{ 'Re-check' | translate }}</button>
-    }
-    <label class="c8y-switch flex-no-shrink m-b-0" [class.disabled]="!backendDeployed || backendTogglePending">
-      <input type="checkbox" [checked]="backendEnabled" [disabled]="!backendDeployed || backendTogglePending"
-        #backendSwitch (change)="toggleBackendEnabled(backendSwitch.checked)" />
-      <span></span>
-      <span class="m-l-8">{{ 'Use backend service' | translate }}</span>
+@if (expertMode) {
+  <c8y-action-bar-item [placement]="'right'" [priority]="100">
+    <button type="button" class="btn-help btn-help--sm" aria-label="Help content"
+      [title]="'Extension Builder Layouts' | translate" (click)="openLayoutHelp()"></button>
+  </c8y-action-bar-item>
+  <c8y-action-bar-item [placement]="'left'">
+    <label class="c8y-switch m-b-0 m-l-8 m-r-8" data-cy="repo-hide-installed">
+      <input type="checkbox" [(ngModel)]="hideInstalled" (change)="updateFilter()" />
+      <span></span> {{ 'Hide installed' | translate }}
     </label>
-  </div>
+  </c8y-action-bar-item>
+}
+
+<c8y-action-bar-item [placement]="'right'">
+  <button class="btn btn-link" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
+    <i c8yIcon="change-theme"></i>
+    {{ "Repositories" | translate }}
+  </button>
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
@@ -53,36 +55,35 @@
 </c8y-action-bar-item>
 
 <c8y-action-bar-item [placement]="'right'">
-  <button class="btn btn-link" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
-    <i c8yIcon="change-theme"></i>
-    {{ "Repositories" | translate }}
-  </button>
-  <button type="button" class="btn-help btn-help--sm" aria-label="Help content"
-    [title]="'Extension Builder Layouts' | translate"
-    (click)="openLayoutHelp()"></button>
-</c8y-action-bar-item>
-
-<c8y-action-bar-item [placement]="'right'">
-  <label class="c8y-switch">
-    <input type="checkbox" [(ngModel)]="hideInstalled" (change)="updateFilter()" />
-    <span></span> Hide installed
-  </label>
-</c8y-action-bar-item>
-
-<c8y-action-bar-item [placement]="'left'">
-  <label class="c8y-switch">
-    <input type="checkbox" [(ngModel)]="expertMode" (change)="updateMode()" />
-    <span></span> Expert mode
-  </label>
-</c8y-action-bar-item>
-
-<c8y-action-bar-item [placement]="'right'">
-  <button class="btn btn-link" title="{{ 'Reload from server' | translate }}" (click)="reloadAll()">
+  <button class="btn btn-link" title="{{ 'Reload from server' | translate }}" aria-label="Reload" (click)="reloadAll()">
     <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
-    {{ "Reload" | translate }}
   </button>
 </c8y-action-bar-item>
 
+<c8y-action-bar-item [placement]="'more'" [priority]="-100">
+  <button type="button" data-cy="repo-expert-mode" title="{{ 'Browse and load blocks from repositories' | translate }}"
+    (click)="expertMode = !expertMode; updateMode()">
+    <i [c8yIcon]="expertMode ? 'check' : 'minus'"></i>
+    {{ 'Expert mode' | translate }}
+  </button>
+</c8y-action-bar-item>
+<c8y-action-bar-item [placement]="'more'" [priority]="-101">
+  <button type="button" data-cy="repo-backend-switch"
+    title="{{ (backendDeployed ? 'Backend service deployed' : 'Backend service not deployed') | translate }}"
+    [disabled]="!backendDeployed || backendTogglePending" (click)="toggleBackendEnabled(!backendEnabled)">
+    <i [c8yIcon]="backendEnabled ? 'check' : 'minus'"></i>
+    {{ 'Use backend service' | translate }}
+  </button>
+</c8y-action-bar-item>
+@if (!backendDeployed) {
+  <c8y-action-bar-item [placement]="'more'" [priority]="-102">
+    <button type="button" data-cy="repo-backend-recheck" title="{{ 'Backend service not deployed' | translate }}"
+      [disabled]="backendTogglePending" (click)="recheckBackend()">
+      <i c8yIcon="refresh"></i>
+      {{ 'Re-check backend service' | translate }}
+    </button>
+  </c8y-action-bar-item>
+}
 
 <div class="content-fullpage border-top border-bottom">
   <!-- Add showDataGrid condition here -->

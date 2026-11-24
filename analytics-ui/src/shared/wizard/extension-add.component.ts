@@ -14,10 +14,12 @@ import {
   DropAreaComponent
 } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
+import { ParsedBlockMetadata, parseBlockMetadataEvt } from '../apama-block-metadata';
+import { extractBlockFqns } from '../utils';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import JSZip from 'jszip';
@@ -42,6 +44,8 @@ interface MonitorMetadata {
   inputs?: any[];
   outputs?: any[];
   parameters?: any[];
+  /** All block ids of a file that defines more than one block. */
+  blockIds?: string[];
 }
 
 interface FileMetadata {
@@ -189,22 +193,26 @@ export class ExtensionAddComponent implements OnDestroy {
         }
       });
 
+      // The SDK writes ONE `<extension>_metadata.evt` for all monitors of an extension,
+      // and its name does not have to match any monitor. Read every such file, then
+      // match blocks to monitors by the block names each monitor file defines.
+      const blocksById = new Map<string, ParsedBlockMetadata>();
+      for (const path of Object.keys(zip.files)) {
+        const entry = zip.files[path];
+        if (entry.dir || !path.endsWith('_metadata.evt')) continue;
+        processedFiles.add(path);
+        try {
+          for (const block of parseBlockMetadataEvt(await entry.async('text'))) {
+            if (!blocksById.has(block.id)) blocksById.set(block.id, block);
+          }
+        } catch (error) {
+          console.warn(`Failed to read block metadata ${path}:`, error);
+        }
+      }
+
       // Process each monitor file
       for (const monitorPath of monitorFiles) {
         const monitorName = this.extractMonitorName(monitorPath);
-        const monitorDir = monitorPath.includes('/')
-          ? monitorPath.slice(0, monitorPath.lastIndexOf('/') + 1)
-          : '';
-        const metadataPath = `${monitorDir}events/${monitorName}_metadata.evt`;
-
-        // Try to find corresponding metadata file
-        const metadataFile = zip.file(metadataPath);
-
-        // Mark metadata file as processed
-        if (metadataFile) {
-          processedFiles.add(metadataPath);
-        }
-
         const monitorMetadata: MonitorMetadata = {
           custom: true,
           file: monitorPath,
@@ -213,27 +221,24 @@ export class ExtensionAddComponent implements OnDestroy {
           type: 'file'
         };
 
-        // Parse metadata if available
-        if (metadataFile) {
-          try {
-            const metadataContent = await metadataFile.async('text');
-            const parsedMetadata = this.parseEventMetadata(metadataContent);
-
-            if (parsedMetadata) {
-              monitorMetadata.category = parsedMetadata.category;
-              monitorMetadata.description = parsedMetadata.description;
-              monitorMetadata.inputs = parsedMetadata.inputs;
-              monitorMetadata.outputs = parsedMetadata.outputs;
-              monitorMetadata.parameters = parsedMetadata.parameters;
-
-              // Use the ID from metadata if available
-              if (parsedMetadata.id) {
-                monitorMetadata.id = parsedMetadata.id;
-              }
-            }
-          } catch (error) {
-            console.warn(`Failed to parse metadata for ${monitorName}:`, error);
+        try {
+          const content = await zip.file(monitorPath)!.async('text');
+          const blockIds = extractBlockFqns(content, monitorName);
+          // Same id the repository list and the engine use for this file.
+          monitorMetadata.id = blockIds[0];
+          const block = blockIds.map(id => blocksById.get(id)).find(found => !!found);
+          if (block) {
+            monitorMetadata.category = block.category;
+            monitorMetadata.description = block.description;
+            monitorMetadata.inputs = block.inputs;
+            monitorMetadata.outputs = block.outputs;
+            monitorMetadata.parameters = block.parameters;
           }
+          if (blockIds.length > 1) {
+            monitorMetadata.blockIds = blockIds;
+          }
+        } catch (error) {
+          console.warn(`Failed to read monitor ${monitorPath}:`, error);
         }
 
         monitors.push(monitorMetadata);
@@ -331,38 +336,6 @@ export class ExtensionAddComponent implements OnDestroy {
     return fileName.replace('.mon', '');
   }
 
-  /**
-   * Parses the .evt metadata file content
-   * Format: "analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("Name", "EN", "{...json...}")
-   */
-  private parseEventMetadata(content: string): any | null {
-    try {
-      // Extract JSON from the metadata format
-      const jsonMatch = content.match(/BlockMetadata\([^,]+,\s*"[^"]+",\s*"({.*})"\)/);
-
-      if (!jsonMatch || !jsonMatch[1]) {
-        return null;
-      }
-
-      // Unescape the JSON string
-      const jsonString = jsonMatch[1]
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-
-      const metadata = JSON.parse(jsonString);
-
-      // Extract analytics information (first element in analytics array)
-      if (metadata.analytics && metadata.analytics.length > 0) {
-        return metadata.analytics[0];
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Failed to parse event metadata:', error);
-      return null;
-    }
-  }
-
   cancel(): void {
     this.cleanup();
     this.cancelled.emit();
@@ -448,19 +421,21 @@ export class ExtensionAddComponent implements OnDestroy {
       }
     };
 
-    this.modalRef = this.bsModalService.show(
+    // The wizard closes itself right before this dialog opens, which destroys this
+    // component. The dialog must therefore not be bound to the component lifecycle
+    // (no takeUntil(destroy$), not tracked in this.modalRef, which cleanup() hides).
+    const confirmRef = this.bsModalService.show(
       ConfirmationModalComponent,
       { initialState }
     );
 
-    this.modalRef.content.closeSubject
-      .pipe(takeUntil(this.destroy$))
+    confirmRef.content!.closeSubject
+      .pipe(take(1))
       .subscribe(async (confirmed: boolean) => {
         if (confirmed) {
           await this.handleUpdateConfirmed();
         }
-        this.modalRef?.hide();
-        this.modalRef = null;
+        confirmRef.hide();
       });
   }
 

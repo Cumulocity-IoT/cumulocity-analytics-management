@@ -98,6 +98,8 @@ export interface RepositoryItem {
   repositoryId: string;
   installed?: boolean;
   extensionsYamlItem?: RepositoryItem;
+  /** Base names of the `.mon` files an extensions.yaml section lists. */
+  sectionFiles?: string[];
   /**
    * All fully-qualified block names this item's file defines (see
    * `extractBlockFqns`). A `.mon` file can define more than one block, so

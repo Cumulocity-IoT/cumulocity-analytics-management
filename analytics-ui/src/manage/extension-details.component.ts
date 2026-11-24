@@ -21,15 +21,22 @@
 import { Component, OnInit } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
-import { CoreModule } from '@c8y/ngx-components';
+import {
+  CoreModule,
+  SplitViewComponent,
+  SplitViewDetailsComponent,
+  SplitViewListComponent
+} from '@c8y/ngx-components';
 import { AnalyticsService, CepExtension, PAGE_LABELS, ROUTES } from '../shared';
+
+type SectionId = 'blocks' | 'files' | 'build';
 
 @Component({
   selector: 'a17t-extension-details',
   templateUrl: './extension-details.component.html',
   styleUrls: ['./extension-details.component.css'],
   standalone: true,
-  imports: [CoreModule]
+  imports: [CoreModule, SplitViewComponent, SplitViewListComponent, SplitViewDetailsComponent]
 })
 export class ExtensionDetailsComponent implements OnInit {
   readonly labels = PAGE_LABELS;
@@ -39,6 +46,12 @@ export class ExtensionDetailsComponent implements OnInit {
   extension!: CepExtension;
   extensionContent: string[] = [];
   buildInformation: any[] = [];
+  /** The sections of the split view list. The first one is selected when the page opens. */
+  readonly sections: { id: SectionId; label: string; icon: string }[] = [
+    { id: 'blocks', label: 'Blocks', icon: 'c8y-apama-epl' },
+    { id: 'files', label: 'Files', icon: 'file' },
+    { id: 'build', label: 'Build information', icon: 'monitoring' }
+  ];
   breadcrumbConfig!: { icon: string; label: string; path: string };
 
   constructor(
@@ -142,5 +155,21 @@ export class ExtensionDetailsComponent implements OnInit {
       label: PAGE_LABELS.extensions,
       path: ROUTES.manage
     };
+  }
+
+  /** Number shown next to a section in the list. Zero hides the badge. */
+  sectionCount(id: SectionId): number {
+    switch (id) {
+      case 'blocks':
+        return this.extensionFromCep?.analytics?.length ?? 0;
+      case 'files':
+        return this.extensionContent.length;
+      default:
+        return 0;
+    }
+  }
+
+  sectionLabel(id: SectionId | null | undefined): string {
+    return this.sections.find(section => section.id === id)?.label ?? '';
   }
 }

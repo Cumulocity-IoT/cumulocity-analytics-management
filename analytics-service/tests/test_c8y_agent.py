@@ -279,11 +279,34 @@ class TestDeleteExtension:
         tenant.binaries.delete.side_effect = [None, RuntimeError("x"), None]
         assert agent.delete_extension(REQ, extension_name="E") == 2
 
+    def test_by_name_keeps_the_excluded_extension(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.delete_extension(REQ, extension_name="E", exclude_id="2") == 1
+        tenant.binaries.delete.assert_awaited_once_with("1")
+
     def test_unexpected_failure_is_wrapped(self, tenant, monkeypatch):
         agent = C8YAgent()
         monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("net")))
         with pytest.raises(C8YAgentError, match="Failed to delete"):
             agent.delete_extension(REQ, extension_name="E")
+
+
+class TestCountExtensions:
+    def test_counts_extensions_with_the_name(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.count_extensions(REQ, "E") == 2
+        assert tenant.inventory.select.call_args.kwargs["query"] == "name eq 'E' and has(pas_extension)"
+
+    def test_rejects_query_injection_in_name(self, agent, tenant):
+        with pytest.raises(ValueError):
+            agent.count_extensions(REQ, "x' or 1 eq 1 or name eq 'y")
+        tenant.inventory.select.assert_not_called()
+
+    def test_wraps_errors(self, monkeypatch):
+        agent = C8YAgent()
+        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("net")))
+        with pytest.raises(C8YAgentError, match="look up"):
+            agent.count_extensions(REQ, "E")
 
 
 class TestUploadExtension:

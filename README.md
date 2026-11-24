@@ -6,6 +6,7 @@ A Cumulocity web plugin, with an optional microservice, that manages Analytics B
 - [Documentation](#documentation)
 - [Overview](#overview)
 - [Manage custom extensions](#manage-custom-extensions)
+- [Safe Mode](#safe-mode)
 - [Sample repositories and building custom extensions](#sample-repositories-and-building-custom-extensions)
 - [Backend service switch](#backend-service-switch)
 - [Access control](#access-control)
@@ -13,8 +14,8 @@ A Cumulocity web plugin, with an optional microservice, that manages Analytics B
 - [Build the plugin](#build-the-plugin)
 - [Backend microservice](#backend-microservice)
 - [Analytics Builder block SDK](#analytics-builder-block-sdk)
-- [Troubleshooting](#troubleshooting)
 - [Repository layout for building extensions](#repository-layout-for-building-extensions)
+- [Troubleshooting](#troubleshooting)
 
 ## Documentation
 
@@ -22,7 +23,7 @@ A Cumulocity web plugin, with an optional microservice, that manages Analytics B
 - [CONTRIBUTING.md](CONTRIBUTING.md) - contribution guidelines and development workflow
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) - architecture decision records
 - [docs/UI-GUIDE.md](docs/UI-GUIDE.md) and [docs/BACKEND-GUIDE.md](docs/BACKEND-GUIDE.md) - frontend and backend guides
-- [analytics-service/API.md](analytics-service/API.md) - backend API
+- [analytics-service/docs/API.md](analytics-service/docs/API.md) - backend API
 - [analytics-service/README.md](analytics-service/README.md) - backend microservice
 - [docs/MIGRATION-SECURITY-2026-10.md](docs/MIGRATION-SECURITY-2026-10.md) - migration guide for the October 2026 security hardening
 
@@ -59,9 +60,27 @@ If an extension with the same name already exists, the plugin asks you to confir
 
 After the restart the blocks are available in the Streaming Analytics application.
 
-### Backend service switch
+## Safe Mode
 
-The action bar of the **Repositories** tab shows whether the backend microservice is deployed. If it is, the **Use backend service** switch controls whether the plugin uses the backend or works in browser-only mode. The tenant option stores the setting, and the default is on. In browser-only mode you cannot build extensions. If you deploy or remove the microservice while the page is open, click **Re-check** to refresh the state. Changing the switch reloads the repository list.
+If the Streaming Analytics engine fails to load an extension, it starts in Safe Mode and loads no extensions. The plugin then shows a warning and marks the suspected extension.
+
+![Safe Mode warning](resources/images/extension-safe-mode.png)
+
+Safe Mode lasts until the engine restarts. Delete the suspected extension, then click **Restart to deploy extension**.
+
+## Sample repositories and building custom extensions
+
+On the **Repositories** tab you register GitHub repositories as the source for new extensions. The plugin lists the blocks of each repository. You select blocks and build one extension, which the backend microservice can upload to the inventory or return as a download. Building requires the [backend microservice](#backend-microservice).
+
+Public repositories need no token. For private repositories, enter a GitHub Personal Access Token (PAT) for the repository, or set a **Global Personal Access Token** that applies to every repository without its own token. A repository token takes precedence over the global one. Unauthenticated GitHub requests are limited to 60 per hour for each IP address, and a valid token raises the limit to 5,000 per hour.
+
+![Manage repositories](resources/images/repository-manage.png)
+
+A tenant without configured repositories starts with [Cumulocity-IoT/analytics-builder-blocks-contrib](https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib). See [Repository layout for building extensions](#repository-layout-for-building-extensions) for the supported folder structures.
+
+## Backend service switch
+
+The action bar of the **Repositories** tab shows whether the backend microservice is deployed. If it is, the **Use backend service** entry in the **More** menu controls whether the plugin uses the backend or works in browser-only mode. The tenant option stores the setting, and the default is on. In browser-only mode you cannot build extensions. If you deploy or remove the microservice while the page is open, select **Re-check** in the **More** menu to refresh the state. Changing the setting reloads the repository list.
 
 ## Access control
 
@@ -178,7 +197,7 @@ C8Y_BOOTSTRAP_USER=servicebootstrap_analytics-ext-service
 C8Y_BOOTSTRAP_PASSWORD=<password>
 ```
 
-After the dev container has started, you can debug `app.py` as a Python file.
+After the dev container has started, you can debug `src/app.py` as a Python file.
 
 To test the microservice, run the following curl command:
 ```
@@ -198,7 +217,7 @@ To build the backend as the microservice `analytics-ext-service`:
 * run the script:
 ```
 # cd analytics-service
-# ./build.sh analytics-ext-service VERSION 
+# ./build.sh VERSION
 ```
 * upload the created archive:
 ```
@@ -225,7 +244,7 @@ Custom blocks are developed with the [Analytics Builder block SDK](https://githu
 * **Is an extension deployed?** Look for a message like the following in the analytics engine log (Administration > Ecosystem > Microservices > apama-ctrl-1c-4g > Logs):
   `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 * **No extension is loaded after an upload:** the engine is probably in [Safe Mode](#safe-mode); delete the suspected extension and restart.
-* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** turn on Expert mode.
+* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** select **Expert mode** in the **More** menu of the **Repositories** tab.
 * **Cannot build extensions:** check that the backend microservice is deployed and the **Use backend service** switch is on, see [Backend service switch](#backend-service-switch).
 
 

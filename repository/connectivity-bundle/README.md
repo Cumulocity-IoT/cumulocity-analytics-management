@@ -156,7 +156,7 @@ it out for anything a chain has to deliver to a monitor's listener.
 ## Build and deploy
 
 Same mechanism `analytics-service`'s own backend already uses to build extensions
-(`analytics-service/app.py`'s `_build_extension()`), via the `analytics_builder` CLI from the
+(`analytics-service/src/app.py`'s `_build_extension()`), via the `analytics_builder` CLI from the
 [Apama Analytics Builder Block SDK](https://github.com/Cumulocity-IoT/apama-analytics-builder-block-sdk).
 `repository/builder/Dockerfile` packages that CLI (same base image + SDK clone
 `analytics-service/Dockerfile` uses) so you don't need Apama installed locally:

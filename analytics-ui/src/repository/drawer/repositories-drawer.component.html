@@ -1,4 +1,4 @@
-<div class="d-col flex-nowrap no-align-items p-48 flex-grow col-md-12 col-md-offset-0">
+<div class="a17t-repo-drawer d-col flex-nowrap no-align-items p-16 flex-grow col-md-12 col-md-offset-0">
   <div class="card card--fullpage d-col flex-grow">
     <!-- Header -->
     <div class="card-header separator" style="justify-content: center">
@@ -9,7 +9,7 @@
     </div>
 
     <!-- Global token: full-width bar -->
-    <div class="p-l-24 p-r-24 p-t-16 p-b-16 separator-bottom flex-no-shrink">
+    <div class="p-l-24 p-r-24 p-t-8 p-b-8 separator-bottom flex-no-shrink">
       <form [formGroup]="globalAccessTokenForm" autocomplete="off">
         <c8y-form-group class="m-b-0">
           <label for="globalAccessToken">
@@ -37,12 +37,18 @@
       </form>
     </div>
 
-<div class="card content-fullpage split-view--4-8 grid__row--single flex-grow" style="padding:0">
-  <!-- Left Panel: Repository List -->
-  <div class="inner-scroll split-view__list bg-level-1 d-flex flex-column">
-    <div class="p-l-16 p-r-16 p-t-8 p-b-8 sticky-top bg-inherit flex-no-shrink separator-bottom">
-      <div class="d-flex a-i-center" style="gap: 8px;">
-      <div class="input-group input-group-search flex-grow">
+<div class="a17t-repo-panel flex-grow" data-cy="repositories-panel">
+  <c8y-sv #sv [resizableConfig]="{ trackId: 'a17t-repositories-split-view', collapsible: false }">
+    <!-- Left: the repositories -->
+    <c8y-sv-list [title]="'Repositories' | translate" [showEmptyState]="false">
+      <c8y-sv-header-actions>
+        <button type="button" class="btn btn-primary btn-icon flex-no-shrink" [title]="'Add repository' | translate"
+          [attr.aria-label]="'Add repository' | translate" (click)="createCustomRepository()">
+          <i c8yIcon="plus-circle"></i>
+        </button>
+      </c8y-sv-header-actions>
+      <div class="p-l-16 p-r-16 p-t-8 p-b-8 separator-bottom">
+        <div class="input-group input-group-search flex-grow">
         <input class="form-control" placeholder="{{ 'Filter repositories…' | translate }}" type="search"
           [(ngModel)]="searchTerm" (keyup)="searchRepositories($event)" />
         <span class="input-group-btn">
@@ -61,88 +67,72 @@
           }
         </span>
       </div>
-      <button type="button" class="btn btn-primary btn-icon flex-no-shrink" [title]="'Add repository' | translate"
-        [attr.aria-label]="'Add repository' | translate" (click)="createCustomRepository()">
-        <i c8yIcon="plus-circle"></i>
-      </button>
       </div>
-    </div>
+      <div>
+        @if (!filteredDisplayList.length && !searchTerm) {
+          <c8y-ui-empty-state icon="plugin" [horizontal]="true"
+            [title]="'No repositories defined.' | translate"
+            [subtitle]="'Add a repository using the button below.' | translate"
+          class="d-block"></c8y-ui-empty-state>
+        }
 
-    <div class="flex-grow" style="flex: 1 1 auto; min-height: 0; overflow-y: auto;">
-      @if (!filteredDisplayList.length && !searchTerm) {
-        <c8y-ui-empty-state icon="plugin" [horizontal]="true"
-          [title]="'No repositories defined.' | translate"
-          [subtitle]="'Add a repository using the button below.' | translate"
-        class="d-block"></c8y-ui-empty-state>
-      }
+        @if (!filteredDisplayList.length && searchTerm) {
+          <c8y-ui-empty-state icon="search" [horizontal]="true"
+            [title]="'No matching repositories found.' | translate"
+          [subtitle]="'Try different search terms.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
+        }
 
-      @if (!filteredDisplayList.length && searchTerm) {
-        <c8y-ui-empty-state icon="search" [horizontal]="true"
-          [title]="'No matching repositories found.' | translate"
-        [subtitle]="'Try different search terms.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
-      }
-
-      @if (filteredDisplayList.length) {
-        <div class="c8y-nav-stacked">
-          @for (repository of filteredDisplayList; track repository; let i = $index) {
-            <button class="c8y-stacked-item"
-                    [ngClass]="{ 
-                active: displayList.indexOf(repository) === selectedRepositoryIndex,
-                'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
-            }" (click)="onEditRepository(repository)" [title]="repository.name">
-              <i c8yIcon="plugin" class="m-r-4"></i>
-              <span class="m-r-8 text-truncate">{{ repository.name }}</span>
-              @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {
-                <span class="m-l-auto label m-r-16"
-                  [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
-                  >
-                  {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
-                </span>
-              }
-              @if (isAddingNew && tempNewRepository && repository.id === tempNewRepository.id) {
-                <span class="m-l-auto label label-default m-r-16"
-                  >
-                  {{ 'Not saved' | translate }}
-                </span>
-              }
-            </button>
-          }
-        </div>
-      }
-      <div class="ff-scroll-fix"></div>
-    </div>
-  </div>
-
-  <!-- Right Panel: Repository Details -->
-  <div class="inner-scroll split-view__detail" cdkScrollable
-    [ngClass]="{ 'split-view__detail--selected': showAddRepository }">
-    @if (!showAddRepository) {
-      <div class="p-l-24 p-r-24 flex-grow text-center">
-        <c8y-ui-empty-state icon="plugin" [horizontal]="true" [title]="'No repository selected.' | translate"
-        [subtitle]="'Add or select a repository.' | translate" class="d-block m-t-24"></c8y-ui-empty-state>
-        <button type="button" class="btn btn-primary m-t-16" [title]="'Add repository' | translate"
-          (click)="createCustomRepository()">
-          <i c8yIcon="plus-circle" class="m-r-4"></i>{{ 'Add repository' | translate }}
-        </button>
+        @if (filteredDisplayList.length) {
+          <div class="c8y-nav-stacked">
+            @for (repository of filteredDisplayList; track repository; let i = $index) {
+              <button class="c8y-stacked-item"
+                      [ngClass]="{ 
+                  active: displayList.indexOf(repository) === selectedRepositoryIndex,
+                  'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
+              }" (click)="onEditRepository(repository)" [title]="repository.name">
+                <i c8yIcon="plugin" class="m-r-4"></i>
+                <span class="m-r-8 text-truncate">{{ repository.name }}</span>
+                @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {
+                  <span class="m-l-auto label m-r-16"
+                    [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
+                    >
+                    {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
+                  </span>
+                }
+                @if (isAddingNew && tempNewRepository && repository.id === tempNewRepository.id) {
+                  <span class="m-l-auto label label-default m-r-16"
+                    >
+                    {{ 'Not saved' | translate }}
+                  </span>
+                }
+              </button>
+            }
+          </div>
+        }
       </div>
-    }
 
-    @if (showAddRepository) {
-      <div class="p-l-24 p-r-24 p-t-24 flex-grow">
+    </c8y-sv-list>
+
+    <!-- Right: the selected repository -->
+    <c8y-sv-details emptyStateIcon="plugin" [ariaLabel]="'Repository details' | translate"
+      [title]="repositoryForm.value.name || ('New repository' | translate)"
+      [emptyStateTitle]="'No repository selected.' | translate"
+      [emptyStateSubtitle]="'Add or select a repository.' | translate"
+      (backClick)="deselectRepository()">
+      <div class="p-l-24 p-r-24 p-t-16 p-b-16">
         <form [formGroup]="repositoryForm" autocomplete="off">
           <fieldset>
             <input type="hidden" formControlName="id" />
-            <div class="d-flex j-c-between a-i-center m-b-24 p-b-16 separator-bottom">
-              <h5 class="m-0 text-truncate">{{ repositoryForm.value.name || ('New repository' | translate) }}</h5>
-              @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-                <label class="c8y-switch flex-no-shrink m-b-0 m-l-16">
+            @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+              <div class="d-flex j-c-end a-i-center m-b-8">
+                <label class="c8y-switch flex-no-shrink m-b-0">
                   <input type="checkbox" formControlName="enabled"
                     (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])" />
                   <span></span>
                   <span class="m-l-8">{{ (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate }}</span>
                 </label>
-              }
-            </div>
+              </div>
+            }
             <c8y-form-group>
               <label for="name">{{ 'Name' | translate }}</label>
               <input type="text" id="name" formControlName="name" class="form-control"
@@ -213,39 +203,29 @@
           </c8y-form-group>
         </fieldset>
       </form>
-    </div>
-  }
-
-  <div class="ff-scroll-fix"></div>
-</div>
-</div>
-
-    <!-- Outer card footer: destructive action left, primary actions right -->
-    @if (showAddRepository) {
-      <div class="card-footer separator p-16 flex-no-shrink d-flex a-i-center j-c-between">
-        <div>
-          @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-            <button type="button" [title]="'Delete repository' | translate" class="btn btn-link text-danger"
-              (click)="deleteButtonClicked()" [disabled]="deleteDisabled">
-              <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
-            </button>
-          }
-        </div>
-        <div class="d-flex" style="gap: 8px;">
-          <button type="button" class="btn btn-default" (click)="testRepository()"
-            [title]="'Test the connection (PAT optional for public repositories)' | translate"
-            [disabled]="repositoryForm.get('url')?.invalid || isSaving">
-            {{ 'Test connection' | translate }}
-          </button>
-          <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
-            {{ 'Cancel' | translate }}
-          </button>
-          <button type="button" [title]="'Save' | translate" class="btn btn-primary" (click)="onSave()"
-            [disabled]="isSaveDisabled">
-            {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
-          </button>
-        </div>
       </div>
-    }
+      <c8y-sv-footer>
+        @if (!isAddingNew && selectedRepositoryIndex !== -1) {
+          <button type="button" [title]="'Delete repository' | translate" class="btn btn-link text-danger m-r-auto"
+            (click)="deleteButtonClicked()" [disabled]="deleteDisabled">
+            <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+          </button>
+        }
+        <button type="button" class="btn btn-default" (click)="testRepository()"
+          [title]="'Test the connection (PAT optional for public repositories)' | translate"
+          [disabled]="repositoryForm.get('url')?.invalid || isSaving">
+          {{ 'Test connection' | translate }}
+        </button>
+        <button type="button" [title]="'Cancel' | translate" class="btn btn-default" (click)="onCancel()">
+          {{ 'Cancel' | translate }}
+        </button>
+        <button type="button" [title]="'Save' | translate" class="btn btn-primary" (click)="onSave()"
+          [disabled]="isSaveDisabled">
+          {{ isAddingNew ? ('Add' | translate) : ('Save' | translate) }}
+        </button>
+      </c8y-sv-footer>
+    </c8y-sv-details>
+  </c8y-sv>
+</div>
   </div>
 </div>

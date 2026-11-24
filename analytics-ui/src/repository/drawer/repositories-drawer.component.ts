@@ -1,7 +1,15 @@
-import { Component, EventEmitter, Input, OnInit, Output, ViewEncapsulation } from '@angular/core';
+import { Component, DoCheck, EventEmitter, Input, OnInit, Output, ViewEncapsulation, viewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
-import { AlertService, CoreModule } from '@c8y/ngx-components';
+import {
+    AlertService,
+    CoreModule,
+    SplitViewComponent,
+    SplitViewDetailsComponent,
+    SplitViewFooterComponent,
+    SplitViewHeaderActionsComponent,
+    SplitViewListComponent
+} from '@c8y/ngx-components';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import { Observable } from 'rxjs';
 import {
@@ -17,11 +25,18 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
 @Component({
     selector: 'a17t-repositories-drawer',
     templateUrl: './repositories-drawer.component.html',
+    styleUrls: ['./repositories-drawer.component.css'],
     encapsulation: ViewEncapsulation.None,
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule, ConfirmationModalComponent]
+    imports: [
+        CommonModule, ReactiveFormsModule, CoreModule, PopoverModule, ConfirmationModalComponent,
+        SplitViewComponent, SplitViewListComponent, SplitViewDetailsComponent,
+        SplitViewHeaderActionsComponent, SplitViewFooterComponent
+    ]
 })
-export class RepositoriesDrawerComponent implements OnInit {
+export class RepositoriesDrawerComponent implements OnInit, DoCheck {
+    private readonly splitView = viewChild<SplitViewComponent<number>>('sv');
+
     @Input() hideInstalled: boolean = false;
     @Output() cancelled = new EventEmitter<void>();
     @Output() commit = new EventEmitter<Repository>();
@@ -252,6 +267,26 @@ export class RepositoriesDrawerComponent implements OnInit {
 
     get hasUnsavedChanges(): boolean {
         return this.hasFormChanges() || this.repositoryService.hasUnsavedChanges();
+    }
+
+    /**
+     * The split view shows the details while something is selected. The component state
+     * (`showAddRepository`, `selectedRepositoryIndex`) stays the source of truth, so the view is
+     * kept in line with it after every change detection run. A new repository is selected like
+     * an existing one: its temporary entry is the last one of the list.
+     */
+    ngDoCheck(): void {
+        const selection = this.splitView()?.selectionService;
+        if (!selection) {
+            return;
+        }
+        if (this.showAddRepository && this.selectedRepositoryIndex !== -1) {
+            if (selection.selectedItem !== this.selectedRepositoryIndex) {
+                selection.select(this.selectedRepositoryIndex);
+            }
+        } else if (selection.hasSelection) {
+            selection.clearSelection();
+        }
     }
 
     onEditRepository(repository: Repository): void {

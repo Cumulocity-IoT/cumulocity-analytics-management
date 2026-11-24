@@ -150,9 +150,9 @@ describe('ExtensionAddComponent', () => {
       expect(info.files.map(f => [f.name, f.type])).toEqual(jasmine.arrayContaining([['helper.py', 'script'], ['config.json', 'config'], ['blob.bin', 'file']]));
     });
 
-    it('derives monitor name and a default id from the file', async () => {
+    it('derives monitor name and the block id from the file', async () => {
       const [monitor] = (await buildInfo({ 'files/sub/Foo.mon': MON })).monitors;
-      expect(monitor).toEqual(jasmine.objectContaining({ name: 'Foo', id: 'apamax.analyticsbuilder.custom.Foo', custom: true, type: 'file' }));
+      expect(monitor).toEqual(jasmine.objectContaining({ name: 'Foo', id: 'com.acme.Foo', custom: true, type: 'file' }));
     });
 
     it('reads category, description and id from the generated metadata event file', async () => {
@@ -166,6 +166,32 @@ describe('ExtensionAddComponent', () => {
       expect(monitor.description).toBe('Does foo.');
     });
 
+    it('reads one extension-wide metadata file whose name matches no monitor, for every block', async () => {
+      const two = 'package com.acme;\n/** Bar Block.\n *\n * Does "bar".\n *\n * @$blockCategory Input\n */\nevent Bar { BlockBase $base; }';
+      const blocks = [...parseApamaBlockMetadata(MON, 'com.acme'), ...parseApamaBlockMetadata(two, 'com.acme')];
+      const info = await buildInfo({
+        'files/Foo.mon': MON,
+        'files/Bar.mon': two,
+        'files/events/E_metadata.evt': buildBlockMetadataEvt('E', blocks)
+      });
+      const byName = Object.fromEntries(info.monitors.map(m => [m.name, m]));
+      expect(byName['Foo'].category).toBe('Calculation');
+      expect(byName['Bar'].category).toBe('Input');
+      expect(byName['Bar'].description).toBe('Does "bar".');
+      expect(info.files).toEqual([]);
+    });
+
+    it('matches a file that defines several blocks to its metadata, whatever the file is called', async () => {
+      const pair = 'package com.acme;\n/** Send. */\nevent Send { BlockBase $base; }\n/** Receive. */\nevent Receive { BlockBase $base; }';
+      const info = await buildInfo({
+        'files/Pair.mon': pair,
+        'files/events/E_metadata.evt': buildBlockMetadataEvt('E', parseApamaBlockMetadata(pair, 'com.acme'))
+      });
+      expect(info.monitors[0].id).toBe('com.acme.Send');
+      expect(info.monitors[0].blockIds).toEqual(['com.acme.Send', 'com.acme.Receive']);
+      expect(info.monitors[0].name).toBe('Pair');
+    });
+
     it('does not list the consumed metadata file again, but lists other event files', async () => {
       const info = await buildInfo({
         'files/Foo.mon': MON,
@@ -175,9 +201,9 @@ describe('ExtensionAddComponent', () => {
       expect(info.files.map(f => f.file)).toEqual(['files/events/E_messages.evt']);
     });
 
-    it('falls back to the defaults when the metadata cannot be parsed', async () => {
+    it('keeps the block id and omits the details when the metadata cannot be parsed', async () => {
       const [monitor] = (await buildInfo({ 'files/Foo.mon': MON, 'files/events/Foo_metadata.evt': 'garbage' })).monitors;
-      expect(monitor.id).toBe('apamax.analyticsbuilder.custom.Foo');
+      expect(monitor.id).toBe('com.acme.Foo');
       expect(monitor.category).toBeUndefined();
     });
 

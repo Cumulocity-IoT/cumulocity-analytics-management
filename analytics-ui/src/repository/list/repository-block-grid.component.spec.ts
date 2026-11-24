@@ -212,6 +212,37 @@ describe('RepositoryBlockGridComponent', () => {
       expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[1]], false);
     }));
 
+    it('reports several installed blocks in one message', fakeAsync(() => {
+      component.repositoryItems.push(item({ id: '6', name: 'Other', file: 'Other.mon', installed: true }));
+      component.checkSelection(['2', '6']);
+      expect(alerts.warning).toHaveBeenCalledTimes(1);
+      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Installed, Other'));
+      tick();
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[1], component.repositoryItems[5]], false);
+    }));
+
+    it('deselects a block that another selected item already defines', fakeAsync(() => {
+      component.repositoryItems.push(
+        item({ id: '7', name: 'First', file: 'A.mon', blockIds: ['x.A'] }),
+        item({ id: '8', name: 'Copy', file: 'A.mon', blockIds: ['x.A'] })
+      );
+      component.checkSelection(['7', '8']);
+      expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Copy'));
+      tick();
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[6]], false);
+    }));
+
+    it('deselects a yaml section whose .mon file another selected section already lists', fakeAsync(() => {
+      component.repositoryItems.push(
+        item({ id: '9', name: 'One', file: 'extensions.yaml', sectionFiles: ['Shared.mon'] }),
+        item({ id: '10', name: 'Two', file: 'extensions.yaml', sectionFiles: ['Shared.mon', 'B.mon'] })
+      );
+      component.checkSelection(['9', '10']);
+      expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Two'));
+      tick();
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[6]], false);
+    }));
+
     it('deselects files of other types and explains what is allowed', fakeAsync(() => {
       component.checkSelection(['1', '3']);
       tick();

@@ -9,7 +9,7 @@ builds Apama Analytics Builder extensions from GitHub sources and uploads them t
 It also manages the GitHub repository configuration (stored as tenant options) and exposes the
 status of the Streaming Analytics (CEP/Apama) engine.
 
-Endpoint details live in the route docstrings in `app.py` and in [API.md](../analytics-service/API.md).
+Endpoint details live in the route docstrings in `app.py` and in [API.md](../analytics-service/docs/API.md).
 
 ---
 
@@ -17,15 +17,17 @@ Endpoint details live in the route docstrings in `app.py` and in [API.md](../ana
 
 ```
 analytics-service/
-├── app.py               # Flask app: all routes + build/download helpers
-├── c8y_agent.py         # Cumulocity access (pyc8y): extensions, tenant options, CEP
-├── solution_utils.py    # GitHub URL helpers, handle_errors decorator, small utils
-├── logging_config.py    # Logging setup (text or JSON)
-├── health_check.py      # NOT used: not imported by app.py, not copied into the image
+├── src/                 # Python sources
+│   ├── app.py           # Flask app: all routes + build/download helpers
+│   ├── c8y_agent.py # Cumulocity access (pyc8y): extensions, tenant options, CEP
+│   ├── solution_utils.py # GitHub URL helpers, handle_errors decorator, small utils
+│   ├── logging_config.py # Logging setup (text or JSON)
+│   ├── health_check.py # NOT used: not imported by app.py, not copied into the image
 ├── cumulocity.json      # Microservice manifest (required roles, application roles, resources, contextPath)
 ├── Dockerfile           # Apama builder base image (pinned) + SDK at a pinned commit + gunicorn, runs as user apama
 ├── build.sh             # Renders manifest/Dockerfile into build/ and zips to dist/; --push uploads to the active c8y session
-├── local_deploy.sh      # Local deployment helper
+├── scripts/local_deploy.sh  # Local deployment helper
+├── docs/API.md          # Endpoint reference
 ├── requirements.txt     # Pinned runtime dependencies
 ├── requirements-dev.txt # Test dependencies (includes requirements.txt)
 ├── pytest.ini
@@ -98,7 +100,7 @@ Flask routes (app.py)
 
 ## API overview
 
-Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (locally `http://localhost:80/` via `python app.py`).
+Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (locally `http://localhost:80/` via `python src/app.py`).
 
 | Method | Path | Role | Purpose |
 |--------|------|------|---------|
@@ -117,7 +119,7 @@ Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (loca
 
 The three build endpoints share `extension_name`, `repository.id`, `upload`, `deploy`, `rebuild`. A plain build
 (download) needs READ, `upload=true` needs CREATE, and `rebuild=true` or `deploy=true` needs ADMIN.
-`rebuild=true` deletes the existing extension(s) **before** building and returns 404 if none exist.
+`rebuild=true` returns 404 if no extension of that name exists. Otherwise it builds and uploads first and deletes the old extension(s) afterwards, so a failed build keeps the current one.
 
 ### Responses and errors
 
@@ -183,7 +185,7 @@ cd analytics-service && ./build.sh 1.0.0   # -> dist/analytics-ext-service.zip, 
 
 # run locally (needs Cumulocity env/.env; the Apama SDK path is only present in the Docker image)
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python app.py
+.venv/bin/python src/app.py
 ```
 
 CI (`.github/workflows/build-release.yml`) builds the UI and the microservice on `v*` tags;
@@ -221,6 +223,5 @@ None of the following exists today. Track decisions in [ARCHITECTURE.md](./ARCHI
 1. **Request validation with Pydantic** (ADR-004) - replace the hand-written checks in the routes.
 2. **Rich `/health`** (ADR-005) - wire up `health_check.py` (and copy it in the Dockerfile) or delete it.
    Keep external calls out of any liveness probe.
-3. **Safer rebuild** - delete the old extension only after a successful build.
-4. **Request correlation ids and log redaction.**
-5. **Size and count limits** for downloads and YAML sections.
+3. **Request correlation ids and log redaction.**
+4. **Size and count limits** for downloads and YAML sections.

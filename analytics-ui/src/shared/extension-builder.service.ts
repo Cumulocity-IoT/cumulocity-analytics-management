@@ -156,17 +156,20 @@ export class ExtensionBuilderService {
       files.file(item.file, content);
 
       if (lowerFile.endsWith('.mon')) {
+        // A file without a package still defines blocks (their id is the bare name,
+        // see `extractBlockFqns`), so it must not be left out of the metadata.
         const packageMatch = /^package\s+(.*?);/m.exec(content);
-        if (packageMatch) {
-          blocks.push(...parseApamaBlockMetadata(content, packageMatch[1].trim()));
-        }
+        blocks.push(...parseApamaBlockMetadata(content, packageMatch ? packageMatch[1].trim() : ''));
       }
     }
 
-    if (blocks.length > 0) {
+    // Two files can define the same block; the correlator rejects a duplicate id.
+    const uniqueBlocks = [...new Map(blocks.map(block => [block.id, block])).values()];
+
+    if (uniqueBlocks.length > 0) {
       const events = files.folder('events')!;
-      events.file(`${name}_metadata.evt`, buildBlockMetadataEvt(name, blocks));
-      events.file(`${name}_messages.evt`, buildBlockMessagesEvt(name, blocks));
+      events.file(`${name}_metadata.evt`, buildBlockMetadataEvt(name, uniqueBlocks));
+      events.file(`${name}_messages.evt`, buildBlockMessagesEvt(name, uniqueBlocks));
     }
 
     const blob = await zip.generateAsync({ type: 'blob' });

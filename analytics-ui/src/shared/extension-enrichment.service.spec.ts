@@ -159,6 +159,16 @@ describe('ExtensionEnrichmentService', () => {
       expect(await service.getDeployedBlocks()).toEqual([]);
     });
 
+    it('does not memoize a block list that is missing an unreadable extension', async () => {
+      routes[METADATA_URL] = () => ok({ metadatas: ['A.json', 'B.json'], messages: [] });
+      routes[detailUrl('A')] = () => ok({ analytics: [{ id: 'x.A', name: 'A' }] });
+      routes[detailUrl('B')] = () => ok({}, 500);
+      expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['x.A']);
+
+      routes[detailUrl('B')] = () => ok({ analytics: [{ id: 'x.B', name: 'B' }] });
+      expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['x.A', 'x.B']);
+    });
+
     describe('block categorisation', () => {
       const categoryOf = async (name: string, description = '', category?: Category) => {
         service.invalidateCache();
@@ -166,6 +176,13 @@ describe('ExtensionEnrichmentService', () => {
         routes[detailUrl('E')] = () => ok({ analytics: [{ id: `x.${name}`, name, description, category }] });
         return (await service.getDeployedBlocks())[0].category;
       };
+
+      it('matches whole words only', async () => {
+        expect(await categoryOf('Notification Helper')).toBe(Category.UTILITY); // "if" inside a word
+        expect(await categoryOf('Prevent Duplicates')).toBe(Category.UTILITY); // "event" inside a word
+        expect(await categoryOf('GroupStatistics')).toBe(Category.AGGREGATE); // camelCase and a keyword ending in s
+        expect(await categoryOf('Alarm Events')).toBe(Category.INPUT); // plural of a keyword
+      });
 
       it('keeps an explicit category', async () => {
         expect(await categoryOf('Whatever', '', Category.LOGIC)).toBe(Category.LOGIC);

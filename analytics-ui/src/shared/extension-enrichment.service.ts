@@ -109,17 +109,30 @@ export class ExtensionEnrichmentService {
     // mapped once (otherwise its blocks would appear twice).
     const extensionNames = [...new Set(metadata.metadatas.map(removeFileExtension))];
 
+    let failedExtensions = 0;
     const perExtensionBlocks = await Promise.all(
       extensionNames.map(async (extensionName) => {
         // Shares the per-name memo with addDeploymentStatus — no duplicate HTTP fetch
         const ext = await this.getDeployedExtensionDetails(extensionName);
-        if (!ext?.analytics?.length) return [];
+        if (!ext) {
+          failedExtensions++;
+          return [];
+        }
+        if (!ext.analytics?.length) return [];
         // Drop malformed blocks instead of failing the whole load.
         return ext.analytics
           .map(block => this.addBlockMetadata(block, ext.name))
           .filter((block): block is CepBlock => block !== null);
       })
     );
+
+    if (failedExtensions > 0) {
+      // A list built without some extensions must not be memoized: it would hide
+      // their blocks until the next explicit cache invalidation. The next caller
+      // retries (the failed details are already evicted from their own memo).
+      this.cachedDeployedBlocks = null;
+      console.warn(`Deployed blocks are incomplete: ${failedExtensions} extension(s) could not be read.`);
+    }
 
     return perExtensionBlocks.flat();
   }
@@ -143,7 +156,7 @@ export class ExtensionEnrichmentService {
 
     const inflight = (async () => {
       try {
-        const data = await fetchCepJSON<CepExtension>(this.fetchClient, `${CEP_PATH_EN}/${extensionName}.json`);
+        const data = await fetchCepJSON<CepExtension>(this.fetchClient, `${CEP_PATH_EN}/${encodeURIComponent(extensionName)}.json`);
         return { ...data, name: extensionName };
       } catch (error) {
         console.warn(`Failed to get extension details for ${extensionName}:`, error);
@@ -241,10 +254,22 @@ export class ExtensionEnrichmentService {
     };
   }
 
+  /**
+   * Whole-word matching on the words of the name and description (camelCase is
+   * split). A substring test would classify "Notification" as Logic because it
+   * contains "if", or "Prevent" as Input because it contains "event".
+   */
   private determineBlockCategory(block: Partial<CepBlock>): Category {
-    const text = `${block.name ?? ''} ${block.description ?? ''}`.toLowerCase();
+    const text = `${block.name ?? ''} ${block.description ?? ''}`;
+    const words = new Set(
+      text
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+    );
     for (const [category, keywords] of ExtensionEnrichmentService.CATEGORY_KEYWORDS) {
-      if (keywords.some(kw => text.includes(kw))) return category;
+      if (keywords.some(kw => words.has(kw) || words.has(`${kw}s`))) return category;
     }
     return Category.UTILITY;
   }

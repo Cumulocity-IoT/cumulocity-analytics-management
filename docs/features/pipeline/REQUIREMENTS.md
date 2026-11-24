@@ -26,7 +26,6 @@ References:
 
 - `.github/workflows/build-release.yml`: runs on `v*` tags and on manual dispatch. The UI job syncs `package.json` with the tag, then runs lint, unit tests, and the build (Node.js 22). The service job runs the `pytest` tests (Python 3.12) and `analytics-service/build.sh`. A release job attaches `c8y-pkg-analytics-extension-<version>.zip` and `analytics-ext-service.zip` to the GitHub release; tags with a suffix, such as `v2.8.0-rc.1`, become pre-releases. Tags are created by hand.
 - `.github/workflows/check-push.yml`: runs on pushes to `main` and on pull requests. It checks spelling (`typos`), runs UI lint, naming rules, and tests, and runs the service tests.
-- `.releaserc.json`: a semantic-release configuration. No workflow runs semantic-release, so it does not drive versioning today.
 - `analytics-service/Dockerfile`: starts from `public.ecr.aws/apama/apama-builder`, pinned by digest, installs Python packages pinned in `requirements.txt`, and runs as the unprivileged `apama` user.
 - Missing: compliance workflow, SBOM generation, Helm chart (`helm/` does not exist), build descriptor.
 

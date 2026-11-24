@@ -310,21 +310,49 @@ export class RepositoryBlockGridComponent implements OnInit {
   checkSelection(ids: string[]) {
     const idSet = new Set(ids);
     const invalid: RepositoryItem[] = [];
+    const installedNames: string[] = [];
+    const duplicateNames: string[] = [];
+    // Blocks already taken by an earlier item of this selection. The same block
+    // can be listed twice (e.g. the same file in two repositories) and the engine
+    // refuses an extension that defines a block twice.
+    const selectedBlockIds = new Set<string>();
     let hasInvalidType = false;
+
     this.repositoryItems.forEach((sample) => {
       if (!idSet.has(sample.id)) return;
       if (sample.installed) {
-        this.alertService.warning(
-          `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
-        );
+        installedNames.push(sample.name);
         invalid.push(sample);
         return;
       }
       if (sample.type == 'file' && !sample.file.endsWith('.mon') && sample.file !== DESCRIPTOR_YAML) {
         invalid.push(sample);
         hasInvalidType = true;
+        return;
       }
+      // Yaml sections are compared by their .mon files. Directories carry no information and cannot be compared.
+      const blockIds = sample.blockIds ?? sample.sectionFiles ?? [];
+      if (blockIds.some((id) => selectedBlockIds.has(id))) {
+        duplicateNames.push(sample.name);
+        invalid.push(sample);
+        return;
+      }
+      blockIds.forEach((id) => selectedBlockIds.add(id));
     });
+
+    // One message per kind of problem, however many blocks are affected.
+    if (installedNames.length > 0) {
+      this.alertService.warning(
+        installedNames.length === 1
+          ? `Not allowed to deploy the block twice. Block ${installedNames[0]} is already installed and will be ignored!`
+          : `Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: ${installedNames.join(', ')}.`
+      );
+    }
+    if (duplicateNames.length > 0) {
+      this.alertService.warning(
+        `Selected more than once. ${duplicateNames.join(', ')} defines a block that another selected item already defines and will be ignored!`
+      );
+    }
     if (invalid.length > 0) {
       setTimeout(() => {
         this.dataGrid.setItemsSelected(invalid, false);

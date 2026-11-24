@@ -1,6 +1,6 @@
 # Analytics Service API
 
-Aligned with `app.py` on 2026-10-14. The route docstrings in `app.py` carry the full detail.
+Aligned with `src/app.py` on 2026-10-14. The route docstrings in `app.py` carry the full detail.
 
 ## Base URL
 
@@ -95,13 +95,15 @@ Returns `text/plain`.
 ## Building extensions
 
 Common body fields: `extension_name` (`[A-Za-z0-9_-]+`), `repository: {id}`, and the booleans
-`upload` (default false), `deploy` (restart CEP after upload), `rebuild` (delete existing extension(s) of that
-name first; `404` if none exists).
+`upload` (default false), `deploy` (restart CEP after upload), `rebuild` (replace the existing extension(s) of that
+name; `404` if none exists).
 
 - `upload=false`: `200` with the extension zip (`application/zip`, attachment `<name>.zip`).
 - `upload=true`: `201 {"id": "<binary id>", "message": "Extension uploaded"}`.
 
-`rebuild` deletes the old extension **before** the new one is built.
+`rebuild` deletes the old extension(s) only **after** the new one was built and uploaded, so a failed build keeps the
+current extension. If the old one cannot be deleted, the response is still `201` and carries a `warning` text. A
+build that runs longer than `BUILD_TIMEOUT_SECONDS` (default 600) answers `504`.
 
 ### `POST /extension/repository`
 Builds from the whole repository path configured in `repository.id`.

@@ -437,33 +437,73 @@ class TestExtensionFromRepository:
 
     def test_rebuild_without_existing_extension_is_404(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.return_value = 0
+        agent_mock.count_extensions.return_value = 0
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
         )
         assert resp.status_code == 404
         agent_mock.upload_extension.assert_not_called()
+        agent_mock.delete_extension.assert_not_called()
 
-    def test_rebuild_delete_failure_is_400(self, client, agent_mock, build_env):
+    def test_rebuild_lookup_failure_is_400(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.side_effect = C8YAgentError("boom")
+        agent_mock.count_extensions.side_effect = C8YAgentError("boom")
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "rebuild": True},
         )
         assert resp.status_code == 400
 
-    def test_rebuild_deletes_then_uploads(self, client, agent_mock, build_env):
+    def test_rebuild_uploads_first_then_deletes_the_previous_extension(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.return_value = 1
+        agent_mock.count_extensions.return_value = 1
         agent_mock.upload_extension.return_value = "9"
+        order = []
+        agent_mock.upload_extension.side_effect = lambda *a, **k: order.append("upload") or "9"
+        agent_mock.delete_extension.side_effect = lambda *a, **k: order.append("delete") or 1
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
         )
         assert resp.status_code == 201
-        agent_mock.delete_extension.assert_called_once()
+        assert order == ["upload", "delete"]
+        assert agent_mock.delete_extension.call_args.kwargs == {"extension_name": "E", "exclude_id": "9"}
+
+    def test_failed_build_keeps_the_existing_extension_on_rebuild(self, client, agent_mock, monkeypatch, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.count_extensions.return_value = 1
+        monkeypatch.setattr(
+            app_module, "_build_extension",
+            MagicMock(side_effect=subprocess.CalledProcessError(1, "sdk", stderr="compile error")),
+        )
+        resp = client.post(
+            self.URL,
+            json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
+        )
+        assert resp.status_code == 500
+        agent_mock.delete_extension.assert_not_called()
+
+    def test_rebuild_reports_a_warning_when_the_old_extension_cannot_be_deleted(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.count_extensions.return_value = 1
+        agent_mock.upload_extension.return_value = "9"
+        agent_mock.delete_extension.side_effect = C8YAgentError("locked")
+        resp = client.post(
+            self.URL,
+            json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
+        )
+        assert resp.status_code == 201
+        assert "locked" in resp.get_json()["warning"]
+
+    def test_build_timeout_is_504(self, client, agent_mock, monkeypatch, build_env):
+        agent_mock.load_repository.return_value = REPO
+        monkeypatch.setattr(
+            app_module, "_build_extension",
+            MagicMock(side_effect=subprocess.TimeoutExpired("sdk", 1)),
+        )
+        resp = client.post(self.URL, json={"extension_name": "E", "repository": {"id": "r"}})
+        assert resp.status_code == 504
 
     def test_download_failure_is_400(self, client, agent_mock, monkeypatch):
         agent_mock.load_repository.return_value = REPO
@@ -556,6 +596,7 @@ class TestExtensionFromYaml:
         agent_mock.load_repository.return_value = REPO
         agent_mock.upload_extension.side_effect = lambda *a, **k: f"id-{a[1]}"
         agent_mock.delete_extension.return_value = 1
+        agent_mock.count_extensions.return_value = 1
         self.agent = agent_mock
         self.yaml_text = self.YAML
         monkeypatch.setattr(
@@ -630,7 +671,7 @@ class TestExtensionFromYaml:
         assert resp.get_json()["failed_sections"][0]["section"] == "bad name"
 
     def test_rebuild_without_existing_extension_fails_that_section(self, client):
-        self.agent.delete_extension.side_effect = [1, 0]
+        self.agent.count_extensions.side_effect = [1, 0]
         resp = self._post(client, upload=True, rebuild=True)
         assert resp.status_code == 207
         assert resp.get_json()["failed_sections"][0]["section"] == "Beta"
@@ -822,3 +863,33 @@ class TestYamlFilesValidation:
     def test_non_dict_section_fails_without_crashing(self, agent_mock, monkeypatch, fake_response, build_env):
         out = self._run(monkeypatch, fake_response, "S: just-a-string\n")
         assert out.status_code == 400
+
+
+class TestStoredMonitors:
+    def test_only_known_plain_fields_are_stored_on_the_extension(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.upload_extension.return_value = "9"
+        monitor = {
+            "url": "https://api.github.com/repos/o/r/contents/blocks/A.mon?ref=main",
+            "name": "A", "type": "file", "id": "a.A", "blockIds": ["a.A", 5],
+            "accessToken": "secret", "extensionsYamlItem": {"nested": True},
+        }
+        resp = client.post(
+            "/extension/list",
+            json={"extension_name": "E", "repository": {"id": "r"}, "monitors": [monitor], "upload": True},
+        )
+        assert resp.status_code == 201
+        stored = agent_mock.upload_extension.call_args.args[3]["monitors"]
+        assert stored == [{
+            "id": "a.A", "name": "A", "type": "file", "url": monitor["url"], "blockIds": ["a.A"],
+        }]
+
+
+class TestExtractFqn:
+    def test_ignores_package_text_in_comments(self):
+        content = "// the package x.y; is documented elsewhere\npackage real.pkg;\nevent A {}"
+        assert app_module._extract_fqn(content, "A") == "real.pkg.A"
+
+    def test_missing_package_is_an_error(self):
+        with pytest.raises(ValueError):
+            app_module._extract_fqn("// package x;\nevent A {}", "A")
