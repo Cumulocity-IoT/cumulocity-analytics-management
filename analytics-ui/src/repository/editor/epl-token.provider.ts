@@ -28,15 +28,18 @@ export const eplTokenProvider = {
 		'enqueue', 'spawn', 'print', 'die', 'log', 'using', 'break', 'continue', 'send', 'to',
 		'ifpresent', 'switch', 'case', 'default', 'try', 'catch', 'throw', 'in'
 	],
+	// Single and multi-character operators. A run of symbol characters that is not
+	// listed here (e.g. `>>` closing nested generics) is still an operator, see `@default` below.
 	operators: [
-		'+', '-', '/', '*', '=', ':=', '<', '>', '%', '!', ':'
+		'+', '-', '/', '*', '=', ':=', '<', '>', '%', '!', ':',
+		'==', '!=', '<=', '>=', '<>', '->', '+=', '-=', '*=', '/=', '%='
 	],
 	symbols: /[\+\-\/\*\=\:\=\<\>\%\!\:]+/,
 	escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
 	digits: /\d+(_+\d+)*/,
 	octaldigits: /[0-7]+(_+[0-7]+)*/,
 	binarydigits: /[0-1]+(_+[0-1]+)*/,
-	hexdigits: /[[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
+	hexdigits: /[0-9a-fA-F]+(_+[0-9a-fA-F]+)*/,
 	defaultToken: '',
 	tokenPostfix: '.mon',
 	tokenizer: {
@@ -60,20 +63,21 @@ export const eplTokenProvider = {
 			// @ annotations.
 			[/@\s*[a-zA-Z_\$][\w\$]*/, 'annotation'],
 
-			// numbers
-			[/[\-+]?(@digits)[eE]([\-+]?(@digits))?[fFdD]?/, 'number.float'],
-			[/[\-+]?(@digits)\.(@digits)([eE][\-+]?(@digits))?[fFdD]?/, 'number.float'],
+			// numbers. A leading sign is not part of the number: `x-1` is a subtraction,
+			// and the sign of a negative literal is colored as the operator it is.
+			[/(@digits)[eE]([\-+]?(@digits))?[fFdD]?/, 'number.float'],
+			[/(@digits)\.(@digits)([eE][\-+]?(@digits))?[fFdD]?/, 'number.float'],
 			[/0[xX](@hexdigits)[Ll]?/, 'number.hex'],
 			[/0(@octaldigits)[Ll]?/, 'number.octal'],
 			[/0[bB](@binarydigits)[Ll]?/, 'number.binary'],
-			[/[\-+]?(@digits)[fFdD]/, 'number.float'],
-			[/[\-+]?(@digits)[lL]?/, 'number'],
+			[/(@digits)[fFdD]/, 'number.float'],
+			[/(@digits)[lL]?/, 'number'],
 
-			// ordering is important - allow numbers to be matched before symbols so that -ve nums colorize properly
+			// ordering is important - numbers are matched before symbols
 			[/@symbols/, {
 				cases: {
 					'@operators': 'operator',
-					'@default': ''
+					'@default': 'operator'
 				}
 			}],
 			// delimiter: after number because of .\d floats

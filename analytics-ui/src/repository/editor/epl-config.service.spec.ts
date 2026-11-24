@@ -55,6 +55,12 @@ describe('EplConfigService', () => {
       const tokens = theme.rules.map(r => r.token);
       ['keyword', 'type', 'comment', 'string', 'number'].forEach(t => expect(tokens).toContain(t));
     });
+
+    it('styles invalid input and brackets under the token names the tokenizer really emits', () => {
+      const tokens = service.getCustomLangTheme().rules.map(r => r.token);
+      ['string.invalid', 'string.escape.invalid', 'comment.doc.invalid', 'delimiter.bracket'].forEach(t => expect(tokens).toContain(t));
+      expect(tokens).not.toContain('@brackets'); // a rule action, not a token name
+    });
   });
 
   it('exposes the shared token provider', () => {
@@ -82,6 +88,25 @@ describe('eplTokenProvider', () => {
     expect(eplTokenProvider.digits.test('1_000')).toBeTrue();
     expect(eplTokenProvider.escapes.test('\\n')).toBeTrue();
     expect(eplTokenProvider.escapes.test('\\q')).toBeFalse();
+  });
+
+  it('has a hex digit pattern that does not match brackets', () => {
+    expect(eplTokenProvider.hexdigits.test('[')).toBeFalse();
+    expect(eplTokenProvider.hexdigits.exec('1F_aB')?.[0]).toBe('1F_aB');
+  });
+
+  it('leaves the sign out of number literals, so `x-1` is a subtraction', () => {
+    const root = eplTokenProvider.tokenizer.root as unknown as unknown[][];
+    const numberRules = root.filter(rule => typeof rule[1] === 'string' && (rule[1] as string).startsWith('number'));
+    expect(numberRules.length).toBeGreaterThan(0);
+    numberRules.forEach(rule => expect((rule[0] as RegExp).source.startsWith('[\\-+]')).toBeFalse());
+  });
+
+  it('classifies every run of symbol characters as an operator, including multi-character ones', () => {
+    ['==', '!=', '<=', '>=', '<>', '->'].forEach(op => expect(eplTokenProvider.operators).toContain(op));
+    const symbolRule = (eplTokenProvider.tokenizer.root as unknown as unknown[][])
+      .find(rule => rule[0] instanceof RegExp && rule[0].source === '@symbols') as [RegExp, { cases: Record<string, string> }];
+    expect(symbolRule[1].cases['@default']).toBe('operator');
   });
 
   it('defines every state it references', () => {
