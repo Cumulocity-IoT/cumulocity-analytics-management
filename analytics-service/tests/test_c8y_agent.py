@@ -279,9 +279,9 @@ class TestDeleteExtension:
         tenant.binaries.delete.side_effect = [None, RuntimeError("x"), None]
         assert agent.delete_extension(REQ, extension_name="E") == 2
 
-    def test_by_name_keeps_the_excluded_extension(self, agent, tenant):
+    def test_by_name_deletes_only_the_given_ids(self, agent, tenant):
         tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
-        assert agent.delete_extension(REQ, extension_name="E", exclude_id="2") == 1
+        assert agent.delete_extension(REQ, extension_name="E", only_ids=["1"]) == 1
         tenant.binaries.delete.assert_awaited_once_with("1")
 
     def test_unexpected_failure_is_wrapped(self, tenant, monkeypatch):
@@ -289,6 +289,16 @@ class TestDeleteExtension:
         monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("net")))
         with pytest.raises(C8YAgentError, match="Failed to delete"):
             agent.delete_extension(REQ, extension_name="E")
+
+
+class TestFindExtensionIds:
+    def test_returns_the_ids_with_the_name(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.find_extension_ids(REQ, "E") == ["1", "2"]
+
+    def test_rejects_quotes_in_the_name(self, agent):
+        with pytest.raises(ValueError):
+            agent.find_extension_ids(REQ, "E'")
 
 
 class TestCountExtensions:

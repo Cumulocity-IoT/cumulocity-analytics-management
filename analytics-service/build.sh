@@ -138,10 +138,9 @@ mkdir -p "$DIST_DIR"
 
 # copy & render sources
 cp ./requirements.txt "$BUILD_DIR"
-cp ./src/app.py "$BUILD_DIR"
-cp ./src/solution_utils.py "$BUILD_DIR"
-cp ./src/c8y_agent.py "$BUILD_DIR"
-cp ./src/logging_config.py "$BUILD_DIR"
+# same layout as the source tree, so the Dockerfile builds from either place
+mkdir -p "$BUILD_DIR/src"
+cp ./src/app.py ./src/solution_utils.py ./src/c8y_agent.py ./src/logging_config.py "$BUILD_DIR/src/"
 sed -e "s/{VERSION}/$VERSION/g" ./cumulocity.json > "$BUILD_DIR/cumulocity.json"
 sed -e "s/{SAMPLE}/$NAME/g" ./Dockerfile > "$BUILD_DIR/Dockerfile"
 # extend cumulocity.json is defined

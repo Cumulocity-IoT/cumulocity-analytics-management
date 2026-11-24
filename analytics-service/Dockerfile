@@ -35,7 +35,7 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 RUN setcap cap_net_bind_service=+ep "$(readlink -f "$(command -v python3)")"
 
 # Copy application files
-COPY app.py c8y_agent.py solution_utils.py logging_config.py /apama_work/
+COPY src/app.py src/c8y_agent.py src/solution_utils.py src/logging_config.py /apama_work/
 
 # Run the service, and the SDK builds of untrusted repository content, unprivileged
 USER apama

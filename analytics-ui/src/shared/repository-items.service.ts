@@ -219,7 +219,7 @@ export class RepositoryItemsService {
    */
   private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
     if (item.type !== 'file' || !item.file.endsWith('.mon')) {
-      return of({ ...item, id: item.file });
+      return of({ ...item, id: this.rowId(item) });
     }
 
     const cacheKey = `${item.repositoryId}::${item.url}`;
@@ -237,7 +237,16 @@ export class RepositoryItemsService {
       this.fqnCache.set(cacheKey, fqns$);
     }
 
-    return fqns$.pipe(map(fqns => ({ ...item, id: fqns[0], blockIds: fqns })));
+    return fqns$.pipe(map(fqns => ({ ...item, id: this.rowId(item), blockIds: fqns })));
+  }
+
+  /**
+   * Selection ID of a row. It is specific to the repository and the file, so
+   * the same block in two repositories stays two selectable rows. The block
+   * identities are kept apart in `blockIds`.
+   */
+  private rowId(item: RepositoryItem): string {
+    return `${item.repositoryId}::${item.url}`;
   }
 
   private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
@@ -289,9 +298,10 @@ export class RepositoryItemsService {
    */
   private createYamlSectionItems(sections: Record<string, string[]>, yamlItem: RepositoryItem): RepositoryItem[] {
     const items = Object.entries(sections).map(([name, files]) => {
-      const sectionFiles = files
-        .filter(file => file.toLowerCase().endsWith('.mon'))
-        .map(file => file.substring(file.lastIndexOf('/') + 1));
+      // Repository-relative paths identify the files; the deployed-file lookup
+      // only knows basenames.
+      const sectionFiles = files.filter(file => file.toLowerCase().endsWith('.mon'));
+      const basename = (file: string) => file.substring(file.lastIndexOf('/') + 1);
       return {
         ...yamlItem,
         id: createShortId(),
@@ -300,7 +310,7 @@ export class RepositoryItemsService {
         extensionsYamlItem: yamlItem,
         sectionFiles,
         installed:
-          sectionFiles.length > 0 && sectionFiles.every(file => this.deployedFiles.has(file))
+          sectionFiles.length > 0 && sectionFiles.every(file => this.deployedFiles.has(basename(file)))
       } as RepositoryItem;
     });
     return this.hideInstalled ? items.filter(item => !item.installed) : items;
@@ -322,13 +332,19 @@ export class RepositoryItemsService {
       (block.blockIds ?? [block.id]).some(id => loadedIds.has(id)) ||
       deployedFiles.has(block.file);
 
+    // The descriptor is expanded into sections later (`analyzeRepositoryItems`),
+    // which apply the installation filter themselves. Dropping it here would
+    // hide the undeployed sections too.
+    const isDescriptor = (block: RepositoryItem) =>
+      block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML;
+
     if (hideInstalled) {
-      return blocks.filter(block => !isInstalled(block));
+      return blocks.filter(block => isDescriptor(block) || !isInstalled(block));
     }
 
     return blocks.map(block => ({
       ...block,
-      installed: isInstalled(block)
+      installed: isDescriptor(block) ? false : isInstalled(block)
     }));
   }
 

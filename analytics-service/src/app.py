@@ -1369,14 +1369,19 @@ def _build_and_process_extension(
                     },
                     **(build_info_extra or {}),
                 }
+                # Taken before the upload: only these are replaced, so a concurrent
+                # rebuild of the same extension keeps its own new binary.
+                previous_ids = (
+                    agent.find_extension_ids(request, extension_name) if replace_existing else []
+                )
                 ext_id = agent.upload_extension(request, extension_name, ext_file, build_info)
                 logger.info(f"Uploaded extension {extension_name} as {ext_id}")
 
                 body = {"id": ext_id, "message": "Extension uploaded"}
-                if replace_existing:
+                if replace_existing and previous_ids:
                     try:
                         replaced = agent.delete_extension(
-                            request, extension_name=extension_name, exclude_id=ext_id
+                            request, extension_name=extension_name, only_ids=previous_ids
                         )
                         logger.info(
                             f"Replaced {replaced} existing extension(s) named {extension_name}"

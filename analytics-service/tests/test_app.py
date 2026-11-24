@@ -458,6 +458,7 @@ class TestExtensionFromRepository:
     def test_rebuild_uploads_first_then_deletes_the_previous_extension(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
         agent_mock.count_extensions.return_value = 1
+        agent_mock.find_extension_ids.return_value = ["4"]
         agent_mock.upload_extension.return_value = "9"
         order = []
         agent_mock.upload_extension.side_effect = lambda *a, **k: order.append("upload") or "9"
@@ -468,7 +469,7 @@ class TestExtensionFromRepository:
         )
         assert resp.status_code == 201
         assert order == ["upload", "delete"]
-        assert agent_mock.delete_extension.call_args.kwargs == {"extension_name": "E", "exclude_id": "9"}
+        assert agent_mock.delete_extension.call_args.kwargs == {"extension_name": "E", "only_ids": ["4"]}
 
     def test_failed_build_keeps_the_existing_extension_on_rebuild(self, client, agent_mock, monkeypatch, build_env):
         agent_mock.load_repository.return_value = REPO

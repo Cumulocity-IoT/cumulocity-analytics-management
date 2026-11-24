@@ -100,6 +100,17 @@ describe('RepositoryItemsService', () => {
       expect(result.map(i => i.name)).toEqual(['Python']);
     });
 
+    it('keeps repository paths of section files, so equal basenames stay distinct', async () => {
+      const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
+      github.getItemContent.and.resolveTo('A:\n  - a/Block.mon\nB:\n  - b/Block.mon\n');
+      await firstValueFrom(service.getItemsForRepositories([repo()], [], false, new Set(['Block.mon'])));
+
+      const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
+
+      expect(result.map(i => i.sectionFiles)).toEqual([['a/Block.mon'], ['b/Block.mon']]);
+      expect(result.every(i => i.installed)).toBeTrue(); // the deployed-file lookup uses basenames
+    });
+
     it('yields no sections for an unparsable or non-object yaml', async () => {
       const yaml = item({ file: 'extensions.yaml' });
       github.getItemContent.and.resolveTo('key: [unclosed');
@@ -152,18 +163,19 @@ describe('RepositoryItemsService', () => {
       expect(items.map(i => i.file)).toEqual(['Foo.mon', 'README.md', 'sub']);
       const [foo] = items;
       expect(foo.name).toBe('Foo');
-      expect(foo.id).toBe('com.acme.Foo');
+      expect(foo.id).toBe('r1::https://api/Foo.mon'); // repository and path specific
       expect(foo.blockIds).toEqual(['com.acme.Foo']);
       expect(foo.downloadUrl).toBe('https://raw/Foo.mon');
       expect(foo.repositoryId).toBe('r1');
-      expect(items[1].id).toBe('README.md'); // non-.mon items use their file name as id
+      expect(items[1].id).toBe('r1::https://api/README.md');
     });
 
     it('falls back to the file name when FQN extraction fails for one item', async () => {
       github.getContent.and.resolveTo([ghEntry('Foo.mon')]);
       github.getItemContent.and.rejectWith(new Error('rate limited'));
       const [foo] = await firstValueFrom(service.getItemsForRepositories([repo()], [], false));
-      expect(foo.id).toBe('Foo.mon');
+      expect(foo.id).toBe('r1::https://api/Foo.mon');
+      expect(foo.blockIds).toEqual(['Foo.mon']);
       expect(alerts.danger).not.toHaveBeenCalled();
     });
 
@@ -179,6 +191,28 @@ describe('RepositoryItemsService', () => {
       service.invalidateCache();
       const hidden = await firstValueFrom(service.getItemsForRepositories([repo()], deployed, true));
       expect(hidden.map(i => i.name)).toEqual(['Other']);
+    });
+
+    it('keeps extensions.yaml when hiding installed items, so its sections can be listed', async () => {
+      github.getContent.and.resolveTo([ghEntry('extensions.yaml')]);
+      github.getItemContent.and.resolveTo('Offset:\n  - Offset.mon\nPython:\n  - Python.mon\n');
+
+      const items = await firstValueFrom(
+        service.getItemsForRepositories([repo()], [], true, new Set(['extensions.yaml', 'Offset.mon'])));
+      expect(items.map(i => i.file)).toEqual(['extensions.yaml']);
+
+      const sections = await firstValueFrom(service.analyzeRepositoryItems(items));
+      expect(sections.map(i => i.name)).toEqual(['Python']);
+    });
+
+    it('gives the same block in two repositories different row ids', async () => {
+      github.getContent.and.callFake(async (r: Repository) => [{ ...ghEntry('Foo.mon'), url: `https://api/${r.id}/Foo.mon` }]);
+      github.getItemContent.and.resolveTo(monContent('com.acme', 'Foo'));
+
+      const items = await firstValueFrom(service.getItemsForRepositories([repo('r1'), repo('r2')], [], false));
+
+      expect(items.map(i => i.blockIds)).toEqual([['com.acme.Foo'], ['com.acme.Foo']]);
+      expect(new Set(items.map(i => i.id)).size).toBe(2);
     });
 
     it('marks a file without blocks as installed when a deployed extension contains it', async () => {

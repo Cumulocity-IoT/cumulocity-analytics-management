@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import logging
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Collection, Dict, List, Optional, Set, Tuple
 
 from dotenv import load_dotenv
 
@@ -162,6 +162,21 @@ class C8YAgent:
             )
             raise C8YAgentError(f"Failed to upload extension: {e}") from e
 
+    def find_extension_ids(self, request, extension_name: str) -> List[str]:
+        """IDs of the extensions with the given name."""
+        if any(c in extension_name for c in "'\\"):
+            raise ValueError("Extension name contains invalid characters")
+
+        async def _work(tenant):
+            query = f"name eq '{extension_name}' and has(pas_extension)"
+            return [str(mo.id) async for mo in tenant.inventory.select(query=query, limit=None)]
+
+        try:
+            return self._execute(request, _work)
+        except Exception as e:
+            self._logger.error(f"Failed to look up extension {extension_name}: {e}", exc_info=True)
+            raise C8YAgentError(f"Failed to look up extension: {e}") from e
+
     def count_extensions(self, request, extension_name: str) -> int:
         """Number of extensions with the given name."""
         if any(c in extension_name for c in "'\\"):
@@ -182,7 +197,7 @@ class C8YAgent:
         request,
         extension_id: Optional[str] = None,
         extension_name: Optional[str] = None,
-        exclude_id: Optional[str] = None,
+        only_ids: Optional[Collection[str]] = None,
     ) -> int:
         """
         Delete extension(s) from Cumulocity inventory.
@@ -191,8 +206,9 @@ class C8YAgent:
             request: Flask request object
             extension_id: ID of the extension to delete (takes precedence)
             extension_name: Name of extension(s) to delete
-            exclude_id: With extension_name, an extension to keep (the replacement
-                that was just uploaded)
+            only_ids: With extension_name, delete only these extensions. Callers
+                replacing an extension pass the IDs they saw before uploading, so
+                a concurrent replacement of the same name is never deleted.
 
         Returns:
             Number of extensions deleted
@@ -230,7 +246,7 @@ class C8YAgent:
             query = f"name eq '{extension_name}' and has(pas_extension)"
             extensions = [
                 mo async for mo in tenant.inventory.select(query=query, limit=None)
-                if not exclude_id or str(mo.id) != str(exclude_id)
+                if only_ids is None or str(mo.id) in {str(i) for i in only_ids}
             ]
 
             if not extensions:
