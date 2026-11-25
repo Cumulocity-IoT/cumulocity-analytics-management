@@ -293,7 +293,7 @@ export class CepStatusService implements OnDestroy {
   }
 
   private async fetchOperationIdFromCepStatus(): Promise<string> {
-    const statusData = await fetchCepJSON<any>(this.fetchClient, `${CEP_PATH_STATUS}`);
+    const statusData = await fetchCepJSON<{ microservice_name: string; microservice_application_id: string }>(this.fetchClient, `${CEP_PATH_STATUS}`);
     const { microservice_name, microservice_application_id } = statusData;
 
     const { data } = await this.inventoryService.listQuery(

@@ -15,18 +15,8 @@ import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { AnalyticsService, Repository, RepositoryService } from '../shared';
+import { AnalyticsService, ExtensionBuildInformation, RepositoryService } from '../shared';
 import { ConfirmationModalComponent } from '../shared/component/confirmation-modal.component';
-
-interface BuildInformation {
-  build_type: 'repository' | 'list' | 'yaml';
-  repository: Repository;
-  monitors?: Record<string, unknown>[];
-  yaml?: Record<string, unknown>;
-  sections?: string[];
-  section_name?: string;
-  files?: string[];
-}
 
 @Component({
   selector: 'a17t-extension-card',
@@ -150,7 +140,7 @@ export class ExtensionCardComponent {
   }
 
   async rebuild(): Promise<void> {
-    const buildInfo = this.extension()['build_information'] as BuildInformation;
+    const buildInfo = this.extension()['build_information'] as ExtensionBuildInformation;
 
     // Validate build information exists
     if (!buildInfo) {
@@ -199,7 +189,7 @@ export class ExtensionCardComponent {
     );
   }
 
-  private async performRebuild(buildInfo: BuildInformation): Promise<void> {
+  private async performRebuild(buildInfo: ExtensionBuildInformation): Promise<void> {
     this.alertService.info(
       this.messages.format(gettext('Rebuilding extension "{{extensionName}}"…'), { extensionName: this.extension()['name'] })
     );
@@ -245,7 +235,7 @@ export class ExtensionCardComponent {
   }
 
   private async rebuildFromRepository(
-    buildInfo: BuildInformation
+    buildInfo: ExtensionBuildInformation
   ): Promise<void> {
     await this.repositoryService.createExtensionFromRepository(
       this.extension()['name'],
@@ -256,7 +246,7 @@ export class ExtensionCardComponent {
     );
   }
 
-  private async rebuildFromList(buildInfo: any): Promise<void> {
+  private async rebuildFromList(buildInfo: ExtensionBuildInformation): Promise<void> {
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
     }
@@ -271,7 +261,7 @@ export class ExtensionCardComponent {
     );
   }
 
-  private async rebuildFromYaml(buildInfo: any): Promise<void> {
+  private async rebuildFromYaml(buildInfo: ExtensionBuildInformation): Promise<void> {
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');
     }

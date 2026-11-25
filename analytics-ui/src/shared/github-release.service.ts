@@ -8,6 +8,21 @@ import { GITHUB_BASE, GitHubRelease, Repository } from './analytics.model';
  * is always safe to show directly in the UI (parity with `repository.service.ts`'s
  * rate-limit/auth/not-found messages).
  */
+/** Subset of the GitHub REST "release" payload that this service reads. */
+interface GitHubApiRelease {
+  id: number;
+  tag_name: string;
+  name?: string | null;
+  published_at: string;
+  assets?: {
+    id: number;
+    name: string;
+    size: number;
+    browser_download_url: string;
+    content_type: string;
+  }[];
+}
+
 export class GitHubReleaseError extends Error {
   constructor(
     message: string,
@@ -99,16 +114,16 @@ export class GitHubReleaseService {
     }
 
     const data = await response.json();
-    return (data as any[]).map(release => this.toGitHubRelease(release));
+    return (data as GitHubApiRelease[]).map(release => this.toGitHubRelease(release));
   }
 
-  private toGitHubRelease(raw: any): GitHubRelease {
+  private toGitHubRelease(raw: GitHubApiRelease): GitHubRelease {
     return {
       id: raw.id,
       tagName: raw.tag_name,
       name: raw.name || raw.tag_name,
       publishedAt: raw.published_at,
-      assets: (raw.assets || []).map((asset: any) => ({
+      assets: (raw.assets || []).map(asset => ({
         id: asset.id,
         name: asset.name,
         size: asset.size,

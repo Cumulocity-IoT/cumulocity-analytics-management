@@ -64,11 +64,12 @@ export class FetchExtensionService {
         );
       }
       return String(managedObjectId);
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof CepError) {
         throw this.handleError(error, 'Failed to resolve proxy managed object', true, error.userMessage);
       }
-      if (error?.res?.status === 404 || error?.status === 404) {
+      if ((error as { res?: { status?: number }; status?: number })?.res?.status === 404 ||
+        (error as { status?: number })?.status === 404) {
         throw this.handleError(
           error,
           'c8y_FetchUploadProxy external id not found',

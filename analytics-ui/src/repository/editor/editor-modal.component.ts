@@ -26,7 +26,7 @@ export class EditorModalComponent {
 
   @Input() source$!: Observable<string>;
   @Input() monitorName!: string;
-  @Output() closeSubject: Subject<any> = new Subject();
+  @Output() closeSubject: Subject<unknown> = new Subject();
 
   @ViewChild(EditorComponent) editorComponent!: EditorComponent;
 
@@ -43,7 +43,7 @@ export class EditorModalComponent {
     };
   }
 
-  onClose(_event: any) {
+  onClose(_event: unknown) {
     this.closeSubject.next(true);
   }
 

@@ -52,7 +52,7 @@ export class ExtensionCreateModalComponent implements OnInit {
     this.isDeployed();
   }
 
-  onDismiss(_event: any) {
+  onDismiss(_event: unknown) {
     this.closeSubject.next(undefined);
   }
 

@@ -41,6 +41,7 @@ export interface CepExtension {
   version: string;
   loaded: true;
   extensionType?: ExtensionType;
+  build_information?: ExtensionBuildInformation;
 }
 
 export interface CepBlock {
@@ -293,3 +294,13 @@ export interface CepStatusObject {
 }
 
 export type UploadMode = 'add' | 'update';
+/** Build information stored on an extension managed object (`build_information`). */
+export interface ExtensionBuildInformation {
+  build_type: 'repository' | 'list' | 'yaml';
+  repository: Repository;
+  monitors?: RepositoryItem[];
+  yaml?: RepositoryItem;
+  sections?: string[];
+  section_name?: string;
+  files?: { file?: string }[];
+}

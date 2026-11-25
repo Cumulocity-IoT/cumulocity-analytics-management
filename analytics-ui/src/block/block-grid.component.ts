@@ -50,7 +50,7 @@ export class BlockGridComponent implements OnInit {
 
   loading: boolean = true;
 
-  refresh: EventEmitter<any> = new EventEmitter<any>();
+  refresh: EventEmitter<void> = new EventEmitter<void>();
 
   blocks: CepBlock[] = [];
   actionControls: ActionControl[] = [];

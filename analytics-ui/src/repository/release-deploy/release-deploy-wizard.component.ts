@@ -119,9 +119,9 @@ export class ReleaseDeployWizardComponent implements OnInit {
       if (this.releases.length > 0) {
         this.onReleaseSelected(this.releases[0]);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       this.errorMessage =
-        error?.userMessage || gettext('Failed to list releases.');
+        (error as { userMessage?: string })?.userMessage || gettext('Failed to list releases.');
     } finally {
       this.loading = false;
     }

@@ -71,7 +71,7 @@ export class ExtensionDetailsComponent implements OnInit {
       this.extension = history.state.extension;
     }
 
-    const buildInfo = (this.extension as any)?.['build_information'];
+    const buildInfo = this.extension?.build_information;
 
     if (buildInfo) {
       // Add Build Type
@@ -98,7 +98,7 @@ export class ExtensionDetailsComponent implements OnInit {
           label: 'Repository Url',
           type: 'link',
           value: repo.url,
-          action: (_event: any, link: string) =>
+          action: (_event: unknown, link: string) =>
             window.open(link, '_blank', 'noopener,noreferrer')
         });
       }
@@ -110,7 +110,7 @@ export class ExtensionDetailsComponent implements OnInit {
   async init() {
     this.setBreadcrumbConfig();
     const { name } = this.route.snapshot.params;
-    const buildInformation = (this.extension as any)?.['build_information'];
+    const buildInformation = this.extension?.build_information;
     const contentPaths = new Set<string>();
     // Real extension zips nest everything under a top-level "files/" folder
     // (apama-ctrl's copyExtensions looks specifically there), so every source
@@ -123,12 +123,12 @@ export class ExtensionDetailsComponent implements OnInit {
     // build_information keeps the full relative path of every file within the
     // extension zip (including nested subfolders), regardless of deployment
     // status, so it is always the primary source for the Files list.
-    (buildInformation?.['monitors'] || []).forEach((monitor: any) => {
+    (buildInformation?.['monitors'] || []).forEach(monitor => {
       if (monitor?.['file']) {
         contentPaths.add(stripFilesPrefix(monitor['file']));
       }
     });
-    (buildInformation?.['files'] || []).forEach((file: any) => {
+    (buildInformation?.['files'] || []).forEach(file => {
       if (file?.['file']) {
         contentPaths.add(stripFilesPrefix(file['file']));
       }
@@ -138,7 +138,7 @@ export class ExtensionDetailsComponent implements OnInit {
       const extensionNames =
         await this.analyticsService.getExtensionNamesFromCep();
       const key = `${name}.zip`;
-      ((extensionNames as any)[key]?.contents || []).forEach(
+      ((extensionNames as unknown as Record<string, { contents?: string[] }>)[key]?.contents || []).forEach(
         (fileName: string) => {
           contentPaths.add(stripFilesPrefix(fileName));
         }
