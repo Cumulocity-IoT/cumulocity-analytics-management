@@ -8,7 +8,7 @@ A Cumulocity web plugin, with an optional microservice, that manages Analytics B
 - [Manage custom extensions](#manage-custom-extensions)
 - [Safe Mode](#safe-mode)
 - [Sample repositories and building custom extensions](#sample-repositories-and-building-custom-extensions)
-- [Backend service switch](#backend-service-switch)
+- [Backend service](#backend-service)
 - [Access control](#access-control)
 - [Installation](#installation)
 - [Build the plugin](#build-the-plugin)
@@ -78,9 +78,9 @@ Public repositories need no token. For private repositories, enter a GitHub Pers
 
 A tenant without configured repositories starts with [Cumulocity-IoT/analytics-builder-blocks-contrib](https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib). See [Repository layout for building extensions](#repository-layout-for-building-extensions) for the supported folder structures.
 
-## Backend service switch
+## Backend service
 
-The action bar of the **Repositories** tab shows whether the backend microservice is deployed. If it is, the **Use backend service** entry in the **More** menu controls whether the plugin uses the backend or works in browser-only mode. The tenant option stores the setting, and the default is on. In browser-only mode you cannot build extensions. If you deploy or remove the microservice while the page is open, select **Re-check** in the **More** menu to refresh the state. Changing the setting reloads the repository list.
+The plugin uses the backend microservice `analytics-ext-service` automatically when it is deployed and responding. Otherwise it works in browser-only mode, where you cannot build extensions. If the microservice is not deployed, the action bar of the **Repositories** tab shows a **Re-check backend service** button. Select it after you deploy the microservice while the page is open.
 
 ## Access control
 
@@ -125,7 +125,7 @@ The application roles protect the microservice API only. The plugin also works w
 
 A user with `ROLE_INVENTORY_ADMIN` or `ROLE_OPTION_MANAGEMENT_ADMIN` can therefore change extensions and repositories in the plugin, whatever application role the user holds. The application roles restrict only the actions that use the microservice, such as building from a repository, browsing repository content, and reading the engine status. The migration guide describes this limit: [docs/MIGRATION-SECURITY-2026-10.md](docs/MIGRATION-SECURITY-2026-10.md).
 
-In browser-only mode, which applies when the microservice is not deployed or the **Use backend service** switch is off, only the platform roles apply.
+In browser-only mode, which applies when the microservice is not deployed, only the platform roles apply.
 
 ### Roles of the microservice itself
 
@@ -245,7 +245,7 @@ Custom blocks are developed with the [Analytics Builder block SDK](https://githu
   `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 * **No extension is loaded after an upload:** the engine is probably in [Safe Mode](#safe-mode); delete the suspected extension and restart.
 * **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** make sure a repository is configured and enabled in the **Repositories** drawer.
-* **Cannot build extensions:** check that the backend microservice is deployed and the **Use backend service** switch is on, see [Backend service switch](#backend-service-switch).
+* **Cannot build extensions:** check that the backend microservice is deployed, see [Backend service](#backend-service).
 
 
 ## Repository layout for building extensions

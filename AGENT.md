@@ -207,7 +207,7 @@ npm run start:cockpit           # Serve with Cockpit shell
 3. Test extension upload and deployment workflow
 4. Review EPL code editor functionality
 5. Validate GitHub repository integration
-6. Check the Safe Mode indicator and the backend service switch on the Repositories tab
+6. Check the Safe Mode indicator and the backend service status on the Repositories tab
 
 ### Build Artifacts
 - **Frontend:** `/dist/` - Angular build output

@@ -5,8 +5,7 @@ import {
   GLOBAL_ACCESS_TOKEN_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
-  SETTINGS_OPTION_CATEGORY,
-  USE_BACKEND_SERVICE_OPTION_KEY
+  SETTINGS_OPTION_CATEGORY
 } from './analytics.model';
 import { RepositoryConfigService } from './repository-config.service';
 import { RepositoryError } from './repository-error';
@@ -260,44 +259,6 @@ describe('RepositoryConfigService', () => {
     it('wraps storage failures in a RepositoryError', async () => {
       options.create.and.rejectWith(new Error('denied'));
       await expectAsync(service.setGlobalAccessToken('g')).toBeRejectedWith(
-        jasmine.any(RepositoryError)
-      );
-    });
-  });
-
-  describe('boolean settings', () => {
-    it('use-backend: defaults to true unless explicitly "false"', async () => {
-      options.detail.and.resolveTo({ data: { value: 'false' } } as never);
-      expect(await service.getUseBackendServiceEnabled()).toBeFalse();
-      options.detail.and.resolveTo({ data: { value: 'true' } } as never);
-      expect(await service.getUseBackendServiceEnabled()).toBeTrue();
-      options.detail.and.rejectWith(new Error('404'));
-      expect(await service.getUseBackendServiceEnabled()).toBeTrue();
-    });
-
-    it('persists the settings as strings', async () => {
-      await service.setUseBackendServiceEnabled(false);
-      expect(options.create.calls.argsFor(0)[0]).toEqual({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: USE_BACKEND_SERVICE_OPTION_KEY,
-        value: 'false'
-      });
-    });
-
-    it('updates an option that already exists instead of creating it again', async () => {
-      options.update.and.resolveTo({} as never);
-      await service.setUseBackendServiceEnabled(false);
-      expect(options.update).toHaveBeenCalledOnceWith({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: USE_BACKEND_SERVICE_OPTION_KEY,
-        value: 'false'
-      });
-      expect(options.create).not.toHaveBeenCalled();
-    });
-
-    it('wraps persistence failures in a RepositoryError', async () => {
-      options.create.and.rejectWith(new Error('x'));
-      await expectAsync(service.setUseBackendServiceEnabled(true)).toBeRejectedWith(
         jasmine.any(RepositoryError)
       );
     });

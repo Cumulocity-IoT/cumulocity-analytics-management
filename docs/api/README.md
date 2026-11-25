@@ -30,8 +30,8 @@ constants in [`analytics.model.ts`](../../analytics-ui/src/shared/analytics.mode
 
 The UI does not call `GET`/`POST /repository/configuration`. [`repository-config.service.ts`](../../analytics-ui/src/shared/repository-config.service.ts)
 reads and writes the repository tenant options directly through the Cumulocity platform API, in the same format that
-`c8y_agent.py` uses. Whether the UI uses the endpoints above or works in browser-only mode depends on the
-**Use backend service** switch on the **Repositories** tab (`RepositoryModeService.isBackendMode()`).
+`c8y_agent.py` uses. Whether the UI uses the endpoints above or works in browser-only mode depends on whether the
+microservice is deployed and responding (`RepositoryModeService.isBackendMode()`).
 
 [`analytics.service.ts`](../../analytics-ui/src/shared/analytics.service.ts) is the
 facade the rest of the UI depends on; it delegates to `CepStatusService`,

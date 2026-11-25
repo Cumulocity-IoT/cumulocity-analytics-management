@@ -57,13 +57,9 @@ describe('RepositoryBlockGridComponent', () => {
     repositories.reloadAll.and.resolveTo();
     analytics = jasmine.createSpyObj('AnalyticsService', [
       'isBackendServiceDeployed',
-      'isBackendServiceEnabled',
-      'recheckBackendServiceDeployed',
-      'setBackendServiceEnabled'
+      'recheckBackendServiceDeployed'
     ]);
     analytics.isBackendServiceDeployed.and.resolveTo(true);
-    analytics.isBackendServiceEnabled.and.resolveTo(false);
-    analytics.setBackendServiceEnabled.and.resolveTo();
     alerts = jasmine.createSpyObj('AlertService', ['danger', 'warning', 'success']);
     modalClose$ = new Subject<void>();
     modalHide = jasmine.createSpy('hide');
@@ -91,29 +87,10 @@ describe('RepositoryBlockGridComponent', () => {
     spyOn(console, 'error');
   });
 
-  describe('backend service switch', () => {
-    it('reads the deployed and enabled state on init', async () => {
-      analytics.isBackendServiceEnabled.and.resolveTo(true);
+  describe('backend service status', () => {
+    it('reads the deployed state on init', async () => {
       await create();
       expect(component.backendDeployed).toBeTrue();
-      expect(component.backendEnabled).toBeTrue();
-    });
-
-    it('persists the switch and reloads the items for the new mode', async () => {
-      await create();
-      await component.toggleBackendEnabled(true);
-      expect(analytics.setBackendServiceEnabled).toHaveBeenCalledWith(true);
-      expect(component.backendEnabled).toBeTrue();
-      expect(repositories.reload).toHaveBeenCalled();
-    });
-
-    it('reverts the switch and reports a failure', async () => {
-      analytics.setBackendServiceEnabled.and.rejectWith(new Error('nope'));
-      await create();
-      await component.toggleBackendEnabled(true);
-      expect(component.backendEnabled).toBeFalse();
-      expect(alerts.danger).toHaveBeenCalled();
-      expect(component.backendTogglePending).toBeFalse();
     });
 
     it('re-checks whether the backend service is deployed', async () => {

@@ -35,8 +35,6 @@ describe('AnalyticsService (facade)', () => {
       'restartCepEngine',
       'isBackendServiceAvailable',
       'isBackendServiceDeployed',
-      'isBackendServiceEnabled',
-      'setBackendServiceEnabled',
       'getCepOperationObjectId'
     ]);
     inventory = Object.assign(
@@ -135,7 +133,6 @@ describe('AnalyticsService (facade)', () => {
       status.getCepOperationObjectId.and.resolveTo('7');
       status.isBackendServiceAvailable.and.resolveTo(true);
       status.isBackendServiceDeployed.and.resolveTo(true);
-      status.isBackendServiceEnabled.and.resolveTo(false);
       enrichment.getDeployedBlocks.and.resolveTo([]);
       enrichment.getDeployedExtensionDetails.and.resolveTo(null);
       inventory.getExtensionsFromInventory.and.resolveTo([ext]);
@@ -150,7 +147,6 @@ describe('AnalyticsService (facade)', () => {
       expect(await service.getCepOperationObjectId()).toBe('7');
       expect(await service.isBackendServiceAvailable()).toBeTrue();
       expect(await service.isBackendServiceDeployed()).toBeTrue();
-      expect(await service.isBackendServiceEnabled()).toBeFalse();
       expect(await service.getDeployedBlocks()).toEqual([]);
       expect(await service.getDeployedExtensionDetails('E')).toBeNull();
       expect(enrichment.getDeployedExtensionDetails).toHaveBeenCalledWith('E');
@@ -163,7 +159,6 @@ describe('AnalyticsService (facade)', () => {
 
       await service.restartCepEngine();
       await service.reinitializeMonitoring();
-      await service.setBackendServiceEnabled(true);
       await service.getEnrichedExtensions();
       await service.getExtensionNamesFromCep();
       service.cancelExtensionCreation(ext);
@@ -172,7 +167,6 @@ describe('AnalyticsService (facade)', () => {
 
       expect(status.restartCepEngine).toHaveBeenCalled();
       expect(status.reinitializeMonitoring).toHaveBeenCalled();
-      expect(status.setBackendServiceEnabled).toHaveBeenCalledWith(true);
       expect(enrichment.getEnrichedExtensions).toHaveBeenCalled();
       expect(enrichment.getExtensionNamesFromCep).toHaveBeenCalled();
       expect(inventory.cancelExtensionCreation).toHaveBeenCalledWith(ext);

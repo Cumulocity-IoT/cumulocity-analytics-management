@@ -77,8 +77,8 @@ Enforced by `npm run lint:naming` (ESLint rules in `.eslintrc.naming.js`, which 
 Structure rules of thumb: feature folders contain only what that feature's routes use; anything used by two
 features moves to `shared/`; components do not call `FetchClient`/`fetch` or c8y data services directly, they go through a service
 (`AnalyticsService` or `RepositoryService` facades); one facade per area, focused services behind it.
-Known exception: `RepositoryBlockGridComponent` injects `AnalyticsService` for the backend service switch
-(deployed state, enabled flag, Re-check) in addition to `RepositoryService`.
+Known exception: `RepositoryBlockGridComponent` injects `AnalyticsService` for the backend service status
+(deployed state, Re-check) in addition to `RepositoryService`.
 
 ### Talking to backends
 
@@ -91,9 +91,8 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 
 `RepositoryBlockGridComponent` (route `repository`) has these controls in its action bar:
 
-- **Backend service** label, **Re-check** button, and **Use backend service** switch. The label shows whether the
-  microservice `analytics-ext-service` is deployed. The switch (tenant option, default on) selects backend or
-  browser-only mode. Changing it reloads the repository items, because they load through the active mode.
+- **Re-check backend service** button, shown only while the microservice `analytics-ext-service` is not deployed.
+  The backend is used automatically whenever it is deployed and responding.
 - **Hide installed** switch, **Deploy Release**, **Repositories** drawer, and **Reload**.
 
 The grid title names the source: "Blocks from *repository name* (*type*)" when all items come from one repository, and
@@ -186,7 +185,7 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
-| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | backend service switch, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
+| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | backend service status, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
 | `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks |
 | `shared/wizard/extension-add(-wizard)`, `shared/component/*` specs | zip analysis and upload/update flow, confirmation dialog, renderers, Formly switch |
 

@@ -110,26 +110,6 @@
   </button>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item
-  [placement]="'right'"
-  [priority]="50"
->
-  <label
-    class="c8y-switch m-b-0 m-l-8 m-r-8"
-    data-cy="repo-backend-switch"
-    title="{{
-      (backendDeployed ? 'Backend service deployed' : 'Backend service not deployed') | translate
-    }}"
-  >
-    <input
-      type="checkbox"
-      [checked]="backendEnabled"
-      [disabled]="!backendDeployed || backendTogglePending"
-      (change)="toggleBackendEnabled($any($event.target).checked)"
-    />
-    <span></span> {{ 'Use backend service' | translate }}
-  </label>
-</c8y-action-bar-item>
 @if (!backendDeployed) {
   <c8y-action-bar-item
     [placement]="'right'"

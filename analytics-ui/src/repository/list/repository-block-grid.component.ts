@@ -53,13 +53,7 @@ import {
   PAGE_LABELS,
   ROUTES
 } from '../../shared';
-import {
-  distinctUntilChanged,
-  map,
-  Observable,
-  shareReplay,
-  tap
-} from 'rxjs';
+import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
 import { catchError, of } from 'rxjs';
 import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
@@ -105,7 +99,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   showDeployRelease: boolean = false;
 
   backendDeployed: boolean = false;
-  backendEnabled: boolean = false;
   backendTogglePending: boolean = false;
 
   activeRepository!: Repository;
@@ -237,10 +230,7 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   private async loadBackendStatus(): Promise<void> {
     try {
-      [this.backendDeployed, this.backendEnabled] = await Promise.all([
-        this.analyticsService.isBackendServiceDeployed(),
-        this.analyticsService.isBackendServiceEnabled()
-      ]);
+      this.backendDeployed = await this.analyticsService.isBackendServiceDeployed();
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Failed to load backend service status:', error);
@@ -254,30 +244,6 @@ export class RepositoryBlockGridComponent implements OnInit {
       this.cdr.markForCheck();
     } catch (error) {
       console.error('Failed to re-check the backend service:', error);
-    } finally {
-      this.backendTogglePending = false;
-      this.cdr.markForCheck();
-    }
-  }
-
-  async toggleBackendEnabled(enabled: boolean): Promise<void> {
-    this.backendTogglePending = true;
-    try {
-      await this.analyticsService.setBackendServiceEnabled(enabled);
-      this.backendEnabled = enabled;
-      this.cdr.markForCheck();
-      this.alertService.success(
-        enabled ? gettext('Backend service enabled') : gettext('Backend service disabled')
-      );
-      // Repository items are loaded through whichever mode is active.
-      this.repositoryService.reload();
-    } catch (error) {
-      this.backendEnabled = !enabled;
-      this.cdr.markForCheck();
-      this.alertService.danger(
-        gettext('Failed to update the backend service setting. Please try again.')
-      );
-      console.error('Failed to update backend service setting:', error);
     } finally {
       this.backendTogglePending = false;
       this.cdr.markForCheck();

@@ -192,7 +192,6 @@ export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
  * backend isn't deployed at all (there's nothing to opt into). Defaults to
  * `true` (use it when available) when never explicitly set.
  */
-export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
 
 /**
  * Fallback Personal Access Token used for any repository that doesn't have
