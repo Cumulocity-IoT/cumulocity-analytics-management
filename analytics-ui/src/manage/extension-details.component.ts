@@ -135,14 +135,13 @@ export class ExtensionDetailsComponent implements OnInit {
     });
 
     if (this.extensionFromCep) {
-      const extensionNames =
-        await this.analyticsService.getExtensionNamesFromCep();
+      const extensionNames = await this.analyticsService.getExtensionNamesFromCep();
       const key = `${name}.zip`;
-      ((extensionNames as unknown as Record<string, { contents?: string[] }>)[key]?.contents || []).forEach(
-        (fileName: string) => {
-          contentPaths.add(stripFilesPrefix(fileName));
-        }
-      );
+      (
+        (extensionNames as unknown as Record<string, { contents?: string[] }>)[key]?.contents || []
+      ).forEach((fileName: string) => {
+        contentPaths.add(stripFilesPrefix(fileName));
+      });
     }
 
     this.extensionContent = Array.from(contentPaths);

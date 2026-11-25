@@ -11,27 +11,51 @@ describe('AnalyticsService (facade)', () => {
   let service: AnalyticsService;
   let restart: jasmine.SpyObj<CepRestartService> & { restarting$: BehaviorSubject<boolean> };
   let status: jasmine.SpyObj<CepStatusService>;
-  let inventory: jasmine.SpyObj<ExtensionInventoryService> & { extensionChanged$: any; uploadProgress$: BehaviorSubject<number | null> };
+  let inventory: jasmine.SpyObj<ExtensionInventoryService> & {
+    extensionChanged$: any;
+    uploadProgress$: BehaviorSubject<number | null>;
+  };
   let enrichment: jasmine.SpyObj<ExtensionEnrichmentService>;
   const ext = { id: '1', name: 'E' } as unknown as IManagedObject;
 
   beforeEach(() => {
     restart = Object.assign(
-      jasmine.createSpyObj('CepRestartService', ['isRestarting', 'isRestartWindow', 'isExpectedTransientError']),
+      jasmine.createSpyObj('CepRestartService', [
+        'isRestarting',
+        'isRestartWindow',
+        'isExpectedTransientError'
+      ]),
       { restarting$: new BehaviorSubject<boolean>(false) }
     );
     status = jasmine.createSpyObj('CepStatusService', [
-      'clearCache', 'reinitializeMonitoring', 'getCepStatus', 'getCepOperationObjectStream$', 'restartCepEngine',
-      'isBackendServiceAvailable', 'isBackendServiceDeployed', 'isBackendServiceEnabled', 'setBackendServiceEnabled', 'getCepOperationObjectId'
+      'clearCache',
+      'reinitializeMonitoring',
+      'getCepStatus',
+      'getCepOperationObjectStream$',
+      'restartCepEngine',
+      'isBackendServiceAvailable',
+      'isBackendServiceDeployed',
+      'isBackendServiceEnabled',
+      'setBackendServiceEnabled',
+      'getCepOperationObjectId'
     ]);
     inventory = Object.assign(
       jasmine.createSpyObj('ExtensionInventoryService', [
-        'getExtensionsFromInventory', 'uploadExtension', 'deleteExtension', 'downloadExtension', 'cancelExtensionCreation', 'updateUploadProgress'
+        'getExtensionsFromInventory',
+        'uploadExtension',
+        'deleteExtension',
+        'downloadExtension',
+        'cancelExtensionCreation',
+        'updateUploadProgress'
       ]),
       { extensionChanged$: {}, uploadProgress$: new BehaviorSubject<number | null>(null) }
     );
     enrichment = jasmine.createSpyObj('ExtensionEnrichmentService', [
-      'invalidateCache', 'getEnrichedExtensions', 'getDeployedBlocks', 'getExtensionNamesFromCep', 'getDeployedExtensionDetails'
+      'invalidateCache',
+      'getEnrichedExtensions',
+      'getDeployedBlocks',
+      'getExtensionNamesFromCep',
+      'getDeployedExtensionDetails'
     ]);
     TestBed.configureTestingModule({
       providers: [

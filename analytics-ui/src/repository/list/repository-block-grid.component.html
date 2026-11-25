@@ -20,67 +20,149 @@
 
 <c8y-title translate>Blocks from community repositories</c8y-title>
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'test'" [label]="labels.repositories | translate"
-    [path]="routes.repository">
+  <c8y-breadcrumb-item
+    [icon]="'c8y-atom'"
+    [label]="'Ecosystem' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-streaming-analytics'"
+    [label]="'Analytics' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'test'"
+    [label]="labels.repositories | translate"
+    [path]="routes.repository"
+  >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
-<c8y-action-bar-item [placement]="'left'" [priority]="200">
-  <label class="c8y-switch m-b-0 m-l-8 m-r-8" data-cy="repo-expert-mode"
-    title="{{ 'Browse and load blocks from repositories' | translate }}">
-    <input type="checkbox" [(ngModel)]="expertMode" (change)="updateMode()" />
+<c8y-action-bar-item
+  [placement]="'left'"
+  [priority]="200"
+>
+  <label
+    class="c8y-switch m-b-0 m-l-8 m-r-8"
+    data-cy="repo-expert-mode"
+    title="{{ 'Browse and load blocks from repositories' | translate }}"
+  >
+    <input
+      type="checkbox"
+      [(ngModel)]="expertMode"
+      (change)="updateMode()"
+    />
     <span></span> {{ 'Expert mode' | translate }}
   </label>
 </c8y-action-bar-item>
 
 @if (expertMode) {
-  <c8y-action-bar-item [placement]="'right'" [priority]="100">
-    <button type="button" class="btn-help btn-help--sm" aria-label="Help content"
-      [title]="'Extension Builder Layouts' | translate" (click)="openLayoutHelp()"></button>
+  <c8y-action-bar-item
+    [placement]="'right'"
+    [priority]="100"
+  >
+    <button
+      type="button"
+      class="btn-help btn-help--sm"
+      aria-label="Help content"
+      [title]="'Extension Builder Layouts' | translate"
+      (click)="openLayoutHelp()"
+    ></button>
   </c8y-action-bar-item>
-  <c8y-action-bar-item [placement]="'left'" [priority]="190">
-    <label class="c8y-switch m-b-0 m-l-8 m-r-8" data-cy="repo-hide-installed">
-      <input type="checkbox" [(ngModel)]="hideInstalled" (change)="updateFilter()" />
+  <c8y-action-bar-item
+    [placement]="'left'"
+    [priority]="190"
+  >
+    <label
+      class="c8y-switch m-b-0 m-l-8 m-r-8"
+      data-cy="repo-hide-installed"
+    >
+      <input
+        type="checkbox"
+        [(ngModel)]="hideInstalled"
+        (change)="updateFilter()"
+      />
       <span></span> {{ 'Hide installed' | translate }}
     </label>
   </c8y-action-bar-item>
 }
 
-<c8y-action-bar-item [placement]="'right'" [priority]="90">
-  <button class="btn btn-link" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
+<c8y-action-bar-item
+  [placement]="'right'"
+  [priority]="90"
+>
+  <button
+    class="btn btn-link"
+    title="{{ 'Repositories' | translate }}"
+    (click)="openRepositoriesDrawer()"
+  >
     <i c8yIcon="change-theme"></i>
-    {{ "Repositories" | translate }}
+    {{ 'Repositories' | translate }}
   </button>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'right'" [priority]="80">
-  <button class="btn btn-link" title="{{ 'Deploy from GitHub Release' | translate }}" (click)="deployFromRelease()">
+<c8y-action-bar-item
+  [placement]="'right'"
+  [priority]="80"
+>
+  <button
+    class="btn btn-link"
+    title="{{ 'Deploy from GitHub Release' | translate }}"
+    (click)="deployFromRelease()"
+  >
     <i c8yIcon="cloud-download"></i>
-    {{ "Deploy Release" | translate }}
+    {{ 'Deploy Release' | translate }}
   </button>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'right'" [priority]="70">
-  <button class="btn btn-link" title="{{ 'Reload from server' | translate }}" aria-label="Reload" (click)="reloadAll()">
-    <i [class.icon-spin]="loading" c8yIcon="refresh"></i>
+<c8y-action-bar-item
+  [placement]="'right'"
+  [priority]="70"
+>
+  <button
+    class="btn btn-link"
+    title="{{ 'Reload from server' | translate }}"
+    aria-label="Reload"
+    (click)="reloadAll()"
+  >
+    <i
+      [class.icon-spin]="loading"
+      c8yIcon="refresh"
+    ></i>
   </button>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'right'" [priority]="50">
-  <label class="c8y-switch m-b-0 m-l-8 m-r-8" data-cy="repo-backend-switch"
-    title="{{ (backendDeployed ? 'Backend service deployed' : 'Backend service not deployed') | translate }}">
-    <input type="checkbox" [checked]="backendEnabled" [disabled]="!backendDeployed || backendTogglePending"
-      (change)="toggleBackendEnabled($any($event.target).checked)" />
+<c8y-action-bar-item
+  [placement]="'right'"
+  [priority]="50"
+>
+  <label
+    class="c8y-switch m-b-0 m-l-8 m-r-8"
+    data-cy="repo-backend-switch"
+    title="{{
+      (backendDeployed ? 'Backend service deployed' : 'Backend service not deployed') | translate
+    }}"
+  >
+    <input
+      type="checkbox"
+      [checked]="backendEnabled"
+      [disabled]="!backendDeployed || backendTogglePending"
+      (change)="toggleBackendEnabled($any($event.target).checked)"
+    />
     <span></span> {{ 'Use backend service' | translate }}
   </label>
 </c8y-action-bar-item>
 @if (!backendDeployed) {
-  <c8y-action-bar-item [placement]="'right'" [priority]="40">
-    <button type="button" class="btn btn-link" data-cy="repo-backend-recheck"
-      title="{{ 'Backend service not deployed' | translate }}" [disabled]="backendTogglePending"
-      (click)="recheckBackend()">
+  <c8y-action-bar-item
+    [placement]="'right'"
+    [priority]="40"
+  >
+    <button
+      type="button"
+      class="btn btn-link"
+      data-cy="repo-backend-recheck"
+      title="{{ 'Backend service not deployed' | translate }}"
+      [disabled]="backendTogglePending"
+      (click)="recheckBackend()"
+    >
       <i c8yIcon="refresh"></i>
       {{ 'Re-check backend service' | translate }}
     </button>
@@ -93,22 +175,45 @@
     @if (!expertMode) {
       <div class="p-t-48">
         <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
-          <c8y-ui-empty-state [icon]="'cog'" [title]="'Expert mode is off.' | translate"
-            [subtitle]="'Enable Expert mode to browse and load blocks from configured repositories.' | translate"
-            [horizontal]="true">
+          <c8y-ui-empty-state
+            [icon]="'cog'"
+            [title]="'Expert mode is off.' | translate"
+            [subtitle]="
+              'Enable Expert mode to browse and load blocks from configured repositories.'
+                | translate
+            "
+            [horizontal]="true"
+          >
           </c8y-ui-empty-state>
         </div>
       </div>
     } @else {
-      <c8y-data-grid id="dataGrid" #dataGrid [title]="titleSample | translate"
-        [columns]="columnsSamples" [rows]="(repositoryItems$ | async) ?? []" [pagination]="pagination" [selectable]="true"
-        (itemsSelect)="checkSelection($event)" [actionControls]="actionControls" [bulkActionControls]="bulkActionControls"
-        [singleSelection]="singleSelection">
-        <c8y-ui-empty-state [icon]="'cog'" [title]="'No samples to display.' | translate"
-          [subtitle]="'Configure repositories.' | translate" [horizontal]="true">
-          <button class="btn btn-link m-t-24" title="{{ 'Repositories' | translate }}" (click)="openRepositoriesDrawer()">
+      <c8y-data-grid
+        id="dataGrid"
+        #dataGrid
+        [title]="titleSample | translate"
+        [columns]="columnsSamples"
+        [rows]="(repositoryItems$ | async) ?? []"
+        [pagination]="pagination"
+        [selectable]="true"
+        (itemsSelect)="checkSelection($event)"
+        [actionControls]="actionControls"
+        [bulkActionControls]="bulkActionControls"
+        [singleSelection]="singleSelection"
+      >
+        <c8y-ui-empty-state
+          [icon]="'cog'"
+          [title]="'No samples to display.' | translate"
+          [subtitle]="'Configure repositories.' | translate"
+          [horizontal]="true"
+        >
+          <button
+            class="btn btn-link m-t-24"
+            title="{{ 'Repositories' | translate }}"
+            (click)="openRepositoriesDrawer()"
+          >
             <i c8yIcon="change-theme"></i>
-            {{ "Repositories" | translate }}
+            {{ 'Repositories' | translate }}
           </button>
         </c8y-ui-empty-state>
       </c8y-data-grid>
@@ -119,7 +224,10 @@
     <div class="p-t-48">
       <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
         <p class="lead text-muted">
-          {{ 'Please stand by until the samples are scanned for meta information. This may take a short while...' | translate }}
+          {{
+            'Please stand by until the samples are scanned for meta information. This may take a short while...'
+              | translate
+          }}
         </p>
       </div>
       <c8y-loading></c8y-loading>
@@ -131,8 +239,11 @@
 <div [class.drawerOpen]="showConfigRepositories">
   <div class="bottom-drawer">
     @if (showConfigRepositories) {
-      <a17t-repositories-drawer (cancelled)="onRepositoryCancel()"
-        (commit)="onRepositoryCommit($event)" [hideInstalled]="hideInstalled">
+      <a17t-repositories-drawer
+        (cancelled)="onRepositoryCancel()"
+        (commit)="onRepositoryCommit($event)"
+        [hideInstalled]="hideInstalled"
+      >
       </a17t-repositories-drawer>
     }
   </div>
@@ -141,8 +252,10 @@
 <div [class.drawerOpen]="showDeployRelease">
   <div class="bottom-drawer">
     @if (showDeployRelease) {
-      <a17t-release-deploy-wizard (cancelled)="onDeployReleaseCancel()"
-        (commit)="onDeployReleaseCommit()">
+      <a17t-release-deploy-wizard
+        (cancelled)="onDeployReleaseCancel()"
+        (commit)="onDeployReleaseCommit()"
+      >
       </a17t-release-deploy-wizard>
     }
   </div>

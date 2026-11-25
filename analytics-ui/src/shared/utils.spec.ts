@@ -137,15 +137,21 @@ describe('utils', () => {
     });
 
     it('rejects non-GitHub URLs', () => {
-      expect(() => githubWebUrlToContentApi('https://example.com/o/r')).toThrowError(/Failed to convert GitHub URL/);
+      expect(() => githubWebUrlToContentApi('https://example.com/o/r')).toThrowError(
+        /Failed to convert GitHub URL/
+      );
     });
 
     it('rejects URLs without a repository', () => {
-      expect(() => githubWebUrlToContentApi('https://github.com/o')).toThrowError(/missing user or repository/);
+      expect(() => githubWebUrlToContentApi('https://github.com/o')).toThrowError(
+        /missing user or repository/
+      );
     });
 
     it('rejects strings that are not URLs', () => {
-      expect(() => githubWebUrlToContentApi('not a url')).toThrowError(/Failed to convert GitHub URL/);
+      expect(() => githubWebUrlToContentApi('not a url')).toThrowError(
+        /Failed to convert GitHub URL/
+      );
     });
   });
 

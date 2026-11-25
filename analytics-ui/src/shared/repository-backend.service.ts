@@ -131,9 +131,8 @@ export class RepositoryBackendService {
   }
 
   getItemContent(block: RepositoryItem, extractFQN: boolean): Promise<string> {
-    return this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`,
-      {
+    return this.fetchClient
+      .fetch(`${BACKEND_PATH_BASE}/${REPOSITORY_CONTENT_ENDPOINT}`, {
         headers: { 'content-type': 'text/plain' },
         params: {
           url: encodeURIComponent(block.url),
@@ -142,16 +141,16 @@ export class RepositoryBackendService {
           cep_block_name: block.name
         },
         method: 'GET'
-      }
-    ).then(resp => {
-      if (!resp.ok) {
-        throw new RepositoryError(
-          `Failed to fetch content: ${resp.status}`,
-          gettext('Failed to load content from server.')
-        );
-      }
-      return resp.text();
-    });
+      })
+      .then(resp => {
+        if (!resp.ok) {
+          throw new RepositoryError(
+            `Failed to fetch content: ${resp.status}`,
+            gettext('Failed to load content from server.')
+          );
+        }
+        return resp.text();
+      });
   }
 
   async createExtensionFromList(
@@ -174,7 +173,11 @@ export class RepositoryBackendService {
     try {
       return await this.createExtension('list', request);
     } catch (error) {
-      throw this.handleCreateExtensionError(error, `Failed to create extension from list: ${name}`, name);
+      throw this.handleCreateExtensionError(
+        error,
+        `Failed to create extension from list: ${name}`,
+        name
+      );
     }
   }
 
@@ -200,7 +203,11 @@ export class RepositoryBackendService {
     try {
       return await this.createExtension('yaml', request);
     } catch (error) {
-      throw this.handleCreateExtensionError(error, `Failed to create extension from YAML: ${name}`, name);
+      throw this.handleCreateExtensionError(
+        error,
+        `Failed to create extension from YAML: ${name}`,
+        name
+      );
     }
   }
 
@@ -222,21 +229,48 @@ export class RepositoryBackendService {
     try {
       return await this.createExtension('repository', request);
     } catch (error) {
-      throw this.handleCreateExtensionError(error, `Failed to create extension from repository: ${name}`, name);
+      throw this.handleCreateExtensionError(
+        error,
+        `Failed to create extension from repository: ${name}`,
+        name
+      );
     }
   }
 
   mapTestStatusToResult(status: number): RepositoryTestResult {
     switch (status) {
       case 401:
-        return { success: false, status, message: gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).') };
+        return {
+          success: false,
+          status,
+          message: gettext(
+            'Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'
+          )
+        };
       case 403:
       case 429:
-        return { success: false, status, message: gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.') };
+        return {
+          success: false,
+          status,
+          message: gettext(
+            'Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'
+          )
+        };
       case 404:
-        return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
+        return {
+          success: false,
+          status,
+          message: gettext('Repository not found. Please check the URL.')
+        };
       default:
-        return { success: false, status, message: this.messages.format(gettext('Connection failed (status: {{status}}). Please try again.'), { status }) };
+        return {
+          success: false,
+          status,
+          message: this.messages.format(
+            gettext('Connection failed (status: {{status}}). Please try again.'),
+            { status }
+          )
+        };
     }
   }
 
@@ -283,15 +317,23 @@ export class RepositoryBackendService {
     }
   }
 
-  private handleCreateExtensionError(error: unknown, logMessage: string, name: string): RepositoryError {
+  private handleCreateExtensionError(
+    error: unknown,
+    logMessage: string,
+    name: string
+  ): RepositoryError {
     console.error(`[RepositoryBackendService] ${logMessage}:`, error);
-    const result = error instanceof RepositoryError
-      ? error
-      : new RepositoryError(
-          logMessage,
-          this.messages.format(gettext('Failed to create extension "{{extensionName}}". Please try again.'), { extensionName: name }),
-          error instanceof Error ? error : undefined
-        );
+    const result =
+      error instanceof RepositoryError
+        ? error
+        : new RepositoryError(
+            logMessage,
+            this.messages.format(
+              gettext('Failed to create extension "{{extensionName}}". Please try again.'),
+              { extensionName: name }
+            ),
+            error instanceof Error ? error : undefined
+          );
     this.alertService.danger(result.userMessage);
     return result;
   }
@@ -299,7 +341,9 @@ export class RepositoryBackendService {
   private handleTestError(): RepositoryTestResult {
     return {
       success: false,
-      message: gettext('Failed to connect to repository. Please check your connection and try again.')
+      message: gettext(
+        'Failed to connect to repository. Please check your connection and try again.'
+      )
     };
   }
 }

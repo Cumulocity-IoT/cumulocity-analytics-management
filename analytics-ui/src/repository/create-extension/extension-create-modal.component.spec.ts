@@ -3,7 +3,8 @@ import { AlertService } from '@c8y/ngx-components';
 import { AnalyticsService, Repository, RepositoryItem, RepositoryService } from '../../shared';
 import { ExtensionCreateModalComponent } from './extension-create-modal.component';
 
-const item = (name: string) => ({ id: name, name, file: `${name}.mon`, type: 'file' }) as RepositoryItem;
+const item = (name: string) =>
+  ({ id: name, name, file: `${name}.mon`, type: 'file' }) as RepositoryItem;
 const repository = { id: 'r1', name: 'Repo' } as Repository;
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
@@ -25,7 +26,11 @@ describe('ExtensionCreateModalComponent', () => {
   beforeEach(() => {
     analytics = jasmine.createSpyObj('AnalyticsService', ['isBackendServiceAvailable']);
     analytics.isBackendServiceAvailable.and.resolveTo(false);
-    repositories = jasmine.createSpyObj('RepositoryService', ['createExtensionFromList', 'createExtensionFromYaml', 'createExtensionFromRepository']);
+    repositories = jasmine.createSpyObj('RepositoryService', [
+      'createExtensionFromList',
+      'createExtensionFromYaml',
+      'createExtensionFromRepository'
+    ]);
     repositories.createExtensionFromList.and.resolveTo({ status: 200 } as never);
     repositories.createExtensionFromYaml.and.resolveTo({ status: 200 } as never);
     repositories.createExtensionFromRepository.and.resolveTo({ status: 200 } as never);
@@ -38,7 +43,9 @@ describe('ExtensionCreateModalComponent', () => {
         { provide: AlertService, useValue: alerts }
       ]
     });
-    TestBed.overrideComponent(ExtensionCreateModalComponent, { set: { template: '', templateUrl: undefined, imports: [] } });
+    TestBed.overrideComponent(ExtensionCreateModalComponent, {
+      set: { template: '', templateUrl: undefined, imports: [] }
+    });
     spyOn(console, 'error');
   });
 
@@ -85,15 +92,21 @@ describe('ExtensionCreateModalComponent', () => {
       create({ monitors: [item('extensions')], sections: ['A'] }).ngOnInit();
       await flush();
       expect(component.requiresBackend).toBeTrue();
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('extensions.yaml sections'));
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('analytics-ext-service'));
+      expect(alerts.warning).toHaveBeenCalledWith(
+        jasmine.stringContaining('extensions.yaml sections')
+      );
+      expect(alerts.warning).toHaveBeenCalledWith(
+        jasmine.stringContaining('analytics-ext-service')
+      );
     });
 
     it('is required for whole repository builds (no monitors)', async () => {
       create({}).ngOnInit();
       await flush();
       expect(component.requiresBackend).toBeTrue();
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('a whole repository path'));
+      expect(alerts.warning).toHaveBeenCalledWith(
+        jasmine.stringContaining('a whole repository path')
+      );
     });
 
     it('falls back to "no backend" when the availability check fails', async () => {
@@ -115,8 +128,16 @@ describe('ExtensionCreateModalComponent', () => {
       component.configForm.patchValue({ name: 'MyExt', deploy: false });
       await component.createExtension();
 
-      expect(repositories.createExtensionFromList).toHaveBeenCalledWith('MyExt', component.monitors, repository, true, false);
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('available in Analytics Builder after the next Apama restart'));
+      expect(repositories.createExtensionFromList).toHaveBeenCalledWith(
+        'MyExt',
+        component.monitors,
+        repository,
+        true,
+        false
+      );
+      expect(alerts.success).toHaveBeenCalledWith(
+        jasmine.stringContaining('available in Analytics Builder after the next Apama restart')
+      );
       expect(closed).toEqual([true]);
       expect(component.loading).toBeFalse();
     });
@@ -125,28 +146,46 @@ describe('ExtensionCreateModalComponent', () => {
       create({ monitors: [item('Foo')] });
       component.configForm.patchValue({ name: 'MyExt', deploy: true });
       await component.createExtension();
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('"MyExt.zip" has been uploaded and Streaming Analytics Engine is restarting'));
+      expect(alerts.success).toHaveBeenCalledWith(
+        jasmine.stringContaining(
+          '"MyExt.zip" has been uploaded and Streaming Analytics Engine is restarting'
+        )
+      );
     });
 
     it('builds yaml sections from the yaml item', async () => {
       create({ monitors: [item('extensions')], sections: ['A', 'B'] });
       component.configForm.patchValue({ name: 'E' });
       await component.createExtension();
-      expect(repositories.createExtensionFromYaml).toHaveBeenCalledWith('E', component.monitors[0], ['A', 'B'], repository, true, true);
+      expect(repositories.createExtensionFromYaml).toHaveBeenCalledWith(
+        'E',
+        component.monitors[0],
+        ['A', 'B'],
+        repository,
+        true,
+        true
+      );
     });
 
     it('builds the whole repository when nothing is selected', async () => {
       create({});
       component.configForm.patchValue({ name: 'E' });
       await component.createExtension();
-      expect(repositories.createExtensionFromRepository).toHaveBeenCalledWith('E', repository, true, true);
+      expect(repositories.createExtensionFromRepository).toHaveBeenCalledWith(
+        'E',
+        repository,
+        true,
+        true
+      );
     });
 
     it('uses "extension" when no name is given', async () => {
       create({});
       component.configForm.patchValue({ name: '' });
       await component.createExtension();
-      expect(repositories.createExtensionFromRepository.calls.mostRecent().args[0]).toBe('extension');
+      expect(repositories.createExtensionFromRepository.calls.mostRecent().args[0]).toBe(
+        'extension'
+      );
     });
 
     it('does not announce success for error responses (the service already alerted)', async () => {

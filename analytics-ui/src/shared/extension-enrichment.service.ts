@@ -33,15 +33,22 @@ export class ExtensionEnrichmentService {
   private cachedExtensionDetails = new Map<string, Promise<CepExtension | null>>();
 
   // Order matters: first match wins. UTILITY also serves as the default fallback.
-  private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> = [
-    [Category.INPUT, ['input', 'trigger', 'measurement', 'event']],
-    [Category.OUTPUT, ['output', 'send', 'http', 'email', 'alarm']],
-    [Category.AGGREGATE, ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']],
-    [Category.CALCULATION, ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']],
-    [Category.LOGIC, ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
-    [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
-    [Category.UTILITY, ['random', 'generator', 'constant', 'noise', 'walk']],
-  ];
+  private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> =
+    [
+      [Category.INPUT, ['input', 'trigger', 'measurement', 'event']],
+      [Category.OUTPUT, ['output', 'send', 'http', 'email', 'alarm']],
+      [
+        Category.AGGREGATE,
+        ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']
+      ],
+      [
+        Category.CALCULATION,
+        ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']
+      ],
+      [Category.LOGIC, ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
+      [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
+      [Category.UTILITY, ['random', 'generator', 'constant', 'noise', 'walk']]
+    ];
 
   constructor(
     private readonly alertService: AlertService,
@@ -79,9 +86,7 @@ export class ExtensionEnrichmentService {
     ]);
 
     return Promise.all(
-      inventoryExtensions.map(ext =>
-        this.addDeploymentStatus(ext, deployedMetadata, diagnostics)
-      )
+      inventoryExtensions.map(ext => this.addDeploymentStatus(ext, deployedMetadata, diagnostics))
     );
   }
 
@@ -111,7 +116,7 @@ export class ExtensionEnrichmentService {
 
     let failedExtensions = 0;
     const perExtensionBlocks = await Promise.all(
-      extensionNames.map(async (extensionName) => {
+      extensionNames.map(async extensionName => {
         // Shares the per-name memo with addDeploymentStatus — no duplicate HTTP fetch
         const ext = await this.getDeployedExtensionDetails(extensionName);
         if (!ext) {
@@ -131,7 +136,9 @@ export class ExtensionEnrichmentService {
       // their blocks until the next explicit cache invalidation. The next caller
       // retries (the failed details are already evicted from their own memo).
       this.cachedDeployedBlocks = null;
-      console.warn(`Deployed blocks are incomplete: ${failedExtensions} extension(s) could not be read.`);
+      console.warn(
+        `Deployed blocks are incomplete: ${failedExtensions} extension(s) could not be read.`
+      );
     }
 
     return perExtensionBlocks.flat();
@@ -156,7 +163,10 @@ export class ExtensionEnrichmentService {
 
     const inflight = (async () => {
       try {
-        const data = await fetchCepJSON<CepExtension>(this.fetchClient, `${CEP_PATH_EN}/${encodeURIComponent(extensionName)}.json`);
+        const data = await fetchCepJSON<CepExtension>(
+          this.fetchClient,
+          `${CEP_PATH_EN}/${encodeURIComponent(extensionName)}.json`
+        );
         return { ...data, name: extensionName };
       } catch (error) {
         console.warn(`Failed to get extension details for ${extensionName}:`, error);
@@ -203,7 +213,8 @@ export class ExtensionEnrichmentService {
     const isDeployedViaMetadata = deployedMetadata?.metadatas?.some(
       name => name === metadataKey || removeFileExtension(name) === cleanName
     );
-    const isDeployedViaDiagnostics = !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
+    const isDeployedViaDiagnostics =
+      !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
     const isDeployed = isDeployedViaMetadata || isDeployedViaDiagnostics;
 
     let blockCount = 0;
@@ -228,7 +239,10 @@ export class ExtensionEnrichmentService {
    * empty strings. `repositoryName`/`repositoryId` are intentionally omitted:
    * deployed blocks have no originating repository.
    */
-  private addBlockMetadata(block: RawCepBlock | null | undefined, extensionName: string): CepBlock | null {
+  private addBlockMetadata(
+    block: RawCepBlock | null | undefined,
+    extensionName: string
+  ): CepBlock | null {
     const id = block?.id?.trim() ?? '';
     const name = block?.name?.trim() ?? '';
     if (!block || typeof block !== 'object' || !id || !name) {

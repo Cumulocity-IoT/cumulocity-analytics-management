@@ -6,7 +6,8 @@ import { BehaviorSubject, Subject } from 'rxjs';
 import { AnalyticsService } from '../shared';
 import { ExtensionGridComponent } from './extension-grid.component';
 
-const mo = (id: string, extra: Record<string, unknown> = {}) => ({ id, ...extra }) as unknown as IManagedObject;
+const mo = (id: string, extra: Record<string, unknown> = {}) =>
+  ({ id, ...extra }) as unknown as IManagedObject;
 const cepObject = (status: string, safeMode = false) =>
   mo('cep', { c8y_Status: { status, is_safe_mode: safeMode } });
 
@@ -119,7 +120,10 @@ describe('ExtensionGridComponent', () => {
     it('does not blame an extension that was last updated long ago', fakeAsync(async () => {
       cep$.next(cepObject('UP', true));
       analytics.getEnrichedExtensions.and.resolveTo([
-        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject
+        {
+          ...mo('1'),
+          lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString()
+        } as IManagedObject
       ]);
       await create();
       const values = collect();
@@ -156,7 +160,10 @@ describe('ExtensionGridComponent', () => {
     it('flags the most recently updated extension as the suspected cause in safe mode', fakeAsync(async () => {
       cep$.next(cepObject('UP', true));
       analytics.getEnrichedExtensions.and.resolveTo([
-        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject,
+        {
+          ...mo('1'),
+          lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString()
+        } as IManagedObject,
         { ...mo('2'), lastUpdated: new Date(Date.now() - 3600000).toISOString() } as IManagedObject
       ]);
       await create();
@@ -301,7 +308,9 @@ describe('ExtensionGridComponent', () => {
 
       component.addExtension();
 
-      const { initialState } = wizard.show.calls.mostRecent().args[0] as { initialState: Record<string, any> };
+      const { initialState } = wizard.show.calls.mostRecent().args[0] as {
+        initialState: Record<string, any>;
+      };
       expect(initialState['id']).toBe('uploadAnalyticsExtension');
       expect(initialState['componentInitialState'].mode).toBe('add');
       expect(reload).not.toHaveBeenCalled();

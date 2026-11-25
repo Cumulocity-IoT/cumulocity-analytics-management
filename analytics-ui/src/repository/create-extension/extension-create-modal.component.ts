@@ -6,7 +6,11 @@ import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angula
 import { AlertService, CoreModule, ModalLabels } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject, from } from 'rxjs';
 import { AnalyticsService } from '../../shared/analytics.service';
-import { APPLICATION_ANALYTICS_BUILDER_SERVICE, Repository, RepositoryItem } from '../../shared/analytics.model';
+import {
+  APPLICATION_ANALYTICS_BUILDER_SERVICE,
+  Repository,
+  RepositoryItem
+} from '../../shared/analytics.model';
 import { RepositoryService } from '../../shared';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 
@@ -42,7 +46,7 @@ export class ExtensionCreateModalComponent implements OnInit {
     public analyticsService: AnalyticsService,
     public repositoryService: RepositoryService,
     public alertService: AlertService
-  ) { }
+  ) {}
 
   ngOnInit() {
     this.configurationIsExtension = !!this.sections;
@@ -58,7 +62,7 @@ export class ExtensionCreateModalComponent implements OnInit {
 
   isDeployed() {
     from(this.analyticsService.isBackendServiceAvailable()).subscribe({
-      next: (status) => {
+      next: status => {
         this.backendDeployed$.next(status);
         if (status) {
           this.requiresBackend = false;
@@ -72,8 +76,12 @@ export class ExtensionCreateModalComponent implements OnInit {
           this.alertService.warning(
             this.messages.format(
               this.configurationIsExtension
-                ? gettext('Building an extension from extensions.yaml sections requires the backend microservice "{{serviceName}}" to be deployed.')
-                : gettext('Building an extension from a whole repository path requires the backend microservice "{{serviceName}}" to be deployed.'),
+                ? gettext(
+                    'Building an extension from extensions.yaml sections requires the backend microservice "{{serviceName}}" to be deployed.'
+                  )
+                : gettext(
+                    'Building an extension from a whole repository path requires the backend microservice "{{serviceName}}" to be deployed.'
+                  ),
               { serviceName: APPLICATION_ANALYTICS_BUILDER_SERVICE }
             )
           );
@@ -100,29 +108,45 @@ export class ExtensionCreateModalComponent implements OnInit {
       if (this.monitors && this.monitors.length > 0) {
         if (this.sections && this.sections.length > 0) {
           response = await this.repositoryService.createExtensionFromYaml(
-            configName, this.monitors[0], this.sections, this.activeRepository, true, deploy
+            configName,
+            this.monitors[0],
+            this.sections,
+            this.activeRepository,
+            true,
+            deploy
           );
         } else {
           response = await this.repositoryService.createExtensionFromList(
-            configName, this.monitors, this.activeRepository, true, deploy
+            configName,
+            this.monitors,
+            this.activeRepository,
+            true,
+            deploy
           );
         }
       } else {
         response = await this.repositoryService.createExtensionFromRepository(
-          configName, this.activeRepository, true, deploy
+          configName,
+          this.activeRepository,
+          true,
+          deploy
         );
       }
       if (response.status < 400) {
         if (deploy) {
           this.alertService.success(
             this.messages.format(
-              gettext('The extension "{{fileName}}" has been uploaded and Streaming Analytics Engine is restarting…'),
+              gettext(
+                'The extension "{{fileName}}" has been uploaded and Streaming Analytics Engine is restarting…'
+              ),
               { fileName: `${configName}.zip` }
             )
           );
         } else {
           this.alertService.success(
-            gettext('The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.')
+            gettext(
+              'The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.'
+            )
           );
         }
       }

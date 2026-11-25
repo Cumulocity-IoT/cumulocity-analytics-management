@@ -8,10 +8,26 @@ import { RepositoryError } from './repository-error';
 import { RepositoryItemsService } from './repository-items.service';
 import { RepositoryModeService } from './repository-mode.service';
 
-const repo = (id = 'r1', enabled = true): Repository => ({ id, name: `Repo ${id}`, url: 'u', accessToken: '', enabled }) as Repository;
+const repo = (id = 'r1', enabled = true): Repository =>
+  ({ id, name: `Repo ${id}`, url: 'u', accessToken: '', enabled }) as Repository;
 const item = (over: Partial<RepositoryItem>): RepositoryItem =>
-  ({ id: '', name: 'A', file: 'A.mon', type: 'file', url: 'https://api/A.mon', downloadUrl: 'https://raw/A.mon', repositoryId: 'r1', repositoryName: 'Repo r1', ...over }) as RepositoryItem;
-const ghEntry = (name: string, type = 'file') => ({ name, type, url: `https://api/${name}`, download_url: `https://raw/${name}` });
+  ({
+    id: '',
+    name: 'A',
+    file: 'A.mon',
+    type: 'file',
+    url: 'https://api/A.mon',
+    downloadUrl: 'https://raw/A.mon',
+    repositoryId: 'r1',
+    repositoryName: 'Repo r1',
+    ...over
+  }) as RepositoryItem;
+const ghEntry = (name: string, type = 'file') => ({
+  name,
+  type,
+  url: `https://api/${name}`,
+  download_url: `https://raw/${name}`
+});
 const monContent = (pkg: string, ...blocks: string[]) =>
   `package ${pkg};\n${blocks.map(b => `event ${b} { BlockBase $base; }`).join('\n')}`;
 
@@ -54,14 +70,19 @@ describe('RepositoryItemsService', () => {
     });
 
     it('reduces the list to extensions.yaml when present (case-insensitive)', () => {
-      const result = service.filterRepositoryItems([item({ file: 'A.mon' }), item({ file: 'Extensions.YAML' })]);
+      const result = service.filterRepositoryItems([
+        item({ file: 'A.mon' }),
+        item({ file: 'Extensions.YAML' })
+      ]);
       expect(result.map(i => i.file)).toEqual(['Extensions.YAML']);
     });
   });
 
   describe('analyzeRepositoryItems', () => {
     it('returns the filtered list when there is no extensions.yaml', async () => {
-      const result = await firstValueFrom(service.analyzeRepositoryItems([item({ file: 'A.mon' }), item({ file: 'x.md' })]));
+      const result = await firstValueFrom(
+        service.analyzeRepositoryItems([item({ file: 'A.mon' }), item({ file: 'x.md' })])
+      );
       expect(result.map(i => i.file)).toEqual(['A.mon']);
     });
 
@@ -69,7 +90,9 @@ describe('RepositoryItemsService', () => {
       const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
       github.getItemContent.and.resolveTo('Python:\n  files: [a.py]\nOffset:\n  files: [o.mon]\n');
 
-      const result = await firstValueFrom(service.analyzeRepositoryItems([yaml, item({ file: 'A.mon' })]));
+      const result = await firstValueFrom(
+        service.analyzeRepositoryItems([yaml, item({ file: 'A.mon' })])
+      );
 
       expect(result.map(i => i.name)).toEqual(['Python', 'Offset']);
       expect(result.every(i => i.extensionsYamlItem === yaml)).toBeTrue();
@@ -79,13 +102,20 @@ describe('RepositoryItemsService', () => {
     it('marks a section installed when all its .mon files are deployed', async () => {
       const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
       github.getItemContent.and.resolveTo(
-        'Offset:\n  - Offset.mon\nPython:\n  files: [Python.mon, plugin.py]\nEmpty:\n  - readme.md\n');
+        'Offset:\n  - Offset.mon\nPython:\n  files: [Python.mon, plugin.py]\nEmpty:\n  - readme.md\n'
+      );
       github.getContent.and.resolveTo([]);
-      await firstValueFrom(service.getItemsForRepositories([repo()], [], false, new Set(['Offset.mon'])));
+      await firstValueFrom(
+        service.getItemsForRepositories([repo()], [], false, new Set(['Offset.mon']))
+      );
 
       const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
 
-      expect(result.map(i => [i.name, i.installed])).toEqual([['Offset', true], ['Python', false], ['Empty', false]]);
+      expect(result.map(i => [i.name, i.installed])).toEqual([
+        ['Offset', true],
+        ['Python', false],
+        ['Empty', false]
+      ]);
       expect(result[1].sectionFiles).toEqual(['Python.mon']);
     });
 
@@ -93,7 +123,9 @@ describe('RepositoryItemsService', () => {
       const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
       github.getItemContent.and.resolveTo('Offset:\n  - Offset.mon\nPython:\n  - Python.mon\n');
       github.getContent.and.resolveTo([]);
-      await firstValueFrom(service.getItemsForRepositories([repo()], [], true, new Set(['Offset.mon'])));
+      await firstValueFrom(
+        service.getItemsForRepositories([repo()], [], true, new Set(['Offset.mon']))
+      );
 
       const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
 
@@ -103,7 +135,9 @@ describe('RepositoryItemsService', () => {
     it('keeps repository paths of section files, so equal basenames stay distinct', async () => {
       const yaml = item({ file: 'extensions.yaml', name: 'extensions' });
       github.getItemContent.and.resolveTo('A:\n  - a/Block.mon\nB:\n  - b/Block.mon\n');
-      await firstValueFrom(service.getItemsForRepositories([repo()], [], false, new Set(['Block.mon'])));
+      await firstValueFrom(
+        service.getItemsForRepositories([repo()], [], false, new Set(['Block.mon']))
+      );
 
       const result = await firstValueFrom(service.analyzeRepositoryItems([yaml]));
 
@@ -121,7 +155,9 @@ describe('RepositoryItemsService', () => {
 
     it('yields no sections when the yaml cannot be loaded', async () => {
       github.getItemContent.and.rejectWith(new Error('404'));
-      expect(await firstValueFrom(service.analyzeRepositoryItems([item({ file: 'extensions.yaml' })]))).toEqual([]);
+      expect(
+        await firstValueFrom(service.analyzeRepositoryItems([item({ file: 'extensions.yaml' })]))
+      ).toEqual([]);
     });
   });
 
@@ -150,12 +186,19 @@ describe('RepositoryItemsService', () => {
 
   describe('getItemsForRepositories', () => {
     it('returns nothing without enabled repositories', async () => {
-      expect(await firstValueFrom(service.getItemsForRepositories([repo('r1', false)], [], false))).toEqual([]);
+      expect(
+        await firstValueFrom(service.getItemsForRepositories([repo('r1', false)], [], false))
+      ).toEqual([]);
       expect(github.getContent).not.toHaveBeenCalled();
     });
 
     it('maps GitHub entries to items, skipping .json files, and extracts block FQNs from .mon files', async () => {
-      github.getContent.and.resolveTo([ghEntry('Foo.mon'), ghEntry('config.json'), ghEntry('README.md'), ghEntry('sub', 'dir')]);
+      github.getContent.and.resolveTo([
+        ghEntry('Foo.mon'),
+        ghEntry('config.json'),
+        ghEntry('README.md'),
+        ghEntry('sub', 'dir')
+      ]);
       github.getItemContent.and.resolveTo(monContent('com.acme', 'Foo'));
 
       const items = await firstValueFrom(service.getItemsForRepositories([repo()], [], false));
@@ -182,14 +225,20 @@ describe('RepositoryItemsService', () => {
     it('marks installed items, including multi-block files, and can hide them', async () => {
       github.getContent.and.resolveTo([ghEntry('Pair.mon'), ghEntry('Other.mon')]);
       github.getItemContent.and.callFake(async (b: RepositoryItem) =>
-        b.name === 'Pair' ? monContent('p', 'Send', 'Receive') : monContent('p', 'Other'));
+        b.name === 'Pair' ? monContent('p', 'Send', 'Receive') : monContent('p', 'Other')
+      );
       const deployed = [{ id: 'p.Receive' }] as CepBlock[];
 
       const all = await firstValueFrom(service.getItemsForRepositories([repo()], deployed, false));
-      expect(all.map(i => [i.name, i.installed])).toEqual([['Pair', true], ['Other', false]]);
+      expect(all.map(i => [i.name, i.installed])).toEqual([
+        ['Pair', true],
+        ['Other', false]
+      ]);
 
       service.invalidateCache();
-      const hidden = await firstValueFrom(service.getItemsForRepositories([repo()], deployed, true));
+      const hidden = await firstValueFrom(
+        service.getItemsForRepositories([repo()], deployed, true)
+      );
       expect(hidden.map(i => i.name)).toEqual(['Other']);
     });
 
@@ -198,7 +247,13 @@ describe('RepositoryItemsService', () => {
       github.getItemContent.and.resolveTo('Offset:\n  - Offset.mon\nPython:\n  - Python.mon\n');
 
       const items = await firstValueFrom(
-        service.getItemsForRepositories([repo()], [], true, new Set(['extensions.yaml', 'Offset.mon'])));
+        service.getItemsForRepositories(
+          [repo()],
+          [],
+          true,
+          new Set(['extensions.yaml', 'Offset.mon'])
+        )
+      );
       expect(items.map(i => i.file)).toEqual(['extensions.yaml']);
 
       const sections = await firstValueFrom(service.analyzeRepositoryItems(items));
@@ -206,10 +261,14 @@ describe('RepositoryItemsService', () => {
     });
 
     it('gives the same block in two repositories different row ids', async () => {
-      github.getContent.and.callFake(async (r: Repository) => [{ ...ghEntry('Foo.mon'), url: `https://api/${r.id}/Foo.mon` }]);
+      github.getContent.and.callFake(async (r: Repository) => [
+        { ...ghEntry('Foo.mon'), url: `https://api/${r.id}/Foo.mon` }
+      ]);
       github.getItemContent.and.resolveTo(monContent('com.acme', 'Foo'));
 
-      const items = await firstValueFrom(service.getItemsForRepositories([repo('r1'), repo('r2')], [], false));
+      const items = await firstValueFrom(
+        service.getItemsForRepositories([repo('r1'), repo('r2')], [], false)
+      );
 
       expect(items.map(i => i.blockIds)).toEqual([['com.acme.Foo'], ['com.acme.Foo']]);
       expect(new Set(items.map(i => i.id)).size).toBe(2);
@@ -222,20 +281,29 @@ describe('RepositoryItemsService', () => {
       const items = await firstValueFrom(
         service.getItemsForRepositories([repo()], [], false, new Set(['Helper.mon']))
       );
-      expect(items.map(i => [i.name, i.installed])).toEqual([['Helper', true], ['Other', false]]);
+      expect(items.map(i => [i.name, i.installed])).toEqual([
+        ['Helper', true],
+        ['Other', false]
+      ]);
     });
 
     it('combines items of several repositories', async () => {
       github.getContent.and.callFake(async (r: Repository) => [ghEntry(`${r.id}.md`)]);
-      const items = await firstValueFrom(service.getItemsForRepositories([repo('a'), repo('b')], [], false));
+      const items = await firstValueFrom(
+        service.getItemsForRepositories([repo('a'), repo('b')], [], false)
+      );
       expect(items.map(i => i.file)).toEqual(['a.md', 'b.md']);
     });
 
-    it('alerts with GitHub\'s reason and yields no items for a failing repository', async () => {
-      github.getContent.and.rejectWith(new RepositoryError('x', 'API rate limit exceeded', undefined, 403));
+    it("alerts with GitHub's reason and yields no items for a failing repository", async () => {
+      github.getContent.and.rejectWith(
+        new RepositoryError('x', 'API rate limit exceeded', undefined, 403)
+      );
       const items = await firstValueFrom(service.getItemsForRepositories([repo()], [], false));
       expect(items).toEqual([]);
-      expect(alerts.danger).toHaveBeenCalledOnceWith(jasmine.stringContaining('API rate limit exceeded'));
+      expect(alerts.danger).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('API rate limit exceeded')
+      );
     });
 
     it('uses a generic alert when the failure has no detail', async () => {

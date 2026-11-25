@@ -19,7 +19,15 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
  * @authors Christof Strack
  */
 
-import { ChangeDetectorRef, Component, EventEmitter, inject, OnInit, ViewEncapsulation, DestroyRef } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  inject,
+  OnInit,
+  ViewEncapsulation,
+  DestroyRef
+} from '@angular/core';
 
 import {
   ActionControl,
@@ -29,9 +37,13 @@ import {
   CoreModule,
   Pagination
 } from '@c8y/ngx-components';
-import {AnalyticsService,
+import {
+  AnalyticsService,
   BooleanRendererComponent,
-  CepBlock, PAGE_LABELS, ROUTES } from '../shared';
+  CepBlock,
+  PAGE_LABELS,
+  ROUTES
+} from '../shared';
 import { LabelRendererComponent } from '../shared/component/label-renderer.component';
 
 import { gettext } from '@c8y/ngx-components/gettext';

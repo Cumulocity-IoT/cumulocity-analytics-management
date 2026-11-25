@@ -29,7 +29,10 @@ describe('FetchExtensionService', () => {
     it('looks up the c8y_FetchUploadProxy external id and returns the managed object id as string', async () => {
       identity.detail.and.resolveTo({ data: { managedObject: { id: 42 } } } as never);
       expect(await service.resolveProxySourceId()).toBe('42');
-      expect(identity.detail).toHaveBeenCalledWith({ type: 'c8y_Serial', externalId: 'c8y_FetchUploadProxy' });
+      expect(identity.detail).toHaveBeenCalledWith({
+        type: 'c8y_Serial',
+        externalId: 'c8y_FetchUploadProxy'
+      });
     });
 
     it('reports a misconfigured proxy when the external id has no managed object', async () => {
@@ -42,9 +45,13 @@ describe('FetchExtensionService', () => {
 
     it('explains that the EPL listener has not run on a 404 (either error shape)', async () => {
       identity.detail.and.rejectWith({ res: { status: 404 } });
-      expect((await service.resolveProxySourceId().catch(e => e)).userMessage).toContain('FetchExtensionListener');
+      expect((await service.resolveProxySourceId().catch(e => e)).userMessage).toContain(
+        'FetchExtensionListener'
+      );
       identity.detail.and.rejectWith({ status: 404 });
-      expect((await service.resolveProxySourceId().catch(e => e)).userMessage).toContain('FetchExtensionListener');
+      expect((await service.resolveProxySourceId().catch(e => e)).userMessage).toContain(
+        'FetchExtensionListener'
+      );
     });
 
     it('uses a generic message for other failures', async () => {
@@ -56,7 +63,9 @@ describe('FetchExtensionService', () => {
   });
 
   describe('sendFetchExtensionEvent', () => {
-    beforeEach(() => identity.detail.and.resolveTo({ data: { managedObject: { id: '7' } } } as never));
+    beforeEach(() =>
+      identity.detail.and.resolveTo({ data: { managedObject: { id: '7' } } } as never)
+    );
 
     it('creates a c8y_FetchExtension event on the proxy and returns the request', async () => {
       events.create.and.resolveTo({} as never);
@@ -66,14 +75,25 @@ describe('FetchExtensionService', () => {
       const event = events.create.calls.mostRecent().args[0] as IEvent;
       expect(event.source).toEqual({ id: '7' });
       expect(event.type).toBe(FETCH_EXTENSION_EVENT_TYPE);
-      expect(event['c8y_FetchExtension']).toEqual({ requestId: request.requestId, url: 'https://x/e.zip', name: 'E', headers: {} });
-      expect(request).toEqual({ requestId: jasmine.any(String), url: 'https://x/e.zip', name: 'E' });
+      expect(event['c8y_FetchExtension']).toEqual({
+        requestId: request.requestId,
+        url: 'https://x/e.zip',
+        name: 'E',
+        headers: {}
+      });
+      expect(request).toEqual({
+        requestId: jasmine.any(String),
+        url: 'https://x/e.zip',
+        name: 'E'
+      });
     });
 
     it('sends the access token as Bearer header only when given', async () => {
       events.create.and.resolveTo({} as never);
       await service.sendFetchExtensionEvent('u', 'E', 'ghp_x');
-      expect((events.create.calls.mostRecent().args[0] as IEvent)['c8y_FetchExtension'].headers).toEqual({ Authorization: 'Bearer ghp_x' });
+      expect(
+        (events.create.calls.mostRecent().args[0] as IEvent)['c8y_FetchExtension'].headers
+      ).toEqual({ Authorization: 'Bearer ghp_x' });
     });
 
     it('does not send an event when the proxy cannot be resolved', async () => {

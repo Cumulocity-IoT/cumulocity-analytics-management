@@ -1,9 +1,18 @@
-<c8y-modal title="Source code {{ monitorName }}" (onClose)="onClose($event)" [labels]="labels"
-  [headerClasses]="'modal-header dialog-header'">
+<c8y-modal
+  title="Source code {{ monitorName }}"
+  (onClose)="onClose($event)"
+  [labels]="labels"
+  [headerClasses]="'modal-header dialog-header'"
+>
   <ng-container c8y-modal-title>
     <span [c8yIcon]="'source-code'"></span>
   </ng-container>
 
-  <c8y-editor [editorOptions]="editorOptions" class="editor-half-height" [ngModel]="source$ | async"
-    monacoEditorMarkerValidator  (editorInit)="assignSchema()"></c8y-editor>
+  <c8y-editor
+    [editorOptions]="editorOptions"
+    class="editor-half-height"
+    [ngModel]="source$ | async"
+    monacoEditorMarkerValidator
+    (editorInit)="assignSchema()"
+  ></c8y-editor>
 </c8y-modal>

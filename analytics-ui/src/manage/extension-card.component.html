@@ -1,20 +1,37 @@
-<div class="card pointer card--d-col" [class.suspected-cause]="extension()['suspectedCause']">
-  <div (click)="detail()" class="card-block text-center card-column-20">
+<div
+  class="card pointer card--d-col"
+  [class.suspected-cause]="extension()['suspectedCause']"
+>
+  <div
+    (click)="detail()"
+    class="card-block text-center card-column-20"
+  >
     <div class="card-appicon">
-      <c8y-app-icon [app]="$any(extension())" [contextPath]="extension()['contextPath']" [name]="extension()['name']"></c8y-app-icon>
+      <c8y-app-icon
+        [app]="$any(extension())"
+        [contextPath]="extension()['contextPath']"
+        [name]="extension()['name']"
+      ></c8y-app-icon>
     </div>
-    <span class="e2e-appCardName text-medium" title="{{ extension()['name'] }}">
+    <span
+      class="e2e-appCardName text-medium"
+      title="{{ extension()['name'] }}"
+    >
       {{ extension()['name'] }}
     </span>
   </div>
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
     <div class="text-center m-b-4">
-      <span [class]="extension()['loaded'] === true ? 'label label-success' : 'label label-warning'">
+      <span
+        [class]="extension()['loaded'] === true ? 'label label-success' : 'label label-warning'"
+      >
         {{ (extension()['loaded'] === true ? 'Loaded' : 'Not loaded') | translate }}
       </span>
     </div>
     <div class="text-center m-b-4">
-      <span [class]="extension()['build_information'] ? 'label label-primary' : 'label label-default'">
+      <span
+        [class]="extension()['build_information'] ? 'label label-primary' : 'label label-default'"
+      >
         {{ 'Build type: ' + getBuildType() | translate }}
       </span>
     </div>
@@ -23,14 +40,14 @@
     @if (extension()['loaded']) {
       <div class="text-center">
         @if (extension()['extensionType'] !== 'zip') {
-          <span>{{ extension()['blocksCount'] }}&nbsp;{{
-            extension()['blocksCount'] === 1 ? 'Block' : 'Blocks'
-          }}</span>
+          <span
+            >{{ extension()['blocksCount'] }}&nbsp;{{
+              extension()['blocksCount'] === 1 ? 'Block' : 'Blocks'
+            }}</span
+          >
         }
         @if (extension()['extensionType'] === 'zip') {
-          <span class="label label-info">{{
-            'Code Extension'
-          }}</span>
+          <span class="label label-info">{{ 'Code Extension' }}</span>
         }
       </div>
     }
@@ -38,11 +55,21 @@
   <div class="card-block p-0 no-min-height card--d-col card-column-20">
     @if (extension()['suspectedCause']) {
       <div class="text-center m-b-8">
-        <span class="label label-danger" title="{{ 'Last updated extension, the usual cause of safe mode' | translate }}">
+        <span
+          class="label label-danger"
+          title="{{ 'Last updated extension, the usual cause of safe mode' | translate }}"
+        >
           {{ 'Suspected cause' | translate }}
         </span>
-        <button class="label label-danger suspect-delete m-l-4" (click)="delete()">
-          <i c8yIcon="trash" class="m-r-4"></i>{{ 'Delete' | translate }}
+        <button
+          class="label label-danger suspect-delete m-l-4"
+          (click)="delete()"
+        >
+          <i
+            c8yIcon="trash"
+            class="m-r-4"
+          ></i
+          >{{ 'Delete' | translate }}
         </button>
       </div>
     }
@@ -52,38 +79,80 @@
   </div>
 
   <div class="card-actions m-t-0">
-    <div class="dropdown" dropdown>
-      <button class="dropdown-toggle c8y-dropdown" dropdownToggle title="{{ 'Settings' | translate }}">
+    <div
+      class="dropdown"
+      dropdown
+    >
+      <button
+        class="dropdown-toggle c8y-dropdown"
+        dropdownToggle
+        title="{{ 'Settings' | translate }}"
+      >
         <i c8yIcon="ellipsis-v"></i>
       </button>
-      <ul *dropdownMenu class="dropdown-menu dropdown-menu-right">
+      <ul
+        *dropdownMenu
+        class="dropdown-menu dropdown-menu-right"
+      >
         <li>
-          <button (click)="detail()" title="{{ 'Details' }}" [disabled]="!hasBuildInformation()">
-            <i c8yIcon="info" class="m-r-4"></i>
+          <button
+            (click)="detail()"
+            title="{{ 'Details' }}"
+            [disabled]="!hasBuildInformation()"
+          >
+            <i
+              c8yIcon="info"
+              class="m-r-4"
+            ></i>
             {{ 'Details' | translate }}
           </button>
         </li>
         <li>
-          <button (click)="rebuild()" title="{{ 'Rebuild' }}" [disabled]="!isBuildInternally() || !isBackendServiceAvailable()">
-            <i c8yIcon="process" class="m-r-4"></i>
+          <button
+            (click)="rebuild()"
+            title="{{ 'Rebuild' }}"
+            [disabled]="!isBuildInternally() || !isBackendServiceAvailable()"
+          >
+            <i
+              c8yIcon="process"
+              class="m-r-4"
+            ></i>
             {{ 'Rebuild' | translate }}
           </button>
         </li>
         <li>
-          <button (click)="download()" title="{{ 'Download' }}">
-            <i c8yIcon="export" class="m-r-4"></i>
+          <button
+            (click)="download()"
+            title="{{ 'Download' }}"
+          >
+            <i
+              c8yIcon="export"
+              class="m-r-4"
+            ></i>
             {{ 'Download' | translate }}
           </button>
         </li>
         <li>
-          <button (click)="delete()" title="{{ 'Delete' }}">
-            <i c8yIcon="trash" class="m-r-4"></i>
+          <button
+            (click)="delete()"
+            title="{{ 'Delete' }}"
+          >
+            <i
+              c8yIcon="trash"
+              class="m-r-4"
+            ></i>
             {{ 'Delete' | translate }}
           </button>
         </li>
         <li>
-          <button (click)="update()" title="{{ 'Update' }}">
-            <i c8yIcon="change" class="m-r-4"></i>
+          <button
+            (click)="update()"
+            title="{{ 'Update' }}"
+          >
+            <i
+              c8yIcon="change"
+              class="m-r-4"
+            ></i>
             {{ 'Update' | translate }}
           </button>
         </li>

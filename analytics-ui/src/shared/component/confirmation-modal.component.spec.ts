@@ -14,14 +14,19 @@ describe('ConfirmationModalComponent', () => {
       imports: [ConfirmationModalComponent],
       providers: [{ provide: TranslateService, useValue: translate }]
     });
-    TestBed.overrideComponent(ConfirmationModalComponent, { set: { template: '', templateUrl: undefined, imports: [] } });
+    TestBed.overrideComponent(ConfirmationModalComponent, {
+      set: { template: '', templateUrl: undefined, imports: [] }
+    });
     component = TestBed.createComponent(ConfirmationModalComponent).componentInstance;
   });
 
   const answers = () => {
     const received: boolean[] = [];
     let completed = false;
-    component.closeSubject.subscribe({ next: v => received.push(v), complete: () => (completed = true) });
+    component.closeSubject.subscribe({
+      next: v => received.push(v),
+      complete: () => (completed = true)
+    });
     return { received, isCompleted: () => completed };
   };
 
@@ -59,7 +64,9 @@ describe('ConfirmationModalComponent', () => {
     const dismissed = TestBed.createComponent(ConfirmationModalComponent).componentInstance;
     const received: boolean[] = [];
     dismissed.closeSubject.subscribe(v => received.push(v));
-    dismissed.modalRef = { result: Promise.reject(new Error('dismissed')) } as unknown as ConfirmModalComponent;
+    dismissed.modalRef = {
+      result: Promise.reject(new Error('dismissed'))
+    } as unknown as ConfirmModalComponent;
     await dismissed.ngAfterViewInit();
     expect(received).toEqual([false]);
   });

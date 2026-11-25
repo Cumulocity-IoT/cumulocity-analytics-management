@@ -2,12 +2,35 @@ import { TestBed } from '@angular/core/testing';
 import { IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { BehaviorSubject } from 'rxjs';
-import { AnalyticsService, FetchExtensionService, GitHubRelease, GitHubReleaseAsset, GitHubReleaseService, Repository, RepositoryService } from '../../shared';
+import {
+  AnalyticsService,
+  FetchExtensionService,
+  GitHubRelease,
+  GitHubReleaseAsset,
+  GitHubReleaseService,
+  Repository,
+  RepositoryService
+} from '../../shared';
 import { ReleaseDeployWizardComponent } from './release-deploy-wizard.component';
 
-const repo = (id: string, enabled = false): Repository => ({ id, name: `Repo ${id}`, url: `https://github.com/o/${id}`, accessToken: '_DUMMY_ACCESS_CODE_', enabled }) as Repository;
-const asset = (name: string): GitHubReleaseAsset => ({ id: 1, name, size: 10, browserDownloadUrl: `https://dl/${name}`, contentType: 'application/zip' }) as GitHubReleaseAsset;
-const release = (tag: string, ...assets: string[]): GitHubRelease => ({ id: 1, tagName: tag, name: tag, publishedAt: '', assets: assets.map(asset) }) as GitHubRelease;
+const repo = (id: string, enabled = false): Repository =>
+  ({
+    id,
+    name: `Repo ${id}`,
+    url: `https://github.com/o/${id}`,
+    accessToken: '_DUMMY_ACCESS_CODE_',
+    enabled
+  }) as Repository;
+const asset = (name: string): GitHubReleaseAsset =>
+  ({
+    id: 1,
+    name,
+    size: 10,
+    browserDownloadUrl: `https://dl/${name}`,
+    contentType: 'application/zip'
+  }) as GitHubReleaseAsset;
+const release = (tag: string, ...assets: string[]): GitHubRelease =>
+  ({ id: 1, tagName: tag, name: tag, publishedAt: '', assets: assets.map(asset) }) as GitHubRelease;
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('ReleaseDeployWizardComponent', () => {
@@ -28,12 +51,18 @@ describe('ReleaseDeployWizardComponent', () => {
 
   beforeEach(() => {
     repos$ = new BehaviorSubject<Repository[]>([]);
-    repositories = jasmine.createSpyObj('RepositoryService', ['getRepositories', 'getRepositoryAccessToken']);
+    repositories = jasmine.createSpyObj('RepositoryService', [
+      'getRepositories',
+      'getRepositoryAccessToken'
+    ]);
     repositories.getRepositories.and.returnValue(repos$);
     repositories.getRepositoryAccessToken.and.resolveTo('tok');
     github = jasmine.createSpyObj('GitHubReleaseService', ['parseOwnerRepo', 'listReleases']);
     github.parseOwnerRepo.and.callFake((r: Repository) => ({ owner: 'o', repo: r.id }));
-    github.listReleases.and.resolveTo([release('1.0.1', 'A.zip', 'readme.md'), release('1.0.0', 'B.zip')]);
+    github.listReleases.and.resolveTo([
+      release('1.0.1', 'A.zip', 'readme.md'),
+      release('1.0.0', 'B.zip')
+    ]);
     analytics = jasmine.createSpyObj('AnalyticsService', ['uploadExtension']);
     fetchExtension = jasmine.createSpyObj('FetchExtensionService', ['sendFetchExtensionEvent']);
     fetchExtension.sendFetchExtensionEvent.and.resolveTo({ requestId: 'req-1', url: '', name: '' });
@@ -48,7 +77,9 @@ describe('ReleaseDeployWizardComponent', () => {
         { provide: AlertService, useValue: alerts }
       ]
     });
-    TestBed.overrideComponent(ReleaseDeployWizardComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ReleaseDeployWizardComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
   });
 
   describe('repository and release selection', () => {
@@ -136,7 +167,9 @@ describe('ReleaseDeployWizardComponent', () => {
     it('downloads the asset, tells the user what to do next and moves on to the upload step', async () => {
       await create();
       const downloads: string[] = [];
-      spyOn(HTMLAnchorElement.prototype, 'click').and.callFake(function (this: HTMLAnchorElement) { downloads.push(`${this.href}|${this.download}`); });
+      spyOn(HTMLAnchorElement.prototype, 'click').and.callFake(function (this: HTMLAnchorElement) {
+        downloads.push(`${this.href}|${this.download}`);
+      });
       component.selectedAsset = asset('A.zip');
       component.downloadAndContinue();
       expect(downloads).toEqual(['https://dl/A.zip|A.zip']);
@@ -156,7 +189,11 @@ describe('ReleaseDeployWizardComponent', () => {
       await create();
       component.selectedAsset = asset('A.zip');
       await component.sendFetchExtensionEvent();
-      expect(fetchExtension.sendFetchExtensionEvent).toHaveBeenCalledWith('https://dl/A.zip', 'A.zip', 'tok');
+      expect(fetchExtension.sendFetchExtensionEvent).toHaveBeenCalledWith(
+        'https://dl/A.zip',
+        'A.zip',
+        'tok'
+      );
       expect(alerts.info).toHaveBeenCalledWith(jasmine.stringContaining('req-1'));
       expect(component.sendingFetchEvent).toBeFalse();
     });

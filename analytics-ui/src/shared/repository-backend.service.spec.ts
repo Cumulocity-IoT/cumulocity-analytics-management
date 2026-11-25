@@ -15,7 +15,13 @@ const response = (over: Record<string, unknown> = {}) =>
     ...over
   }) as never;
 
-const repository = { id: 'r1', name: 'Repo', url: 'https://github.com/o/r/tree/main/blocks', accessToken: '', enabled: true } as Repository;
+const repository = {
+  id: 'r1',
+  name: 'Repo',
+  url: 'https://github.com/o/r/tree/main/blocks',
+  accessToken: '',
+  enabled: true
+} as Repository;
 const item = { name: 'Foo', url: 'https://raw/Foo.mon', repositoryId: 'r1' } as RepositoryItem;
 
 describe('RepositoryBackendService', () => {
@@ -27,7 +33,9 @@ describe('RepositoryBackendService', () => {
   beforeEach(() => {
     fetchClient = jasmine.createSpyObj<FetchClient>('FetchClient', ['fetch']);
     alerts = jasmine.createSpyObj<AlertService>('AlertService', ['danger']);
-    config = jasmine.createSpyObj<RepositoryConfigService>('RepositoryConfigService', ['resolveAccessToken']);
+    config = jasmine.createSpyObj<RepositoryConfigService>('RepositoryConfigService', [
+      'resolveAccessToken'
+    ]);
     config.resolveAccessToken.and.resolveTo('');
     TestBed.configureTestingModule({
       providers: [
@@ -50,19 +58,30 @@ describe('RepositoryBackendService', () => {
       const [url, options] = fetchClient.fetch.calls.mostRecent().args;
       expect(url).toBe('service/analytics-ext-service/repository/contentList');
       expect((options as any).headers['X-Repository-Access-Token']).toBe('tok');
-      expect((options as any).params).toEqual({ url: encodeURIComponent(repository.url), repository_id: 'r1' });
+      expect((options as any).params).toEqual({
+        url: encodeURIComponent(repository.url),
+        repository_id: 'r1'
+      });
       expect(result.success).toBeTrue();
     });
 
     it('omits the token header when no token resolves', async () => {
       fetchClient.fetch.and.resolveTo(response());
       await service.testRepository(repository);
-      expect((fetchClient.fetch.calls.mostRecent().args[1] as any).headers['X-Repository-Access-Token']).toBeUndefined();
+      expect(
+        (fetchClient.fetch.calls.mostRecent().args[1] as any).headers['X-Repository-Access-Token']
+      ).toBeUndefined();
     });
 
     it('returns the backend error message on failure', async () => {
-      fetchClient.fetch.and.resolveTo(response({ ok: false, status: 404, json: async () => ({ error: 'Not Found' }) }));
-      expect(await service.testRepository(repository)).toEqual({ success: false, status: 404, message: 'Not Found' });
+      fetchClient.fetch.and.resolveTo(
+        response({ ok: false, status: 404, json: async () => ({ error: 'Not Found' }) })
+      );
+      expect(await service.testRepository(repository)).toEqual({
+        success: false,
+        status: 404,
+        message: 'Not Found'
+      });
     });
 
     it('returns a connection failure result when the request throws', async () => {
@@ -80,7 +99,9 @@ describe('RepositoryBackendService', () => {
     });
 
     it('raises a RepositoryError with status and backend message for HTTP failures', async () => {
-      fetchClient.fetch.and.resolveTo(response({ ok: false, status: 403, json: async () => ({ error: 'rate limit' }) }));
+      fetchClient.fetch.and.resolveTo(
+        response({ ok: false, status: 403, json: async () => ({ error: 'rate limit' }) })
+      );
       const error = await service.getContent(repository).catch(e => e);
       expect(error).toBeInstanceOf(RepositoryError);
       expect(error.status).toBe(403);
@@ -111,7 +132,9 @@ describe('RepositoryBackendService', () => {
 
     it('rejects with a RepositoryError for non-OK responses', async () => {
       fetchClient.fetch.and.resolveTo(response({ ok: false, status: 500 }));
-      await expectAsync(service.getItemContent(item, false)).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.getItemContent(item, false)).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
     });
   });
 
@@ -122,13 +145,21 @@ describe('RepositoryBackendService', () => {
       const ok = response();
       fetchClient.fetch.and.resolveTo(ok);
 
-      expect(await service.createExtensionFromRepository('E', repository, true, false, true)).toBe(ok);
+      expect(await service.createExtensionFromRepository('E', repository, true, false, true)).toBe(
+        ok
+      );
 
       const [url, options] = post();
       expect(url).toBe('service/analytics-ext-service/extension/repository');
       expect(options.method).toBe('POST');
       expect(options.responseType).toBe('blob');
-      expect(JSON.parse(options.body)).toEqual({ extension_name: 'E', repository, upload: true, deploy: false, rebuild: true });
+      expect(JSON.parse(options.body)).toEqual({
+        extension_name: 'E',
+        repository,
+        upload: true,
+        deploy: false,
+        rebuild: true
+      });
     });
 
     it('posts a list build request including the monitors', async () => {
@@ -148,9 +179,13 @@ describe('RepositoryBackendService', () => {
     });
 
     it('surfaces the server error text, alerts the user and rethrows', async () => {
-      fetchClient.fetch.and.resolveTo(response({ ok: false, status: 400, text: async () => '{"error":"Build failed"}' }));
+      fetchClient.fetch.and.resolveTo(
+        response({ ok: false, status: 400, text: async () => '{"error":"Build failed"}' })
+      );
 
-      const error = await service.createExtensionFromRepository('E', repository, true, false, false).catch(e => e);
+      const error = await service
+        .createExtensionFromRepository('E', repository, true, false, false)
+        .catch(e => e);
 
       expect(error).toBeInstanceOf(RepositoryError);
       expect(error.userMessage).toContain('Build failed');
@@ -159,7 +194,9 @@ describe('RepositoryBackendService', () => {
 
     it('wraps network failures with a message naming the extension', async () => {
       fetchClient.fetch.and.rejectWith(new Error('offline'));
-      const error = await service.createExtensionFromList('MyExt', [item], repository, true, false, false).catch(e => e);
+      const error = await service
+        .createExtensionFromList('MyExt', [item], repository, true, false, false)
+        .catch(e => e);
       expect(error).toBeInstanceOf(RepositoryError);
       expect(alerts.danger).toHaveBeenCalled();
     });
@@ -171,7 +208,9 @@ describe('RepositoryBackendService', () => {
       expect(service.mapTestStatusToResult(403).message).toContain('rate limit');
       expect(service.mapTestStatusToResult(429).message).toContain('rate limit');
       expect(service.mapTestStatusToResult(404).message).toContain('not found');
-      expect(service.mapTestStatusToResult(500)).toEqual(jasmine.objectContaining({ success: false, status: 500 }));
+      expect(service.mapTestStatusToResult(500)).toEqual(
+        jasmine.objectContaining({ success: false, status: 500 })
+      );
     });
   });
 });

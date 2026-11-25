@@ -1,3 +1,6 @@
+/* ::ng-deep is intentional in this file: every rule below targets the internals of
+   Cumulocity components (c8y-properties-list, c8y-sv, c8y-resizable-grid) that expose
+   no design tokens or inputs for this styling. */
 /* Break long URLs in the properties list so they don't overflow the card.
    c8y-properties-list applies text-truncate (white-space:nowrap) to links,
    so white-space and text-overflow must also be overridden. */

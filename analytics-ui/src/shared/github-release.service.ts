@@ -84,11 +84,7 @@ export class GitHubReleaseService {
     return null;
   }
 
-  async listReleases(
-    owner: string,
-    repo: string,
-    accessToken?: string
-  ): Promise<GitHubRelease[]> {
+  async listReleases(owner: string, repo: string, accessToken?: string): Promise<GitHubRelease[]> {
     const headers: Record<string, string> = {
       accept: 'application/vnd.github+json'
     };
@@ -138,14 +134,18 @@ export class GitHubReleaseService {
       case 401:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'),
+          gettext(
+            'Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'
+          ),
           status
         );
       case 403:
       case 429:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'),
+          gettext(
+            'Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'
+          ),
           status
         );
       case 404:
@@ -157,7 +157,10 @@ export class GitHubReleaseService {
       default:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          this.messages.format(gettext('Failed to list releases (status: {{status}}). Please try again.'), { status }),
+          this.messages.format(
+            gettext('Failed to list releases (status: {{status}}). Please try again.'),
+            { status }
+          ),
           status
         );
     }

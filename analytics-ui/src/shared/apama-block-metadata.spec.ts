@@ -1,4 +1,10 @@
-import { buildBlockMessagesEvt, buildBlockMetadataEvt, ParsedBlockMetadata, parseApamaBlockMetadata, parseBlockMetadataEvt } from './apama-block-metadata';
+import {
+  buildBlockMessagesEvt,
+  buildBlockMetadataEvt,
+  ParsedBlockMetadata,
+  parseApamaBlockMetadata,
+  parseBlockMetadataEvt
+} from './apama-block-metadata';
 
 const MON = `package com.acme.blocks;
 
@@ -76,14 +82,25 @@ describe('apama-block-metadata', () => {
 
     it('reads parameters with their doc, type and semantic type', () => {
       expect(block.parameters).toEqual([
-        { id: 'factor', name: 'Scale factor', description: 'Multiplier applied to the sum.', type: 'float', semanticType: 'c8y_Measurement' },
+        {
+          id: 'factor',
+          name: 'Scale factor',
+          description: 'Multiplier applied to the sum.',
+          type: 'float',
+          semanticType: 'c8y_Measurement'
+        },
         { id: 'label', name: 'Label', description: '', type: 'string', semanticType: undefined }
       ]);
     });
 
     it('reads inputs from $process in declaration order, with names, descriptions and normalized types', () => {
       expect(block.inputs.map(i => i.id)).toEqual(['a', 'b', 'flag', 'extra']);
-      expect(block.inputs[0]).toEqual({ id: 'a', name: 'First value', description: 'The first operand.', type: 'float' });
+      expect(block.inputs[0]).toEqual({
+        id: 'a',
+        name: 'First value',
+        description: 'The first operand.',
+        type: 'float'
+      });
       expect(block.inputs[1].type).toBe('any'); // optional<Value> -> any
       expect(block.inputs[1].name).toBe('Second value');
       expect(block.inputs[2].type).toBe('pulse'); // explicit $INPUT_TYPE constant wins
@@ -92,15 +109,26 @@ describe('apama-block-metadata', () => {
     });
 
     it('reads outputs, defaulting the type to pulse', () => {
-      expect(block.outputs.map(o => [o.id, o.type])).toEqual([['total', 'float'], ['done', 'pulse']]);
+      expect(block.outputs.map(o => [o.id, o.type])).toEqual([
+        ['total', 'float'],
+        ['done', 'pulse']
+      ]);
     });
 
     it('falls back to a minimal entry for undocumented blocks', () => {
       const [plain] = parseApamaBlockMetadata('event Plain { BlockBase $base; }', 'a.b');
       expect(plain).toEqual({
-        id: 'a.b.Plain', name: 'Plain', description: '', extendedDescription: undefined,
-        category: 'Utilities', blockType: undefined, consumesInput: undefined, producesOutput: undefined,
-        inputs: [], outputs: [], parameters: []
+        id: 'a.b.Plain',
+        name: 'Plain',
+        description: '',
+        extendedDescription: undefined,
+        category: 'Utilities',
+        blockType: undefined,
+        consumesInput: undefined,
+        producesOutput: undefined,
+        inputs: [],
+        outputs: [],
+        parameters: []
       });
     });
 
@@ -131,7 +159,9 @@ event Receive { BlockBase $base; action<Activation> $setOutput_received; action 
 
     it('builds a BlockMetadata event with all blocks and a round-trippable payload', () => {
       const evt = buildBlockMetadataEvt('MyExt', blocks);
-      expect(evt).toContain('"analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("MyExt", "EN", "');
+      expect(evt).toContain(
+        '"analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("MyExt", "EN", "'
+      );
       const payload = payloadOf(evt);
       expect(payload.analytics.length).toBe(1);
       expect(payload.analytics[0].id).toBe('com.acme.blocks.ScaledSum');
@@ -148,7 +178,9 @@ event Receive { BlockBase $base; action<Activation> $setOutput_received; action 
       expect(messages[`block_${id}_inputs_a_name`]).toBe('First value');
       expect(messages[`block_${id}_inputs_a_description`]).toBe('The first operand.');
       expect(messages[`block_${id}_outputs_total_name`]).toBe('total');
-      expect(messages[`block_${id}_parameters_factor_description`]).toBe('Multiplier applied to the sum.');
+      expect(messages[`block_${id}_parameters_factor_description`]).toBe(
+        'Multiplier applied to the sum.'
+      );
     });
 
     it('omits empty descriptions from the messages', () => {
@@ -159,7 +191,15 @@ event Receive { BlockBase $base; action<Activation> $setOutput_received; action 
     });
 
     it('escapes quotes and backslashes so the MonitorScript literal stays valid', () => {
-      const tricky: ParsedBlockMetadata = { id: 'p.B', name: 'Say "hi" \\ there', description: '', category: 'C', inputs: [], outputs: [], parameters: [] };
+      const tricky: ParsedBlockMetadata = {
+        id: 'p.B',
+        name: 'Say "hi" \\ there',
+        description: '',
+        category: 'C',
+        inputs: [],
+        outputs: [],
+        parameters: []
+      };
       const evt = buildBlockMetadataEvt('X', [tricky]);
       expect(payloadOf(evt).analytics[0].name).toBe('Say "hi" \\ there');
     });
@@ -168,7 +208,15 @@ event Receive { BlockBase $base; action<Activation> $setOutput_received; action 
 
 describe('parseBlockMetadataEvt', () => {
   const block = (id: string, description: string) =>
-    ({ id, name: id, description, category: 'Utilities', inputs: [], outputs: [], parameters: [] }) as ParsedBlockMetadata;
+    ({
+      id,
+      name: id,
+      description,
+      category: 'Utilities',
+      inputs: [],
+      outputs: [],
+      parameters: []
+    }) as ParsedBlockMetadata;
 
   it('is the inverse of buildBlockMetadataEvt, also for quotes and backslashes in texts', () => {
     const blocks = [block('a.One', 'Says "hi" and uses C:\\temp'), block('a.Two', 'Second')];
@@ -176,8 +224,13 @@ describe('parseBlockMetadataEvt', () => {
   });
 
   it('reads several events of one file and returns each block id once', () => {
-    const content = buildBlockMetadataEvt('E1', [block('a.One', 'x')]) + buildBlockMetadataEvt('E2', [block('a.One', 'y'), block('a.Two', 'z')]);
-    expect(parseBlockMetadataEvt(content).map(b => [b.id, b.description])).toEqual([['a.One', 'x'], ['a.Two', 'z']]);
+    const content =
+      buildBlockMetadataEvt('E1', [block('a.One', 'x')]) +
+      buildBlockMetadataEvt('E2', [block('a.One', 'y'), block('a.Two', 'z')]);
+    expect(parseBlockMetadataEvt(content).map(b => [b.id, b.description])).toEqual([
+      ['a.One', 'x'],
+      ['a.Two', 'z']
+    ]);
   });
 
   it('yields nothing for content without a usable event', () => {

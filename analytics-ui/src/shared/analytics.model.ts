@@ -86,7 +86,6 @@ export interface RawCepBlock {
   category?: Category;
 }
 
-
 export interface RepositoryItem {
   id: string;
   name: string;
@@ -205,7 +204,6 @@ export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
  */
 export const GLOBAL_ACCESS_TOKEN_OPTION_KEY = 'globalAccessToken';
 
-
 export const CEP_METADATA_JSON_SUFFIX = '.json';
 export const CEP_DIAGNOSTICS_ZIP_SUFFIX = '.zip';
 export const GITHUB_BASE = 'https://api.github.com';
@@ -267,11 +265,10 @@ export const REPO_SAMPLES = [
   }
 ] as Repository[];
 
-
 export const DESCRIPTOR_YAML = 'extensions.yaml';
 
-
-export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+export type CepEngineStatus =
+  'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
 
 export type ExtensionType = 'block' | 'zip';
 

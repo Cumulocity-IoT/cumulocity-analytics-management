@@ -21,27 +21,58 @@
 <c8y-title>Details {{ extensionFromCep?.name }}</c8y-title>
 
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'plugin'" [label]="labels.extensions | translate"
-    [path]="routes.manage">
+  <c8y-breadcrumb-item
+    [icon]="'c8y-atom'"
+    [label]="'Ecosystem' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-streaming-analytics'"
+    [label]="'Analytics' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'plugin'"
+    [label]="labels.extensions | translate"
+    [path]="routes.manage"
+  >
   </c8y-breadcrumb-item>
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
 <!-- Codex split view: the sections of the extension on the left, the selected section on the right. -->
 <div class="p-l-24 p-r-24 p-t-16 p-b-24">
-  <div class="a17t-details-panel" data-cy="extension-details-panel">
-    <c8y-sv #sv initialSelection="blocks" [resizableConfig]="{ trackId: 'a17t-extension-details-split-view', collapsible: false }">
-      <c8y-sv-list [title]="'Details' | translate" [showEmptyState]="false">
-        <div class="p-8 d-flex d-col gap-8" role="listbox" [attr.aria-label]="'Sections' | translate">
+  <div
+    class="a17t-details-panel"
+    data-cy="extension-details-panel"
+  >
+    <c8y-sv
+      #sv
+      initialSelection="blocks"
+      [resizableConfig]="{ trackId: 'a17t-extension-details-split-view', collapsible: false }"
+    >
+      <c8y-sv-list
+        [title]="'Details' | translate"
+        [showEmptyState]="false"
+      >
+        <div
+          class="p-8 d-flex d-col gap-8"
+          role="listbox"
+          [attr.aria-label]="'Sections' | translate"
+        >
           @for (section of sections; track section.id) {
-            <div class="a17t-section-row" role="option" tabindex="0"
+            <div
+              class="a17t-section-row"
+              role="option"
+              tabindex="0"
               [attr.aria-selected]="sv.selectionService.isSelected(section.id)"
               [class.active]="sv.selectionService.isSelected(section.id)"
-              [attr.data-cy]="'extension-section-' + section.id" (click)="sv.selectionService.select(section.id)"
-              (keydown.enter)="sv.selectionService.select(section.id)">
-              <i [c8yIcon]="section.icon" class="m-r-8"></i>
+              [attr.data-cy]="'extension-section-' + section.id"
+              (click)="sv.selectionService.select(section.id)"
+              (keydown.enter)="sv.selectionService.select(section.id)"
+            >
+              <i
+                [c8yIcon]="section.icon"
+                class="m-r-8"
+              ></i>
               <span class="flex-grow">{{ section.label | translate }}</span>
               @if (sectionCount(section.id); as count) {
                 <span class="badge badge-info">{{ count }}</span>
@@ -51,26 +82,44 @@
         </div>
       </c8y-sv-list>
 
-      <c8y-sv-details emptyStateIcon="list" [ariaLabel]="'Section details' | translate"
+      <c8y-sv-details
+        emptyStateIcon="list"
+        [ariaLabel]="'Section details' | translate"
         [title]="sectionLabel(sv.selectionService.selectedItem) | translate"
         [emptyStateTitle]="'No section selected' | translate"
         [emptyStateSubtitle]="'Select a section from the list.' | translate"
-        (backClick)="sv.selectionService.clearSelection()">
+        (backClick)="sv.selectionService.clearSelection()"
+      >
         @switch (sv.selectionService.selectedItem) {
           @case ('blocks') {
-            <div class="a17t-detail-body" data-cy="extension-blocks">
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-blocks"
+            >
               @if (!extensionFromCep || extensionFromCep?.analytics?.length === 0) {
-                <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
-                  [title]="'This extension contains no .mon files or extension is not loaded.' | translate"
-                  [horizontal]="false">
+                <c8y-ui-empty-state
+                  [icon]="'c8y-icon c8y-icon-apama-epl'"
+                  [title]="
+                    'This extension contains no .mon files or extension is not loaded.' | translate
+                  "
+                  [horizontal]="false"
+                >
                 </c8y-ui-empty-state>
               }
               @for (block of extensionFromCep?.analytics || []; track block) {
                 <div class="a17t-block-item">
                   <div class="d-flex a-i-center j-c-between gap-8">
-                    <strong class="a17t-block-name" [title]="block.id">{{ block.id }}</strong>
+                    <strong
+                      class="a17t-block-name"
+                      [title]="block.id"
+                      >{{ block.id }}</strong
+                    >
                     @if (block.category) {
-                      <span class="label label-default flex-no-shrink" [title]="'Block Category' | translate">{{ block.category }}</span>
+                      <span
+                        class="label label-default flex-no-shrink"
+                        [title]="'Block Category' | translate"
+                        >{{ block.category }}</span
+                      >
                     }
                   </div>
                   @if (block.description) {
@@ -81,22 +130,38 @@
             </div>
           }
           @case ('files') {
-            <div class="a17t-detail-body" data-cy="extension-files">
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-files"
+            >
               @for (file of extensionContent; track file; let i = $index) {
                 <div class="a17t-file-item">
                   <span class="text-muted text-12 a17t-file-index">{{ i + 1 }}</span>
-                  <span class="a17t-block-name" [title]="file">{{ file }}</span>
+                  <span
+                    class="a17t-block-name"
+                    [title]="file"
+                    >{{ file }}</span
+                  >
                 </div>
               }
             </div>
           }
           @case ('build') {
-            <div class="a17t-detail-body" data-cy="extension-build-information">
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-build-information"
+            >
               @for (item of buildInformation; track item.label) {
                 <div class="a17t-block-item">
                   <div class="text-muted text-12">{{ item.label | translate }}</div>
                   @if (item.type === 'link') {
-                    <a class="a17t-link" [href]="item.value" target="_blank" rel="noopener noreferrer">{{ item.value }}</a>
+                    <a
+                      class="a17t-link"
+                      [href]="item.value"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >{{ item.value }}</a
+                    >
                   } @else {
                     <div class="a17t-block-name m-t-4">{{ item.value }}</div>
                   }

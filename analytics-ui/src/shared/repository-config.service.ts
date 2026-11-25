@@ -108,7 +108,10 @@ export class RepositoryConfigService {
     try {
       parsed = JSON.parse(option.value || '{}');
     } catch (error) {
-      console.warn(`[RepositoryConfigService] Could not parse access token for "${repositoryId}":`, error);
+      console.warn(
+        `[RepositoryConfigService] Could not parse access token for "${repositoryId}":`,
+        error
+      );
       return '';
     }
     return parsed.accessToken || '';
@@ -127,7 +130,11 @@ export class RepositoryConfigService {
     if (repository.accessToken && repository.accessToken !== DUMMY_ACCESS_TOKEN) {
       return repository.accessToken;
     }
-    if (repository.accessToken === DUMMY_ACCESS_TOKEN && repository.id && !repository.id.startsWith('temp-')) {
+    if (
+      repository.accessToken === DUMMY_ACCESS_TOKEN &&
+      repository.id &&
+      !repository.id.startsWith('temp-')
+    ) {
       const repositoryToken = await this.getRepositoryAccessToken(repository.id);
       if (repositoryToken) {
         return repositoryToken;
@@ -208,7 +215,10 @@ export class RepositoryConfigService {
       });
       return data.value === 'true';
     } catch (error) {
-      console.warn('[RepositoryConfigService] Could not read the Expert mode setting, using "off":', error);
+      console.warn(
+        '[RepositoryConfigService] Could not read the Expert mode setting, using "off":',
+        error
+      );
       return false;
     }
   }
@@ -247,7 +257,11 @@ export class RepositoryConfigService {
   /** Persists the "use backend service" preference as a tenant option. */
   async setUseBackendServiceEnabled(enabled: boolean): Promise<void> {
     try {
-      await this.saveOption(SETTINGS_OPTION_CATEGORY, USE_BACKEND_SERVICE_OPTION_KEY, String(enabled));
+      await this.saveOption(
+        SETTINGS_OPTION_CATEGORY,
+        USE_BACKEND_SERVICE_OPTION_KEY,
+        String(enabled)
+      );
     } catch (error) {
       throw new RepositoryError(
         'Failed to save backend service setting',
@@ -327,12 +341,17 @@ export class RepositoryConfigService {
     try {
       parsed = JSON.parse(option.value || '{}');
     } catch (error) {
-      console.warn(`[RepositoryConfigService] Skipping option "${option.key}" — not valid JSON:`, error);
+      console.warn(
+        `[RepositoryConfigService] Skipping option "${option.key}" — not valid JSON:`,
+        error
+      );
       return null;
     }
 
     if (!parsed.url) {
-      console.warn(`[RepositoryConfigService] Skipping option "${option.key}" — not a repository entry (no "url").`);
+      console.warn(
+        `[RepositoryConfigService] Skipping option "${option.key}" — not a repository entry (no "url").`
+      );
       return null;
     }
 
@@ -361,7 +380,10 @@ export class RepositoryConfigService {
       try {
         existingData = JSON.parse(existingOption.value || '{}');
       } catch (error) {
-        console.warn(`[RepositoryConfigService] Could not parse existing option "${existingOption.key}":`, error);
+        console.warn(
+          `[RepositoryConfigService] Could not parse existing option "${existingOption.key}":`,
+          error
+        );
       }
     }
 

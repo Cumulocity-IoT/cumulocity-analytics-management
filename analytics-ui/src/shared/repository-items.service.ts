@@ -5,12 +5,7 @@ import { gettext } from '@c8y/ngx-components/gettext';
 import * as jsyaml from 'js-yaml';
 import { Observable, forkJoin, from, of } from 'rxjs';
 import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
-import {
-  CepBlock,
-  DESCRIPTOR_YAML,
-  Repository,
-  RepositoryItem
-} from './analytics.model';
+import { CepBlock, DESCRIPTOR_YAML, Repository, RepositoryItem } from './analytics.model';
 import { GitHubContentService } from './github-content.service';
 import { RepositoryBackendService } from './repository-backend.service';
 import { RepositoryError } from './repository-error';
@@ -62,10 +57,10 @@ export class RepositoryItemsService {
       return of([]);
     }
 
-    return forkJoin(
-      enabledRepos.map(repo => this.getCachedRepositoryItems(repo))
-    ).pipe(
-      map(blocks => this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled, deployedFiles)),
+    return forkJoin(enabledRepos.map(repo => this.getCachedRepositoryItems(repo))).pipe(
+      map(blocks =>
+        this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled, deployedFiles)
+      ),
       catchError(error => {
         this.handleError(
           error,
@@ -82,27 +77,25 @@ export class RepositoryItemsService {
 
   filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
     const hasExtensionsYaml = blocks.some(
-      block => block.type !== 'dir' &&
-        block.file?.toLowerCase() === DESCRIPTOR_YAML
+      block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
     );
 
     if (hasExtensionsYaml) {
       return blocks.filter(
-        block => block.type !== 'dir' &&
-          block.file?.toLowerCase() === DESCRIPTOR_YAML
+        block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
       );
     }
 
     return blocks.filter(
-      block => (block.type === 'dir' && !block.file.startsWith('.')) ||
-        (block.file?.toLowerCase().endsWith('.mon'))
+      block =>
+        (block.type === 'dir' && !block.file.startsWith('.')) ||
+        block.file?.toLowerCase().endsWith('.mon')
     );
   }
 
   analyzeRepositoryItems(items: RepositoryItem[]): Observable<RepositoryItem[]> {
     const yamlItems = items.filter(
-      block => block.type !== 'dir' &&
-        block.file?.toLowerCase() === DESCRIPTOR_YAML
+      block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
     );
 
     if (yamlItems.length > 0) {
@@ -114,8 +107,9 @@ export class RepositoryItemsService {
 
     return of(
       items.filter(
-        item => (item.type === 'dir' && !item.file.startsWith('.')) ||
-          (item.file?.toLowerCase().endsWith('.mon'))
+        item =>
+          (item.type === 'dir' && !item.file.startsWith('.')) ||
+          item.file?.toLowerCase().endsWith('.mon')
       )
     );
   }
@@ -129,14 +123,12 @@ export class RepositoryItemsService {
    * expected and already handled gracefully by the caller's own fallback —
    * see `enrichRepositoryItem`.
    */
-  getItemContent(
-    block: RepositoryItem,
-    extractFQN: boolean = false
-  ): Observable<string> {
+  getItemContent(block: RepositoryItem, extractFQN: boolean = false): Observable<string> {
     const content$ = from(this.repositoryModeService.isBackendMode()).pipe(
-      switchMap(backendMode => backendMode
-        ? from(this.repositoryBackendService.getItemContent(block, extractFQN))
-        : from(this.gitHubContentService.getItemContent(block, extractFQN))
+      switchMap(backendMode =>
+        backendMode
+          ? from(this.repositoryBackendService.getItemContent(block, extractFQN))
+          : from(this.gitHubContentService.getItemContent(block, extractFQN))
       )
     );
 
@@ -181,15 +173,24 @@ export class RepositoryItemsService {
           error,
           `Failed to fetch items from repository: ${repository.name}`,
           detail
-            ? this.messages.format(gettext('Failed to load items from "{{repositoryName}}": {{detail}}'), { repositoryName: repository.name, detail })
-            : this.messages.format(gettext('Failed to load items from repository "{{repositoryName}}".'), { repositoryName: repository.name })
+            ? this.messages.format(
+                gettext('Failed to load items from "{{repositoryName}}": {{detail}}'),
+                { repositoryName: repository.name, detail }
+              )
+            : this.messages.format(
+                gettext('Failed to load items from repository "{{repositoryName}}".'),
+                { repositoryName: repository.name }
+              )
         );
         return of([]);
       })
     );
   }
 
-  private processGitHubContent(data: unknown, repository: Repository): Observable<RepositoryItem[]> {
+  private processGitHubContent(
+    data: unknown,
+    repository: Repository
+  ): Observable<RepositoryItem[]> {
     try {
       const items: RepositoryItem[] = [];
 
@@ -298,7 +299,10 @@ export class RepositoryItemsService {
    * engine loads, so the section counts as installed when every one of them is
    * part of a deployed extension. A section without a `.mon` file never does.
    */
-  private createYamlSectionItems(sections: Record<string, string[]>, yamlItem: RepositoryItem): RepositoryItem[] {
+  private createYamlSectionItems(
+    sections: Record<string, string[]>,
+    yamlItem: RepositoryItem
+  ): RepositoryItem[] {
     const items = Object.entries(sections).map(([name, files]) => {
       // Repository-relative paths identify the files; the deployed-file lookup
       // only knows basenames.
@@ -312,7 +316,8 @@ export class RepositoryItemsService {
         extensionsYamlItem: yamlItem,
         sectionFiles,
         installed:
-          sectionFiles.length > 0 && sectionFiles.every(file => this.deployedFiles.has(basename(file)))
+          sectionFiles.length > 0 &&
+          sectionFiles.every(file => this.deployedFiles.has(basename(file)))
       } as RepositoryItem;
     });
     return this.hideInstalled ? items.filter(item => !item.installed) : items;
@@ -331,8 +336,7 @@ export class RepositoryItemsService {
     // EventsWindowContents.mon) never shows up in the deployed blocks, so it
     // also counts as installed when a deployed extension contains that file.
     const isInstalled = (block: RepositoryItem) =>
-      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id)) ||
-      deployedFiles.has(block.file);
+      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id)) || deployedFiles.has(block.file);
 
     // The descriptor is expanded into sections later (`analyzeRepositoryItems`),
     // which apply the installation filter themselves. Dropping it here would
@@ -358,9 +362,7 @@ export class RepositoryItemsService {
         const sections: Record<string, string[]> = {};
         for (const [name, files] of Object.entries(yamlContent as Record<string, unknown>)) {
           // Either a plain list or a mapping with a `files` list.
-          const list = Array.isArray(files)
-            ? files
-            : (files as { files?: unknown } | null)?.files;
+          const list = Array.isArray(files) ? files : (files as { files?: unknown } | null)?.files;
           sections[name] = Array.isArray(list)
             ? list.filter((file): file is string => typeof file === 'string')
             : [];
@@ -373,7 +375,9 @@ export class RepositoryItemsService {
     } catch (error) {
       throw new RepositoryError(
         `Error parsing ${DESCRIPTOR_YAML}`,
-        this.messages.format(gettext('Failed to parse {{file}}. Invalid format.'), { file: DESCRIPTOR_YAML }),
+        this.messages.format(gettext('Failed to parse {{file}}. Invalid format.'), {
+          file: DESCRIPTOR_YAML
+        }),
         error instanceof Error ? error : undefined
       );
     }

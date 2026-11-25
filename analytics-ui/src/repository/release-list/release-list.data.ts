@@ -61,22 +61,62 @@ function asset(
 }
 
 export const RELEASE_BUNDLES: ReleaseAsset[] = [
-  asset('contrib-blocks', 'Full bundle containing every contributed Analytics Builder block in this release.', 58382, 'bundle'),
-  asset('contrib-cumulocity-blocks', 'Bundle of Cumulocity-specific blocks — measurements, service requests and device I/O.', 20154, 'bundle'),
-  asset('contrib-simulation-blocks', 'Bundle of signal generators and simulation blocks for testing analytic models.', 14881, 'bundle'),
-  asset('contrib-service-request-blocks', 'Bundle of blocks for creating and managing Cumulocity service requests.', 4481, 'bundle')
+  asset(
+    'contrib-blocks',
+    'Full bundle containing every contributed Analytics Builder block in this release.',
+    58382,
+    'bundle'
+  ),
+  asset(
+    'contrib-cumulocity-blocks',
+    'Bundle of Cumulocity-specific blocks — measurements, service requests and device I/O.',
+    20154,
+    'bundle'
+  ),
+  asset(
+    'contrib-simulation-blocks',
+    'Bundle of signal generators and simulation blocks for testing analytic models.',
+    14881,
+    'bundle'
+  ),
+  asset(
+    'contrib-service-request-blocks',
+    'Bundle of blocks for creating and managing Cumulocity service requests.',
+    4481,
+    'bundle'
+  )
 ];
 
 export const RELEASE_BLOCKS: ReleaseAsset[] = [
   asset('Abs', 'Computes the absolute value of an incoming signal.', 1544),
   asset('AlarmBand', 'Raises an alarm when a signal leaves a configurable value band.', 2866),
-  asset('ApproximateWaveFormGenerator', 'Generates an approximate waveform from a small set of shape parameters.', 3491),
-  asset('AsyncSignal', "Emits a value asynchronously, decoupled from the model's evaluation cycle.", 4241),
+  asset(
+    'ApproximateWaveFormGenerator',
+    'Generates an approximate waveform from a small set of shape parameters.',
+    3491
+  ),
+  asset(
+    'AsyncSignal',
+    "Emits a value asynchronously, decoupled from the model's evaluation cycle.",
+    4241
+  ),
   asset('BaseNConverter', 'Converts numbers between binary, octal, decimal and hexadecimal.', 2868),
   asset('Constant', 'Emits a fixed, configurable value on every evaluation.', 1775),
-  asset('CreateBatchMeasurements', 'Creates a batch of measurements on a device in a single request.', 3957),
-  asset('CreateMeasurement', 'Creates a single measurement with a configurable fragment and series.', 4289),
-  asset('CreateMultiMeasurement', 'Creates one measurement carrying several fragments at once.', 4085),
+  asset(
+    'CreateBatchMeasurements',
+    'Creates a batch of measurements on a device in a single request.',
+    3957
+  ),
+  asset(
+    'CreateMeasurement',
+    'Creates a single measurement with a configurable fragment and series.',
+    4289
+  ),
+  asset(
+    'CreateMultiMeasurement',
+    'Creates one measurement carrying several fragments at once.',
+    4085
+  ),
   asset('CreateOpcUAWrite', 'Writes a value to a node on an OPC UA server.', 3701),
   asset('CreateServiceRequest', 'Creates a service request against a device or asset.', 4426),
   asset('CronTimer', 'Emits a tick according to a configurable cron expression.', 2814),
@@ -84,9 +124,21 @@ export const RELEASE_BLOCKS: ReleaseAsset[] = [
   asset('CSVReader', 'Reads and emits rows from a CSV file.', 3568),
   asset('CSVWriter', 'Appends rows of data to a CSV file.', 3200),
   asset('DateTimeStringToSeconds', 'Parses a date/time string into epoch seconds.', 2465),
-  asset('DeviceMeasurementInput', 'Feeds live device measurement data into the model as an input signal.', 4944),
-  asset('DiscreteStatistics', 'Computes running statistics — min, max, mean, count — over a signal.', 3146),
-  asset('EdgeDetection', 'Detects rising and falling edges in a boolean or threshold signal.', 2851),
+  asset(
+    'DeviceMeasurementInput',
+    'Feeds live device measurement data into the model as an input signal.',
+    4944
+  ),
+  asset(
+    'DiscreteStatistics',
+    'Computes running statistics — min, max, mean, count — over a signal.',
+    3146
+  ),
+  asset(
+    'EdgeDetection',
+    'Detects rising and falling edges in a boolean or threshold signal.',
+    2851
+  ),
   asset('HttpOutputBlock', 'Sends outgoing model data to an HTTP endpoint.', 8218),
   asset('IntervalPulseGenerator', 'Generates a pulse at a configurable time interval.', 2750),
   asset('IntToFloat32', 'Converts an integer value to a 32-bit floating point value.', 3020),
@@ -112,7 +164,11 @@ export const RELEASE_BLOCKS: ReleaseAsset[] = [
   asset('TimeOffset', 'Shifts a timestamp by a configurable duration.', 2166),
   asset('TimeSeriesDownsample', 'Downsamples a high-frequency time series to a lower rate.', 2386),
   asset('TimeTicker', 'Emits a tick at a fixed, configurable time interval.', 2268),
-  asset('WaveFormGenerator', 'Generates configurable sine, square, triangle or sawtooth waveforms.', 3071),
+  asset(
+    'WaveFormGenerator',
+    'Generates configurable sine, square, triangle or sawtooth waveforms.',
+    3071
+  ),
   asset('WebHook', 'Posts model data to a webhook URL.', 4409),
   asset('Xor', 'Performs a logical XOR on two boolean inputs.', 2192)
 ];

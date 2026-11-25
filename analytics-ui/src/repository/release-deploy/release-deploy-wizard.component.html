@@ -4,14 +4,20 @@
       <!-- Header -->
       <div class="card-header separator j-c-center">
         <h4 class="card-title d-flex">
-          <i c8yIcon="cloud-download" class="icon-32 m-r-16"></i>
+          <i
+            c8yIcon="cloud-download"
+            class="icon-32 m-r-16"
+          ></i>
           <span class="m-t-8">{{ 'Deploy from GitHub Release' | translate }}</span>
         </h4>
       </div>
 
       <div class="card content-fullpage inner-scroll flex-grow p-24">
         <p class="text-muted">
-          {{ 'Pick a repository, one of its releases, and a pre-built extension zip to deploy as-is — no build step required.' | translate }}
+          {{
+            'Pick a repository, one of its releases, and a pre-built extension zip to deploy as-is — no build step required.'
+              | translate
+          }}
         </p>
 
         <div class="form-group">
@@ -22,7 +28,7 @@
             [ngModel]="selectedRepository"
             (ngModelChange)="onRepositorySelected($event)"
             [disabled]="loading"
-            >
+          >
             @for (repository of repositories; track repository.id) {
               <option [ngValue]="repository">{{ repository.name }}</option>
             }
@@ -38,7 +44,7 @@
               [ngModel]="selectedRelease"
               (ngModelChange)="onReleaseSelected($event)"
               [disabled]="loading"
-              >
+            >
               @for (release of releases; track release.id) {
                 <option [ngValue]="release">
                   {{ release.name }} ({{ release.assets.length }} {{ 'assets' | translate }})
@@ -60,9 +66,11 @@
                       name="asset"
                       [value]="asset"
                       [(ngModel)]="selectedAsset"
-                      />
+                    />
                     {{ asset.name }}
-                    <span class="text-muted">&nbsp;({{ asset.size }} {{ 'bytes' | translate }})</span>
+                    <span class="text-muted"
+                      >&nbsp;({{ asset.size }} {{ 'bytes' | translate }})</span
+                    >
                   </label>
                 </div>
               }
@@ -88,7 +96,11 @@
       </div>
 
       <div class="card-footer separator p-24 flex-no-shrink text-center">
-        <button (click)="onCancel()" class="btn btn-default" type="button">
+        <button
+          (click)="onCancel()"
+          class="btn btn-default"
+          type="button"
+        >
           {{ 'Cancel' | translate }}
         </button>
         <!-- <button
@@ -104,9 +116,12 @@
           (click)="downloadAndContinue()"
           class="btn btn-primary m-l-8"
           type="button"
-          title="{{ 'Downloads the asset, then hand it to the upload step (drag-and-drop or browse) to actually deploy it.' | translate }}"
+          title="{{
+            'Downloads the asset, then hand it to the upload step (drag-and-drop or browse) to actually deploy it.'
+              | translate
+          }}"
           [disabled]="!selectedAsset"
-          >
+        >
           {{ 'Download' | translate }}
         </button>
       </div>
@@ -121,7 +136,7 @@
         [mode]="'add'"
         (cancelled)="onCancel()"
         (completed)="onUploadCompleted()"
-        >
+      >
       </a17t-extension-add>
     }
   </div>

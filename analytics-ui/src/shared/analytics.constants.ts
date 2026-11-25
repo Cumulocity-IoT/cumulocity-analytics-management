@@ -9,15 +9,9 @@ export const ERROR_MESSAGES = {
     'Could not subscribe to the microservice because another application with the same context path is already subscribed.'
   ),
   [ErrorType.NO_MANIFEST_FILE]: gettext('Could not find a manifest.'),
-  [ErrorType.INVALID_PACKAGE]: gettext(
-    'You have not uploaded a valid package.'
-  ),
-  [ErrorType.INVALID_APPLICATION]: gettext(
-    'You have not uploaded a valid application.'
-  ),
-  [ErrorType.INTERNAL_ERROR]: gettext(
-    'An internal error occurred, try to upload again.'
-  )
+  [ErrorType.INVALID_PACKAGE]: gettext('You have not uploaded a valid package.'),
+  [ErrorType.INVALID_APPLICATION]: gettext('You have not uploaded a valid application.'),
+  [ErrorType.INTERNAL_ERROR]: gettext('An internal error occurred, try to upload again.')
 };
 
 /** Root path of all pages contributed by this plugin. */

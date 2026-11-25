@@ -17,6 +17,10 @@ describe('analytics.constants', () => {
   });
 
   it('has a message for every upload error type', () => {
-    Object.values(ErrorType).forEach(type => expect((ERROR_MESSAGES as Record<string, string>)[type]).withContext(type).toBeTruthy());
+    Object.values(ErrorType).forEach(type =>
+      expect((ERROR_MESSAGES as Record<string, string>)[type])
+        .withContext(type)
+        .toBeTruthy()
+    );
   });
 });

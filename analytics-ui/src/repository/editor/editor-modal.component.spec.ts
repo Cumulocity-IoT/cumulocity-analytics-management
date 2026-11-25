@@ -8,17 +8,21 @@ describe('EditorModalComponent', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [EditorModalComponent] });
     // The Monaco editor itself is not part of this logic test.
-    TestBed.overrideComponent(EditorModalComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(EditorModalComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     component = TestBed.createComponent(EditorModalComponent).componentInstance;
   });
 
   it('configures the editor for EPL with the plugin theme and without minimap', () => {
     const config = new EplConfigService();
-    expect(component.editorOptions).toEqual(jasmine.objectContaining({
-      language: config.getLanguageName(),
-      theme: config.getThemeName(),
-      automaticLayout: true
-    }));
+    expect(component.editorOptions).toEqual(
+      jasmine.objectContaining({
+        language: config.getLanguageName(),
+        theme: config.getThemeName(),
+        automaticLayout: true
+      })
+    );
     expect(component.editorOptions.minimap).toEqual({ enabled: false });
   });
 
@@ -32,7 +36,11 @@ describe('EditorModalComponent', () => {
 
   describe('assignSchema', () => {
     const fakeMonaco = () => ({
-      languages: jasmine.createSpyObj('languages', ['register', 'setMonarchTokensProvider', 'setLanguageConfiguration']),
+      languages: jasmine.createSpyObj('languages', [
+        'register',
+        'setMonarchTokensProvider',
+        'setLanguageConfiguration'
+      ]),
       editor: jasmine.createSpyObj('editor', ['defineTheme'])
     });
 

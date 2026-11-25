@@ -1,9 +1,5 @@
 import { EventEmitter, Injectable } from '@angular/core';
-import {
-  IManagedObject,
-  IManagedObjectBinary,
-  IResult,
-} from '@c8y/client';
+import { IManagedObject, IManagedObjectBinary, IResult } from '@c8y/client';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { pairwise } from 'rxjs/operators';
 import {
@@ -11,7 +7,7 @@ import {
   CepExtension,
   CepExtensionsMetadata,
   CepStatusObject,
-  UploadMode,
+  UploadMode
 } from './analytics.model';
 import { CepRestartService } from './cep-restart.service';
 import { CepStatusService } from './cep-status.service';
@@ -68,14 +64,12 @@ export class AnalyticsService {
     // Views that loaded in the meantime (the engine status flips to "up" just
     // before the restart is considered complete) are showing the pre-restart
     // state, e.g. a new extension as "not loaded", so ask them to reload too.
-    this.restarting$
-      .pipe(pairwise())
-      .subscribe(([was, now]) => {
-        if (was && !now) {
-          this.clearAllCaches();
-          this.triggerCacheReload(false);
-        }
-      });
+    this.restarting$.pipe(pairwise()).subscribe(([was, now]) => {
+      if (was && !now) {
+        this.clearAllCaches();
+        this.triggerCacheReload(false);
+      }
+    });
   }
 
   // ============================================================================
@@ -130,7 +124,10 @@ export class AnalyticsService {
     extension: IManagedObject,
     showSuccessMessage: boolean = true
   ): Promise<IResult<null>> {
-    const result = await this.extensionInventoryService.deleteExtension(extension, showSuccessMessage);
+    const result = await this.extensionInventoryService.deleteExtension(
+      extension,
+      showSuccessMessage
+    );
     this.extensionEnrichmentService.invalidateCache();
     return result;
   }

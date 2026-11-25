@@ -23,7 +23,12 @@ import {
   takeUntil,
   tap
 } from 'rxjs/operators';
-import { createDefaultRepository, Repository, RepositoryItem, RepositoryTestResult } from './analytics.model';
+import {
+  createDefaultRepository,
+  Repository,
+  RepositoryItem,
+  RepositoryTestResult
+} from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { ExtensionBuilderService } from './extension-builder.service';
 import { GitHubContentService } from './github-content.service';
@@ -87,7 +92,10 @@ export class RepositoryService implements OnDestroy {
 
   private enqueueMutation<T>(task: () => Promise<T>): Promise<T> {
     const result = this.mutationQueue.then(task);
-    this.mutationQueue = result.then(() => undefined, () => undefined);
+    this.mutationQueue = result.then(
+      () => undefined,
+      () => undefined
+    );
     return result;
   }
 
@@ -97,13 +105,8 @@ export class RepositoryService implements OnDestroy {
     shareReplay({ bufferSize: 1, refCount: true })
   );
 
-  readonly repositoryItems$ = combineLatest([
-    this.reloadTrigger$,
-    this.state$
-  ]).pipe(
-    switchMap(([_, state]) =>
-      this.loadRepositoryItemsWithStatus(state.hideInstalled)
-    ),
+  readonly repositoryItems$ = combineLatest([this.reloadTrigger$, this.state$]).pipe(
+    switchMap(([_, state]) => this.loadRepositoryItemsWithStatus(state.hideInstalled)),
     shareReplay({ bufferSize: 1, refCount: true }),
     takeUntil(this.destroy$)
   );
@@ -189,16 +192,16 @@ export class RepositoryService implements OnDestroy {
       const state = this.state$.value;
 
       if (state.repositories.findIndex(r => r.id === updatedRepository.id) === -1) {
-        throw new RepositoryError(
-          'Repository not found',
-          gettext('Repository not found.')
-        );
+        throw new RepositoryError('Repository not found', gettext('Repository not found.'));
       }
 
       // Same reasoning as addRepository(): persist the live `repositories`
       // list so an unrelated repo's pending enabled-toggle is committed
       // along with this update rather than silently dropped.
-      const updatedRepositories = this.replaceRepositoryInList(state.repositories, updatedRepository);
+      const updatedRepositories = this.replaceRepositoryInList(
+        state.repositories,
+        updatedRepository
+      );
 
       try {
         await this.repositoryConfigService.saveRepositories(updatedRepositories);
@@ -228,11 +231,7 @@ export class RepositoryService implements OnDestroy {
     if (index === -1) {
       return list;
     }
-    return [
-      ...list.slice(0, index),
-      updatedRepository,
-      ...list.slice(index + 1)
-    ];
+    return [...list.slice(0, index), updatedRepository, ...list.slice(index + 1)];
   }
 
   private removeRepositoryFromList(list: Repository[], repositoryId: string): Repository[] {
@@ -415,10 +414,7 @@ export class RepositoryService implements OnDestroy {
     this.updateState({ hideInstalled });
   }
 
-  getRepositoryItemContent(
-    block: RepositoryItem,
-    extractFQN: boolean = false
-  ): Observable<string> {
+  getRepositoryItemContent(block: RepositoryItem, extractFQN: boolean = false): Observable<string> {
     return this.repositoryItemsService.getItemContent(block, extractFQN);
   }
 
@@ -466,7 +462,14 @@ export class RepositoryService implements OnDestroy {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    return this.extensionBuilderService.createExtensionFromList(name, monitors, repository, upload, deploy, rebuild);
+    return this.extensionBuilderService.createExtensionFromList(
+      name,
+      monitors,
+      repository,
+      upload,
+      deploy,
+      rebuild
+    );
   }
 
   createExtensionFromYaml(
@@ -478,7 +481,15 @@ export class RepositoryService implements OnDestroy {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    return this.extensionBuilderService.createExtensionFromYaml(name, yaml, sections, repository, upload, deploy, rebuild);
+    return this.extensionBuilderService.createExtensionFromYaml(
+      name,
+      yaml,
+      sections,
+      repository,
+      upload,
+      deploy,
+      rebuild
+    );
   }
 
   createExtensionFromRepository(
@@ -488,7 +499,13 @@ export class RepositoryService implements OnDestroy {
     deploy: boolean = false,
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
-    return this.extensionBuilderService.createExtensionFromRepository(name, repository, upload, deploy, rebuild);
+    return this.extensionBuilderService.createExtensionFromRepository(
+      name,
+      repository,
+      upload,
+      deploy,
+      rebuild
+    );
   }
 
   // ============================================================================
@@ -511,7 +528,7 @@ export class RepositoryService implements OnDestroy {
 
   private loadRepositoriesFromConfig(swallowErrors: boolean = true): Observable<Repository[]> {
     return from(this.repositoryConfigService.fetchRepositories()).pipe(
-      switchMap(repos => repos.length > 0 ? of(repos) : from(this.seedDefaultRepository())),
+      switchMap(repos => (repos.length > 0 ? of(repos) : from(this.seedDefaultRepository()))),
       tap(repos => {
         this.updateState({
           repositories: repos,
@@ -603,11 +620,12 @@ export class RepositoryService implements OnDestroy {
 
   private areRepositoriesEqual(a: Repository[], b: Repository[]): boolean {
     if (a.length !== b.length) return false;
-    return a.every((repo, index) =>
-      repo.id === b[index].id &&
-      repo.enabled === b[index].enabled &&
-      repo.name === b[index].name &&
-      repo.url === b[index].url
+    return a.every(
+      (repo, index) =>
+        repo.id === b[index].id &&
+        repo.enabled === b[index].enabled &&
+        repo.name === b[index].name &&
+        repo.url === b[index].url
     );
   }
 

@@ -207,10 +207,9 @@ export class CepStatusService implements OnDestroy {
     // `isBackendServiceDeployed()`, which reports "unavailable" for this call
     // but doesn't cache it, so a transient blip can't pin the whole session
     // to browser-only mode.
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-      { method: 'GET' }
-    );
+    const response = await this.fetchClient.fetch(`${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`, {
+      method: 'GET'
+    });
     // A 404 here is Cumulocity's platform-level "no such microservice
     // instance" routing error, not an application-level status response —
     // analytics-service always returns valid JSON for this endpoint when
@@ -276,7 +275,9 @@ export class CepStatusService implements OnDestroy {
         `fetchOperationIdFromBackend: request to ${url} failed — ${error instanceof CepError ? error.message : String(error)}`,
         error instanceof CepError
           ? error.userMessage
-          : gettext('Failed to retrieve the Streaming Analytics operation object ID from the backend service.'),
+          : gettext(
+              'Failed to retrieve the Streaming Analytics operation object ID from the backend service.'
+            ),
         error instanceof Error ? error : undefined,
         error instanceof CepError ? error.status : undefined
       );
@@ -285,7 +286,9 @@ export class CepStatusService implements OnDestroy {
     if (!data?.id) {
       throw new CepError(
         `fetchOperationIdFromBackend: ${url} returned no id (response body: ${JSON.stringify(data)})`,
-        gettext('The backend service returned an unexpected response when requesting the Streaming Analytics operation object ID.')
+        gettext(
+          'The backend service returned an unexpected response when requesting the Streaming Analytics operation object ID.'
+        )
       );
     }
 
@@ -293,7 +296,10 @@ export class CepStatusService implements OnDestroy {
   }
 
   private async fetchOperationIdFromCepStatus(): Promise<string> {
-    const statusData = await fetchCepJSON<{ microservice_name: string; microservice_application_id: string }>(this.fetchClient, `${CEP_PATH_STATUS}`);
+    const statusData = await fetchCepJSON<{
+      microservice_name: string;
+      microservice_application_id: string;
+    }>(this.fetchClient, `${CEP_PATH_STATUS}`);
     const { microservice_name, microservice_application_id } = statusData;
 
     const { data } = await this.inventoryService.listQuery(
@@ -335,10 +341,7 @@ export class CepStatusService implements OnDestroy {
         this.handleCepOperationObjectUpdate.bind(this)
       );
     } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to subscribe to operation object updates'
-      );
+      throw this.handleError(error, 'Failed to subscribe to operation object updates');
     }
   }
 
@@ -372,9 +375,7 @@ export class CepStatusService implements OnDestroy {
 
     if (isUp) {
       this.cachedCepStatus = null;
-      this.getCepStatus().catch(err =>
-        console.warn('Failed to refresh Cep status:', err)
-      );
+      this.getCepStatus().catch(err => console.warn('Failed to refresh Cep status:', err));
     }
 
     if (this.cepRestartService.isRestarting()) {
@@ -405,7 +406,9 @@ export class CepStatusService implements OnDestroy {
 
     return new CepError(
       logMessage,
-      error instanceof Error ? error.message : gettext('An unexpected error occurred. Please try again.'),
+      error instanceof Error
+        ? error.message
+        : gettext('An unexpected error occurred. Please try again.'),
       error instanceof Error ? error : undefined
     );
   }

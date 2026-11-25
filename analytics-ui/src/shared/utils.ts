@@ -104,11 +104,11 @@ export function triggerBrowserDownload(url: string, filename: string): void {
 }
 
 export /**
-* Transforms a GitHub web URL to a GitHub Content API endpoint URL
-* @param githubWebUrl A GitHub web URL (e.g., https://github.com/user/repo/tree/branch/path)
-* @returns The equivalent GitHub Content API URL
-*/
-  function githubWebUrlToContentApi(githubWebUrl: string): string {
+ * Transforms a GitHub web URL to a GitHub Content API endpoint URL
+ * @param githubWebUrl A GitHub web URL (e.g., https://github.com/user/repo/tree/branch/path)
+ * @returns The equivalent GitHub Content API URL
+ */
+function githubWebUrlToContentApi(githubWebUrl: string): string {
   try {
     // Parse the URL
     const url = new URL(githubWebUrl);
@@ -151,7 +151,8 @@ export /**
 
     return contentApiUrl;
   } catch (error) {
-    throw new Error(`Failed to convert GitHub URL: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to convert GitHub URL: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
-

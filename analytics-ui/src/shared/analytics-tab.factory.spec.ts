@@ -10,7 +10,10 @@ describe('AnalyticsTabFactory', () => {
   });
 
   it('offers the three tabs in display order on every analytics extension page', async () => {
-    for (const url of ['/c8y-pkg-analytics-extension/manage', '/x/c8y-pkg-analytics-extension/repository']) {
+    for (const url of [
+      '/c8y-pkg-analytics-extension/manage',
+      '/x/c8y-pkg-analytics-extension/repository'
+    ]) {
       const tabs = await tabsFor(url);
       expect(tabs.map(t => t.path)).toEqual([
         'c8y-pkg-analytics-extension/manage',

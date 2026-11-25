@@ -18,13 +18,7 @@
  * @authors Christof Strack
  */
 
-import {
-  AfterViewInit,
-  Component,
-  Input,
-  OnInit,
-  ViewChild
-} from '@angular/core';
+import { AfterViewInit, Component, Input, OnInit, ViewChild } from '@angular/core';
 
 import {
   ConfirmModalComponent,
@@ -59,9 +53,7 @@ export class ConfirmationModalComponent implements OnInit, AfterViewInit {
   constructor(private translateService: TranslateService) {}
 
   ngOnInit() {
-    this.messageTranslated = this.translateService.instant(
-      gettext(this.message)
-    );
+    this.messageTranslated = this.translateService.instant(gettext(this.message));
   }
 
   async ngAfterViewInit() {

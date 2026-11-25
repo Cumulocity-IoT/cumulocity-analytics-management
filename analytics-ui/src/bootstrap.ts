@@ -22,10 +22,7 @@ import '@angular/compiler';
 
 import { enableProdMode, provideZoneChangeDetection } from '@angular/core';
 import { bootstrapApplication } from '@angular/platform-browser';
-import {
-  BootstrapComponent,
-  provideBootstrapMetadata
-} from '@c8y/ngx-components';
+import { BootstrapComponent, provideBootstrapMetadata } from '@c8y/ngx-components';
 import { BootstrapMetaData } from '@c8y/bootstrap';
 import { appConfig } from './app.config';
 
@@ -39,5 +36,5 @@ export function bootstrap(metadata: BootstrapMetaData) {
   return bootstrapApplication(BootstrapComponent, {
     ...appConfig,
     providers: [provideZoneChangeDetection(), ...appConfig.providers]
-  }).catch((err) => console.log(err));
+  }).catch(err => console.log(err));
 }

@@ -116,8 +116,7 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
           }
         }
       ]
-    }),
-
+    })
   ]
 })
 export class AnalyticsExtensionModule {

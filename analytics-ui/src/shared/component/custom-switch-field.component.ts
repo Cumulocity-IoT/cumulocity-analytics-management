@@ -37,15 +37,10 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
         type="checkbox"
         [formControl]="formControl"
         [formlyAttributes]="field"
-        [attr.data-cy]="
-          'c8y-field-checkbox--' +
-          (field.templateOptions?.optionDataCy || to.label)
-        "
+        [attr.data-cy]="'c8y-field-checkbox--' + (field.templateOptions?.optionDataCy || to.label)"
       />
       <span></span>
-      <span class="text-truncate" title="{{ to.label | humanize }}">{{
-        to.label | humanize
-      }}</span>
+      <span class="text-truncate" title="{{ to.label | humanize }}">{{ to.label | humanize }}</span>
       @if (to.required && to.hideRequiredMarker !== true) {
         <span>
           <em class="m-l-4" translate>(required)</em>

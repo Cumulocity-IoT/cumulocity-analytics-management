@@ -20,7 +20,15 @@ import { MessageService } from '../../shared/message.service';
  * @authors Christof Strack
  */
 
-import { ChangeDetectorRef, Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnInit,
+  ViewChild,
+  ViewEncapsulation,
+  inject
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -32,7 +40,7 @@ import {
   ColumnDataType,
   CoreModule,
   DataGridComponent,
-  Pagination,
+  Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
@@ -45,7 +53,15 @@ import {
   PAGE_LABELS,
   ROUTES
 } from '../../shared';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  distinctUntilChanged,
+  map,
+  Observable,
+  shareReplay,
+  switchMap,
+  tap
+} from 'rxjs';
 import { catchError, of } from 'rxjs';
 import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
 import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
@@ -61,7 +77,14 @@ import { gettext } from '@c8y/ngx-components/gettext';
   templateUrl: 'repository-block-grid.component.html',
   styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
+  imports: [
+    CommonModule,
+    FormsModule,
+    CoreModule,
+    PopoverModule,
+    RepositoriesDrawerComponent,
+    ReleaseDeployWizardComponent
+  ]
 })
 export class RepositoryBlockGridComponent implements OnInit {
   private readonly messages = inject(MessageService);
@@ -104,7 +127,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true,
+      visible: true
     },
     {
       name: 'type',
@@ -139,7 +162,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       dataType: ColumnDataType.TextLong,
       filterable: true,
       visible: false
-    },
+    }
   ];
 
   pagination: Pagination = {
@@ -163,9 +186,8 @@ export class RepositoryBlockGridComponent implements OnInit {
     private bsModalService: BsModalService
   ) {
     this.repositoryItems$ = this.expertMode$.pipe(
-      switchMap(expertMode => expertMode
-        ? this.repositoryService.getRepositoryItemsAnalyzed()
-        : of([])
+      switchMap(expertMode =>
+        expertMode ? this.repositoryService.getRepositoryItemsAnalyzed() : of([])
       ),
       shareReplay(1),
       tap(items => {
@@ -200,11 +222,10 @@ export class RepositoryBlockGridComponent implements OnInit {
   }
 
   ngOnInit() {
-    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((samples) => {
-        this.repositoryItems = samples;
-        this.cdr.markForCheck();
-      });
+    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(samples => {
+      this.repositoryItems = samples;
+      this.cdr.markForCheck();
+    });
 
     this.repositoryService.getExpertMode().then(expertMode => {
       this.expertMode = expertMode;
@@ -223,7 +244,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       text: 'View Source',
       type: 'VIEW',
       icon: 'document-with-code',
-      showIf: (item) => item['type'] == 'file',
+      showIf: item => item['type'] == 'file',
       callback: this.viewMonitor.bind(this)
     });
 
@@ -270,7 +291,9 @@ export class RepositoryBlockGridComponent implements OnInit {
     } catch (error) {
       this.backendEnabled = !enabled;
       this.cdr.markForCheck();
-      this.alertService.danger(gettext('Failed to update the backend service setting. Please try again.'));
+      this.alertService.danger(
+        gettext('Failed to update the backend service setting. Please try again.')
+      );
       console.error('Failed to update backend service setting:', error);
     } finally {
       this.backendTogglePending = false;
@@ -278,35 +301,38 @@ export class RepositoryBlockGridComponent implements OnInit {
     }
   }
 
-
   initializeActiveRepository(): void {
     // Subscribe to repositories$ to find and set the active repository
 
-    this.repositoryService.getRepositories().pipe(
-      // Transform the array to find the enabled repository
-      map(repositories => repositories.find(repo => repo.enabled)),
-      // Only emit when the enabled repository changes
-      distinctUntilChanged((prev, curr) =>
-        prev?.id === curr?.id && prev?.enabled === curr?.enabled
-      ),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(enabledRepository => {
-      // Set the active repository
-      this.activeRepository = enabledRepository || ({} as Repository);
+    this.repositoryService
+      .getRepositories()
+      .pipe(
+        // Transform the array to find the enabled repository
+        map(repositories => repositories.find(repo => repo.enabled)),
+        // Only emit when the enabled repository changes
+        distinctUntilChanged(
+          (prev, curr) => prev?.id === curr?.id && prev?.enabled === curr?.enabled
+        ),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(enabledRepository => {
+        // Set the active repository
+        this.activeRepository = enabledRepository || ({} as Repository);
 
-      // You can perform additional actions here when active repository changes
-      // console.log('Active repository changed:', this.activeRepository);
-    });
+        // You can perform additional actions here when active repository changes
+        // console.log('Active repository changed:', this.activeRepository);
+      });
   }
 
   viewMonitor(block: RepositoryItem) {
     const initialState = {
-      source$: this.repositoryService.getRepositoryItemContent(
-        block,
-        false
-      ).pipe(
+      source$: this.repositoryService.getRepositoryItemContent(block, false).pipe(
         catchError(() => {
-          this.alertService.danger(this.messages.format(gettext('Failed to load content for "{{blockName}}".'), { blockName: block.name }));
+          this.alertService.danger(
+            this.messages.format(gettext('Failed to load content for "{{blockName}}".'), {
+              blockName: block.name
+            })
+          );
           return of('');
         })
       ),
@@ -321,7 +347,6 @@ export class RepositoryBlockGridComponent implements OnInit {
     }).content as EditorModalComponent;
   }
 
-
   checkSelection(ids: string[]) {
     const idSet = new Set(ids);
     const invalid: RepositoryItem[] = [];
@@ -333,46 +358,69 @@ export class RepositoryBlockGridComponent implements OnInit {
     const selectedBlockIds = new Set<string>();
     let hasInvalidType = false;
 
-    this.repositoryItems.forEach((sample) => {
+    this.repositoryItems.forEach(sample => {
       if (!idSet.has(sample.id)) return;
       if (sample.installed) {
         installedNames.push(sample.name);
         invalid.push(sample);
         return;
       }
-      if (sample.type == 'file' && !sample.file.endsWith('.mon') && sample.file !== DESCRIPTOR_YAML) {
+      if (
+        sample.type == 'file' &&
+        !sample.file.endsWith('.mon') &&
+        sample.file !== DESCRIPTOR_YAML
+      ) {
         invalid.push(sample);
         hasInvalidType = true;
         return;
       }
       // Yaml sections are compared by their .mon files. Directories carry no information and cannot be compared.
       const blockIds = sample.blockIds ?? sample.sectionFiles ?? [];
-      if (blockIds.some((id) => selectedBlockIds.has(id))) {
+      if (blockIds.some(id => selectedBlockIds.has(id))) {
         duplicateNames.push(sample.name);
         invalid.push(sample);
         return;
       }
-      blockIds.forEach((id) => selectedBlockIds.add(id));
+      blockIds.forEach(id => selectedBlockIds.add(id));
     });
 
     // One message per kind of problem, however many blocks are affected.
     if (installedNames.length > 0) {
       this.alertService.warning(
         installedNames.length === 1
-          ? this.messages.format(gettext('Not allowed to deploy the block twice. Block "{{blockName}}" is already installed and will be ignored.'), { blockName: installedNames[0] })
-          : this.messages.format(gettext('Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: {{blockNames}}.'), { blockNames: installedNames.join(', ') })
+          ? this.messages.format(
+              gettext(
+                'Not allowed to deploy the block twice. Block "{{blockName}}" is already installed and will be ignored.'
+              ),
+              { blockName: installedNames[0] }
+            )
+          : this.messages.format(
+              gettext(
+                'Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: {{blockNames}}.'
+              ),
+              { blockNames: installedNames.join(', ') }
+            )
       );
     }
     if (duplicateNames.length > 0) {
       this.alertService.warning(
-        this.messages.format(gettext('Selected more than once. The item {{blockNames}} defines a block that another selected item already defines and will be ignored.'), { blockNames: duplicateNames.join(', ') })
+        this.messages.format(
+          gettext(
+            'Selected more than once. The item {{blockNames}} defines a block that another selected item already defines and will be ignored.'
+          ),
+          { blockNames: duplicateNames.join(', ') }
+        )
       );
     }
     if (invalid.length > 0) {
       setTimeout(() => {
         this.dataGrid.setItemsSelected(invalid, false);
         if (hasInvalidType) {
-          this.alertService.warning(gettext("Only files with extension '.mon', directories or 'extensions.yaml' are selectable."));
+          this.alertService.warning(
+            gettext(
+              "Only files with extension '.mon', directories or 'extensions.yaml' are selectable."
+            )
+          );
         }
       }, 0);
     }
@@ -382,7 +430,7 @@ export class RepositoryBlockGridComponent implements OnInit {
     const idSet = new Set(ids);
     const selectedSections: string[] = [];
     const selectedMonitors: RepositoryItem[] = [];
-    this.repositoryItems.forEach((sample) => {
+    this.repositoryItems.forEach(sample => {
       if (idSet.has(sample.id) && !sample.installed) {
         if (sample.extensionsYamlItem) {
           selectedSections.push(sample.name);
@@ -422,7 +470,6 @@ export class RepositoryBlockGridComponent implements OnInit {
           modalRef.hide();
         });
       }
-
     } else {
       const initialState = {
         activeRepository: this.activeRepository,
@@ -444,8 +491,8 @@ export class RepositoryBlockGridComponent implements OnInit {
   }
 
   /**
- * Reload repository items (clears cache only)
- */
+   * Reload repository items (clears cache only)
+   */
   reload(): void {
     this.repositoryService.reload();
   }
@@ -524,6 +571,5 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   onRepositoryCancel(): void {
     this.showConfigRepositories = false;
-
   }
 }

@@ -4,7 +4,12 @@ import { IFetchResponse, IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import JSZip from 'jszip';
-import { buildBlockMessagesEvt, buildBlockMetadataEvt, ParsedBlockMetadata, parseApamaBlockMetadata } from './apama-block-metadata';
+import {
+  buildBlockMessagesEvt,
+  buildBlockMetadataEvt,
+  ParsedBlockMetadata,
+  parseApamaBlockMetadata
+} from './apama-block-metadata';
 import { Repository, RepositoryItem } from './analytics.model';
 import { AnalyticsService } from './analytics.service';
 import { GitHubContentService } from './github-content.service';
@@ -46,7 +51,14 @@ export class ExtensionBuilderService {
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
     return (await this.repositoryModeService.isBackendMode())
-      ? this.repositoryBackendService.createExtensionFromList(name, monitors, repository, upload, deploy, rebuild)
+      ? this.repositoryBackendService.createExtensionFromList(
+          name,
+          monitors,
+          repository,
+          upload,
+          deploy,
+          rebuild
+        )
       : this.createExtensionFromListDirect(name, monitors, deploy);
   }
 
@@ -62,7 +74,15 @@ export class ExtensionBuilderService {
     if (!(await this.repositoryModeService.isBackendMode())) {
       return this.rejectUnsupportedInBrowserMode(name, 'sections');
     }
-    return this.repositoryBackendService.createExtensionFromYaml(name, yaml, sections, repository, upload, deploy, rebuild);
+    return this.repositoryBackendService.createExtensionFromYaml(
+      name,
+      yaml,
+      sections,
+      repository,
+      upload,
+      deploy,
+      rebuild
+    );
   }
 
   async createExtensionFromRepository(
@@ -75,7 +95,13 @@ export class ExtensionBuilderService {
     if (!(await this.repositoryModeService.isBackendMode())) {
       return this.rejectUnsupportedInBrowserMode(name, 'path');
     }
-    return this.repositoryBackendService.createExtensionFromRepository(name, repository, upload, deploy, rebuild);
+    return this.repositoryBackendService.createExtensionFromRepository(
+      name,
+      repository,
+      upload,
+      deploy,
+      rebuild
+    );
   }
 
   /**
@@ -106,11 +132,17 @@ export class ExtensionBuilderService {
       // owns the success toast.
       return { status: 200 } as unknown as IFetchResponse;
     } catch (error) {
-      console.error(`[ExtensionBuilderService] Failed to create extension from list: ${name}:`, error);
+      console.error(
+        `[ExtensionBuilderService] Failed to create extension from list: ${name}:`,
+        error
+      );
       this.alertService.danger(
         error instanceof RepositoryError
           ? error.userMessage
-          : this.messages.format(gettext('Failed to create extension "{{extensionName}}". Please try again.'), { extensionName: name })
+          : this.messages.format(
+              gettext('Failed to create extension "{{extensionName}}". Please try again.'),
+              { extensionName: name }
+            )
       );
       return { status: 500 } as unknown as IFetchResponse;
     }
@@ -138,7 +170,16 @@ export class ExtensionBuilderService {
    * has nothing to register the block's name/category/parameters under.
    */
   private async buildExtensionZip(name: string, monitors: RepositoryItem[]): Promise<File> {
-    const EXCLUDED_EXTENSIONS = ['.log', '.classpath', '.dependencies', '.project', '.deploy', '.launch', '.out', '.o'];
+    const EXCLUDED_EXTENSIONS = [
+      '.log',
+      '.classpath',
+      '.dependencies',
+      '.project',
+      '.deploy',
+      '.launch',
+      '.out',
+      '.o'
+    ];
     const zip = new JSZip();
     const files = zip.folder('files')!;
     const blocks: ParsedBlockMetadata[] = [];
@@ -161,7 +202,9 @@ export class ExtensionBuilderService {
         // A file without a package still defines blocks (their id is the bare name,
         // see `extractBlockFqns`), so it must not be left out of the metadata.
         const packageMatch = /^package\s+(.*?);/m.exec(content);
-        blocks.push(...parseApamaBlockMetadata(content, packageMatch ? packageMatch[1].trim() : ''));
+        blocks.push(
+          ...parseApamaBlockMetadata(content, packageMatch ? packageMatch[1].trim() : '')
+        );
       }
     }
 
@@ -186,7 +229,10 @@ export class ExtensionBuilderService {
    * Matches the shape `ExtensionAddComponent.analyzeZipContent` falls back
    * to when no metadata file is found for a monitor.
    */
-  private buildExtensionManagedObject(name: string, monitors: RepositoryItem[]): Partial<IManagedObject> {
+  private buildExtensionManagedObject(
+    name: string,
+    monitors: RepositoryItem[]
+  ): Partial<IManagedObject> {
     const monitorsMetadata = monitors
       .filter(item => item.type !== 'dir' && item.file.toLowerCase().endsWith('.mon'))
       .map(item => ({
@@ -208,12 +254,19 @@ export class ExtensionBuilderService {
     };
   }
 
-  private rejectUnsupportedInBrowserMode(name: string, source: 'sections' | 'path'): IFetchResponse {
+  private rejectUnsupportedInBrowserMode(
+    name: string,
+    source: 'sections' | 'path'
+  ): IFetchResponse {
     this.alertService.danger(
       this.messages.format(
         source === 'sections'
-          ? gettext('Could not create "{{extensionName}}". Building an extension from extensions.yaml sections requires the analytics-service backend. Select individual files instead, or deploy the backend.')
-          : gettext('Could not create "{{extensionName}}". Building an extension from a whole repository path requires the analytics-service backend. Select individual files instead, or deploy the backend.'),
+          ? gettext(
+              'Could not create "{{extensionName}}". Building an extension from extensions.yaml sections requires the analytics-service backend. Select individual files instead, or deploy the backend.'
+            )
+          : gettext(
+              'Could not create "{{extensionName}}". Building an extension from a whole repository path requires the analytics-service backend. Select individual files instead, or deploy the backend.'
+            ),
         { extensionName: name }
       )
     );

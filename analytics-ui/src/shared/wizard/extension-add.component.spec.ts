@@ -9,7 +9,8 @@ import { AnalyticsService } from '../analytics.service';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { ExtensionAddComponent } from './extension-add.component';
 
-const MON = 'package com.acme;\n/** Foo Block.\n *\n * Does foo.\n *\n * @$blockCategory Calculation\n */\nevent Foo { BlockBase $base; }';
+const MON =
+  'package com.acme;\n/** Foo Block.\n *\n * Does foo.\n *\n * @$blockCategory Calculation\n */\nevent Foo { BlockBase $base; }';
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 /** Builds an uploadable zip from path -> content. */
@@ -21,7 +22,9 @@ async function zipFile(name: string, entries: Record<string, string>): Promise<F
 
 describe('ExtensionAddComponent', () => {
   let component: ExtensionAddComponent;
-  let analytics: jasmine.SpyObj<AnalyticsService> & { uploadProgress$: BehaviorSubject<number | null> };
+  let analytics: jasmine.SpyObj<AnalyticsService> & {
+    uploadProgress$: BehaviorSubject<number | null>;
+  };
   let alerts: jasmine.SpyObj<AlertService>;
   let modals: jasmine.SpyObj<BsModalService>;
   let handler: jasmine.Spy;
@@ -45,7 +48,11 @@ describe('ExtensionAddComponent', () => {
 
   beforeEach(() => {
     analytics = Object.assign(
-      jasmine.createSpyObj('AnalyticsService', ['getExtensionsFromInventory', 'cancelExtensionCreation', 'triggerCacheReload']),
+      jasmine.createSpyObj('AnalyticsService', [
+        'getExtensionsFromInventory',
+        'cancelExtensionCreation',
+        'triggerCacheReload'
+      ]),
       { uploadProgress$: new BehaviorSubject<number | null>(null) }
     );
     analytics.getExtensionsFromInventory.and.resolveTo([]);
@@ -63,7 +70,9 @@ describe('ExtensionAddComponent', () => {
         { provide: BsModalService, useValue: modals }
       ]
     });
-    TestBed.overrideComponent(ExtensionAddComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ExtensionAddComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     spyOn(console, 'error');
     spyOn(console, 'warn');
   });
@@ -107,7 +116,11 @@ describe('ExtensionAddComponent', () => {
     });
 
     it('strips only the last extension of other files and keeps dot-only names', async () => {
-      for (const [fileName, expected] of [['pkg.v2.tar', 'pkg.v2'], ['.zip', '.zip'], ['.hidden', '.hidden']]) {
+      for (const [fileName, expected] of [
+        ['pkg.v2.tar', 'pkg.v2'],
+        ['.zip', '.zip'],
+        ['.hidden', '.hidden']
+      ]) {
         create();
         await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
         expect(uploaded()[1]['name']).withContext(fileName).toBe(expected);
@@ -126,7 +139,9 @@ describe('ExtensionAddComponent', () => {
     });
 
     it('says "Updated" in update mode and uploads directly even if the extension exists', async () => {
-      analytics.getExtensionsFromInventory.and.resolveTo([{ id: '9', name: 'E' }] as unknown as IManagedObject[]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '9', name: 'E' }
+      ] as unknown as IManagedObject[]);
       create('update');
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));
       expect(uploaded()[2]).toBe('update');
@@ -140,35 +155,58 @@ describe('ExtensionAddComponent', () => {
     const buildInfo = async (entries: Record<string, string>) => {
       create();
       await component.onFile(await zipFile('E.zip', entries));
-      return uploaded()[1]['build_information'] as { build_type: string; monitors: any[]; files: any[] };
+      return uploaded()[1]['build_information'] as {
+        build_type: string;
+        monitors: any[];
+        files: any[];
+      };
     };
 
     it('marks the extension as externally built and lists monitors and other files separately', async () => {
-      const info = await buildInfo({ 'files/Foo.mon': MON, 'files/helper.py': 'x', 'files/config.json': '{}', 'files/blob.bin': 'x' });
+      const info = await buildInfo({
+        'files/Foo.mon': MON,
+        'files/helper.py': 'x',
+        'files/config.json': '{}',
+        'files/blob.bin': 'x'
+      });
       expect(info.build_type).toBe('external');
       expect(info.monitors.map(m => m.file)).toEqual(['files/Foo.mon']);
-      expect(info.files.map(f => [f.name, f.type])).toEqual(jasmine.arrayContaining([['helper.py', 'script'], ['config.json', 'config'], ['blob.bin', 'file']]));
+      expect(info.files.map(f => [f.name, f.type])).toEqual(
+        jasmine.arrayContaining([
+          ['helper.py', 'script'],
+          ['config.json', 'config'],
+          ['blob.bin', 'file']
+        ])
+      );
     });
 
     it('derives monitor name and the block id from the file', async () => {
       const [monitor] = (await buildInfo({ 'files/sub/Foo.mon': MON })).monitors;
-      expect(monitor).toEqual(jasmine.objectContaining({ name: 'Foo', id: 'com.acme.Foo', custom: true, type: 'file' }));
+      expect(monitor).toEqual(
+        jasmine.objectContaining({ name: 'Foo', id: 'com.acme.Foo', custom: true, type: 'file' })
+      );
     });
 
     it('reads category, description and id from the generated metadata event file', async () => {
       const blocks = parseApamaBlockMetadata(MON, 'com.acme');
-      const [monitor] = (await buildInfo({
-        'files/Foo.mon': MON,
-        'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', blocks)
-      })).monitors;
+      const [monitor] = (
+        await buildInfo({
+          'files/Foo.mon': MON,
+          'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', blocks)
+        })
+      ).monitors;
       expect(monitor.id).toBe('com.acme.Foo');
       expect(monitor.category).toBe('Calculation');
       expect(monitor.description).toBe('Does foo.');
     });
 
     it('reads one extension-wide metadata file whose name matches no monitor, for every block', async () => {
-      const two = 'package com.acme;\n/** Bar Block.\n *\n * Does "bar".\n *\n * @$blockCategory Input\n */\nevent Bar { BlockBase $base; }';
-      const blocks = [...parseApamaBlockMetadata(MON, 'com.acme'), ...parseApamaBlockMetadata(two, 'com.acme')];
+      const two =
+        'package com.acme;\n/** Bar Block.\n *\n * Does "bar".\n *\n * @$blockCategory Input\n */\nevent Bar { BlockBase $base; }';
+      const blocks = [
+        ...parseApamaBlockMetadata(MON, 'com.acme'),
+        ...parseApamaBlockMetadata(two, 'com.acme')
+      ];
       const info = await buildInfo({
         'files/Foo.mon': MON,
         'files/Bar.mon': two,
@@ -182,10 +220,14 @@ describe('ExtensionAddComponent', () => {
     });
 
     it('matches a file that defines several blocks to its metadata, whatever the file is called', async () => {
-      const pair = 'package com.acme;\n/** Send. */\nevent Send { BlockBase $base; }\n/** Receive. */\nevent Receive { BlockBase $base; }';
+      const pair =
+        'package com.acme;\n/** Send. */\nevent Send { BlockBase $base; }\n/** Receive. */\nevent Receive { BlockBase $base; }';
       const info = await buildInfo({
         'files/Pair.mon': pair,
-        'files/events/E_metadata.evt': buildBlockMetadataEvt('E', parseApamaBlockMetadata(pair, 'com.acme'))
+        'files/events/E_metadata.evt': buildBlockMetadataEvt(
+          'E',
+          parseApamaBlockMetadata(pair, 'com.acme')
+        )
       });
       expect(info.monitors[0].id).toBe('com.acme.Send');
       expect(info.monitors[0].blockIds).toEqual(['com.acme.Send', 'com.acme.Receive']);
@@ -195,21 +237,30 @@ describe('ExtensionAddComponent', () => {
     it('does not list the consumed metadata file again, but lists other event files', async () => {
       const info = await buildInfo({
         'files/Foo.mon': MON,
-        'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', parseApamaBlockMetadata(MON, 'com.acme')),
+        'files/events/Foo_metadata.evt': buildBlockMetadataEvt(
+          'E',
+          parseApamaBlockMetadata(MON, 'com.acme')
+        ),
         'files/events/E_messages.evt': 'x'
       });
       expect(info.files.map(f => f.file)).toEqual(['files/events/E_messages.evt']);
     });
 
     it('keeps the block id and omits the details when the metadata cannot be parsed', async () => {
-      const [monitor] = (await buildInfo({ 'files/Foo.mon': MON, 'files/events/Foo_metadata.evt': 'garbage' })).monitors;
+      const [monitor] = (
+        await buildInfo({ 'files/Foo.mon': MON, 'files/events/Foo_metadata.evt': 'garbage' })
+      ).monitors;
       expect(monitor.id).toBe('com.acme.Foo');
       expect(monitor.category).toBeUndefined();
     });
 
     it('ignores operating system and tooling noise', async () => {
       const info = await buildInfo({
-        'files/Foo.mon': MON, '__MACOSX/files/._Foo.mon': 'x', 'files/.DS_Store': 'x', '.git/config': 'x', 'node_modules/a/index.js': 'x'
+        'files/Foo.mon': MON,
+        '__MACOSX/files/._Foo.mon': 'x',
+        'files/.DS_Store': 'x',
+        '.git/config': 'x',
+        'node_modules/a/index.js': 'x'
       });
       expect(info.files).toEqual([]);
     });
@@ -225,7 +276,9 @@ describe('ExtensionAddComponent', () => {
 
   describe('when the extension already exists (add mode)', () => {
     beforeEach(() => {
-      analytics.getExtensionsFromInventory.and.resolveTo([{ id: '9', name: 'E' }] as unknown as IManagedObject[]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '9', name: 'E' }
+      ] as unknown as IManagedObject[]);
     });
 
     const drop = async () => {
@@ -235,7 +288,10 @@ describe('ExtensionAddComponent', () => {
 
     it('asks before updating and does not upload yet', async () => {
       await drop();
-      const [type, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { message: string } }];
+      const [type, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { message: string } }
+      ];
       expect(type).toBe(ConfirmationModalComponent);
       expect(options.initialState.message).toContain('"E" already exists');
       expect(handler).not.toHaveBeenCalled();

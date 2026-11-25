@@ -73,8 +73,7 @@ export class ReleaseListComponent {
     }
     return assets.filter(
       asset =>
-        asset.name.toLowerCase().includes(term) ||
-        asset.description.toLowerCase().includes(term)
+        asset.name.toLowerCase().includes(term) || asset.description.toLowerCase().includes(term)
     );
   }
 }

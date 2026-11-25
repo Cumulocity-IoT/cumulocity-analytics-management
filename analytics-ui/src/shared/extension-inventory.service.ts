@@ -72,16 +72,18 @@ export class ExtensionInventoryService {
     try {
       // An update uploads the new binary FIRST and removes the old one afterwards:
       // a failed upload must not cost the user the extension that works.
-      const extensionToCreate = mode === 'update'
-        ? this.prepareExtensionForUpdate(extension)
-        : extension;
+      const extensionToCreate =
+        mode === 'update' ? this.prepareExtensionForUpdate(extension) : extension;
 
       const result = await this.inventoryBinaryService.create(file, extensionToCreate);
 
       if (!result.res.ok) {
         throw new CepError(
           `Upload failed with status ${result.res.status}`,
-          this.messages.format(gettext('Could not upload extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
+          this.messages.format(
+            gettext('Could not upload extension "{{extensionName}}". Please try again.'),
+            { extensionName: extension['name'] }
+          )
         );
       }
 
@@ -99,7 +101,10 @@ export class ExtensionInventoryService {
         true,
         error instanceof CepError
           ? error.userMessage
-          : this.messages.format(gettext('Error uploading extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
+          : this.messages.format(
+              gettext('Error uploading extension "{{extensionName}}". Please try again.'),
+              { extensionName: extension['name'] }
+            )
       );
     }
   }
@@ -136,7 +141,10 @@ export class ExtensionInventoryService {
         error,
         `Failed to download extension ${extension['name']}`,
         true,
-        this.messages.format(gettext('Failed to download extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
+        this.messages.format(
+          gettext('Failed to download extension "{{extensionName}}". Please try again.'),
+          { extensionName: extension['name'] }
+        )
       );
     }
   }
@@ -165,12 +173,17 @@ export class ExtensionInventoryService {
     return {
       name: extension['name'],
       pas_extension: extension['name'],
-      ...(extension['build_information'] ? { build_information: extension['build_information'] } : {})
+      ...(extension['build_information']
+        ? { build_information: extension['build_information'] }
+        : {})
     };
   }
 
   /** Deletes the replaced binary once its replacement exists. Never fails the update. */
-  private async removeReplacedExtension(replaced: IManagedObject, replacement: IManagedObject): Promise<void> {
+  private async removeReplacedExtension(
+    replaced: IManagedObject,
+    replacement: IManagedObject
+  ): Promise<void> {
     if (!replaced?.id || replaced.id === replacement?.id) {
       return;
     }
@@ -179,7 +192,12 @@ export class ExtensionInventoryService {
     } catch {
       // deleteExtension already showed an error alert; the new version is uploaded.
       this.alertService.warning(
-        this.messages.format(gettext('The new version of "{{extensionName}}" was uploaded, but the previous version could not be deleted. Delete it manually.'), { extensionName: replaced['name'] })
+        this.messages.format(
+          gettext(
+            'The new version of "{{extensionName}}" was uploaded, but the previous version could not be deleted. Delete it manually.'
+          ),
+          { extensionName: replaced['name'] }
+        )
       );
     }
   }

@@ -60,23 +60,32 @@ export class FetchExtensionService {
       if (!managedObjectId) {
         throw new CepError(
           'c8y_FetchUploadProxy external id resolved but has no managedObject reference',
-          gettext('The fetch/upload proxy is misconfigured on this tenant. Check the FetchExtensionListener EPL app.')
+          gettext(
+            'The fetch/upload proxy is misconfigured on this tenant. Check the FetchExtensionListener EPL app.'
+          )
         );
       }
       return String(managedObjectId);
     } catch (error: unknown) {
       if (error instanceof CepError) {
-        throw this.handleError(error, 'Failed to resolve proxy managed object', true, error.userMessage);
+        throw this.handleError(
+          error,
+          'Failed to resolve proxy managed object',
+          true,
+          error.userMessage
+        );
       }
-      if ((error as { res?: { status?: number }; status?: number })?.res?.status === 404 ||
-        (error as { status?: number })?.status === 404) {
+      if (
+        (error as { res?: { status?: number }; status?: number })?.res?.status === 404 ||
+        (error as { status?: number })?.status === 404
+      ) {
         throw this.handleError(
           error,
           'c8y_FetchUploadProxy external id not found',
           true,
           gettext(
             'The FetchExtensionListener EPL app has not run on this tenant yet (no c8y_FetchUploadProxy ' +
-            'managed object found). Deploy/start it under Streaming Analytics > EPL apps first.'
+              'managed object found). Deploy/start it under Streaming Analytics > EPL apps first.'
           )
         );
       }
@@ -104,7 +113,11 @@ export class FetchExtensionService {
    * place of the alternative (Tenant Options, no secret in the event at
    * all). Omit `accessToken` for public repositories.
    */
-  async sendFetchExtensionEvent(url: string, name: string, accessToken?: string): Promise<FetchExtensionRequest> {
+  async sendFetchExtensionEvent(
+    url: string,
+    name: string,
+    accessToken?: string
+  ): Promise<FetchExtensionRequest> {
     const sourceId = await this.resolveProxySourceId();
     const requestId = createShortId();
 
@@ -129,7 +142,10 @@ export class FetchExtensionService {
         error,
         `Failed to send ${FETCH_EXTENSION_EVENT_TYPE} event for ${name}`,
         true,
-        this.messages.format(gettext('Could not send the fetch request for "{{extensionName}}". Please try again.'), { extensionName: name })
+        this.messages.format(
+          gettext('Could not send the fetch request for "{{extensionName}}". Please try again.'),
+          { extensionName: name }
+        )
       );
     }
   }

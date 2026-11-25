@@ -5,12 +5,7 @@ import { Component, inject, input, output } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
-import {
-  AlertService,
-  CoreModule,
-  WizardConfig,
-  WizardModalService
-} from '@c8y/ngx-components';
+import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
@@ -83,8 +78,9 @@ export class ExtensionCardComponent {
       { initialState }
     );
 
-    confirmDeletionModalRef.content.closeSubject.pipe(take(1)).subscribe(
-      async (result: boolean) => {
+    confirmDeletionModalRef.content.closeSubject
+      .pipe(take(1))
+      .subscribe(async (result: boolean) => {
         if (result) {
           try {
             await this.analyticsService.deleteExtension(this.extension(), true);
@@ -96,15 +92,12 @@ export class ExtensionCardComponent {
           }
         }
         confirmDeletionModalRef.hide();
-      }
-    );
+      });
   }
 
   async download(): Promise<void> {
     try {
-      const bin: ArrayBuffer = await this.analyticsService.downloadExtension(
-        this.extension()
-      );
+      const bin: ArrayBuffer = await this.analyticsService.downloadExtension(this.extension());
       const blob = new Blob([bin], { type: 'application/zip' });
       saveAs(blob, `${this.extension()['name']}.zip`);
     } catch (ex) {
@@ -145,7 +138,9 @@ export class ExtensionCardComponent {
     // Validate build information exists
     if (!buildInfo) {
       this.alertService.warning(
-        gettext('Cannot rebuild: No build information found for this extension. This extension may have been created manually or with an older version.')
+        gettext(
+          'Cannot rebuild: No build information found for this extension. This extension may have been created manually or with an older version.'
+        )
       );
       return;
     }
@@ -173,25 +168,25 @@ export class ExtensionCardComponent {
       { initialState }
     );
 
-    confirmRebuildModalRef.content.closeSubject.pipe(take(1)).subscribe(
-      async (result: boolean) => {
-        if (result) {
-          try {
-            await this.performRebuild(buildInfo);
-          } catch (ex) {
-            if (ex) {
-              this.alertService.addServerFailure(ex);
-            }
+    confirmRebuildModalRef.content.closeSubject.pipe(take(1)).subscribe(async (result: boolean) => {
+      if (result) {
+        try {
+          await this.performRebuild(buildInfo);
+        } catch (ex) {
+          if (ex) {
+            this.alertService.addServerFailure(ex);
           }
         }
-        confirmRebuildModalRef.hide();
       }
-    );
+      confirmRebuildModalRef.hide();
+    });
   }
 
   private async performRebuild(buildInfo: ExtensionBuildInformation): Promise<void> {
     this.alertService.info(
-      this.messages.format(gettext('Rebuilding extension "{{extensionName}}"…'), { extensionName: this.extension()['name'] })
+      this.messages.format(gettext('Rebuilding extension "{{extensionName}}"…'), {
+        extensionName: this.extension()['name']
+      })
     );
 
     try {
@@ -213,18 +208,19 @@ export class ExtensionCardComponent {
       }
 
       this.alertService.success(
-        this.messages.format(gettext('Extension "{{extensionName}}" rebuilt.'), { extensionName: this.extension()['name'] })
+        this.messages.format(gettext('Extension "{{extensionName}}" rebuilt.'), {
+          extensionName: this.extension()['name']
+        })
       );
       this.extensionChanged.emit();
     } catch (error) {
       const err = error as { status?: number; message?: string };
-      if (
-        err?.status === 404 ||
-        err?.message?.includes('no existing extension')
-      ) {
+      if (err?.status === 404 || err?.message?.includes('no existing extension')) {
         this.alertService.danger(
           this.messages.format(
-            gettext('Rebuild failed: The extension "{{extensionName}}" was not found in Cumulocity. It may have been deleted. Please create it again instead.'),
+            gettext(
+              'Rebuild failed: The extension "{{extensionName}}" was not found in Cumulocity. It may have been deleted. Please create it again instead.'
+            ),
             { extensionName: this.extension()['name'] }
           )
         );
@@ -234,9 +230,7 @@ export class ExtensionCardComponent {
     }
   }
 
-  private async rebuildFromRepository(
-    buildInfo: ExtensionBuildInformation
-  ): Promise<void> {
+  private async rebuildFromRepository(buildInfo: ExtensionBuildInformation): Promise<void> {
     await this.repositoryService.createExtensionFromRepository(
       this.extension()['name'],
       buildInfo.repository,

@@ -8,8 +8,19 @@ import { ExtensionCreateModalComponent } from '../create-extension/extension-cre
 import { RepositoryBlockGridComponent } from './repository-block-grid.component';
 
 const item = (over: Partial<RepositoryItem>): RepositoryItem =>
-  ({ id: 'x', name: 'X', file: 'X.mon', type: 'file', url: 'u', downloadUrl: 'd', repositoryId: 'r1', repositoryName: 'R', ...over }) as RepositoryItem;
-const repo = (id: string, enabled: boolean): Repository => ({ id, name: id, url: 'u', accessToken: '', enabled }) as Repository;
+  ({
+    id: 'x',
+    name: 'X',
+    file: 'X.mon',
+    type: 'file',
+    url: 'u',
+    downloadUrl: 'd',
+    repositoryId: 'r1',
+    repositoryName: 'R',
+    ...over
+  }) as RepositoryItem;
+const repo = (id: string, enabled: boolean): Repository =>
+  ({ id, name: id, url: 'u', accessToken: '', enabled }) as Repository;
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('RepositoryBlockGridComponent', () => {
@@ -35,15 +46,24 @@ describe('RepositoryBlockGridComponent', () => {
   beforeEach(() => {
     repos$ = new BehaviorSubject<Repository[]>([repo('a', false), repo('b', true)]);
     repositories = jasmine.createSpyObj('RepositoryService', [
-      'getRepositories', 'getRepositoryItemsAnalyzed', 'getRepositoryItemContent', 'getExpertMode', 'setExpertMode',
-      'reload', 'reloadAll', 'updateHideInstalledFilter'
+      'getRepositories',
+      'getRepositoryItemsAnalyzed',
+      'getRepositoryItemContent',
+      'getExpertMode',
+      'setExpertMode',
+      'reload',
+      'reloadAll',
+      'updateHideInstalledFilter'
     ]);
     repositories.getRepositories.and.returnValue(repos$);
     repositories.getRepositoryItemsAnalyzed.and.returnValue(of([]));
     repositories.setExpertMode.and.resolveTo();
     repositories.reloadAll.and.resolveTo();
     analytics = jasmine.createSpyObj('AnalyticsService', [
-      'isBackendServiceDeployed', 'isBackendServiceEnabled', 'recheckBackendServiceDeployed', 'setBackendServiceEnabled'
+      'isBackendServiceDeployed',
+      'isBackendServiceEnabled',
+      'recheckBackendServiceDeployed',
+      'setBackendServiceEnabled'
     ]);
     analytics.isBackendServiceDeployed.and.resolveTo(true);
     analytics.isBackendServiceEnabled.and.resolveTo(false);
@@ -52,8 +72,14 @@ describe('RepositoryBlockGridComponent', () => {
     modalClose$ = new Subject<void>();
     modalHide = jasmine.createSpy('hide');
     modals = jasmine.createSpyObj('BsModalService', ['show']);
-    modals.show.and.returnValue({ content: { closeSubject: modalClose$ }, hide: modalHide } as never);
-    dataGrid = { setItemsSelected: jasmine.createSpy('setItemsSelected'), cancel: jasmine.createSpy('cancel') };
+    modals.show.and.returnValue({
+      content: { closeSubject: modalClose$ },
+      hide: modalHide
+    } as never);
+    dataGrid = {
+      setItemsSelected: jasmine.createSpy('setItemsSelected'),
+      cancel: jasmine.createSpy('cancel')
+    };
     TestBed.configureTestingModule({
       imports: [RepositoryBlockGridComponent],
       providers: [
@@ -63,7 +89,9 @@ describe('RepositoryBlockGridComponent', () => {
         { provide: BsModalService, useValue: modals }
       ]
     });
-    TestBed.overrideComponent(RepositoryBlockGridComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(RepositoryBlockGridComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     spyOn(console, 'error');
   });
 
@@ -135,7 +163,9 @@ describe('RepositoryBlockGridComponent', () => {
     });
 
     it('selects whole items instead of single ones and updates the title', async () => {
-      repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'extensions.yaml' })]));
+      repositories.getRepositoryItemsAnalyzed.and.returnValue(
+        of([item({ file: 'extensions.yaml' })])
+      );
       await create(true);
       expect(component.titleSample).toBe('Blocks from R (contains extensions.yaml)');
       expect(component.singleSelection).toBeFalse();
@@ -170,7 +200,10 @@ describe('RepositoryBlockGridComponent', () => {
       await create();
       component.viewMonitor(item({ name: 'Foo' }));
 
-      const [type, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { source$: any; monitorName: string } }];
+      const [type, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { source$: any; monitorName: string } }
+      ];
       expect(type).toBe(EditorModalComponent);
       expect(options.initialState.monitorName).toBe('Foo');
       expect(await firstValueFrom(options.initialState.source$)).toBe('package a;');
@@ -180,7 +213,10 @@ describe('RepositoryBlockGridComponent', () => {
       repositories.getRepositoryItemContent.and.returnValue(throwError(() => new Error('403')));
       await create();
       component.viewMonitor(item({ name: 'Foo' }));
-      const [, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { source$: any } }];
+      const [, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { source$: any } }
+      ];
       expect(await firstValueFrom(options.initialState.source$)).toBe('');
       expect(alerts.danger).toHaveBeenCalledWith(jasmine.stringContaining('"Foo"'));
     });
@@ -207,18 +243,28 @@ describe('RepositoryBlockGridComponent', () => {
 
     it('refuses to select an already installed block, naming it', fakeAsync(() => {
       component.checkSelection(['2']);
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Block "Installed" is already installed'));
+      expect(alerts.warning).toHaveBeenCalledWith(
+        jasmine.stringContaining('Block "Installed" is already installed')
+      );
       tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[1]], false);
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
+        [component.repositoryItems[1]],
+        false
+      );
     }));
 
     it('reports several installed blocks in one message', fakeAsync(() => {
-      component.repositoryItems.push(item({ id: '6', name: 'Other', file: 'Other.mon', installed: true }));
+      component.repositoryItems.push(
+        item({ id: '6', name: 'Other', file: 'Other.mon', installed: true })
+      );
       component.checkSelection(['2', '6']);
       expect(alerts.warning).toHaveBeenCalledTimes(1);
       expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Installed, Other'));
       tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[1], component.repositoryItems[5]], false);
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
+        [component.repositoryItems[1], component.repositoryItems[5]],
+        false
+      );
     }));
 
     it('deselects a block that another selected item already defines', fakeAsync(() => {
@@ -229,24 +275,38 @@ describe('RepositoryBlockGridComponent', () => {
       component.checkSelection(['7', '8']);
       expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Copy'));
       tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[6]], false);
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
+        [component.repositoryItems[6]],
+        false
+      );
     }));
 
     it('deselects a yaml section whose .mon file another selected section already lists', fakeAsync(() => {
       component.repositoryItems.push(
         item({ id: '9', name: 'One', file: 'extensions.yaml', sectionFiles: ['Shared.mon'] }),
-        item({ id: '10', name: 'Two', file: 'extensions.yaml', sectionFiles: ['Shared.mon', 'B.mon'] })
+        item({
+          id: '10',
+          name: 'Two',
+          file: 'extensions.yaml',
+          sectionFiles: ['Shared.mon', 'B.mon']
+        })
       );
       component.checkSelection(['9', '10']);
       expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Two'));
       tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[6]], false);
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
+        [component.repositoryItems[6]],
+        false
+      );
     }));
 
     it('deselects files of other types and explains what is allowed', fakeAsync(() => {
       component.checkSelection(['1', '3']);
       tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[2]], false);
+      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
+        [component.repositoryItems[2]],
+        false
+      );
       expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining("'extensions.yaml'"));
     }));
 
@@ -258,7 +318,8 @@ describe('RepositoryBlockGridComponent', () => {
   });
 
   describe('createExtension', () => {
-    const opened = () => modals.show.calls.mostRecent().args as [unknown, { initialState: Record<string, any> }];
+    const opened = () =>
+      modals.show.calls.mostRecent().args as [unknown, { initialState: Record<string, any> }];
 
     beforeEach(async () => {
       await create();
@@ -273,7 +334,10 @@ describe('RepositoryBlockGridComponent', () => {
       await component.createExtension(['1', '3', '2']);
       const [type, options] = opened();
       expect(type).toBe(ExtensionCreateModalComponent);
-      expect(options.initialState['monitors'].map((m: RepositoryItem) => m.name)).toEqual(['A', 'B']);
+      expect(options.initialState['monitors'].map((m: RepositoryItem) => m.name)).toEqual([
+        'A',
+        'B'
+      ]);
       expect(options.initialState['sections']).toBeUndefined();
       expect(options.initialState['activeRepository'].id).toBe('b');
     });

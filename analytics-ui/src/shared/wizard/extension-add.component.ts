@@ -3,11 +3,7 @@ import { MessageService } from '../message.service';
 import { Component, Input, ViewChild, OnDestroy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
-import {
-  AlertService,
-  CoreModule,
-  DropAreaComponent
-} from '@c8y/ngx-components';
+import { AlertService, CoreModule, DropAreaComponent } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { take } from 'rxjs/operators';
 import { ERROR_MESSAGES } from '../analytics.constants';
@@ -94,7 +90,7 @@ export class ExtensionAddComponent implements OnDestroy {
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private bsModalService: BsModalService
-  ) { }
+  ) {}
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -247,12 +243,7 @@ export class ExtensionAddComponent implements OnDestroy {
         }
 
         // Skip common metadata/config files that shouldn't be listed
-        const skipPatterns = [
-          /^__MACOSX\//,
-          /\.DS_Store$/,
-          /^\.git\//,
-          /^node_modules\//
-        ];
+        const skipPatterns = [/^__MACOSX\//, /\.DS_Store$/, /^\.git\//, /^node_modules\//];
 
         if (skipPatterns.some(pattern => pattern.test(relativePath))) {
           return;
@@ -295,28 +286,28 @@ export class ExtensionAddComponent implements OnDestroy {
    */
   private mapFileType(extension: string): string {
     const typeMap: { [key: string]: string } = {
-      'json': 'config',
-      'xml': 'config',
-      'yaml': 'config',
-      'yml': 'config',
-      'txt': 'text',
-      'md': 'documentation',
-      'pdf': 'documentation',
-      'evt': 'event',
-      'mon': 'monitor',
-      'jar': 'library',
-      'js': 'script',
-      'ts': 'script',
-      'py': 'script',
-      'sh': 'script',
-      'bat': 'script',
-      'html': 'web',
-      'css': 'web',
-      'png': 'image',
-      'jpg': 'image',
-      'jpeg': 'image',
-      'gif': 'image',
-      'svg': 'image'
+      json: 'config',
+      xml: 'config',
+      yaml: 'config',
+      yml: 'config',
+      txt: 'text',
+      md: 'documentation',
+      pdf: 'documentation',
+      evt: 'event',
+      mon: 'monitor',
+      jar: 'library',
+      js: 'script',
+      ts: 'script',
+      py: 'script',
+      sh: 'script',
+      bat: 'script',
+      html: 'web',
+      css: 'web',
+      png: 'image',
+      jpg: 'image',
+      jpeg: 'image',
+      gif: 'image',
+      svg: 'image'
     };
 
     return typeMap[extension] || 'file';
@@ -350,9 +341,7 @@ export class ExtensionAddComponent implements OnDestroy {
     return stripped || fileName;
   }
 
-  private async findExistingExtension(
-    name: string
-  ): Promise<IManagedObject | null> {
+  private async findExistingExtension(name: string): Promise<IManagedObject | null> {
     const extensions = await this.analyticsService.getExtensionsFromInventory();
     return extensions.find(ext => ext['name'] === name) || null;
   }
@@ -363,11 +352,7 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private async performUpload(mode: UploadMode): Promise<void> {
-    const result = await this.uploadExtensionHandler(
-      this.state.file!,
-      this.state.extension!,
-      mode
-    );
+    const result = await this.uploadExtensionHandler(this.state.file!, this.state.extension!, mode);
 
     if (result) {
       this.handleUploadSuccess(mode);
@@ -422,19 +407,14 @@ export class ExtensionAddComponent implements OnDestroy {
     // The wizard closes itself right before this dialog opens, which destroys this
     // component. The dialog must therefore not be bound to the component lifecycle
     // (no takeUntil(destroy$), not tracked in this.modalRef, which cleanup() hides).
-    const confirmRef = this.bsModalService.show(
-      ConfirmationModalComponent,
-      { initialState }
-    );
+    const confirmRef = this.bsModalService.show(ConfirmationModalComponent, { initialState });
 
-    confirmRef.content!.closeSubject
-      .pipe(take(1))
-      .subscribe(async (confirmed: boolean) => {
-        if (confirmed) {
-          await this.handleUpdateConfirmed();
-        }
-        confirmRef.hide();
-      });
+    confirmRef.content!.closeSubject.pipe(take(1)).subscribe(async (confirmed: boolean) => {
+      if (confirmed) {
+        await this.handleUpdateConfirmed();
+      }
+      confirmRef.hide();
+    });
   }
 
   private async handleUpdateConfirmed(): Promise<void> {

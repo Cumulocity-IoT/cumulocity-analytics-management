@@ -41,19 +41,15 @@ export class ExtensionAddWizardComponent {
     this.refresh.emit();
   }
 
-  uploadExtensionHandler = (
-    file: File,
-    extension: Partial<IManagedObject>,
-    mode: UploadMode
-  ) => this.uploadExtension(file, extension, mode);
+  uploadExtensionHandler = (file: File, extension: Partial<IManagedObject>, mode: UploadMode) =>
+    this.uploadExtension(file, extension, mode);
 
   async uploadExtension(
     file: File,
     extension: Partial<IManagedObject>,
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
-    const resolved: IManagedObject =
-      (extension as IManagedObject) ?? this.extensionToReplace;
+    const resolved: IManagedObject = (extension as IManagedObject) ?? this.extensionToReplace;
     return this.analyticsService.uploadExtension(file, resolved, mode);
   }
 }

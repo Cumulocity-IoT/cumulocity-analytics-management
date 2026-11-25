@@ -3,7 +3,10 @@ import { CellRendererContext } from '@c8y/ngx-components';
 import { LinkRendererComponent } from './link-renderer.component';
 
 describe('LinkRendererComponent', () => {
-  const render = (item: Record<string, string>, value = 'https://github.com/o/r/blob/main/X.mon') => {
+  const render = (
+    item: Record<string, string>,
+    value = 'https://github.com/o/r/blob/main/X.mon'
+  ) => {
     TestBed.configureTestingModule({
       imports: [LinkRendererComponent],
       providers: [{ provide: CellRendererContext, useValue: { value, item } }]

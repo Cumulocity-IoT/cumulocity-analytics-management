@@ -7,7 +7,12 @@ import { ExtensionEnrichmentService } from './extension-enrichment.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
 
 const ok = (body: unknown, status = 200) =>
-  ({ ok: status >= 200 && status < 300, status, statusText: String(status), json: async () => body }) as unknown as Response;
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: String(status),
+    json: async () => body
+  }) as unknown as Response;
 const ext = (name: string) => ({ id: name, name }) as unknown as IManagedObject;
 
 const METADATA_URL = '/service/cep/apamacorrelator/en/block-metadata.json';
@@ -53,7 +58,13 @@ describe('ExtensionEnrichmentService', () => {
     it('marks extensions deployed via block metadata as loaded and counts their blocks', async () => {
       inventory.getExtensionsFromInventory.and.resolveTo([ext('Alpha'), ext('Beta')]);
       routes[METADATA_URL] = () => ok({ metadatas: ['Alpha.json'], messages: [] });
-      routes[detailUrl('Alpha')] = () => ok({ analytics: [{ id: 'a.A1', name: 'A1' }, { id: 'a.A2', name: 'A2' }] });
+      routes[detailUrl('Alpha')] = () =>
+        ok({
+          analytics: [
+            { id: 'a.A1', name: 'A1' },
+            { id: 'a.A2', name: 'A2' }
+          ]
+        });
 
       const [alpha, beta] = await service.getEnrichedExtensions();
 
@@ -82,7 +93,10 @@ describe('ExtensionEnrichmentService', () => {
       routes[detailUrl('Delta')] = () => ok({ analytics: [] });
 
       const result = await service.getEnrichedExtensions();
-      expect(result.map(e => [e['name'], e['loaded']])).toEqual([['Gamma', true], ['Delta', true]]);
+      expect(result.map(e => [e['name'], e['loaded']])).toEqual([
+        ['Gamma', true],
+        ['Delta', true]
+      ]);
     });
 
     it('caches the result until invalidated', async () => {
@@ -117,9 +131,12 @@ describe('ExtensionEnrichmentService', () => {
     });
 
     it('flattens blocks of all extensions, collapsing .json/.zip duplicates, with custom flag and extension name', async () => {
-      routes[METADATA_URL] = () => ok({ metadatas: ['Ext1.json', 'Ext1.zip', 'Ext2.json'], messages: [] });
-      routes[detailUrl('Ext1')] = () => ok({ analytics: [{ id: 'com.acme.Foo', name: 'Foo', description: 'does things' }] });
-      routes[detailUrl('Ext2')] = () => ok({ analytics: [{ id: 'apama.analyticsbuilder.blocks.Add', name: 'Add' }] });
+      routes[METADATA_URL] = () =>
+        ok({ metadatas: ['Ext1.json', 'Ext1.zip', 'Ext2.json'], messages: [] });
+      routes[detailUrl('Ext1')] = () =>
+        ok({ analytics: [{ id: 'com.acme.Foo', name: 'Foo', description: 'does things' }] });
+      routes[detailUrl('Ext2')] = () =>
+        ok({ analytics: [{ id: 'apama.analyticsbuilder.blocks.Add', name: 'Add' }] });
 
       const blocks = await service.getDeployedBlocks();
 
@@ -132,7 +149,15 @@ describe('ExtensionEnrichmentService', () => {
 
     it('drops malformed blocks instead of failing the load', async () => {
       routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
-      routes[detailUrl('E')] = () => ok({ analytics: [{ id: 'a.Good', name: 'Good' }, { id: '', name: 'NoId' }, { id: 'a.NoName' }, null] });
+      routes[detailUrl('E')] = () =>
+        ok({
+          analytics: [
+            { id: 'a.Good', name: 'Good' },
+            { id: '', name: 'NoId' },
+            { id: 'a.NoName' },
+            null
+          ]
+        });
       expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['a.Good']);
     });
 
@@ -147,7 +172,9 @@ describe('ExtensionEnrichmentService', () => {
       routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
       routes[detailUrl('E')] = () => ok({ analytics: [{ id: 'a.B', name: 'B' }] });
       const [block] = await service.getDeployedBlocks();
-      expect(block).toEqual(jasmine.objectContaining({ file: '', type: '', url: '', downloadUrl: '', custom: true }));
+      expect(block).toEqual(
+        jasmine.objectContaining({ file: '', type: '', url: '', downloadUrl: '', custom: true })
+      );
     });
 
     it('alerts the user and does not cache when the metadata cannot be loaded', async () => {
@@ -173,7 +200,8 @@ describe('ExtensionEnrichmentService', () => {
       const categoryOf = async (name: string, description = '', category?: Category) => {
         service.invalidateCache();
         routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
-        routes[detailUrl('E')] = () => ok({ analytics: [{ id: `x.${name}`, name, description, category }] });
+        routes[detailUrl('E')] = () =>
+          ok({ analytics: [{ id: `x.${name}`, name, description, category }] });
         return (await service.getDeployedBlocks())[0].category;
       };
 

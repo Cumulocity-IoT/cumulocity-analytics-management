@@ -56,30 +56,23 @@ export class ReleaseDeployWizardComponent implements OnInit {
     private readonly alertService: AlertService
   ) {}
 
-  uploadExtensionHandler = (
-    file: File,
-    extension: Partial<IManagedObject>,
-    mode: UploadMode
-  ) =>
-    this.analyticsService.uploadExtension(
-      file,
-      extension as IManagedObject,
-      mode
-    );
+  uploadExtensionHandler = (file: File, extension: Partial<IManagedObject>, mode: UploadMode) =>
+    this.analyticsService.uploadExtension(file, extension as IManagedObject, mode);
 
   ngOnInit(): void {
-    this.repositoryService.getRepositories().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((repositories) => {
-      this.repositories = repositories;
-      if (!this.selectedRepository && repositories.length > 0) {
-        this.onRepositorySelected(
-          repositories.find((r) => r.enabled) || repositories[0]
-        );
-      }
-    });
+    this.repositoryService
+      .getRepositories()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(repositories => {
+        this.repositories = repositories;
+        if (!this.selectedRepository && repositories.length > 0) {
+          this.onRepositorySelected(repositories.find(r => r.enabled) || repositories[0]);
+        }
+      });
   }
 
   get assets(): GitHubReleaseAsset[] {
-    return (this.selectedRelease?.assets || []).filter((asset) =>
+    return (this.selectedRelease?.assets || []).filter(asset =>
       asset.name.toLowerCase().endsWith('.zip')
     );
   }
@@ -108,9 +101,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
       // repository.accessToken is always the masked DUMMY_ACCESS_TOKEN
       // placeholder (see RepositoryService.parseRepositoryOption) — fetch
       // the real token separately for the actual GitHub call.
-      const accessToken = await this.repositoryService.getRepositoryAccessToken(
-        repository.id
-      );
+      const accessToken = await this.repositoryService.getRepositoryAccessToken(repository.id);
       this.releases = await this.githubReleaseService.listReleases(
         ownerRepo.owner,
         ownerRepo.repo,
@@ -145,13 +136,12 @@ export class ReleaseDeployWizardComponent implements OnInit {
     // The upload step's own drop-area already opens the native file picker
     // on its own (fresh) click — see `c8y-drop-area`'s `clickToOpen` (true
     // by default) — so no workaround is needed, just one more real click.
-    triggerBrowserDownload(
-      this.selectedAsset.browserDownloadUrl,
-      this.selectedAsset.name
-    );
+    triggerBrowserDownload(this.selectedAsset.browserDownloadUrl, this.selectedAsset.name);
     this.alertService.info(
       this.messages.format(
-        gettext('Downloading "{{assetName}}". Once it is done, drag it from your browser download tray straight onto the box below (fastest), or click the box to browse for it.'),
+        gettext(
+          'Downloading "{{assetName}}". Once it is done, drag it from your browser download tray straight onto the box below (fastest), or click the box to browse for it.'
+        ),
         { assetName: this.selectedAsset.name }
       )
     );
@@ -180,19 +170,18 @@ export class ReleaseDeployWizardComponent implements OnInit {
       // the real token separately, same as onRepositorySelected() does for
       // the browser-side GitHub calls.
       const accessToken = this.selectedRepository
-        ? await this.repositoryService.getRepositoryAccessToken(
-            this.selectedRepository.id
-          )
+        ? await this.repositoryService.getRepositoryAccessToken(this.selectedRepository.id)
         : undefined;
-      const { requestId } =
-        await this.fetchExtensionService.sendFetchExtensionEvent(
-          this.selectedAsset.browserDownloadUrl,
-          this.selectedAsset.name,
-          accessToken
-        );
+      const { requestId } = await this.fetchExtensionService.sendFetchExtensionEvent(
+        this.selectedAsset.browserDownloadUrl,
+        this.selectedAsset.name,
+        accessToken
+      );
       this.alertService.info(
         this.messages.format(
-          gettext('Sent fetch request for "{{assetName}}" (requestId {{requestId}}). This only reaches the log of the FetchExtensionListener EPL app for now and does not deploy the extension yet.'),
+          gettext(
+            'Sent fetch request for "{{assetName}}" (requestId {{requestId}}). This only reaches the log of the FetchExtensionListener EPL app for now and does not deploy the extension yet.'
+          ),
           { assetName: this.selectedAsset.name, requestId }
         )
       );

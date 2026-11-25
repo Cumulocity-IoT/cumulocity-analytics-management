@@ -39,7 +39,10 @@ describe('cep-error', () => {
     });
 
     it('returns the parsed JSON body and sends JSON headers', async () => {
-      fetchClient.fetch.and.resolveTo({ ok: true, json: async () => ({ a: 1 }) } as unknown as Response);
+      fetchClient.fetch.and.resolveTo({
+        ok: true,
+        json: async () => ({ a: 1 })
+      } as unknown as Response);
 
       const result = await fetchCepJSON<{ a: number }>(fetchClient, '/service/cep/x');
 
@@ -47,7 +50,10 @@ describe('cep-error', () => {
       const [url, options] = fetchClient.fetch.calls.mostRecent().args;
       expect(url).toBe('/service/cep/x');
       expect(options?.method).toBe('GET');
-      expect(options?.headers).toEqual({ accept: 'application/json', 'content-type': 'application/json' });
+      expect(options?.headers).toEqual({
+        accept: 'application/json',
+        'content-type': 'application/json'
+      });
     });
 
     it('lets callers override the HTTP method', async () => {
@@ -57,7 +63,11 @@ describe('cep-error', () => {
     });
 
     it('throws a CepError carrying the status for non-OK responses', async () => {
-      fetchClient.fetch.and.resolveTo({ ok: false, status: 503, statusText: 'Unavailable' } as unknown as Response);
+      fetchClient.fetch.and.resolveTo({
+        ok: false,
+        status: 503,
+        statusText: 'Unavailable'
+      } as unknown as Response);
 
       await expectAsync(fetchCepJSON(fetchClient, '/x')).toBeRejected();
       try {

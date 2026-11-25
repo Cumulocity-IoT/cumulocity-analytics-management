@@ -15,16 +15,10 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
           <div class="extension-list">
             <table class="extension-table">
               <tbody>
-                @for (
-                  extension of to.extensionNames;
-                  track extension;
-                  let i = $index
-                ) {
+                @for (extension of to.extensionNames; track extension; let i = $index) {
                   <tr class="extension-row">
                     <td class="number-cell">{{ i + 1 }}</td>
-                    <td class="extension-cell">
-                      <i class="fa fa-cube mr-2"></i> {{ extension }}
-                    </td>
+                    <td class="extension-cell"><i class="fa fa-cube mr-2"></i> {{ extension }}</td>
                   </tr>
                 }
               </tbody>

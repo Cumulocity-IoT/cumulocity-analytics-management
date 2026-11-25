@@ -4,8 +4,12 @@ import { RepositoryModeService } from './repository-mode.service';
 
 describe('RepositoryModeService', () => {
   it('delegates the backend-mode decision to AnalyticsService', async () => {
-    const analytics = jasmine.createSpyObj<AnalyticsService>('AnalyticsService', ['isBackendServiceAvailable']);
-    TestBed.configureTestingModule({ providers: [{ provide: AnalyticsService, useValue: analytics }] });
+    const analytics = jasmine.createSpyObj<AnalyticsService>('AnalyticsService', [
+      'isBackendServiceAvailable'
+    ]);
+    TestBed.configureTestingModule({
+      providers: [{ provide: AnalyticsService, useValue: analytics }]
+    });
     const service = TestBed.inject(RepositoryModeService);
 
     analytics.isBackendServiceAvailable.and.resolveTo(true);

@@ -13,7 +13,16 @@ import { RepositoryModeService } from './repository-mode.service';
 
 const repository = { id: 'r1', name: 'R', url: 'u', accessToken: '', enabled: true } as Repository;
 const item = (file: string, over: Partial<RepositoryItem> = {}): RepositoryItem =>
-  ({ id: '', name: file.replace(/\.[^.]+$/, ''), file, type: 'file', url: `https://api/${file}`, downloadUrl: `https://raw/${file}`, repositoryId: 'r1', ...over }) as RepositoryItem;
+  ({
+    id: '',
+    name: file.replace(/\.[^.]+$/, ''),
+    file,
+    type: 'file',
+    url: `https://api/${file}`,
+    downloadUrl: `https://raw/${file}`,
+    repositoryId: 'r1',
+    ...over
+  }) as RepositoryItem;
 const MON = 'package com.acme;\n/** My Block. */\nevent MyBlock { BlockBase $base; }';
 
 describe('ExtensionBuilderService', () => {
@@ -27,7 +36,11 @@ describe('ExtensionBuilderService', () => {
   beforeEach(() => {
     mode = jasmine.createSpyObj('RepositoryModeService', ['isBackendMode']);
     github = jasmine.createSpyObj('GitHubContentService', ['getItemContent']);
-    backend = jasmine.createSpyObj('RepositoryBackendService', ['createExtensionFromList', 'createExtensionFromYaml', 'createExtensionFromRepository']);
+    backend = jasmine.createSpyObj('RepositoryBackendService', [
+      'createExtensionFromList',
+      'createExtensionFromYaml',
+      'createExtensionFromRepository'
+    ]);
     analytics = jasmine.createSpyObj('AnalyticsService', ['uploadExtension', 'restartCepEngine']);
     alerts = jasmine.createSpyObj('AlertService', ['danger']);
     TestBed.configureTestingModule({
@@ -50,21 +63,44 @@ describe('ExtensionBuilderService', () => {
     it('delegates list builds', async () => {
       backend.createExtensionFromList.and.resolveTo(ok);
       const monitors = [item('A.mon')];
-      expect(await service.createExtensionFromList('E', monitors, repository, true, true, false)).toBe(ok);
-      expect(backend.createExtensionFromList).toHaveBeenCalledWith('E', monitors, repository, true, true, false);
+      expect(
+        await service.createExtensionFromList('E', monitors, repository, true, true, false)
+      ).toBe(ok);
+      expect(backend.createExtensionFromList).toHaveBeenCalledWith(
+        'E',
+        monitors,
+        repository,
+        true,
+        true,
+        false
+      );
     });
 
     it('delegates yaml builds', async () => {
       backend.createExtensionFromYaml.and.resolveTo(ok);
       const yaml = item('extensions.yaml');
       await service.createExtensionFromYaml('E', yaml, ['S'], repository, true);
-      expect(backend.createExtensionFromYaml).toHaveBeenCalledWith('E', yaml, ['S'], repository, true, false, false);
+      expect(backend.createExtensionFromYaml).toHaveBeenCalledWith(
+        'E',
+        yaml,
+        ['S'],
+        repository,
+        true,
+        false,
+        false
+      );
     });
 
     it('delegates repository builds', async () => {
       backend.createExtensionFromRepository.and.resolveTo(ok);
       await service.createExtensionFromRepository('E', repository, false, false, true);
-      expect(backend.createExtensionFromRepository).toHaveBeenCalledWith('E', repository, false, false, true);
+      expect(backend.createExtensionFromRepository).toHaveBeenCalledWith(
+        'E',
+        repository,
+        false,
+        false,
+        true
+      );
     });
   });
 
@@ -73,7 +109,9 @@ describe('ExtensionBuilderService', () => {
       mode.isBackendMode.and.resolveTo(false);
       analytics.uploadExtension.and.resolveTo({} as never);
       analytics.restartCepEngine.and.resolveTo();
-      github.getItemContent.and.callFake(async (i: RepositoryItem) => (i.file.endsWith('.mon') ? MON : 'other'));
+      github.getItemContent.and.callFake(async (i: RepositoryItem) =>
+        i.file.endsWith('.mon') ? MON : 'other'
+      );
     });
 
     const uploadedZip = async () => {
@@ -82,17 +120,29 @@ describe('ExtensionBuilderService', () => {
     };
 
     it('rejects yaml and repository builds with a 501 and an explanatory alert', async () => {
-      expect(((await service.createExtensionFromYaml('E', item('x.yaml'), [], repository)) as any).status).toBe(501);
-      expect(((await service.createExtensionFromRepository('E', repository)) as any).status).toBe(501);
+      expect(
+        ((await service.createExtensionFromYaml('E', item('x.yaml'), [], repository)) as any).status
+      ).toBe(501);
+      expect(((await service.createExtensionFromRepository('E', repository)) as any).status).toBe(
+        501
+      );
       expect(alerts.danger).toHaveBeenCalledTimes(2);
       expect(backend.createExtensionFromYaml).not.toHaveBeenCalled();
     });
 
     it('builds a zip with content nested under files/ and uploads it in add mode', async () => {
-      const result = await service.createExtensionFromList('E', [item('MyBlock.mon'), item('helper.py')], repository);
+      const result = await service.createExtensionFromList(
+        'E',
+        [item('MyBlock.mon'), item('helper.py')],
+        repository
+      );
 
       expect((result as any).status).toBe(200);
-      const [file, extension, mode_] = analytics.uploadExtension.calls.mostRecent().args as [File, any, string];
+      const [file, extension, mode_] = analytics.uploadExtension.calls.mostRecent().args as [
+        File,
+        any,
+        string
+      ];
       expect(file.name).toBe('E.zip');
       expect(file.type).toBe('application/zip');
       expect(mode_).toBe('add');
@@ -101,16 +151,30 @@ describe('ExtensionBuilderService', () => {
       expect(extension.build_information.monitors.map((m: any) => m.file)).toEqual(['MyBlock.mon']);
 
       const zip = await uploadedZip();
-      expect(Object.keys(zip.files).filter(n => !zip.files[n].dir).sort()).toEqual([
-        'files/MyBlock.mon', 'files/events/E_messages.evt', 'files/events/E_metadata.evt', 'files/helper.py'
+      expect(
+        Object.keys(zip.files)
+          .filter(n => !zip.files[n].dir)
+          .sort()
+      ).toEqual([
+        'files/MyBlock.mon',
+        'files/events/E_messages.evt',
+        'files/events/E_metadata.evt',
+        'files/helper.py'
       ]);
-      expect(await zip.file('files/events/E_metadata.evt')!.async('string')).toContain('com.acme.MyBlock');
+      expect(await zip.file('files/events/E_metadata.evt')!.async('string')).toContain(
+        'com.acme.MyBlock'
+      );
     });
 
     it('writes each block once and also for files without a package', async () => {
       github.getItemContent.and.callFake(async (i: RepositoryItem) =>
-        i.file === 'NoPackage.mon' ? 'event Bare { BlockBase $base; }' : MON);
-      await service.createExtensionFromList('E', [item('MyBlock.mon'), item('Copy.mon'), item('NoPackage.mon')], repository);
+        i.file === 'NoPackage.mon' ? 'event Bare { BlockBase $base; }' : MON
+      );
+      await service.createExtensionFromList(
+        'E',
+        [item('MyBlock.mon'), item('Copy.mon'), item('NoPackage.mon')],
+        repository
+      );
 
       const evt = await (await uploadedZip()).file('files/events/E_metadata.evt')!.async('string');
       const ids = parseBlockMetadataEvt(evt).map(b => b.id);
@@ -119,9 +183,19 @@ describe('ExtensionBuilderService', () => {
     });
 
     it('skips directories, build artefacts and .git content', async () => {
-      await service.createExtensionFromList('E', [
-        item('keep.mon'), item('sub', { type: 'dir' }), item('x.log'), item('.project'), item('a.OUT'), item('.git/config'), item('.github/ci.yml')
-      ], repository);
+      await service.createExtensionFromList(
+        'E',
+        [
+          item('keep.mon'),
+          item('sub', { type: 'dir' }),
+          item('x.log'),
+          item('.project'),
+          item('a.OUT'),
+          item('.git/config'),
+          item('.github/ci.yml')
+        ],
+        repository
+      );
 
       const names = Object.keys((await uploadedZip()).files).filter(n => !n.endsWith('/'));
       expect(names).toContain('files/keep.mon');

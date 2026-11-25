@@ -1,4 +1,9 @@
-import { createDefaultRepository, DEFAULT_REPOSITORY_URL, ErrorType, REPO_SAMPLES } from './analytics.model';
+import {
+  createDefaultRepository,
+  DEFAULT_REPOSITORY_URL,
+  ErrorType,
+  REPO_SAMPLES
+} from './analytics.model';
 import { ERROR_MESSAGES } from './analytics.constants';
 
 describe('analytics.model', () => {
@@ -34,7 +39,9 @@ describe('analytics.model', () => {
   describe('ERROR_MESSAGES', () => {
     it('has a message for every upload error type', () => {
       Object.values(ErrorType).forEach(type =>
-        expect((ERROR_MESSAGES as Record<string, string>)[type]).withContext(type).toBeTruthy()
+        expect((ERROR_MESSAGES as Record<string, string>)[type])
+          .withContext(type)
+          .toBeTruthy()
       );
     });
   });

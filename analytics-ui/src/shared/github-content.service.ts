@@ -91,7 +91,9 @@ export class GitHubContentService {
       }
       throw new RepositoryError(
         'Failed to fetch GitHub content',
-        gettext('Failed to connect to GitHub. Please check your connection and repository settings.'),
+        gettext(
+          'Failed to connect to GitHub. Please check your connection and repository settings.'
+        ),
         error instanceof Error ? error : undefined
       );
     }
@@ -148,14 +150,37 @@ export class GitHubContentService {
   mapTestStatusToResult(status: number): RepositoryTestResult {
     switch (status) {
       case 401:
-        return { success: false, status, message: gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).') };
+        return {
+          success: false,
+          status,
+          message: gettext(
+            'Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'
+          )
+        };
       case 403:
       case 429:
-        return { success: false, status, message: gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.') };
+        return {
+          success: false,
+          status,
+          message: gettext(
+            'Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'
+          )
+        };
       case 404:
-        return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
+        return {
+          success: false,
+          status,
+          message: gettext('Repository not found. Please check the URL.')
+        };
       default:
-        return { success: false, status, message: this.messages.format(gettext('Connection failed (status: {{status}}). Please try again.'), { status }) };
+        return {
+          success: false,
+          status,
+          message: this.messages.format(
+            gettext('Connection failed (status: {{status}}). Please try again.'),
+            { status }
+          )
+        };
     }
   }
 
@@ -182,7 +207,9 @@ export class GitHubContentService {
     // mapping happens in mapTestStatusToResult against response.status.
     return {
       success: false,
-      message: gettext('Failed to connect to repository. Please check your connection and try again.')
+      message: gettext(
+        'Failed to connect to repository. Please check your connection and try again.'
+      )
     };
   }
 }

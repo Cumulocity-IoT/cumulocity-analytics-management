@@ -24,7 +24,12 @@ describe('RepositoriesDrawerComponent', () => {
   let modalClose$: Subject<boolean>;
   let modalHide: jasmine.Spy;
 
-  async function create(initial: Repository[] = [repo(), repo({ id: 'r2', name: 'Other', url: 'https://github.com/o/other', enabled: false })]) {
+  async function create(
+    initial: Repository[] = [
+      repo(),
+      repo({ id: 'r2', name: 'Other', url: 'https://github.com/o/other', enabled: false })
+    ]
+  ) {
     TestBed.resetTestingModule();
     repos$ = new BehaviorSubject<Repository[]>(initial);
     service.getRepositories.and.returnValue(repos$);
@@ -70,7 +75,10 @@ describe('RepositoriesDrawerComponent', () => {
     modalClose$ = new Subject<boolean>();
     modalHide = jasmine.createSpy('hide');
     modals = jasmine.createSpyObj<BsModalService>('BsModalService', ['show']);
-    modals.show.and.returnValue({ content: { closeSubject: modalClose$ }, hide: modalHide } as never);
+    modals.show.and.returnValue({
+      content: { closeSubject: modalClose$ },
+      hide: modalHide
+    } as never);
     spyOn(console, 'error');
   });
 
@@ -387,7 +395,9 @@ describe('RepositoriesDrawerComponent', () => {
 
     it('deletes the selected repository after confirmation and selects the next one', async () => {
       component.deleteButtonClicked();
-      const {initialState} = (modals.show.calls.mostRecent().args[1] as { initialState: { message: string } });
+      const { initialState } = modals.show.calls.mostRecent().args[1] as {
+        initialState: { message: string };
+      };
       expect(initialState.message).toContain('Contrib');
 
       modalClose$.next(true);
@@ -440,7 +450,9 @@ describe('RepositoriesDrawerComponent', () => {
     it('tests with the full url and reports success', async () => {
       service.testRepository.and.resolveTo({ success: true, message: 'Connected' });
       await component.testRepository();
-      expect(service.testRepository.calls.mostRecent().args[0].url).toMatch(/^https:\/\/github\.com\//);
+      expect(service.testRepository.calls.mostRecent().args[0].url).toMatch(
+        /^https:\/\/github\.com\//
+      );
       expect(alerts.success).toHaveBeenCalledWith('Connected');
     });
 
