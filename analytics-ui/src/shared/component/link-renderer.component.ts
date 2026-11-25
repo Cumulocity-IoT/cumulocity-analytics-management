@@ -28,7 +28,6 @@ import { CellRendererContext } from '@c8y/ngx-components';
       context.item.type === 'file' ? context.item.file : context.item.file + '/'
     }}</span></a
   >`,
-  standalone: true,
   imports: []
 })
 export class LinkRendererComponent {

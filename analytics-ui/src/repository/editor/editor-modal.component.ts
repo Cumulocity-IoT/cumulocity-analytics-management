@@ -19,7 +19,6 @@ let initializedMonaco = false;
   styleUrls: ['./editor-modal.component.css'],
   templateUrl: './editor-modal.component.html',
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, EditorComponent],
   providers: [EplConfigService]
 })

@@ -1,4 +1,6 @@
-import { Component, DoCheck, EventEmitter, Input, OnInit, Output, ViewEncapsulation, viewChild } from '@angular/core';
+import { take } from 'rxjs/operators';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Component, DoCheck, OnDestroy, Input, OnInit, ViewEncapsulation, viewChild, DestroyRef, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, AbstractControl, FormBuilder, FormGroup, ValidationErrors, Validators } from '@angular/forms';
 import {
@@ -27,19 +29,20 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
     templateUrl: './repositories-drawer.component.html',
     styleUrls: ['./repositories-drawer.component.css'],
     encapsulation: ViewEncapsulation.None,
-    standalone: true,
     imports: [
         CommonModule, ReactiveFormsModule, CoreModule, PopoverModule, ConfirmationModalComponent,
         SplitViewComponent, SplitViewListComponent, SplitViewDetailsComponent,
         SplitViewHeaderActionsComponent, SplitViewFooterComponent
     ]
 })
-export class RepositoriesDrawerComponent implements OnInit, DoCheck {
+export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
+  private readonly destroyRef = inject(DestroyRef);
+  private destroyed = false;
     private readonly splitView = viewChild<SplitViewComponent<number>>('sv');
 
     @Input() hideInstalled: boolean = false;
-    @Output() cancelled = new EventEmitter<void>();
-    @Output() commit = new EventEmitter<Repository>();
+    readonly cancelled = output<void>();
+    readonly commit = output<Repository>();
 
     repositories$!: Observable<Repository[]>;
     repositoriesList: Repository[] = [];
@@ -76,6 +79,10 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
     isSavingGlobalAccessToken: boolean = false;
     popupGlobalPAT = 'Used for any repository above that doesn\'t have its own Personal Access Token. A repository-specific token always takes precedence over this one.';
 
+    ngOnDestroy(): void {
+        this.destroyed = true;
+    }
+
     constructor(
         private repositoryService: RepositoryService,
         private fb: FormBuilder,
@@ -105,7 +112,7 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
         // Subscribe to form changes to update the temporary repository name
         const nameControl = this.repositoryForm.get('name');
         if (nameControl) {
-          nameControl.valueChanges.subscribe(name => {
+          nameControl.valueChanges.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(name => {
             if (this.isAddingNew && this.tempNewRepository) {
               this.tempNewRepository.name = name || 'New repository';
               this.updateDisplayList();
@@ -142,7 +149,10 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
         // not a reliable signal that there really are no repositories yet.
         const initialRepos = await this.repositoryService.whenReady();
 
-        this.repositories$.subscribe(repos => {
+        if (this.destroyed) {
+          return;
+        }
+        this.repositories$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(repos => {
             this.repositoriesList = repos;
             const enabledRepo = repos.find(r => r.enabled);
             if (enabledRepo) {
@@ -387,7 +397,7 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
             this.isGlobalAccessTokenSet = !!token;
             this.globalAccessTokenForm.patchValue({ accessToken: token ? DUMMY_ACCESS_TOKEN : '' });
             this.alertService.success(token
-                ? gettext('Global access token saved successfully')
+                ? gettext('Global access token saved')
                 : gettext('Global access token cleared'));
         } catch (error) {
             console.error('Failed to save global access token:', error);
@@ -452,9 +462,9 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
             testedRepository.url = this.GITHUB_URL + testedRepository.url;
             const result = await this.repositoryService.testRepository(testedRepository);
             if (result.success) {
-                this.alertService.success(result.message || 'Operation successful');
+                this.alertService.success(result.message || gettext('Operation successful'));
             } else {
-                this.alertService.danger(result.message || 'Operation failed');
+                this.alertService.danger(result.message || gettext('Operation failed'));
             }
         }
     }
@@ -473,7 +483,7 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
             ConfirmationModalComponent,
             { initialState }
         );
-        confirmDeletionModalRef.content.closeSubject.subscribe(
+        confirmDeletionModalRef.content.closeSubject.pipe(take(1)).subscribe(
             async (result: boolean) => {
                 if (result) {
                     this.isSaving = true;
@@ -562,7 +572,7 @@ export class RepositoriesDrawerComponent implements OnInit, DoCheck {
                 ConfirmationModalComponent,
                 { initialState }
             );
-            confirmCancelModalRef.content.closeSubject.subscribe(
+            confirmCancelModalRef.content.closeSubject.pipe(take(1)).subscribe(
                 (result: boolean) => {
                     if (result) {
                         // Revert form changes

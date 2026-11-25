@@ -64,7 +64,7 @@
 
 <c8y-action-bar-item [placement]="'right'" [priority]="70">
   <button class="btn btn-link" title="{{ 'Reload from server' | translate }}" aria-label="Reload" (click)="reloadAll()">
-    <i [ngClass]="{ 'icon-spin': loading }" c8yIcon="refresh"></i>
+    <i [class.icon-spin]="loading" c8yIcon="refresh"></i>
   </button>
 </c8y-action-bar-item>
 
@@ -128,7 +128,7 @@
 </div>
 
 <!-- Drawer -->
-<div [ngClass]="{ drawerOpen: showConfigRepositories }">
+<div [class.drawerOpen]="showConfigRepositories">
   <div class="bottom-drawer">
     @if (showConfigRepositories) {
       <a17t-repositories-drawer (cancelled)="onRepositoryCancel()"
@@ -138,7 +138,7 @@
   </div>
 </div>
 
-<div [ngClass]="{ drawerOpen: showDeployRelease }">
+<div [class.drawerOpen]="showDeployRelease">
   <div class="bottom-drawer">
     @if (showDeployRelease) {
       <a17t-release-deploy-wizard (cancelled)="onDeployReleaseCancel()"

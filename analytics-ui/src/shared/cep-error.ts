@@ -47,7 +47,7 @@ export async function fetchCepJSON<T>(
     if (!response.ok) {
       throw new CepError(
         `API call failed: ${response.status} ${response.statusText}`,
-        gettext(`Network request failed (${response.status}). Please check your connection and try again.`),
+        gettext('Network request failed. Please check your connection and try again.'),
         undefined,
         response.status
       );

@@ -25,7 +25,6 @@ import { ExtensionCardComponent } from './extension-card.component';
   selector: 'a17t-extension-grid',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
-  standalone: true,
   imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
@@ -42,7 +41,6 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   isSafeMode$!: Observable<boolean>;
 
   // Template bindings
-  listClass = 'card-group';
   isBackendServiceAvailable = false;
 
   // Private subjects

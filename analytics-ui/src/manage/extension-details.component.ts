@@ -35,7 +35,6 @@ type SectionId = 'blocks' | 'files' | 'build';
   selector: 'a17t-extension-details',
   templateUrl: './extension-details.component.html',
   styleUrls: ['./extension-details.component.css'],
-  standalone: true,
   imports: [CoreModule, SplitViewComponent, SplitViewListComponent, SplitViewDetailsComponent]
 })
 export class ExtensionDetailsComponent implements OnInit {

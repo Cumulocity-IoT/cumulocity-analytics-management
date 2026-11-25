@@ -125,7 +125,7 @@ describe('ExtensionCreateModalComponent', () => {
       create({ monitors: [item('Foo')] });
       component.configForm.patchValue({ name: 'MyExt', deploy: true });
       await component.createExtension();
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('MyExt.zip has been uploaded and Streaming Analytics Engine is restarting'));
+      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('"MyExt.zip" has been uploaded and Streaming Analytics Engine is restarting'));
     });
 
     it('builds yaml sections from the yaml item', async () => {

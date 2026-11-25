@@ -172,7 +172,7 @@ export class RepositoryService implements OnDestroy {
           savedRepositories: [...updatedRepositories]
         });
         this.invalidateCache();
-        this.alertService.success(gettext('Repository added successfully'));
+        this.alertService.success(gettext('Repository added'));
       } catch (error) {
         throw this.handleError(
           error,
@@ -207,7 +207,7 @@ export class RepositoryService implements OnDestroy {
           savedRepositories: [...updatedRepositories]
         });
         this.invalidateCache();
-        this.alertService.success(gettext('Repository updated successfully'));
+        this.alertService.success(gettext('Repository updated'));
       } catch (error) {
         throw this.handleError(
           error,
@@ -282,7 +282,7 @@ export class RepositoryService implements OnDestroy {
           savedRepositories: [...state.repositories]
         });
         this.invalidateCache();
-        this.alertService.success(gettext('Repositories saved successfully'));
+        this.alertService.success(gettext('Repositories saved'));
       } catch (error) {
         throw this.handleError(
           error,
@@ -329,7 +329,7 @@ export class RepositoryService implements OnDestroy {
           savedRepositories: [...updatedRepositories]
         });
         this.invalidateCache();
-        this.alertService.success(gettext('Repository deleted successfully'));
+        this.alertService.success(gettext('Repository deleted'));
       } catch (error) {
         throw this.handleError(
           error,
@@ -359,7 +359,7 @@ export class RepositoryService implements OnDestroy {
       await lastValueFrom(this.loadRepositoriesFromConfig(false).pipe(take(1)));
       this.analyticsService.clearAllCaches();
       this.invalidateCache();
-      this.alertService.success(gettext('Repositories refreshed successfully'));
+      this.alertService.success(gettext('Repositories refreshed'));
     } catch (error) {
       throw this.handleError(
         error,

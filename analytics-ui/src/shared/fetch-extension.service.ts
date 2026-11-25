@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { EventService, IdentityService, IEvent } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -31,6 +32,7 @@ export interface FetchExtensionRequest {
  */
 @Injectable({ providedIn: 'root' })
 export class FetchExtensionService {
+  private readonly messages = inject(MessageService);
   constructor(
     private readonly identityService: IdentityService,
     private readonly eventService: EventService,
@@ -126,7 +128,7 @@ export class FetchExtensionService {
         error,
         `Failed to send ${FETCH_EXTENSION_EVENT_TYPE} event for ${name}`,
         true,
-        gettext(`Could not send the fetch request for "${name}". Please try again.`)
+        this.messages.format(gettext('Could not send the fetch request for "{{extensionName}}". Please try again.'), { extensionName: name })
       );
     }
   }

@@ -1,11 +1,6 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ViewChild,
-  OnDestroy
-} from '@angular/core';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { MessageService } from '../message.service';
+import { Component, Input, ViewChild, OnDestroy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
 import {
@@ -65,10 +60,10 @@ interface BuildInformation {
   selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html',
   styleUrls: ['./extension-add.component.css'],
-  standalone: true,
   imports: [CommonModule, CoreModule]
 })
 export class ExtensionAddComponent implements OnDestroy {
+  private readonly messages = inject(MessageService);
   @Input() headerText!: string;
   @Input() headerIcon!: string;
   @Input() successText!: string;
@@ -78,8 +73,8 @@ export class ExtensionAddComponent implements OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() completed = new EventEmitter<void>();
+  readonly cancelled = output<void>();
+  readonly completed = output<void>();
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
@@ -382,9 +377,12 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private handleUploadSuccess(mode: UploadMode): void {
-    const action = mode === 'update' ? 'Updated' : 'Uploaded';
-    const extensionName = this.state.extension?.['name'] || 'Extension';
-    this.alertService.success(`${action} extension ${extensionName} successfully.`);
+    const extensionName = this.state.extension?.['name'] || gettext('Extension');
+    const key =
+      mode === 'update'
+        ? gettext('Extension "{{extensionName}}" updated.')
+        : gettext('Extension "{{extensionName}}" uploaded.');
+    this.alertService.success(this.messages.format(key, { extensionName }));
     this.state.isComplete = true;
     this.progress.next(100);
   }

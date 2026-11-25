@@ -24,8 +24,10 @@ describe('ExtensionCardComponent', () => {
   let changed: number;
 
   const create = (extension: IManagedObject) => {
-    component = TestBed.createComponent(ExtensionCardComponent).componentInstance;
-    component.extension = extension;
+    const fixture = TestBed.createComponent(ExtensionCardComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('extension', extension);
+    fixture.componentRef.setInput('isBackendServiceAvailable', true);
     changed = 0;
     component.extensionChanged.subscribe(() => changed++);
     return component;
@@ -204,7 +206,7 @@ describe('ExtensionCardComponent', () => {
       const component = rebuildable({ build_type: 'repository' });
       await confirmRebuild(component);
       expect(repositories.createExtensionFromRepository).toHaveBeenCalledWith('MyExt', repo as never, true, true, true);
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('rebuilt successfully'));
+      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('rebuilt.'));
       expect(changed).toBe(1);
     });
 

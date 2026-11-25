@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, output } from '@angular/core';
 
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -18,14 +18,13 @@ import { ExtensionAddComponent } from './extension-add.component';
     (cancelled)="onCancelled()"
     (completed)="onCompleted()"
   ></a17t-extension-add>`,
-  standalone: true,
   imports: [ExtensionAddComponent]
 })
 export class ExtensionAddWizardComponent {
   @Input() mode!: UploadMode;
   @Input() extensionToReplace!: IManagedObject;
   @Input() headerText!: string;
-  @Output() refresh = new EventEmitter<void>();
+  readonly refresh = output<void>();
   successText: string = gettext('Extension created');
 
   constructor(

@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { GITHUB_BASE, GitHubRelease, Repository } from './analytics.model';
 
@@ -30,6 +31,7 @@ export class GitHubReleaseError extends Error {
   providedIn: 'root'
 })
 export class GitHubReleaseService {
+  private readonly messages = inject(MessageService);
   /**
    * Extracts `{owner, repo}` from a `Repository.url`, which is either a GitHub
    * Contents API URL (`https://api.github.com/repos/{owner}/{repo}/contents/...`,
@@ -140,7 +142,7 @@ export class GitHubReleaseService {
       default:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext(`Failed to list releases (status: ${status}). Please try again.`),
+          this.messages.format(gettext('Failed to list releases (status: {{status}}). Please try again.'), { status }),
           status
         );
     }

@@ -1,4 +1,5 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { EventEmitter, Injectable, inject } from '@angular/core';
 import {
   IManagedObject,
   IManagedObjectBinary,
@@ -20,6 +21,7 @@ import { CepError } from './cep-error';
  */
 @Injectable({ providedIn: 'root' })
 export class ExtensionInventoryService {
+  private readonly messages = inject(MessageService);
   readonly extensionChanged$ = new EventEmitter<IManagedObject>();
   readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
 
@@ -79,7 +81,7 @@ export class ExtensionInventoryService {
       if (!result.res.ok) {
         throw new CepError(
           `Upload failed with status ${result.res.status}`,
-          gettext(`Could not upload extension "${extension['name']}". Please try again.`)
+          this.messages.format(gettext('Could not upload extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
         );
       }
 
@@ -97,7 +99,7 @@ export class ExtensionInventoryService {
         true,
         error instanceof CepError
           ? error.userMessage
-          : gettext(`Error uploading extension "${extension['name']}". Please try again.`)
+          : this.messages.format(gettext('Error uploading extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
       );
     }
   }
@@ -110,7 +112,7 @@ export class ExtensionInventoryService {
       const result = await this.inventoryBinaryService.delete(extension.id);
 
       if (showSuccessMessage) {
-        this.alertService.success(gettext('Extension deleted successfully.'));
+        this.alertService.success(gettext('Extension deleted.'));
       }
 
       this.extensionChanged$.emit(extension);
@@ -134,7 +136,7 @@ export class ExtensionInventoryService {
         error,
         `Failed to download extension ${extension['name']}`,
         true,
-        gettext(`Failed to download extension "${extension['name']}". Please try again.`)
+        this.messages.format(gettext('Failed to download extension "{{extensionName}}". Please try again.'), { extensionName: extension['name'] })
       );
     }
   }
@@ -177,7 +179,7 @@ export class ExtensionInventoryService {
     } catch {
       // deleteExtension already showed an error alert; the new version is uploaded.
       this.alertService.warning(
-        gettext(`The new version of "${replaced['name']}" was uploaded, but the previous version could not be deleted. Delete it manually.`)
+        this.messages.format(gettext('The new version of "{{extensionName}}" was uploaded, but the previous version could not be deleted. Delete it manually.'), { extensionName: replaced['name'] })
       );
     }
   }

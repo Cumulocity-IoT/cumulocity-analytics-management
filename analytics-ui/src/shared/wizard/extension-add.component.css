@@ -2,3 +2,7 @@
 .form-group-upload {
   max-width: 25.625rem;
 }
+
+.result-container {
+  min-height: 285px;
+}

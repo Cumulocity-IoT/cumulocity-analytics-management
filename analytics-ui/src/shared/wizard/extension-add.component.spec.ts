@@ -117,7 +117,7 @@ describe('ExtensionAddComponent', () => {
     it('reports success, completes the progress and leaves the loading state', async () => {
       create();
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));
-      expect(alerts.success).toHaveBeenCalledWith('Uploaded extension E successfully.');
+      expect(alerts.success).toHaveBeenCalledWith('Extension "E" uploaded.');
       expect(component.isComplete).toBeTrue();
       expect(component.isLoading).toBeFalse();
       expect(component.progress.value).toBe(100);
@@ -131,7 +131,7 @@ describe('ExtensionAddComponent', () => {
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));
       expect(uploaded()[2]).toBe('update');
       expect(uploaded()[1]['id']).toBe('9'); // keeps the existing managed object
-      expect(alerts.success).toHaveBeenCalledWith('Updated extension E successfully.');
+      expect(alerts.success).toHaveBeenCalledWith('Extension "E" updated.');
       expect(modals.show).not.toHaveBeenCalled();
     });
   });

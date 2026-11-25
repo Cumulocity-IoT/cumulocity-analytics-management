@@ -1,3 +1,4 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 /*
  * Copyright (c) 2025 Cumulocity GmbH
  *
@@ -18,14 +19,7 @@
  * @authors Christof Strack
  */
 
-import {
-  ChangeDetectorRef,
-  Component,
-  EventEmitter,
-  inject,
-  OnInit,
-  ViewEncapsulation
-} from '@angular/core';
+import { ChangeDetectorRef, Component, EventEmitter, inject, OnInit, ViewEncapsulation, DestroyRef } from '@angular/core';
 
 import {
   ActionControl,
@@ -47,10 +41,10 @@ import { gettext } from '@c8y/ngx-components/gettext';
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [CoreModule]
 })
 export class BlockGridComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   readonly labels = PAGE_LABELS;
   readonly routes = ROUTES;
 
@@ -127,7 +121,7 @@ export class BlockGridComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadBlocks();
-    this.refresh.subscribe(() => {
+    this.refresh.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.loadBlocks();
     });
   }

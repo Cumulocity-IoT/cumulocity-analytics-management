@@ -18,3 +18,7 @@
 .source-note a {
   white-space: nowrap;
 }
+
+.asset-title {
+  line-height: 1.3;
+}

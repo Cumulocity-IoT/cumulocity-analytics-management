@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { FetchClient, IFetchResponse } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -41,6 +42,7 @@ interface CreateExtensionFromYamlRequest extends CreateExtensionRequest {
   providedIn: 'root'
 })
 export class RepositoryBackendService {
+  private readonly messages = inject(MessageService);
   constructor(
     private readonly fetchClient: FetchClient,
     private readonly alertService: AlertService,
@@ -234,7 +236,7 @@ export class RepositoryBackendService {
       case 404:
         return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
       default:
-        return { success: false, status, message: gettext(`Connection failed (status: ${status}). Please try again.`) };
+        return { success: false, status, message: this.messages.format(gettext('Connection failed (status: {{status}}). Please try again.'), { status }) };
     }
   }
 
@@ -287,7 +289,7 @@ export class RepositoryBackendService {
       ? error
       : new RepositoryError(
           logMessage,
-          gettext(`Failed to create extension "${name}". Please try again.`),
+          this.messages.format(gettext('Failed to create extension "{{extensionName}}". Please try again.'), { extensionName: name }),
           error instanceof Error ? error : undefined
         );
     this.alertService.danger(result.userMessage);

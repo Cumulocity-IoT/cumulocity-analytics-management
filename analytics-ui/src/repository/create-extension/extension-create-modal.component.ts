@@ -1,4 +1,6 @@
-import { Component, Input, OnInit, Output } from '@angular/core';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { MessageService } from '../../shared/message.service';
+import { Component, Input, OnInit, Output, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormGroup, FormControl, Validators } from '@angular/forms';
 import { AlertService, CoreModule, ModalLabels } from '@c8y/ngx-components';
@@ -11,10 +13,11 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
 @Component({
   selector: 'a17t-extension-create-modal',
   templateUrl: './extension-create-modal.component.html',
-  standalone: true,
+  styles: ['.index-cell { width: 40px; }'],
   imports: [CommonModule, ReactiveFormsModule, CoreModule, PopoverModule]
 })
 export class ExtensionCreateModalComponent implements OnInit {
+  private readonly messages = inject(MessageService);
   @Output() closeSubject: Subject<unknown> = new Subject();
   @Input() monitors!: RepositoryItem[];
   @Input() sections!: string[];
@@ -67,7 +70,12 @@ export class ExtensionCreateModalComponent implements OnInit {
         this.requiresBackend = this.configurationIsExtension || !(this.monitors?.length > 0);
         if (this.requiresBackend) {
           this.alertService.warning(
-            `Building an extension from ${this.configurationIsExtension ? 'extensions.yaml sections' : 'a whole repository path'} requires the backend microservice ${APPLICATION_ANALYTICS_BUILDER_SERVICE} to be deployed!`
+            this.messages.format(
+              this.configurationIsExtension
+                ? gettext('Building an extension from extensions.yaml sections requires the backend microservice "{{serviceName}}" to be deployed.')
+                : gettext('Building an extension from a whole repository path requires the backend microservice "{{serviceName}}" to be deployed.'),
+              { serviceName: APPLICATION_ANALYTICS_BUILDER_SERVICE }
+            )
           );
         }
       },
@@ -107,11 +115,14 @@ export class ExtensionCreateModalComponent implements OnInit {
       if (response.status < 400) {
         if (deploy) {
           this.alertService.success(
-            `Created extension ${configName}.zip has been uploaded and Streaming Analytics Engine is restarting ...`
+            this.messages.format(
+              gettext('The extension "{{fileName}}" has been uploaded and Streaming Analytics Engine is restarting…'),
+              { fileName: `${configName}.zip` }
+            )
           );
         } else {
           this.alertService.success(
-            'The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.'
+            gettext('The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.')
           );
         }
       }

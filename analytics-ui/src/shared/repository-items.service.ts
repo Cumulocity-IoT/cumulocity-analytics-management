@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import * as jsyaml from 'js-yaml';
@@ -25,6 +26,7 @@ import { extractBlockFqns, getFileExtension, removeFileExtension, createShortId 
   providedIn: 'root'
 })
 export class RepositoryItemsService {
+  private readonly messages = inject(MessageService);
   private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
   private readonly fqnCache = new Map<string, Observable<string[]>>();
 
@@ -179,8 +181,8 @@ export class RepositoryItemsService {
           error,
           `Failed to fetch items from repository: ${repository.name}`,
           detail
-            ? gettext(`Failed to load items from "${repository.name}": ${detail}`)
-            : gettext(`Failed to load items from repository "${repository.name}".`)
+            ? this.messages.format(gettext('Failed to load items from "{{repositoryName}}": {{detail}}'), { repositoryName: repository.name, detail })
+            : this.messages.format(gettext('Failed to load items from repository "{{repositoryName}}".'), { repositoryName: repository.name })
         );
         return of([]);
       })
@@ -371,7 +373,7 @@ export class RepositoryItemsService {
     } catch (error) {
       throw new RepositoryError(
         `Error parsing ${DESCRIPTOR_YAML}`,
-        gettext(`Failed to parse ${DESCRIPTOR_YAML}. Invalid format.`),
+        this.messages.format(gettext('Failed to parse {{file}}. Invalid format.'), { file: DESCRIPTOR_YAML }),
         error instanceof Error ? error : undefined
       );
     }

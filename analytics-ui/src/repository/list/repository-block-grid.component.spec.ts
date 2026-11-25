@@ -207,7 +207,7 @@ describe('RepositoryBlockGridComponent', () => {
 
     it('refuses to select an already installed block, naming it', fakeAsync(() => {
       component.checkSelection(['2']);
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Block Installed is already installed'));
+      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Block "Installed" is already installed'));
       tick();
       expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith([component.repositoryItems[1]], false);
     }));

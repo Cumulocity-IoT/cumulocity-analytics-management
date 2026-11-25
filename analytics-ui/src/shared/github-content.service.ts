@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { GITHUB_BASE, Repository, RepositoryItem, RepositoryTestResult } from './analytics.model';
 import { RepositoryConfigService } from './repository-config.service';
@@ -14,6 +15,7 @@ import { githubWebUrlToContentApi } from './utils';
   providedIn: 'root'
 })
 export class GitHubContentService {
+  private readonly messages = inject(MessageService);
   constructor(private readonly repositoryConfigService: RepositoryConfigService) {}
 
   /**
@@ -153,7 +155,7 @@ export class GitHubContentService {
       case 404:
         return { success: false, status, message: gettext('Repository not found. Please check the URL.') };
       default:
-        return { success: false, status, message: gettext(`Connection failed (status: ${status}). Please try again.`) };
+        return { success: false, status, message: this.messages.format(gettext('Connection failed (status: {{status}}). Please try again.'), { status }) };
     }
   }
 

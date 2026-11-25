@@ -93,7 +93,7 @@
   <!-- Extensions Grid -->
   @if (status === 'up') {
     @if (extensions$ | async; as extensions) {
-      <div class="card-group" [ngClass]="listClass">
+      <div class="card-group">
         <!-- Extension Cards -->
         @for (extension of extensions; track trackByExtension($index, extension)) {
           <div

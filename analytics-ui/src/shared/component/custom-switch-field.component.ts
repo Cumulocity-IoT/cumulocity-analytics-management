@@ -62,7 +62,6 @@ import { CoreModule, HumanizePipe } from '@c8y/ngx-components';
     ></button> -->
     </label>
   `,
-  standalone: true,
   imports: [ReactiveFormsModule, FormlyModule, CoreModule, HumanizePipe]
 })
 export class CustomSwitchFieldComponent extends FieldType {}

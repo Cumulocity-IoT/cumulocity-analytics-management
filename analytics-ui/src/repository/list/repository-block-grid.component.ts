@@ -1,3 +1,5 @@
+import { take } from 'rxjs/operators';
+import { MessageService } from '../../shared/message.service';
 /*
  * Copyright (c) 2025 Cumulocity GmbH
  *
@@ -59,10 +61,10 @@ import { gettext } from '@c8y/ngx-components/gettext';
   templateUrl: 'repository-block-grid.component.html',
   styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
 })
 export class RepositoryBlockGridComponent implements OnInit {
+  private readonly messages = inject(MessageService);
   readonly labels = PAGE_LABELS;
   readonly routes = ROUTES;
 
@@ -304,7 +306,7 @@ export class RepositoryBlockGridComponent implements OnInit {
         false
       ).pipe(
         catchError(() => {
-          this.alertService.danger(`Failed to load content for "${block.name}".`);
+          this.alertService.danger(this.messages.format(gettext('Failed to load content for "{{blockName}}".'), { blockName: block.name }));
           return of('');
         })
       ),
@@ -357,20 +359,20 @@ export class RepositoryBlockGridComponent implements OnInit {
     if (installedNames.length > 0) {
       this.alertService.warning(
         installedNames.length === 1
-          ? `Not allowed to deploy the block twice. Block ${installedNames[0]} is already installed and will be ignored!`
-          : `Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: ${installedNames.join(', ')}.`
+          ? this.messages.format(gettext('Not allowed to deploy the block twice. Block "{{blockName}}" is already installed and will be ignored.'), { blockName: installedNames[0] })
+          : this.messages.format(gettext('Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: {{blockNames}}.'), { blockNames: installedNames.join(', ') })
       );
     }
     if (duplicateNames.length > 0) {
       this.alertService.warning(
-        `Selected more than once. ${duplicateNames.join(', ')} defines a block that another selected item already defines and will be ignored!`
+        this.messages.format(gettext('Selected more than once. The item {{blockNames}} defines a block that another selected item already defines and will be ignored.'), { blockNames: duplicateNames.join(', ') })
       );
     }
     if (invalid.length > 0) {
       setTimeout(() => {
         this.dataGrid.setItemsSelected(invalid, false);
         if (hasInvalidType) {
-          this.alertService.warning("Only files with extension '.mon', directories or 'extensions.yaml' are selectable!");
+          this.alertService.warning(gettext("Only files with extension '.mon', directories or 'extensions.yaml' are selectable."));
         }
       }, 0);
     }
@@ -415,7 +417,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       });
 
       if (modalRef.content) {
-        modalRef.content.closeSubject.subscribe(() => {
+        modalRef.content.closeSubject.pipe(take(1)).subscribe(() => {
           this.dataGrid.cancel();
           modalRef.hide();
         });
@@ -433,7 +435,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       });
 
       if (modalRef.content) {
-        modalRef.content.closeSubject.subscribe(() => {
+        modalRef.content.closeSubject.pipe(take(1)).subscribe(() => {
           this.dataGrid.cancel();
           modalRef.hide();
         });
@@ -511,7 +513,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       ariaLabelledBy: 'modal-title',
       ignoreBackdropClick: false
     });
-    modalRef.content?.closeSubject.subscribe(() => modalRef.hide());
+    modalRef.content?.closeSubject.pipe(take(1)).subscribe(() => modalRef.hide());
   }
 
   onRepositoryCommit(): void {

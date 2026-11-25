@@ -30,7 +30,6 @@ import { CellRendererContext } from '@c8y/ngx-components';
       <span class="sr-only">{{ context.value ? 'Yes' : 'No' }}</span>
     </label>
   `,
-  standalone: true,
   imports: []
 })
 export class BooleanRendererComponent {

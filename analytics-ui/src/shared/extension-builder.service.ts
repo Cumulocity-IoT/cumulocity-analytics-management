@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { IFetchResponse, IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -23,6 +24,7 @@ import { RepositoryModeService } from './repository-mode.service';
   providedIn: 'root'
 })
 export class ExtensionBuilderService {
+  private readonly messages = inject(MessageService);
   constructor(
     private readonly repositoryModeService: RepositoryModeService,
     private readonly gitHubContentService: GitHubContentService,
@@ -58,7 +60,7 @@ export class ExtensionBuilderService {
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
     if (!(await this.repositoryModeService.isBackendMode())) {
-      return this.rejectUnsupportedInBrowserMode(name, 'extensions.yaml sections');
+      return this.rejectUnsupportedInBrowserMode(name, 'sections');
     }
     return this.repositoryBackendService.createExtensionFromYaml(name, yaml, sections, repository, upload, deploy, rebuild);
   }
@@ -71,7 +73,7 @@ export class ExtensionBuilderService {
     rebuild: boolean = false
   ): Promise<IFetchResponse> {
     if (!(await this.repositoryModeService.isBackendMode())) {
-      return this.rejectUnsupportedInBrowserMode(name, 'a whole repository path');
+      return this.rejectUnsupportedInBrowserMode(name, 'path');
     }
     return this.repositoryBackendService.createExtensionFromRepository(name, repository, upload, deploy, rebuild);
   }
@@ -108,7 +110,7 @@ export class ExtensionBuilderService {
       this.alertService.danger(
         error instanceof RepositoryError
           ? error.userMessage
-          : gettext(`Failed to create extension "${name}". Please try again.`)
+          : this.messages.format(gettext('Failed to create extension "{{extensionName}}". Please try again.'), { extensionName: name })
       );
       return { status: 500 } as unknown as IFetchResponse;
     }
@@ -206,9 +208,14 @@ export class ExtensionBuilderService {
     };
   }
 
-  private rejectUnsupportedInBrowserMode(name: string, what: string): IFetchResponse {
+  private rejectUnsupportedInBrowserMode(name: string, source: 'sections' | 'path'): IFetchResponse {
     this.alertService.danger(
-      gettext(`Could not create "${name}": building an extension from ${what} isn't supported yet without the analytics-service backend. Select individual files instead, or deploy the backend.`)
+      this.messages.format(
+        source === 'sections'
+          ? gettext('Could not create "{{extensionName}}". Building an extension from extensions.yaml sections requires the analytics-service backend. Select individual files instead, or deploy the backend.')
+          : gettext('Could not create "{{extensionName}}". Building an extension from a whole repository path requires the analytics-service backend. Select individual files instead, or deploy the backend.'),
+        { extensionName: name }
+      )
     );
     return { status: 501 } as unknown as IFetchResponse;
   }

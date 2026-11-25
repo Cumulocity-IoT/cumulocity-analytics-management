@@ -2,14 +2,14 @@
   <div class="card card--fullpage d-col flex-grow">
     @if (phase === 'select') {
       <!-- Header -->
-      <div class="card-header separator" style="justify-content: center">
+      <div class="card-header separator j-c-center">
         <h4 class="card-title d-flex">
           <i c8yIcon="cloud-download" class="icon-32 m-r-16"></i>
           <span class="m-t-8">{{ 'Deploy from GitHub Release' | translate }}</span>
         </h4>
       </div>
 
-      <div class="card content-fullpage inner-scroll flex-grow" style="padding: 24px">
+      <div class="card content-fullpage inner-scroll flex-grow p-24">
         <p class="text-muted">
           {{ 'Pick a repository, one of its releases, and a pre-built extension zip to deploy as-is — no build step required.' | translate }}
         </p>

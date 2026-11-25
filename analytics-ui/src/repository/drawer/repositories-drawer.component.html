@@ -1,7 +1,7 @@
 <div class="a17t-repo-drawer d-col flex-nowrap no-align-items p-16 flex-grow col-md-12 col-md-offset-0">
   <div class="card card--fullpage d-col flex-grow">
     <!-- Header -->
-    <div class="card-header separator" style="justify-content: center">
+    <div class="card-header separator j-c-center">
       <h4 class="card-title d-flex a-i-center">
         <i [c8yIcon]="'change-theme'" class="icon-24 m-r-8"></i>
         <span>{{ 'Manage repositories' | translate }}</span>
@@ -86,15 +86,15 @@
           <div class="c8y-nav-stacked">
             @for (repository of filteredDisplayList; track repository; let i = $index) {
               <button class="c8y-stacked-item"
-                      [ngClass]="{ 
-                  active: displayList.indexOf(repository) === selectedRepositoryIndex,
-                  'is-temporary': isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
-              }" (click)="onEditRepository(repository)" [title]="repository.name">
+                      [class.active]="displayList.indexOf(repository) === selectedRepositoryIndex"
+                      [class.is-temporary]="isAddingNew && tempNewRepository && repository.id === tempNewRepository.id"
+                      (click)="onEditRepository(repository)" [title]="repository.name">
                 <i c8yIcon="plugin" class="m-r-4"></i>
                 <span class="m-r-8 text-truncate">{{ repository.name }}</span>
                 @if (!(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)) {
                   <span class="m-l-auto label m-r-16"
-                    [ngClass]="repository.enabled ? 'label-success' : 'label-default'"
+                    [class.label-success]="repository.enabled"
+                    [class.label-default]="!repository.enabled"
                     >
                     {{ repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate) }}
                   </span>
@@ -166,7 +166,9 @@
               <label for="accessToken">
                 <span>{{ 'Personal Access Token' | translate }}</span>
                 <span class="label m-l-8"
-                  [ngClass]="{ 'label-success': tokenSource === 'repository', 'label-info': tokenSource === 'global', 'label-default': tokenSource === 'none' }">
+                  [class.label-success]="tokenSource === 'repository'"
+                  [class.label-info]="tokenSource === 'global'"
+                  [class.label-default]="tokenSource === 'none'">
                   {{ (tokenSource === 'repository' ? 'Repository token' : tokenSource === 'global' ? 'Using global token' : 'No token') | translate }}
                 </span>
                 <button type="button" placement="right" [popover]="popupPAT" class="btn-help"

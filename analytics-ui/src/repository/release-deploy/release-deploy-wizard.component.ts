@@ -1,4 +1,6 @@
-import { Component, EventEmitter, OnInit, Output } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { MessageService } from '../../shared/message.service';
+import { Component, OnInit, inject, DestroyRef, output } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { AlertService, CoreModule } from '@c8y/ngx-components';
@@ -23,10 +25,11 @@ type Phase = 'select' | 'upload';
   selector: 'a17t-release-deploy-wizard',
   templateUrl: './release-deploy-wizard.component.html',
   styleUrls: ['./release-deploy-wizard.component.css'],
-  standalone: true,
   imports: [FormsModule, CoreModule, ExtensionAddComponent]
 })
 export class ReleaseDeployWizardComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly messages = inject(MessageService);
   phase: Phase = 'select';
   loading = false;
 
@@ -42,8 +45,8 @@ export class ReleaseDeployWizardComponent implements OnInit {
 
   sendingFetchEvent = false;
 
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() commit = new EventEmitter<void>();
+  readonly cancelled = output<void>();
+  readonly commit = output<void>();
 
   constructor(
     private readonly repositoryService: RepositoryService,
@@ -65,7 +68,7 @@ export class ReleaseDeployWizardComponent implements OnInit {
     );
 
   ngOnInit(): void {
-    this.repositoryService.getRepositories().subscribe((repositories) => {
+    this.repositoryService.getRepositories().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((repositories) => {
       this.repositories = repositories;
       if (!this.selectedRepository && repositories.length > 0) {
         this.onRepositorySelected(
@@ -147,8 +150,10 @@ export class ReleaseDeployWizardComponent implements OnInit {
       this.selectedAsset.name
     );
     this.alertService.info(
-      `Downloading "${this.selectedAsset.name}" — once it's done, drag it from your browser's ` +
-        'download tray straight onto the box below (fastest), or click the box to browse for it.'
+      this.messages.format(
+        gettext('Downloading "{{assetName}}". Once it is done, drag it from your browser download tray straight onto the box below (fastest), or click the box to browse for it.'),
+        { assetName: this.selectedAsset.name }
+      )
     );
     this.phase = 'upload';
   }
@@ -186,8 +191,10 @@ export class ReleaseDeployWizardComponent implements OnInit {
           accessToken
         );
       this.alertService.info(
-        `Sent fetch request for "${this.selectedAsset.name}" (requestId ${requestId}) — this only reaches ` +
-          'the FetchExtensionListener EPL app\'s log for now, it does not deploy the extension yet.'
+        this.messages.format(
+          gettext('Sent fetch request for "{{assetName}}" (requestId {{requestId}}). This only reaches the log of the FetchExtensionListener EPL app for now and does not deploy the extension yet.'),
+          { assetName: this.selectedAsset.name, requestId }
+        )
       );
     } catch {
       // FetchExtensionService already showed a danger alert with the

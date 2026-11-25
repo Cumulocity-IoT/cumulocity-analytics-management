@@ -133,7 +133,7 @@ export class CepRestartService implements OnDestroy {
   restartSucceeded(): void {
     this.endRestart();
     this.setCepStatusAlert(
-      gettext('Streaming Analytics restarted successfully.'),
+      gettext('Streaming Analytics restarted.'),
       'success'
     );
   }

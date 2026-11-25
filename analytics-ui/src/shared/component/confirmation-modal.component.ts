@@ -40,7 +40,6 @@ import { Subject } from 'rxjs';
 @Component({
   selector: 'a17t-confirmation-modal',
   templateUrl: './confirmation-modal.component.html',
-  standalone: true,
   imports: [CoreModule]
 })
 export class ConfirmationModalComponent implements OnInit, AfterViewInit {
