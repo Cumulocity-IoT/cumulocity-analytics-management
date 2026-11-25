@@ -25,6 +25,7 @@ import {
 } from 'rxjs/operators';
 import {
   createDefaultRepository,
+  GitHubReleaseAsset,
   Repository,
   RepositoryItem,
   RepositoryTestResult
@@ -395,6 +396,49 @@ export class RepositoryService implements OnDestroy {
     );
   }
 
+  /**
+   * Items of a single repository, analyzed on their own, whether or not it is enabled.
+   * `getRepositoryItemsAnalyzed()` analyzes all enabled repositories together, which is
+   * wrong when one extension is built from exactly one repository.
+   */
+  getRepositoryItemsAnalyzedFor(repositoryId: string): Observable<RepositoryItem[]> {
+    // Works for disabled repositories too: "enabled" only decides what the block list shows,
+    // not what a user may build from.
+    // Re-emits whenever the caches are invalidated (reload, saved repositories, restart).
+    return this.reloadTrigger$.pipe(
+      switchMap(() =>
+        combineLatest([
+          this.repositories$,
+          from(this.analyticsService.getDeployedBlocks()).pipe(catchError(() => of([]))),
+          from(this.getDeployedFileNames())
+        ]).pipe(
+          take(1),
+          switchMap(([repos, loaded, files]) => {
+            const repo = repos.find(r => r.id === repositoryId);
+            return repo
+              ? this.repositoryItemsService.getItemsForRepositories(
+                  [{ ...repo, enabled: true }],
+                  loaded,
+                  false,
+                  files
+                )
+              : of([]);
+          })
+        )
+      ),
+      switchMap(items => this.repositoryItemsService.analyzeRepositoryItems(items)),
+      catchError(error => {
+        this.handleError(
+          error,
+          'Failed to analyze repository items',
+          true,
+          gettext('Failed to analyze repository items. Please try again.')
+        );
+        return of([]);
+      })
+    );
+  }
+
   getRepositoryItemsAnalyzed(): Observable<RepositoryItem[]> {
     return this.repositoryItems$.pipe(
       switchMap(items => this.repositoryItemsService.analyzeRepositoryItems(items)),
@@ -436,6 +480,16 @@ export class RepositoryService implements OnDestroy {
   // ============================================================================
   // Public API - Extension Creation
   // ============================================================================
+
+  /** Backend only: downloads the asset server-side and uploads it as an extension. */
+  deployReleaseAsset(
+    repository: Repository,
+    asset: GitHubReleaseAsset,
+    releaseTag: string,
+    deploy: boolean
+  ): Promise<{ id: string; warning?: string }> {
+    return this.repositoryBackendService.deployReleaseAsset(repository, asset, releaseTag, deploy);
+  }
 
   createExtensionFromList(
     name: string,

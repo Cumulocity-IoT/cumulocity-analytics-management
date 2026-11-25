@@ -38,9 +38,9 @@ src/
 ├── manage/                         # extension grid / card / details, resolvers.ts
 ├── repository/
 │   ├── list/                       # RepositoryBlockGridComponent, ExtensionListComponent (Formly field), help modal
-│   ├── create-extension/           # ExtensionCreateModalComponent
+│   ├── wizard/                     # ExtensionWizardComponent, ExtensionWizardService, selection rules
 │   ├── editor/                     # EditorModalComponent, EplConfigService, token provider
-│   ├── release-deploy/ release-list/   # deploy GitHub releases
+│   ├── release-list/               # release list page
 │   └── drawer/                     # RepositoriesDrawerComponent (manage repos, PATs)
 └── shared/
     ├── analytics.service.ts        # facade used by components
@@ -93,10 +93,30 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 
 - **Re-check backend service** button, shown only while the microservice `analytics-ext-service` is not deployed.
   The backend is used automatically whenever it is deployed and responding.
-- **Hide installed** switch, **Deploy Release**, **Repositories** drawer, and **Reload**.
+- **Repository** drop-down: lists every configured repository, enabled or not. The grid shows the blocks of the chosen repository only. The first enabled repository is chosen on first load.
+- **Hide installed** switch, **Add extension**, **Repositories** drawer, and **Reload**.
 
-The grid title names the source: "Blocks from *repository name* (*type*)" when all items come from one repository, and
-"Blocks from repositories (*type*)" otherwise. With a single repository the **Repository Name** column is hidden,
+The page is for browsing one repository, which the grid title says ("Browse blocks from …"). It has no row selection. **Add extension** opens the wizard (see below).
+
+### Add extension wizard
+
+`ExtensionWizardComponent` opens in a Cumulocity bottom drawer through `ExtensionWizardService.open()` (`BottomDrawerService`). The drawer has a header with the `c8y-stepper` steps, a scrolling body (`c8y-wizard-list-nav` choices, `c8y-form-group` forms) and a footer with Cancel, Back and Next. It is the single way to add an extension. The
+**Extensions** and **Block library** tabs both open it. The first step chooses the path:
+
+| Path | Steps |
+|------|-------|
+| Deploy a release, backend available | Source, Repository, Release and asset, Review, Result |
+| Deploy a release, no backend | Source, Repository, Release and asset, Download, Upload |
+| Build a new extension | Source, Repository, Content, Name and options, Review, Result |
+| Upload a file | Source, Upload |
+
+An extension is built from exactly one repository. The Content step lists that repository's items and shows the reason
+next to every item that cannot be selected. `evaluateContent()` in `extension-wizard.logic.ts` holds these rules:
+already installed, not a monitor file, sections need the backend service, sections and individual files cannot be
+combined, and two items cannot define the same block. With the backend, a release is deployed server-side (`POST /extension/release`): the browser cannot read GitHub release assets, the service can. Without the backend the Download step hands the file to the user and the Upload step reuses `ExtensionAddComponent`.
+
+The grid title names the source: "Browse blocks from" followed by the repository name as a badge when all items come from one repository, and
+"Browse blocks from repositories" otherwise. With a single repository the **Repository Name** column is hidden,
 because it would repeat on every row.
 
 **Installed status** (`RepositoryItemsService.getItemsForRepositories(repos, deployedBlocks, hideInstalled, deployedFiles)`):
@@ -185,7 +205,7 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
-| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | backend service status, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
+| `repository/list/repository-block-grid`, `release-list`, `wizard`, `editor`, `list` (help modal, Formly list) specs | backend service status, grid title, wizard steps and selection rules, release listing, filtering, editor registration |
 | `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks |
 | `shared/wizard/extension-add(-wizard)`, `shared/component/*` specs | zip analysis and upload/update flow, confirmation dialog, renderers, Formly switch |
 

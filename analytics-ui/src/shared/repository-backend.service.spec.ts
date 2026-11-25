@@ -202,6 +202,77 @@ describe('RepositoryBackendService', () => {
     });
   });
 
+  describe('deployReleaseAsset', () => {
+    const asset = {
+      id: 987,
+      name: 'Abs-1.0.1.zip',
+      size: 1,
+      browserDownloadUrl: 'u',
+      contentType: 'application/zip'
+    };
+
+    it('asks the service to download and upload the asset of the repository', async () => {
+      fetchClient.fetch.and.resolveTo(response({ json: async () => ({ id: '55' }) }));
+
+      expect(await service.deployReleaseAsset(repository, asset, 'v1.0.1', true)).toEqual({
+        id: '55'
+      });
+
+      const [url, options] = fetchClient.fetch.calls.mostRecent().args as [string, any];
+      expect(url).toBe('service/analytics-ext-service/extension/release');
+      expect(options.method).toBe('POST');
+      expect(JSON.parse(options.body)).toEqual({
+        repository: { id: 'r1' },
+        asset_id: 987,
+        asset_name: 'Abs-1.0.1.zip',
+        release_tag: 'v1.0.1',
+        deploy: true
+      });
+    });
+
+    it('never sends the access token or the download URL', async () => {
+      fetchClient.fetch.and.resolveTo(response());
+      await service.deployReleaseAsset(
+        { ...repository, accessToken: 'secret' },
+        asset,
+        'v1',
+        false
+      );
+      const [, { body }] = fetchClient.fetch.calls.mostRecent().args as [string, any];
+      expect(body).not.toContain('secret');
+      expect(body).not.toContain('"u"');
+    });
+
+    it('shows the service message, for example when the extension already exists', async () => {
+      fetchClient.fetch.and.resolveTo(
+        response({
+          ok: false,
+          status: 409,
+          text: async () => '{"error":"An extension named Abs-1.0.1 already exists"}'
+        })
+      );
+      const error = await service.deployReleaseAsset(repository, asset, 'v1', false).catch(e => e);
+      expect(error).toBeInstanceOf(RepositoryError);
+      expect(error.userMessage).toBe('An extension named Abs-1.0.1 already exists');
+      expect(alerts.danger).toHaveBeenCalledOnceWith(error.userMessage);
+    });
+
+    it('falls back to a message naming the asset when the response has none', async () => {
+      fetchClient.fetch.and.resolveTo(
+        response({ ok: false, status: 502, text: async () => '<html>' })
+      );
+      const error = await service.deployReleaseAsset(repository, asset, 'v1', false).catch(e => e);
+      expect(error.userMessage).toContain('"Abs-1.0.1.zip"');
+    });
+
+    it('wraps network failures', async () => {
+      fetchClient.fetch.and.rejectWith(new Error('offline'));
+      const error = await service.deployReleaseAsset(repository, asset, 'v1', false).catch(e => e);
+      expect(error).toBeInstanceOf(RepositoryError);
+      expect(alerts.danger).toHaveBeenCalled();
+    });
+  });
+
   describe('mapTestStatusToResult', () => {
     it('maps well-known statuses', () => {
       expect(service.mapTestStatusToResult(401).message).toContain('Authentication failed');

@@ -69,8 +69,12 @@ export class ExtensionAddComponent implements OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
+  /** Inside another wizard: that wizard owns the header and footer, this one only shows the upload. */
+  @Input() embedded = false;
   readonly cancelled = output<void>();
   readonly completed = output<void>();
+  /** Emits as soon as the upload succeeded, before the user presses Done. */
+  readonly uploaded = output<void>();
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
@@ -370,6 +374,7 @@ export class ExtensionAddComponent implements OnDestroy {
     this.alertService.success(this.messages.format(key, { extensionName }));
     this.state.isComplete = true;
     this.progress.next(100);
+    this.uploaded.emit();
   }
 
   private handleUploadFailure(): void {

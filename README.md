@@ -70,7 +70,7 @@ Safe Mode lasts until the engine restarts. Delete the suspected extension, then 
 
 ## Sample repositories and building custom extensions
 
-On the **Block library** tab you register GitHub repositories as the source for new extensions. The plugin lists the blocks of each repository. You select blocks and build one extension, which the backend microservice can upload to the inventory or return as a download. Building requires the [backend microservice](#backend-microservice).
+On the **Block library** tab you register GitHub repositories as the source for new extensions. The plugin lists the blocks of each repository. Select **Add extension** to start the wizard. It offers three paths: deploy a release from GitHub, build a new extension from the blocks of one repository, or upload a zip file. Building from extensions.yaml sections requires the [backend microservice](#backend-microservice).
 
 Public repositories need no token. For private repositories, enter a GitHub Personal Access Token (PAT) for the repository, or set a **Global Personal Access Token** that applies to every repository without its own token. A repository token takes precedence over the global one. Unauthenticated GitHub requests are limited to 60 per hour for each IP address, and a valid token raises the limit to 5,000 per hour.
 

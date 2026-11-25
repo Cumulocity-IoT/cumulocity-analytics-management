@@ -1,10 +1,10 @@
-import { fakeAsync, TestBed, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { AlertService } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, firstValueFrom, of, Subject, throwError } from 'rxjs';
 import { AnalyticsService, Repository, RepositoryItem, RepositoryService } from '../../shared';
 import { EditorModalComponent } from '../editor/editor-modal.component';
-import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
+import { ExtensionWizardService } from '../wizard/extension-wizard.service';
 import { RepositoryBlockGridComponent } from './repository-block-grid.component';
 
 const item = (over: Partial<RepositoryItem>): RepositoryItem =>
@@ -32,11 +32,10 @@ describe('RepositoryBlockGridComponent', () => {
   let repos$: BehaviorSubject<Repository[]>;
   let modalClose$: Subject<void>;
   let modalHide: jasmine.Spy;
-  let dataGrid: { setItemsSelected: jasmine.Spy; cancel: jasmine.Spy };
+  let wizard: jasmine.SpyObj<ExtensionWizardService>;
 
   const create = async () => {
     component = TestBed.createComponent(RepositoryBlockGridComponent).componentInstance;
-    component.dataGrid = dataGrid as never;
     component.ngOnInit();
     await flush();
     return component;
@@ -46,14 +45,14 @@ describe('RepositoryBlockGridComponent', () => {
     repos$ = new BehaviorSubject<Repository[]>([repo('a', false), repo('b', true)]);
     repositories = jasmine.createSpyObj('RepositoryService', [
       'getRepositories',
-      'getRepositoryItemsAnalyzed',
+      'getRepositoryItemsAnalyzedFor',
       'getRepositoryItemContent',
       'reload',
       'reloadAll',
       'updateHideInstalledFilter'
     ]);
     repositories.getRepositories.and.returnValue(repos$);
-    repositories.getRepositoryItemsAnalyzed.and.returnValue(of([]));
+    repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of([]));
     repositories.reloadAll.and.resolveTo();
     analytics = jasmine.createSpyObj('AnalyticsService', [
       'isBackendServiceDeployed',
@@ -68,17 +67,15 @@ describe('RepositoryBlockGridComponent', () => {
       content: { closeSubject: modalClose$ },
       hide: modalHide
     } as never);
-    dataGrid = {
-      setItemsSelected: jasmine.createSpy('setItemsSelected'),
-      cancel: jasmine.createSpy('cancel')
-    };
+    wizard = jasmine.createSpyObj('ExtensionWizardService', ['open']);
     TestBed.configureTestingModule({
       imports: [RepositoryBlockGridComponent],
       providers: [
         { provide: RepositoryService, useValue: repositories },
         { provide: AnalyticsService, useValue: analytics },
         { provide: AlertService, useValue: alerts },
-        { provide: BsModalService, useValue: modals }
+        { provide: BsModalService, useValue: modals },
+        { provide: ExtensionWizardService, useValue: wizard }
       ]
     });
     TestBed.overrideComponent(RepositoryBlockGridComponent, {
@@ -105,24 +102,84 @@ describe('RepositoryBlockGridComponent', () => {
 
   describe('repository items', () => {
     it('loads the items when the tab opens', async () => {
-      repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ id: '1' })]));
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of([item({ id: '1' })]));
       await create();
       expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
     });
 
-    it('selects whole items instead of single ones and updates the title', async () => {
-      repositories.getRepositoryItemsAnalyzed.and.returnValue(
+    it('browses the first enabled repository by default', async () => {
+      await create();
+      expect(component.selectedRepositoryId).toBe('b');
+      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('b');
+      expect(component.repositories.map(r => r.id)).toEqual(['a', 'b']);
+    });
+
+    it('offers every configured repository, and marks disabled ones in the label', async () => {
+      await create();
+      const [disabled, enabled] = component.repositories;
+      expect(component.repositoryLabel(enabled)).toBe('b');
+      expect(component.repositoryLabel(disabled)).toBe('a (disabled)');
+    });
+
+    it('loads the items of the repository the user picks, disabled ones too', async () => {
+      await create();
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of([item({ id: 'x' })]));
+      component.selectRepository('a');
+      await flush();
+      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('a');
+      expect(component.repositoryItems.map(i => i.id)).toEqual(['x']);
+    });
+
+    it('falls back to another repository when the chosen one is removed', async () => {
+      await create();
+      repos$.next([repo('a', false)]);
+      expect(component.selectedRepositoryId).toBe('a');
+      repos$.next([]);
+      expect(component.selectedRepositoryId).toBeNull();
+    });
+
+    it('hides installed items on request without another request', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item({ id: '1' }), item({ id: '2', installed: true })])
+      );
+      await create();
+      expect(component.repositoryItems.length).toBe(2);
+      component.hideInstalled = true;
+      await component.updateFilter();
+      await flush();
+      expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
+    });
+
+    it('draws the repository name as a badge, escaping quotes and backslashes', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item({ repositoryName: 'My "repo" \\ x' })])
+      );
+      await create();
+      expect(component.repositoryBadge).toBe('"My \\"repo\\" \\\\ x"');
+    });
+
+    it('names the repository for a yaml listing', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
         of([item({ file: 'extensions.yaml' })])
       );
       await create();
-      expect(component.titleSample).toBe('Blocks from R (contains extensions.yaml)');
-      expect(component.singleSelection).toBeFalse();
+      expect(component.titleRepository).toBe('R');
     });
 
-    it('titles a plain file listing without stray spaces', async () => {
-      repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'A.mon' })]));
+    it('shows no repository badge when the items come from several repositories', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item({ repositoryName: 'A' }), item({ id: 'y', repositoryName: 'B' })])
+      );
       await create();
-      expect(component.titleSample).toBe('Blocks from R (list assets)');
+      expect(component.titleRepository).toBeNull();
+      expect(component.repositoryBadge).toBeNull();
+      expect(component.gridTitle).toBe('Browse blocks from repositories');
+    });
+
+    it('names the repository for a plain file listing', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of([item({ file: 'A.mon' })]));
+      await create();
+      expect(component.titleRepository).toBe('R');
     });
   });
 
@@ -133,9 +190,8 @@ describe('RepositoryBlockGridComponent', () => {
     expect(component.activeRepository).toEqual({} as Repository);
   });
 
-  it('offers a bulk "Create extension" action and a "View Source" action for files only', async () => {
+  it('offers a "View Source" action for files only', async () => {
     await create();
-    expect(component.bulkActionControls.map(a => a.text)).toEqual(['Create extension']);
     const [view] = component.actionControls;
     expect(view.text).toBe('View Source');
     expect(view.showIf!(item({ type: 'file' }) as never)).toBeTrue();
@@ -167,146 +223,6 @@ describe('RepositoryBlockGridComponent', () => {
       ];
       expect(await firstValueFrom(options.initialState.source$)).toBe('');
       expect(alerts.danger).toHaveBeenCalledWith(jasmine.stringContaining('"Foo"'));
-    });
-  });
-
-  describe('checkSelection', () => {
-    beforeEach(async () => {
-      await create();
-      component.repositoryItems = [
-        item({ id: '1', name: 'Good', file: 'Good.mon' }),
-        item({ id: '2', name: 'Installed', file: 'Inst.mon', installed: true }),
-        item({ id: '3', name: 'Readme', file: 'README.md' }),
-        item({ id: '4', name: 'sub', file: 'sub', type: 'dir' }),
-        item({ id: '5', name: 'extensions', file: 'extensions.yaml' })
-      ];
-    });
-
-    it('accepts .mon files, directories and extensions.yaml', fakeAsync(() => {
-      component.checkSelection(['1', '4', '5']);
-      tick();
-      expect(dataGrid.setItemsSelected).not.toHaveBeenCalled();
-      expect(alerts.warning).not.toHaveBeenCalled();
-    }));
-
-    it('refuses to select an already installed block, naming it', fakeAsync(() => {
-      component.checkSelection(['2']);
-      expect(alerts.warning).toHaveBeenCalledWith(
-        jasmine.stringContaining('Block "Installed" is already installed')
-      );
-      tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
-        [component.repositoryItems[1]],
-        false
-      );
-    }));
-
-    it('reports several installed blocks in one message', fakeAsync(() => {
-      component.repositoryItems.push(
-        item({ id: '6', name: 'Other', file: 'Other.mon', installed: true })
-      );
-      component.checkSelection(['2', '6']);
-      expect(alerts.warning).toHaveBeenCalledTimes(1);
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Installed, Other'));
-      tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
-        [component.repositoryItems[1], component.repositoryItems[5]],
-        false
-      );
-    }));
-
-    it('deselects a block that another selected item already defines', fakeAsync(() => {
-      component.repositoryItems.push(
-        item({ id: '7', name: 'First', file: 'A.mon', blockIds: ['x.A'] }),
-        item({ id: '8', name: 'Copy', file: 'A.mon', blockIds: ['x.A'] })
-      );
-      component.checkSelection(['7', '8']);
-      expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Copy'));
-      tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
-        [component.repositoryItems[6]],
-        false
-      );
-    }));
-
-    it('deselects a yaml section whose .mon file another selected section already lists', fakeAsync(() => {
-      component.repositoryItems.push(
-        item({ id: '9', name: 'One', file: 'extensions.yaml', sectionFiles: ['Shared.mon'] }),
-        item({
-          id: '10',
-          name: 'Two',
-          file: 'extensions.yaml',
-          sectionFiles: ['Shared.mon', 'B.mon']
-        })
-      );
-      component.checkSelection(['9', '10']);
-      expect(alerts.warning).toHaveBeenCalledOnceWith(jasmine.stringContaining('Two'));
-      tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
-        [component.repositoryItems[6]],
-        false
-      );
-    }));
-
-    it('deselects files of other types and explains what is allowed', fakeAsync(() => {
-      component.checkSelection(['1', '3']);
-      tick();
-      expect(dataGrid.setItemsSelected).toHaveBeenCalledOnceWith(
-        [component.repositoryItems[2]],
-        false
-      );
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining("'extensions.yaml'"));
-    }));
-
-    it('ignores items that are not part of the selection', fakeAsync(() => {
-      component.checkSelection([]);
-      tick();
-      expect(dataGrid.setItemsSelected).not.toHaveBeenCalled();
-    }));
-  });
-
-  describe('createExtension', () => {
-    const opened = () =>
-      modals.show.calls.mostRecent().args as [unknown, { initialState: Record<string, any> }];
-
-    beforeEach(async () => {
-      await create();
-      component.repositoryItems = [
-        item({ id: '1', name: 'A', file: 'A.mon' }),
-        item({ id: '2', name: 'B', file: 'B.mon' }),
-        item({ id: '3', name: 'Done', file: 'Done.mon', installed: true })
-      ];
-    });
-
-    it('opens the create dialog for the selected, not yet installed files', async () => {
-      await component.createExtension(['1', '3', '2']);
-      const [type, options] = opened();
-      expect(type).toBe(ExtensionCreateModalComponent);
-      expect(options.initialState['monitors'].map((m: RepositoryItem) => m.name)).toEqual([
-        'A',
-        'B'
-      ]);
-      expect(options.initialState['sections']).toBeUndefined();
-      expect(options.initialState['activeRepository'].id).toBe('b');
-    });
-
-    it('passes the yaml item once and the chosen section names for yaml sections', async () => {
-      const yaml = item({ id: 'y', name: 'extensions', file: 'extensions.yaml' });
-      component.repositoryItems = [
-        item({ id: 's1', name: 'Python', extensionsYamlItem: yaml }),
-        item({ id: 's2', name: 'Offset', extensionsYamlItem: yaml })
-      ];
-      await component.createExtension(['s1', 's2']);
-      const [, { initialState }] = opened();
-      expect(initialState['sections']).toEqual(['Python', 'Offset']);
-      expect(initialState['monitors']).toEqual([yaml]);
-    });
-
-    it('clears the selection and closes the dialog when it reports back', async () => {
-      await component.createExtension(['1']);
-      modalClose$.next();
-      expect(dataGrid.cancel).toHaveBeenCalled();
-      expect(modalHide).toHaveBeenCalled();
     });
   });
 
@@ -351,16 +267,13 @@ describe('RepositoryBlockGridComponent', () => {
       expect(component.showConfigRepositories).toBeFalse();
     });
 
-    it('opens the release wizard, and reloads after a completed deployment only', () => {
-      component.deployFromRelease();
-      expect(component.showDeployRelease).toBeTrue();
-      component.onDeployReleaseCancel();
-      expect(component.showDeployRelease).toBeFalse();
+    it('opens the add-extension wizard and reloads the items only when one was added', () => {
+      const closed = new Subject<boolean>();
+      wizard.open.and.returnValue(closed);
+      component.addExtension();
+      closed.next(false);
       expect(repositories.reload).not.toHaveBeenCalled();
-
-      component.deployFromRelease();
-      component.onDeployReleaseCommit();
-      expect(component.showDeployRelease).toBeFalse();
+      closed.next(true);
       expect(repositories.reload).toHaveBeenCalled();
     });
 

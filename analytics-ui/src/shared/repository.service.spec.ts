@@ -393,6 +393,23 @@ describe('RepositoryService', () => {
       );
     });
 
+    it('analyzes one repository on its own, even when it is disabled', async () => {
+      items.getItemsForRepositories.and.returnValue(of([item('A')]));
+      items.analyzeRepositoryItems.and.returnValue(of([item('Section')]));
+
+      const result = await firstValueFrom(service.getRepositoryItemsAnalyzedFor('b'));
+
+      expect(result.map(i => i.name)).toEqual(['Section']);
+      const [repos, , hide] = items.getItemsForRepositories.calls.mostRecent().args;
+      expect(repos.map(r => [r.id, r.enabled])).toEqual([['b', true]]);
+      expect(hide).toBeFalse();
+    });
+
+    it('yields no items for an unknown repository', async () => {
+      items.analyzeRepositoryItems.and.callFake(list => of(list));
+      expect(await firstValueFrom(service.getRepositoryItemsAnalyzedFor('nope'))).toEqual([]);
+    });
+
     it('alerts and yields an empty list when analysis fails', async () => {
       items.getItemsForRepositories.and.returnValue(of([item('A')]));
       items.analyzeRepositoryItems.and.returnValue(throwError(() => new Error('bad yaml')));

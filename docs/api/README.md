@@ -26,7 +26,7 @@ constants in [`analytics.model.ts`](../../analytics-ui/src/shared/analytics.mode
 | `CEP_ENDPOINT` | `cep` | [`cep-status.service.ts`](../../analytics-ui/src/shared/cep-status.service.ts) → `GET /cep/id`, `GET /cep/status` (the backend variant of the status call; the direct one is in the CEP table below) |
 | `REPOSITORY_CONTENT_LIST_ENDPOINT` | `repository/contentList` | [`repository-backend.service.ts`](../../analytics-ui/src/shared/repository-backend.service.ts) → `GET /repository/contentList` |
 | `REPOSITORY_CONTENT_ENDPOINT` | `repository/content` | [`repository-backend.service.ts`](../../analytics-ui/src/shared/repository-backend.service.ts) → `GET /repository/content` |
-| `EXTENSION_ENDPOINT` | `extension` | [`repository-backend.service.ts`](../../analytics-ui/src/shared/repository-backend.service.ts) → `POST /extension/{repository\|list\|yaml}` |
+| `EXTENSION_ENDPOINT` | `extension` | [`repository-backend.service.ts`](../../analytics-ui/src/shared/repository-backend.service.ts) → `POST /extension/{repository\|list\|yaml\|release}` |
 
 The UI does not call `GET`/`POST /repository/configuration`. [`repository-config.service.ts`](../../analytics-ui/src/shared/repository-config.service.ts)
 reads and writes the repository tenant options directly through the Cumulocity platform API, in the same format that

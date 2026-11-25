@@ -291,7 +291,7 @@ export interface CepStatusObject {
 export type UploadMode = 'add' | 'update';
 /** Build information stored on an extension managed object (`build_information`). */
 export interface ExtensionBuildInformation {
-  build_type: 'repository' | 'list' | 'yaml';
+  build_type: 'repository' | 'list' | 'yaml' | 'release';
   repository: Repository;
   monitors?: RepositoryItem[];
   yaml?: RepositoryItem;

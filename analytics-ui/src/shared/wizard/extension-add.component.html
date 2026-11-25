@@ -1,7 +1,9 @@
-<c8y-wizard-header>
-  <h1 [c8yIcon]="headerIcon"></h1>
-  <h4>{{ headerText | translate }}</h4>
-</c8y-wizard-header>
+@if (!embedded) {
+  <c8y-wizard-header>
+    <h1 [c8yIcon]="headerIcon"></h1>
+    <h4>{{ headerText | translate }}</h4>
+  </c8y-wizard-header>
+}
 
 <div class="modal-inner-scroll animated fadeIn">
   <div class="modal-body">
@@ -43,27 +45,29 @@
   </div>
 </div>
 
-<c8y-wizard-footer>
-  @if (!isComplete) {
-    <button
-      (click)="cancel()"
-      class="btn btn-default"
-      [title]="'Cancel' | translate"
-      type="button"
-      [disabled]="isLoading"
-    >
-      {{ 'Cancel' | translate }}
-    </button>
-  }
+@if (!embedded) {
+  <c8y-wizard-footer>
+    @if (!isComplete) {
+      <button
+        (click)="cancel()"
+        class="btn btn-default"
+        [title]="'Cancel' | translate"
+        type="button"
+        [disabled]="isLoading"
+      >
+        {{ 'Cancel' | translate }}
+      </button>
+    }
 
-  @if (isComplete) {
-    <button
-      (click)="done()"
-      class="btn btn-primary"
-      [title]="'Done' | translate"
-      type="button"
-    >
-      {{ 'Done' | translate }}
-    </button>
-  }
-</c8y-wizard-footer>
+    @if (isComplete) {
+      <button
+        (click)="done()"
+        class="btn btn-primary"
+        [title]="'Done' | translate"
+        type="button"
+      >
+        {{ 'Done' | translate }}
+      </button>
+    }
+  </c8y-wizard-footer>
+}

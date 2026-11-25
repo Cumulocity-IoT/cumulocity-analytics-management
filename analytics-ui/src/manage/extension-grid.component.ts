@@ -1,7 +1,8 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
-import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { AlertService, CoreModule } from '@c8y/ngx-components';
+import { ExtensionWizardService } from '../repository/wizard/extension-wizard.service';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   BehaviorSubject,
@@ -23,7 +24,6 @@ import {
   shareReplay,
   startWith,
   switchMap,
-  take,
   takeUntil,
   tap
 } from 'rxjs/operators';
@@ -69,7 +69,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
-    private readonly wizardModalService: WizardModalService
+    private readonly extensionWizard: ExtensionWizardService
   ) {}
 
   async ngOnInit(): Promise<void> {
@@ -99,20 +99,11 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   addExtension(): void {
-    const initialState = {
-      wizardConfig: { headerIcon: 'plus' } as WizardConfig,
-      id: 'uploadAnalyticsExtension',
-      componentInitialState: {
-        mode: 'add' as const,
-        headerText: 'Add extension',
-        uploadExtensionHandler: this.analyticsService.uploadExtension.bind(this.analyticsService)
+    this.extensionWizard.open().subscribe(added => {
+      if (added) {
+        this.reload();
       }
-    };
-
-    this.wizardModalService
-      .show({ initialState })
-      .content?.onClose.pipe(take(1))
-      .subscribe(() => this.reload());
+    });
   }
 
   getCepMicroserviceUrl(): string {

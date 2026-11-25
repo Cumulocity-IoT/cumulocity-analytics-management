@@ -25,9 +25,8 @@ import { ExtensionListComponent } from './repository/list/extension-list.compone
 import { CustomSwitchFieldComponent } from './shared/component/custom-switch-field.component';
 import { ConfirmationModalComponent } from './shared/component/confirmation-modal.component';
 import { EditorModalComponent } from './repository/editor/editor-modal.component';
-import { ExtensionCreateModalComponent } from './repository/create-extension/extension-create-modal.component';
 import { RepositoriesDrawerComponent } from './repository/drawer/repositories-drawer.component';
-import { ReleaseDeployWizardComponent } from './repository/release-deploy/release-deploy-wizard.component';
+import { ExtensionWizardComponent } from './repository/wizard/extension-wizard.component';
 import { ReleaseListComponent } from './repository/release-list/release-list.component';
 
 import { ROUTES } from './shared/analytics.constants';
@@ -56,9 +55,8 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
     // Modal components
     ConfirmationModalComponent,
     EditorModalComponent,
-    ExtensionCreateModalComponent,
+    ExtensionWizardComponent,
     RepositoriesDrawerComponent,
-    ReleaseDeployWizardComponent,
     ReleaseListComponent
   ],
   providers: [

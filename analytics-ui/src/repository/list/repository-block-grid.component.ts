@@ -25,7 +25,6 @@ import {
   Component,
   DestroyRef,
   OnInit,
-  ViewChild,
   ViewEncapsulation,
   inject
 } from '@angular/core';
@@ -35,17 +34,14 @@ import { FormsModule } from '@angular/forms';
 import {
   ActionControl,
   AlertService,
-  BulkActionControl,
   Column,
   ColumnDataType,
   CoreModule,
-  DataGridComponent,
   Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
-  DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
   RepositoryService,
@@ -53,12 +49,20 @@ import {
   PAGE_LABELS,
   ROUTES
 } from '../../shared';
-import { distinctUntilChanged, map, Observable, shareReplay, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  distinctUntilChanged,
+  map,
+  Observable,
+  shareReplay,
+  switchMap,
+  tap
+} from 'rxjs';
 import { catchError, of } from 'rxjs';
-import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
+import { ExtensionWizardService } from '../wizard/extension-wizard.service';
 import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
 import { RepositoriesDrawerComponent } from '../drawer/repositories-drawer.component';
-import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
@@ -69,21 +73,12 @@ import { gettext } from '@c8y/ngx-components/gettext';
   templateUrl: 'repository-block-grid.component.html',
   styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  imports: [
-    CommonModule,
-    FormsModule,
-    CoreModule,
-    PopoverModule,
-    RepositoriesDrawerComponent,
-    ReleaseDeployWizardComponent
-  ]
+  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
 })
 export class RepositoryBlockGridComponent implements OnInit {
   private readonly messages = inject(MessageService);
   readonly labels = PAGE_LABELS;
   readonly routes = ROUTES;
-
-  @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
@@ -92,11 +87,9 @@ export class RepositoryBlockGridComponent implements OnInit {
   // default, and persisted as a tenant option (see updateMode()) — not
   // localStorage — the same way repository config/PAT is stored.
   loading: boolean = false;
-  singleSelection: boolean = false;
   showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
-  showDeployRelease: boolean = false;
 
   backendDeployed: boolean = false;
   backendTogglePending: boolean = false;
@@ -106,9 +99,15 @@ export class RepositoryBlockGridComponent implements OnInit {
   repositoryItems!: RepositoryItem[];
 
   actionControls: ActionControl[] = [];
-  bulkActionControls: BulkActionControl[] = [];
 
-  titleSample: string = 'Blocks from repositories';
+  /** The repository name shown as a badge after the grid title; null when items come from several. */
+  titleRepository: string | null = null;
+  gridTitle: string = gettext('Browse blocks from repositories');
+  /**
+   * CSS string for the badge (`::after` of the grid title). The grid title is plain text and
+   * cannot hold markup, so the repository name is drawn as a badge through a custom property.
+   */
+  repositoryBadge: string | null = null;
 
   columnsSamples: Column[] = [
     {
@@ -164,41 +163,47 @@ export class RepositoryBlockGridComponent implements OnInit {
   // The shell may run Angular without zone.js, where a plain field changed after an
   // `await` or inside a subscription is not rendered by itself.
   private readonly cdr = inject(ChangeDetectorRef);
+
+  /** All configured repositories, enabled or not: any of them can be browsed. */
+  repositories: Repository[] = [];
+  selectedRepositoryId: string | null = null;
+  private readonly selectedRepositoryId$ = new BehaviorSubject<string | null>(null);
+  private readonly hideInstalled$ = new BehaviorSubject<boolean>(false);
+
   constructor(
     public repositoryService: RepositoryService,
     private analyticsService: AnalyticsService,
     public alertService: AlertService,
-    private bsModalService: BsModalService
+    private bsModalService: BsModalService,
+    private extensionWizard: ExtensionWizardService
   ) {
-    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
+    this.repositoryItems$ = combineLatest([
+      this.selectedRepositoryId$.pipe(distinctUntilChanged()),
+      this.hideInstalled$
+    ]).pipe(
+      switchMap(([repositoryId, hideInstalled]) =>
+        repositoryId
+          ? this.repositoryService
+              .getRepositoryItemsAnalyzedFor(repositoryId)
+              .pipe(map(items => (hideInstalled ? items.filter(item => !item.installed) : items)))
+          : of([] as RepositoryItem[])
+      ),
       shareReplay(1),
       tap(items => {
-        const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
-        // console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
-
-        const type = isYaml ? 'contains extensions.yaml' : 'list assets';
         // With a single source repository the name is the same on every row:
         // show it in the title and hide the column instead.
         const repoNames = [...new Set(items.map(item => item.repositoryName))];
         const singleRepo = repoNames.length === 1 && !!repoNames[0];
-        this.titleSample = singleRepo
-          ? `Blocks from ${repoNames[0]} (${type})`
-          : `Blocks from repositories (${type})`;
+        this.titleRepository = singleRepo ? repoNames[0] : null;
+        this.gridTitle = this.titleRepository
+          ? gettext('Browse blocks from')
+          : gettext('Browse blocks from repositories');
+        this.repositoryBadge = this.titleRepository
+          ? `"${this.titleRepository.replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ')}"`
+          : null;
         this.columnsSamples = this.columnsSamples.map(column =>
           column.name === 'repositoryName' ? { ...column, visible: !singleRepo } : column
         );
-        this.singleSelection = false;
-        // Only recreate the grid if the selection type actually changes
-        // if (this.singleSelection !== isYaml) {
-        //   //console.log("Selection type changed, recreating grid");
-        //   this.showDataGrid = false;
-        //   this.singleSelection = isYaml;
-
-        //   // Recreate the grid on the next change detection cycle
-        //   setTimeout(() => {
-        //     this.showDataGrid = true;
-        //   }, 0);
-        // }
       })
     );
   }
@@ -207,13 +212,6 @@ export class RepositoryBlockGridComponent implements OnInit {
     this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(samples => {
       this.repositoryItems = samples;
       this.cdr.markForCheck();
-    });
-
-    this.bulkActionControls.push({
-      type: 'CREATE',
-      text: 'Create extension',
-      icon: 'export',
-      callback: this.createExtension.bind(this)
     });
 
     this.actionControls.push({
@@ -252,6 +250,22 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   initializeActiveRepository(): void {
     // Subscribe to repositories$ to find and set the active repository
+
+    this.repositoryService
+      .getRepositories()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(repositories => {
+        this.repositories = repositories;
+        // Keep the choice while it exists; otherwise fall back to the first enabled repository.
+        if (!repositories.some(r => r.id === this.selectedRepositoryId)) {
+          const fallback = repositories.find(r => r.enabled) ?? repositories[0];
+          this.selectRepository(fallback?.id ?? '');
+          if (!fallback) {
+            this.selectedRepositoryId = null;
+          }
+        }
+        this.cdr.markForCheck();
+      });
 
     this.repositoryService
       .getRepositories()
@@ -296,149 +310,6 @@ export class RepositoryBlockGridComponent implements OnInit {
     }).content as EditorModalComponent;
   }
 
-  checkSelection(ids: string[]) {
-    const idSet = new Set(ids);
-    const invalid: RepositoryItem[] = [];
-    const installedNames: string[] = [];
-    const duplicateNames: string[] = [];
-    // Blocks already taken by an earlier item of this selection. The same block
-    // can be listed twice (e.g. the same file in two repositories) and the engine
-    // refuses an extension that defines a block twice.
-    const selectedBlockIds = new Set<string>();
-    let hasInvalidType = false;
-
-    this.repositoryItems.forEach(sample => {
-      if (!idSet.has(sample.id)) return;
-      if (sample.installed) {
-        installedNames.push(sample.name);
-        invalid.push(sample);
-        return;
-      }
-      if (
-        sample.type == 'file' &&
-        !sample.file.endsWith('.mon') &&
-        sample.file !== DESCRIPTOR_YAML
-      ) {
-        invalid.push(sample);
-        hasInvalidType = true;
-        return;
-      }
-      // Yaml sections are compared by their .mon files. Directories carry no information and cannot be compared.
-      const blockIds = sample.blockIds ?? sample.sectionFiles ?? [];
-      if (blockIds.some(id => selectedBlockIds.has(id))) {
-        duplicateNames.push(sample.name);
-        invalid.push(sample);
-        return;
-      }
-      blockIds.forEach(id => selectedBlockIds.add(id));
-    });
-
-    // One message per kind of problem, however many blocks are affected.
-    if (installedNames.length > 0) {
-      this.alertService.warning(
-        installedNames.length === 1
-          ? this.messages.format(
-              gettext(
-                'Not allowed to deploy the block twice. Block "{{blockName}}" is already installed and will be ignored.'
-              ),
-              { blockName: installedNames[0] }
-            )
-          : this.messages.format(
-              gettext(
-                'Not allowed to deploy blocks twice. These blocks are already installed and will be ignored: {{blockNames}}.'
-              ),
-              { blockNames: installedNames.join(', ') }
-            )
-      );
-    }
-    if (duplicateNames.length > 0) {
-      this.alertService.warning(
-        this.messages.format(
-          gettext(
-            'Selected more than once. The item {{blockNames}} defines a block that another selected item already defines and will be ignored.'
-          ),
-          { blockNames: duplicateNames.join(', ') }
-        )
-      );
-    }
-    if (invalid.length > 0) {
-      setTimeout(() => {
-        this.dataGrid.setItemsSelected(invalid, false);
-        if (hasInvalidType) {
-          this.alertService.warning(
-            gettext(
-              "Only files with extension '.mon', directories or 'extensions.yaml' are selectable."
-            )
-          );
-        }
-      }, 0);
-    }
-  }
-
-  async createExtension(ids: string[]) {
-    const idSet = new Set(ids);
-    const selectedSections: string[] = [];
-    const selectedMonitors: RepositoryItem[] = [];
-    this.repositoryItems.forEach(sample => {
-      if (idSet.has(sample.id) && !sample.installed) {
-        if (sample.extensionsYamlItem) {
-          selectedSections.push(sample.name);
-          selectedMonitors[0] = sample.extensionsYamlItem;
-        } else {
-          selectedMonitors.push(sample);
-        }
-      }
-    });
-
-    // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
-    // Python:
-    //   - plugin.yaml
-    //   - Python.mon
-    //   - pythonBlockPlugin.py
-    //   - venv
-    // Offset:
-    //   - Offset.mon
-
-    if (selectedSections.length > 0) {
-      // Subscribe to the observable to process the data
-
-      const initialState = {
-        activeRepository: this.activeRepository,
-        monitors: selectedMonitors,
-        sections: selectedSections
-      };
-
-      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
-        class: 'modal-md',
-        initialState
-      });
-
-      if (modalRef.content) {
-        modalRef.content.closeSubject.pipe(take(1)).subscribe(() => {
-          this.dataGrid.cancel();
-          modalRef.hide();
-        });
-      }
-    } else {
-      const initialState = {
-        activeRepository: this.activeRepository,
-        monitors: selectedMonitors
-      };
-
-      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
-        class: 'modal-md',
-        initialState
-      });
-
-      if (modalRef.content) {
-        modalRef.content.closeSubject.pipe(take(1)).subscribe(() => {
-          this.dataGrid.cancel();
-          modalRef.hide();
-        });
-      }
-    }
-  }
-
   /**
    * Reload repository items (clears cache only)
    */
@@ -465,23 +336,32 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   async updateFilter() {
     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
+    this.hideInstalled$.next(this.hideInstalled);
+  }
+
+  selectRepository(id: string): void {
+    this.selectedRepositoryId = id;
+    this.selectedRepositoryId$.next(id);
+  }
+
+  repositoryLabel(repository: Repository): string {
+    return repository.enabled
+      ? repository.name
+      : this.messages.format(gettext('{{repositoryName}} (disabled)'), {
+          repositoryName: repository.name
+        });
   }
 
   openRepositoriesDrawer(): void {
     this.showConfigRepositories = true;
   }
 
-  deployFromRelease(): void {
-    this.showDeployRelease = true;
-  }
-
-  onDeployReleaseCancel(): void {
-    this.showDeployRelease = false;
-  }
-
-  onDeployReleaseCommit(): void {
-    this.showDeployRelease = false;
-    this.reload();
+  addExtension(): void {
+    this.extensionWizard.open().subscribe(added => {
+      if (added) {
+        this.reload();
+      }
+    });
   }
 
   openLayoutHelp(): void {

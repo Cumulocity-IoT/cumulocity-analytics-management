@@ -25,7 +25,7 @@ cumulocity-analytics-management/
 │   │   ├── block/                # Block grid components
 │   │   ├── manage/               # Extension management UI
 │   │   ├── repository/           # Repository management
-│   │   │   ├── create-extension/
+│   │   │   ├── wizard/           # Add extension wizard
 │   │   │   ├── editor/           # EPL code editor
 │   │   │   └── list/             # Extension listing
 │   │   └── shared/               # Shared services and utilities

@@ -6,6 +6,7 @@ import { gettext } from '@c8y/ngx-components/gettext';
 import {
   BACKEND_PATH_BASE,
   EXTENSION_ENDPOINT,
+  GitHubReleaseAsset,
   Repository,
   REPOSITORY_CONTENT_ENDPOINT,
   REPOSITORY_CONTENT_LIST_ENDPOINT,
@@ -271,6 +272,69 @@ export class RepositoryBackendService {
             { status }
           )
         };
+    }
+  }
+
+  /**
+   * Has the backend download a release asset and upload it as an extension. The browser
+   * cannot do this itself: GitHub sends no CORS headers for release assets.
+   * Alerts on failure and throws a `RepositoryError`.
+   */
+  async deployReleaseAsset(
+    repository: Repository,
+    asset: GitHubReleaseAsset,
+    releaseTag: string,
+    deploy: boolean
+  ): Promise<{ id: string; warning?: string }> {
+    try {
+      const response = await this.fetchClient.fetch(
+        `${BACKEND_PATH_BASE}/${EXTENSION_ENDPOINT}/release`,
+        {
+          headers: { accept: 'application/json', 'content-type': 'application/json' },
+          body: JSON.stringify({
+            repository: { id: repository.id },
+            asset_id: asset.id,
+            asset_name: asset.name,
+            release_tag: releaseTag,
+            deploy
+          }),
+          method: 'POST'
+        }
+      );
+      if (!response.ok) {
+        throw new RepositoryError(
+          `Failed to deploy release asset: ${response.status}`,
+          (await this.readServerError(response)) ||
+            this.messages.format(gettext('Failed to deploy "{{assetName}}". Please try again.'), {
+              assetName: asset.name
+            })
+        );
+      }
+      return await response.json();
+    } catch (error) {
+      const result =
+        error instanceof RepositoryError
+          ? error
+          : new RepositoryError(
+              'Failed to deploy release asset',
+              this.messages.format(gettext('Failed to deploy "{{assetName}}". Please try again.'), {
+                assetName: asset.name
+              }),
+              error instanceof Error ? error : undefined
+            );
+      console.error('[RepositoryBackendService] deployReleaseAsset failed:', error);
+      this.alertService.danger(result.userMessage);
+      throw result;
+    }
+  }
+
+  /** The `error` message of a backend error response, if it has one. */
+  private async readServerError(response: IFetchResponse): Promise<string> {
+    try {
+      const body = JSON.parse(await response.text());
+      return typeof body?.error === 'string' ? body.error : '';
+    } catch {
+      return '';
     }
   }
 
