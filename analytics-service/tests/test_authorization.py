@@ -15,6 +15,11 @@ REPO_URL = "https://github.com/o/r/tree/main/blocks"
 REPO = {"id": "repo-1", "name": "Repo", "url": REPO_URL, "accessToken": "", "enabled": True}
 BUILD_BODY = {"extension_name": "E", "repository": {"id": "repo-1"}}
 LIST_BODY = {**BUILD_BODY, "monitors": [{"url": "https://github.com/o/r", "type": "file"}]}
+RELEASE_BODY = {
+    "repository": {"id": "repo-1"},
+    "asset_id": 1,
+    "asset_name": "E.zip",
+}
 YAML_BODY = {
     "yaml": {"url": "https://raw.githubusercontent.com/o/r/main/e.yaml"},
     "repository": {"id": "repo-1"},
@@ -31,6 +36,7 @@ ROUTES = [
     ("POST", "/extension/repository", BUILD_BODY, READ),
     ("POST", "/extension/list", LIST_BODY, READ),
     ("POST", "/extension/yaml", YAML_BODY, READ),
+    ("POST", "/extension/release", RELEASE_BODY, CREATE),
     ("DELETE", "/extension/123", None, ADMIN),
     ("DELETE", "/extension?name=E", None, ADMIN),
 ]
@@ -201,6 +207,25 @@ class TestBuildRequestRoles:
         agent_mock.get_caller_roles.return_value = {READ}
         resp = client.post("/extension/repository", json={**BUILD_BODY, "upload": "false"})
         assert _denied(resp)
+
+
+class TestReleaseDeployment:
+    def test_always_needs_create(self, client, agent_mock):
+        agent_mock.get_caller_roles.return_value = {READ}
+        assert _denied(client.post("/extension/release", json=RELEASE_BODY))
+        agent_mock.load_repository.assert_not_called()
+
+    @pytest.mark.parametrize("flag", ["replace", "deploy"])
+    def test_replace_and_deploy_need_admin(self, client, agent_mock, flag):
+        agent_mock.get_caller_roles.return_value = {CREATE}
+        assert _denied(client.post("/extension/release", json={**RELEASE_BODY, flag: True}))
+        agent_mock.load_repository.assert_not_called()
+        agent_mock.upload_extension.assert_not_called()
+
+        agent_mock.get_caller_roles.return_value = {ADMIN}
+        agent_mock.load_repository.return_value = None
+        resp = client.post("/extension/release", json={**RELEASE_BODY, flag: True})
+        assert not _denied(resp)
 
 
 class TestRoleHierarchy:

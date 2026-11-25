@@ -23,6 +23,7 @@ import re
 import subprocess
 import tempfile
 import urllib.parse
+import zipfile
 from typing import Dict, List, Optional
 
 import requests
@@ -815,6 +816,150 @@ def create_extension_from_yaml():
         deploy=deploy,
         rebuild=rebuild,
     )
+
+
+# Largest release asset the service downloads and uploads (extension zips are a few MB at most).
+RELEASE_ASSET_MAX_BYTES = 100 * 1024 * 1024
+_VALID_RELEASE_ASSET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*\.zip$", re.IGNORECASE)
+
+
+class _AssetTooLarge(Exception):
+    """The release asset exceeds ``RELEASE_ASSET_MAX_BYTES``."""
+
+
+def _read_limited(response: requests.Response, limit: int) -> io.BytesIO:
+    """Read a streamed response body, refusing anything larger than ``limit`` bytes."""
+    declared = response.headers.get("Content-Length")
+    if declared and str(declared).isdigit() and int(declared) > limit:
+        raise _AssetTooLarge()
+    buffer = io.BytesIO()
+    size = 0
+    for chunk in response.iter_content(chunk_size=64 * 1024):
+        size += len(chunk)
+        if size > limit:
+            raise _AssetTooLarge()
+        buffer.write(chunk)
+    buffer.seek(0)
+    return buffer
+
+
+@app.route("/extension/release", methods=["POST"])
+@requires_role(ROLE_CREATE)
+@handle_errors
+def deploy_extension_from_release():
+    """
+    Deploy a pre-built extension zip from a GitHub release asset.
+
+    The service downloads the asset (the browser cannot: GitHub sends no CORS headers for
+    release assets) and uploads it to Cumulocity as an extension named after the asset.
+
+    Request Body:
+        {
+            "repository": {"id": "repo-1"},        // Required: configured repository
+            "asset_id": 123456,                    // Required: id of a release asset of that repository
+            "asset_name": "Abs-1.0.1.zip",         // Required: file name, becomes the extension name
+            "release_tag": "v1.0.1",               // Optional: recorded in the build information
+            "deploy": false,                       // Optional: restart CEP after the upload (ADMIN)
+            "replace": false                       // Optional: replace an extension of the same name (ADMIN)
+        }
+
+    Returns:
+        201: Extension uploaded, body ``{"id": "...", "message": "Extension uploaded"}``
+        400: Invalid request, the asset is not a zip file, or the download failed
+        404: Repository or asset not found
+        409: An extension with that name exists and ``replace`` is false
+        413: The asset is larger than the limit
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return create_error_response("Request body must be a JSON object", 400)
+    repository = data.get("repository")
+    asset_id = data.get("asset_id")
+    asset_name = data.get("asset_name")
+    release_tag = data.get("release_tag")
+    deploy = parse_boolean(data.get("deploy", False))
+    replace = parse_boolean(data.get("replace", False))
+
+    # The route itself needs CREATE (it always uploads); deploying (restart) or replacing
+    # (delete) needs ADMIN.
+    role_error = _build_role_error(True, deploy, replace)
+    if role_error:
+        return role_error
+
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
+        return create_error_response("Parameter repository with id is required", 400)
+    if isinstance(asset_id, bool) or not isinstance(asset_id, (int, str)) or not is_valid_numeric_id(str(asset_id)):
+        return create_error_response("Parameter asset_id must be a numeric id", 400)
+    if not isinstance(asset_name, str) or not _VALID_RELEASE_ASSET_NAME_RE.match(asset_name):
+        return create_error_response("Parameter asset_name must be the name of a .zip file", 400)
+    if release_tag is not None and (not isinstance(release_tag, str) or len(release_tag) > 200):
+        return create_error_response("Parameter release_tag must be a short string", 400)
+
+    extension_name = asset_name[: -len(".zip")]
+
+    repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
+    if not repo_config:
+        return create_error_response("Repository not found", 404)
+    owner_repo = _github_owner_repo(repo_config.get("url", ""))
+    if not owner_repo or not _is_github_url(repo_config.get("url", "")):
+        return create_error_response("The repository is not a GitHub repository", 400)
+
+    if not replace and agent.count_extensions(request, extension_name) > 0:
+        return create_error_response(
+            f"An extension named {extension_name} already exists", 409
+        )
+
+    # The asset API URL is built from the configured repository, never taken from the caller,
+    # so the stored PAT cannot be sent anywhere else.
+    owner, repo = owner_repo
+    asset_url = f"https://api.github.com/repos/{owner}/{repo}/releases/assets/{asset_id}"
+    headers = {"Accept": "application/octet-stream"}
+    if repo_config.get("accessToken"):
+        headers["Authorization"] = f"Bearer {repo_config['accessToken']}"
+
+    response = requests.get(asset_url, headers=headers, stream=True, timeout=(10, 120))
+    try:
+        error = _github_error_response(response)
+        if error:
+            return error
+        try:
+            archive = _read_limited(response, RELEASE_ASSET_MAX_BYTES)
+        except _AssetTooLarge:
+            return create_error_response(
+                f"The asset is larger than {RELEASE_ASSET_MAX_BYTES // (1024 * 1024)} MB", 413
+            )
+    finally:
+        response.close()
+
+    if not zipfile.is_zipfile(archive):
+        return create_error_response("The asset is not a zip file", 400)
+    archive.seek(0)
+
+    # Stored on the extension's managed object, which every inventory reader can see,
+    # so it must never carry the access token.
+    build_info = {
+        "build_type": "release",
+        "repository": {k: repo_config.get(k) for k in ("id", "name", "url")},
+        "release": release_tag,
+        "asset": asset_name,
+    }
+    previous_ids = agent.find_extension_ids(request, extension_name) if replace else []
+    ext_id = agent.upload_extension(request, extension_name, archive, build_info)
+    logger.info(f"Uploaded release asset {asset_name} as extension {ext_id}")
+
+    body = {"id": ext_id, "message": "Extension uploaded"}
+    if replace and previous_ids:
+        try:
+            agent.delete_extension(request, extension_name=extension_name, only_ids=previous_ids)
+        except Exception as e:
+            logger.error(f"Failed to remove the replaced extension: {e}", exc_info=True)
+            body["warning"] = (
+                "The new extension was uploaded, but the previous one with the same "
+                f"name could not be deleted: {e}"
+            )
+    if deploy:
+        agent.restart_cep(request)
+    return jsonify(body), 201
 
 
 @app.route("/extension/<extension_id>", methods=["DELETE"])

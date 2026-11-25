@@ -337,6 +337,44 @@ paths:
         "404":
           description: Repository not found, or `rebuild` requested but no existing extension was found to delete
 
+  /extension/release:
+    post:
+      tags: [Extensions]
+      summary: Deploy a pre-built extension zip from a GitHub release asset
+      description: |
+        The service downloads the asset of the configured repository (the browser cannot, GitHub sends
+        no CORS headers for release assets) and uploads it as an extension named after the file without
+        `.zip`. The asset URL is built from the configured repository, never taken from the caller.
+      operationId: deployExtensionFromRelease
+      x-required-role: CREATE (ADMIN with deploy or replace)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeployReleaseRequest"
+      responses:
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "503":
+          $ref: "#/components/responses/RolesUnavailable"
+        "201":
+          description: Extension uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtensionUploadedResponse"
+        "400":
+          description: Invalid request, the asset is not a zip file, or the download failed
+        "404":
+          description: Repository or asset not found
+        "409":
+          description: An extension with that name exists and `replace` is false
+        "413":
+          description: The asset is larger than 100 MB
+
   /extension/yaml:
     post:
       tags: [Extensions]
@@ -665,6 +703,33 @@ components:
             rebuild:
               type: boolean
               default: false
+
+    DeployReleaseRequest:
+      type: object
+      required: [repository, asset_id, asset_name]
+      properties:
+        repository:
+          $ref: "#/components/schemas/RepositoryRef"
+        asset_id:
+          type: integer
+          description: Id of a release asset of the configured repository
+          example: 987654
+        asset_name:
+          type: string
+          description: File name of the asset, ending in `.zip`. The extension is named after it.
+          example: Abs-1.0.1.zip
+        release_tag:
+          type: string
+          description: Recorded in the extension's build information
+          example: v1.0.1
+        deploy:
+          type: boolean
+          default: false
+          description: Restart the CEP engine after the upload (needs ADMIN)
+        replace:
+          type: boolean
+          default: false
+          description: Replace an extension of the same name (needs ADMIN)
 
     ExtensionUploadedResponse:
       type: object

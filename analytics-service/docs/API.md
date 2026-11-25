@@ -24,7 +24,7 @@ enough.
 | Role | Allows |
 |------|--------|
 | `ROLE_ANALYTICS_MANAGEMENT_READ` | CEP status, list repositories, browse repository content, build an extension as a download |
-| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | everything in READ, and build with `upload=true` |
+| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | everything in READ, build with `upload=true`, and `POST /extension/release` |
 | `ROLE_ANALYTICS_MANAGEMENT_ADMIN` | everything in CREATE, and change repositories, delete extensions, `rebuild=true`, and `deploy=true` (CEP restart) |
 
 The platform calls themselves run as the microservice's service user, so callers need none of the
@@ -120,6 +120,22 @@ are skipped; invalid names are reported as failed.
 - Download mode returns the zip of the first processed section.
 - Upload mode: `201 {"uploaded_extensions": [{"name", "id"}]}`; `207` with `failed_sections` and `message` if
   some failed; `400` if none succeeded. With `deploy=true` CEP is restarted once, after all sections, if at least one succeeded.
+
+### `POST /extension/release`
+Deploys a pre-built extension zip from a GitHub release asset. The service downloads the asset, because the browser
+cannot (GitHub sends no CORS headers for release assets), and uploads it as an extension named after the file
+without `.zip`.
+
+Body: `repository: {id}`, `asset_id` (numeric id of a release asset of that repository), `asset_name` (a `.zip`
+file name), optional `release_tag`, `deploy` (restart CEP, ADMIN) and `replace` (replace an extension of the same name,
+ADMIN). The asset URL is built from the configured repository, never taken from the caller, and the stored token is
+sent only to `api.github.com` for that repository.
+
+- Always needs `ROLE_ANALYTICS_MANAGEMENT_CREATE`.
+- `201 {"id", "message"}`, plus a `warning` when the replaced extension could not be deleted.
+- `409` if an extension of that name exists and `replace` is false. `413` if the asset is larger than 100 MB.
+  `400` if the asset is not a zip file.
+- The build information records `build_type: "release"`, the repository, the release tag and the asset name.
 
 ---
 
