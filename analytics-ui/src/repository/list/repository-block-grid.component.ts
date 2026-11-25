@@ -54,12 +54,10 @@ import {
   ROUTES
 } from '../../shared';
 import {
-  BehaviorSubject,
   distinctUntilChanged,
   map,
   Observable,
   shareReplay,
-  switchMap,
   tap
 } from 'rxjs';
 import { catchError, of } from 'rxjs';
@@ -99,7 +97,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   // blocks lookup) is comparatively expensive, so it's opt-in: off by
   // default, and persisted as a tenant option (see updateMode()) — not
   // localStorage — the same way repository config/PAT is stored.
-  expertMode: boolean = false;
   loading: boolean = false;
   singleSelection: boolean = false;
   showDataGrid: boolean = true;
@@ -174,21 +171,13 @@ export class RepositoryBlockGridComponent implements OnInit {
   // The shell may run Angular without zone.js, where a plain field changed after an
   // `await` or inside a subscription is not rendered by itself.
   private readonly cdr = inject(ChangeDetectorRef);
-  // Drives repositoryItems$ below — starts at the same `false` default as
-  // `expertMode` so nothing is fetched until the persisted setting (or a
-  // user toggle) says otherwise.
-  private readonly expertMode$ = new BehaviorSubject<boolean>(false);
-
   constructor(
     public repositoryService: RepositoryService,
     private analyticsService: AnalyticsService,
     public alertService: AlertService,
     private bsModalService: BsModalService
   ) {
-    this.repositoryItems$ = this.expertMode$.pipe(
-      switchMap(expertMode =>
-        expertMode ? this.repositoryService.getRepositoryItemsAnalyzed() : of([])
-      ),
+    this.repositoryItems$ = this.repositoryService.getRepositoryItemsAnalyzed().pipe(
       shareReplay(1),
       tap(items => {
         const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
@@ -224,12 +213,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   ngOnInit() {
     this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(samples => {
       this.repositoryItems = samples;
-      this.cdr.markForCheck();
-    });
-
-    this.repositoryService.getExpertMode().then(expertMode => {
-      this.expertMode = expertMode;
-      this.expertMode$.next(expertMode);
       this.cdr.markForCheck();
     });
 
@@ -516,25 +499,6 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   async updateFilter() {
     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
-  }
-
-  /**
-   * Toggling Expert mode on/off immediately gates whether `repositoryItems$`
-   * loads anything (see the constructor); persisting is best-effort — a
-   * failed save only logs, since the in-memory toggle already took effect
-   * for this session.
-   */
-  async updateMode() {
-    this.expertMode$.next(this.expertMode);
-    try {
-      await this.repositoryService.setExpertMode(this.expertMode);
-    } catch (error) {
-      console.error('Failed to persist Expert mode setting:', error);
-      // The toggle still works for this session, but it will be off again after a reload.
-      this.alertService.warning(
-        gettext('Expert mode could not be saved. It will be off again after reloading the page.')
-      );
-    }
   }
 
   openRepositoriesDrawer(): void {

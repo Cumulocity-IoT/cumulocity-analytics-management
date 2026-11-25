@@ -57,8 +57,6 @@ describe('RepositoryService', () => {
       'fetchRepositories',
       'saveRepositories',
       'getRepositoryAccessToken',
-      'getExpertMode',
-      'setExpertMode',
       'getGlobalAccessTokenMasked',
       'setGlobalAccessToken'
     ]);
@@ -414,26 +412,12 @@ describe('RepositoryService', () => {
   describe('settings and tokens', () => {
     beforeEach(async () => create());
 
-    it('delegates token and expert-mode access to the config service', async () => {
+    it('delegates token access to the config service', async () => {
       config.getRepositoryAccessToken.and.resolveTo('tok');
-      config.getExpertMode.and.resolveTo(true);
       config.getGlobalAccessTokenMasked.and.resolveTo('masked');
-      config.setExpertMode.and.resolveTo();
 
       expect(await service.getRepositoryAccessToken('a')).toBe('tok');
-      expect(await service.getExpertMode()).toBeTrue();
       expect(await service.getGlobalAccessTokenMasked()).toBe('masked');
-      await service.setExpertMode(false);
-      expect(config.setExpertMode).toHaveBeenCalledWith(false);
-    });
-
-    it('remembers the chosen expert mode even when it cannot be saved or read back', async () => {
-      config.setExpertMode.and.rejectWith(new Error('denied'));
-      config.getExpertMode.and.resolveTo(false); // what the tenant would still return
-
-      await expectAsync(service.setExpertMode(true)).toBeRejected();
-
-      expect(await service.getExpertMode()).toBeTrue();
     });
 
     it('setGlobalAccessToken persists the token and invalidates the item cache (private repos may become readable)', async () => {

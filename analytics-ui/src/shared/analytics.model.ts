@@ -185,7 +185,6 @@ export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
  * user's tenant rather than one browser/device.
  */
 export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
-export const EXPERT_MODE_OPTION_KEY = 'expertMode';
 /**
  * User preference for whether the `analytics-service` backend microservice
  * should be used when it's deployed — lets a user force browser-only mode

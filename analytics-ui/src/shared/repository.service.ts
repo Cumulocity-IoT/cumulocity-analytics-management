@@ -422,23 +422,6 @@ export class RepositoryService implements OnDestroy {
     return this.repositoryConfigService.getRepositoryAccessToken(repositoryId);
   }
 
-  // The component behind the Repositories tab is recreated on every visit. What
-  // the user last chose is kept here, so it survives tab changes even when the
-  // tenant option cannot be read or written (it then lasts until a page reload).
-  private expertModeChoice: boolean | null = null;
-
-  async getExpertMode(): Promise<boolean> {
-    if (this.expertModeChoice !== null) {
-      return this.expertModeChoice;
-    }
-    return this.repositoryConfigService.getExpertMode();
-  }
-
-  async setExpertMode(expertMode: boolean): Promise<void> {
-    this.expertModeChoice = expertMode;
-    return this.repositoryConfigService.setExpertMode(expertMode);
-  }
-
   /** Masked global PAT for display in "Manage repositories" — see `RepositoryConfigService.getGlobalAccessTokenMasked`. */
   async getGlobalAccessTokenMasked(): Promise<string> {
     return this.repositoryConfigService.getGlobalAccessTokenMasked();

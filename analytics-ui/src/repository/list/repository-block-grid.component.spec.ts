@@ -34,8 +34,7 @@ describe('RepositoryBlockGridComponent', () => {
   let modalHide: jasmine.Spy;
   let dataGrid: { setItemsSelected: jasmine.Spy; cancel: jasmine.Spy };
 
-  const create = async (expertMode = false) => {
-    repositories.getExpertMode.and.resolveTo(expertMode);
+  const create = async () => {
     component = TestBed.createComponent(RepositoryBlockGridComponent).componentInstance;
     component.dataGrid = dataGrid as never;
     component.ngOnInit();
@@ -49,15 +48,12 @@ describe('RepositoryBlockGridComponent', () => {
       'getRepositories',
       'getRepositoryItemsAnalyzed',
       'getRepositoryItemContent',
-      'getExpertMode',
-      'setExpertMode',
       'reload',
       'reloadAll',
       'updateHideInstalledFilter'
     ]);
     repositories.getRepositories.and.returnValue(repos$);
     repositories.getRepositoryItemsAnalyzed.and.returnValue(of([]));
-    repositories.setExpertMode.and.resolveTo();
     repositories.reloadAll.and.resolveTo();
     analytics = jasmine.createSpyObj('AnalyticsService', [
       'isBackendServiceDeployed',
@@ -130,50 +126,25 @@ describe('RepositoryBlockGridComponent', () => {
     });
   });
 
-  describe('expert mode (loading items is opt-in)', () => {
-    it('loads nothing while expert mode is off', async () => {
-      await create(false);
-      expect(repositories.getRepositoryItemsAnalyzed).not.toHaveBeenCalled();
-      expect(component.repositoryItems).toEqual([]);
-      expect(component.expertMode).toBeFalse();
-    });
-
-    it('restores the persisted expert mode and then loads the items', async () => {
+  describe('repository items', () => {
+    it('loads the items when the tab opens', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ id: '1' })]));
-      await create(true);
-      expect(component.expertMode).toBeTrue();
+      await create();
       expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
-    });
-
-    it('starts loading as soon as the user switches it on, and persists the choice', async () => {
-      repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ id: '1' })]));
-      await create(false);
-      component.expertMode = true;
-      await component.updateMode();
-      expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
-      expect(repositories.setExpertMode).toHaveBeenCalledWith(true);
-    });
-
-    it('keeps the in-memory switch when persisting fails', async () => {
-      repositories.setExpertMode.and.rejectWith(new Error('denied'));
-      await create(false);
-      component.expertMode = true;
-      await expectAsync(component.updateMode()).toBeResolved();
-      expect(repositories.getRepositoryItemsAnalyzed).toHaveBeenCalled();
     });
 
     it('selects whole items instead of single ones and updates the title', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(
         of([item({ file: 'extensions.yaml' })])
       );
-      await create(true);
+      await create();
       expect(component.titleSample).toBe('Blocks from R (contains extensions.yaml)');
       expect(component.singleSelection).toBeFalse();
     });
 
     it('titles a plain file listing without stray spaces', async () => {
       repositories.getRepositoryItemsAnalyzed.and.returnValue(of([item({ file: 'A.mon' })]));
-      await create(true);
+      await create();
       expect(component.titleSample).toBe('Blocks from R (list assets)');
     });
   });

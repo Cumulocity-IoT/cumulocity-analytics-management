@@ -3,7 +3,6 @@ import { FetchClient, ITenantOption, TenantOptionsService } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   DUMMY_ACCESS_TOKEN,
-  EXPERT_MODE_OPTION_KEY,
   GLOBAL_ACCESS_TOKEN_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
@@ -196,41 +195,6 @@ export class RepositoryConfigService {
       throw new RepositoryError(
         'Failed to save global access token',
         gettext('Failed to save the global access token. Please try again.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Reads the "Expert mode" preference, defaulting to `false` — both when
-   * never set (a fresh tenant option category has nothing to `detail()`,
-   * i.e. a 404) and on any other read failure, so a transient error can
-   * never silently leave the UI stuck in expert mode.
-   */
-  async getExpertMode(): Promise<boolean> {
-    try {
-      const { data } = await this.tenantOptionsService.detail({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY
-      });
-      return data.value === 'true';
-    } catch (error) {
-      console.warn(
-        '[RepositoryConfigService] Could not read the Expert mode setting, using "off":',
-        error
-      );
-      return false;
-    }
-  }
-
-  /** Persists the "Expert mode" preference as a tenant option (same storage as repository config/PAT, not `localStorage`). */
-  async setExpertMode(expertMode: boolean): Promise<void> {
-    try {
-      await this.saveOption(SETTINGS_OPTION_CATEGORY, EXPERT_MODE_OPTION_KEY, String(expertMode));
-    } catch (error) {
-      throw new RepositoryError(
-        'Failed to save expert mode setting',
-        gettext('Failed to save the Expert mode setting. Please try again.'),
         error instanceof Error ? error : undefined
       );
     }

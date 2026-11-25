@@ -91,7 +91,6 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 
 `RepositoryBlockGridComponent` (route `repository`) has these controls in its action bar:
 
-- **Expert mode** switch: loads the repository items only when it is on (persisted as a tenant option).
 - **Backend service** label, **Re-check** button, and **Use backend service** switch. The label shows whether the
   microservice `analytics-ext-service` is deployed. The switch (tenant option, default on) selects backend or
   browser-only mode. Changing it reloads the repository items, because they load through the active mode.
@@ -187,7 +186,7 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
-| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | expert-mode gating, backend service switch, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
+| `repository/list/repository-block-grid`, `release-deploy`, `release-list`, `create-extension`, `editor`, `list` (help modal, Formly list) specs | backend service switch, grid title, selection rules, create-extension flows, release deployment wizard, filtering, editor registration |
 | `manage/extension-card`, `extension-details`, `resolvers`; `block/block-grid` specs | delete/download/update/rebuild, build information and file list, resolvers, installed blocks |
 | `shared/wizard/extension-add(-wizard)`, `shared/component/*` specs | zip analysis and upload/update flow, confirmation dialog, renderers, Formly switch |
 

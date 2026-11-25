@@ -2,7 +2,6 @@ import { TestBed } from '@angular/core/testing';
 import { FetchClient, TenantOptionsService } from '@c8y/client';
 import {
   DUMMY_ACCESS_TOKEN,
-  EXPERT_MODE_OPTION_KEY,
   GLOBAL_ACCESS_TOKEN_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
@@ -267,15 +266,6 @@ describe('RepositoryConfigService', () => {
   });
 
   describe('boolean settings', () => {
-    it('expert mode: true only for "true", false by default and on errors', async () => {
-      options.detail.and.resolveTo({ data: { value: 'true' } } as never);
-      expect(await service.getExpertMode()).toBeTrue();
-      options.detail.and.resolveTo({ data: { value: 'false' } } as never);
-      expect(await service.getExpertMode()).toBeFalse();
-      options.detail.and.rejectWith(new Error('404'));
-      expect(await service.getExpertMode()).toBeFalse();
-    });
-
     it('use-backend: defaults to true unless explicitly "false"', async () => {
       options.detail.and.resolveTo({ data: { value: 'false' } } as never);
       expect(await service.getUseBackendServiceEnabled()).toBeFalse();
@@ -286,14 +276,8 @@ describe('RepositoryConfigService', () => {
     });
 
     it('persists the settings as strings', async () => {
-      await service.setExpertMode(true);
       await service.setUseBackendServiceEnabled(false);
       expect(options.create.calls.argsFor(0)[0]).toEqual({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY,
-        value: 'true'
-      });
-      expect(options.create.calls.argsFor(1)[0]).toEqual({
         category: SETTINGS_OPTION_CATEGORY,
         key: USE_BACKEND_SERVICE_OPTION_KEY,
         value: 'false'
@@ -302,10 +286,10 @@ describe('RepositoryConfigService', () => {
 
     it('updates an option that already exists instead of creating it again', async () => {
       options.update.and.resolveTo({} as never);
-      await service.setExpertMode(false);
+      await service.setUseBackendServiceEnabled(false);
       expect(options.update).toHaveBeenCalledOnceWith({
         category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY,
+        key: USE_BACKEND_SERVICE_OPTION_KEY,
         value: 'false'
       });
       expect(options.create).not.toHaveBeenCalled();
@@ -313,7 +297,6 @@ describe('RepositoryConfigService', () => {
 
     it('wraps persistence failures in a RepositoryError', async () => {
       options.create.and.rejectWith(new Error('x'));
-      await expectAsync(service.setExpertMode(true)).toBeRejectedWith(jasmine.any(RepositoryError));
       await expectAsync(service.setUseBackendServiceEnabled(true)).toBeRejectedWith(
         jasmine.any(RepositoryError)
       );
