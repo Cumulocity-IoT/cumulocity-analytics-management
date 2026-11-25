@@ -108,6 +108,73 @@ describe('ExtensionAddComponent', () => {
       expect(mode).toBe('add');
     });
 
+    const evt = (name: string) => buildBlockMetadataEvt(name, []);
+
+    it('drops the " (1)" a browser adds to a repeated download', async () => {
+      create();
+      await component.onFile(await zipFile('Foo-1.0.1 (1).zip', { 'files/Foo.mon': MON }));
+      expect(uploaded()[1]['name']).toBe('Foo-1.0.1');
+    });
+
+    it('drops any number in brackets, with or without a space', async () => {
+      for (const [fileName, expected] of [
+        ['Foo-1.0.1 (2).zip', 'Foo-1.0.1'],
+        ['Foo-1.0.1 (12).zip', 'Foo-1.0.1'],
+        ['Foo-1.0.1(3).zip', 'Foo-1.0.1']
+      ]) {
+        create();
+        await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+        expect(uploaded()[1]['name']).withContext(fileName).toBe(expected);
+      }
+    });
+
+    it('lets the single metadata file correct any other renaming', async () => {
+      for (const fileName of ['Foo-1.0.1 2.zip', 'Foo-1.0.1 copy.zip', 'Foo-1.0.1 - Copy.zip']) {
+        create();
+        await component.onFile(
+          await zipFile(fileName, {
+            'files/Foo.mon': MON,
+            'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
+          })
+        );
+        expect(uploaded()[1]['name']).withContext(fileName).toBe('Foo-1.0.1');
+      }
+    });
+
+    it('takes the name from the metadata file when the file name matches none', async () => {
+      create();
+      await component.onFile(
+        await zipFile('renamed.zip', {
+          'files/Foo.mon': MON,
+          'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('Foo-1.0.1');
+      expect(uploaded()[1]['pas_extension']).toBe('Foo-1.0.1');
+    });
+
+    it('keeps the file name when it matches one of several metadata files (a bundle)', async () => {
+      create();
+      await component.onFile(
+        await zipFile('bundle.zip', {
+          'files/events/bundle_metadata.evt': evt('bundle'),
+          'files/events/Other_metadata.evt': evt('Other')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('bundle');
+    });
+
+    it('keeps the file name when several metadata files and none matches it', async () => {
+      create();
+      await component.onFile(
+        await zipFile('mine.zip', {
+          'files/events/A_metadata.evt': evt('A'),
+          'files/events/B_metadata.evt': evt('B')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('mine');
+    });
+
     it('keeps the whole file name when it has no extension', async () => {
       create();
       const file = await zipFile('README', { 'files/Foo.mon': MON });

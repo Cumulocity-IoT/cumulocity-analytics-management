@@ -136,7 +136,7 @@ export class ExtensionAddComponent implements OnDestroy {
     this.progress.next(0);
 
     try {
-      const extensionName = this.extractExtensionName(file.name);
+      const extensionName = await this.resolveExtensionName(file);
       const existingExtension = await this.findExistingExtension(extensionName);
 
       // Analyze ZIP content
@@ -333,6 +333,34 @@ export class ExtensionAddComponent implements OnDestroy {
 
   done(): void {
     this.completed.emit();
+  }
+
+  /**
+   * The extension has to carry the name the engine registers its blocks under, which is the
+   * prefix of `<extension>_metadata.evt` in the zip. The file name is only a guess: a browser
+   * renames a second download to "AlarmBand-1.0.1 (1).zip". The zip wins when the file name
+   * matches none of its metadata files and there is exactly one to choose; a bundle with several
+   * keeps the file name.
+   */
+  private async resolveExtensionName(file: File): Promise<string> {
+    const fromFile = this.extractExtensionName(file.name).replace(/\s*\(\d+\)$/, '');
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const names = new Set<string>();
+      for (const [path, entry] of Object.entries(zip.files)) {
+        const match = entry.dir ? null : /(?:^|\/)([^/]+)_metadata\.evt$/.exec(path);
+        if (match) names.add(match[1]);
+      }
+      if (names.has(fromFile)) {
+        return fromFile;
+      }
+      if (names.size === 1) {
+        return [...names][0];
+      }
+    } catch {
+      // Not a readable zip: the analysis that follows reports it.
+    }
+    return fromFile;
   }
 
   private extractExtensionName(fileName: string): string {
