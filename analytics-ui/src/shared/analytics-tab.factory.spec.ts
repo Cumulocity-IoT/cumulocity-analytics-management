@@ -25,7 +25,7 @@ describe('AnalyticsTabFactory', () => {
 
   it('names the tabs after the page names and routes (single source: analytics.constants.ts)', async () => {
     const tabs = await tabsFor('/c8y-pkg-analytics-extension/manage');
-    expect(tabs.map(t => t.label)).toEqual(['Extensions', 'Installed blocks', 'Repositories']);
+    expect(tabs.map(t => t.label)).toEqual(['Extensions', 'Installed blocks', 'Block library']);
     expect(tabs[1].path).toBe('c8y-pkg-analytics-extension/installed-blocks');
   });
 

@@ -12,7 +12,7 @@ describe('analytics.constants', () => {
     expect(PAGE_LABELS).toEqual({
       extensions: 'Extensions',
       installedBlocks: 'Installed blocks',
-      repositories: 'Repositories'
+      blockLibrary: 'Block library'
     });
   });
 

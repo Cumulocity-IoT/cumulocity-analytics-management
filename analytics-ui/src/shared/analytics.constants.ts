@@ -33,5 +33,5 @@ export const ROUTES = {
 export const PAGE_LABELS = {
   extensions: gettext('Extensions'),
   installedBlocks: gettext('Installed blocks'),
-  repositories: gettext('Repositories')
+  blockLibrary: gettext('Block library')
 };

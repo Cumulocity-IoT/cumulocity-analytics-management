@@ -52,7 +52,7 @@ export class AnalyticsTabFactory implements TabFactory {
       tabs.push({
         path: ROUTES.repository,
         priority: 920,
-        label: PAGE_LABELS.repositories,
+        label: PAGE_LABELS.blockLibrary,
         icon: 'test',
         orientation: 'horizontal'
       } as Tab);

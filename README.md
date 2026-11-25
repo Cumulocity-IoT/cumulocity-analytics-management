@@ -44,7 +44,7 @@ Analytics Builder blocks are built using the [Analytics Builder Block SDK](https
 
 ![Extension installation](resources/images/extension-upload.png)
 
-The plugin adds three tabs: **Extensions**, **Installed blocks**, and **Repositories**. The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks, and the extension package they belong to.
+The plugin adds three tabs: **Extensions**, **Installed blocks**, and **Block library**. The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks, and the extension package they belong to.
 
 ![Block list](resources/images/block-list.png)
 
@@ -70,7 +70,7 @@ Safe Mode lasts until the engine restarts. Delete the suspected extension, then 
 
 ## Sample repositories and building custom extensions
 
-On the **Repositories** tab you register GitHub repositories as the source for new extensions. The plugin lists the blocks of each repository. You select blocks and build one extension, which the backend microservice can upload to the inventory or return as a download. Building requires the [backend microservice](#backend-microservice).
+On the **Block library** tab you register GitHub repositories as the source for new extensions. The plugin lists the blocks of each repository. You select blocks and build one extension, which the backend microservice can upload to the inventory or return as a download. Building requires the [backend microservice](#backend-microservice).
 
 Public repositories need no token. For private repositories, enter a GitHub Personal Access Token (PAT) for the repository, or set a **Global Personal Access Token** that applies to every repository without its own token. A repository token takes precedence over the global one. Unauthenticated GitHub requests are limited to 60 per hour for each IP address, and a valid token raises the limit to 5,000 per hour.
 
@@ -80,7 +80,7 @@ A tenant without configured repositories starts with [Cumulocity-IoT/analytics-b
 
 ## Backend service
 
-The plugin uses the backend microservice `analytics-ext-service` automatically when it is deployed and responding. Otherwise it works in browser-only mode, where you cannot build extensions. If the microservice is not deployed, the action bar of the **Repositories** tab shows a **Re-check backend service** button. Select it after you deploy the microservice while the page is open.
+The plugin uses the backend microservice `analytics-ext-service` automatically when it is deployed and responding. Otherwise it works in browser-only mode, where you cannot build extensions. If the microservice is not deployed, the action bar of the **Block library** tab shows a **Re-check backend service** button. Select it after you deploy the microservice while the page is open.
 
 ## Access control
 
@@ -250,7 +250,7 @@ Custom blocks are developed with the [Analytics Builder block SDK](https://githu
 
 ## Repository layout for building extensions
 
-The extension builder supports two layouts for a GitHub repository path. The **Extension Builder Layouts** dialog on the **Repositories** tab describes them in the plugin.
+The extension builder supports two layouts for a GitHub repository path. The **Extension Builder Layouts** dialog on the **Block library** tab describes them in the plugin.
 
 ### Directory is extension
 
