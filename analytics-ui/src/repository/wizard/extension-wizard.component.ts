@@ -1,4 +1,5 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, DestroyRef, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { IManagedObject } from '@c8y/client';
@@ -15,6 +16,8 @@ import {
   RepositoryItem,
   RepositoryService,
   UploadMode,
+  canPickFromDownloads,
+  pickZipFromDownloads,
   triggerBrowserDownload
 } from '../../shared';
 import { MessageService } from '../../shared/message.service';
@@ -56,7 +59,7 @@ const STEP_LABELS: Record<StepId, string> = {
   release: gettext('Release and asset'),
   download: gettext('Download'),
   content: gettext('Content'),
-  details: gettext('Name and options'),
+  details: gettext('Name'),
   review: gettext('Review'),
   result: gettext('Result'),
   upload: gettext('Upload')
@@ -68,7 +71,7 @@ const STEP_TITLES: Record<StepId, string> = {
   release: gettext('Select a release and an asset'),
   download: gettext('Download the extension file'),
   content: gettext('Select what goes into the extension'),
-  details: gettext('Provide the extension details'),
+  details: gettext('Name the extension'),
   review: gettext('Review the extension'),
   result: gettext('Creating the extension'),
   upload: gettext('Upload a *.zip file')
@@ -87,7 +90,7 @@ const STEP_TITLES: Record<StepId, string> = {
   templateUrl: './extension-wizard.component.html',
   styleUrls: ['./extension-wizard.component.css'],
   host: { class: 'd-flex d-col fit-h min-height-0' },
-  imports: [FormsModule, CoreModule, ExtensionAddComponent]
+  imports: [FormsModule, CoreModule, ExtensionAddComponent, NgTemplateOutlet]
 })
 export class ExtensionWizardComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
@@ -118,19 +121,21 @@ export class ExtensionWizardComponent implements OnInit {
   readonly selectedIds = signal<ReadonlySet<string>>(new Set());
   readonly filter = signal('');
   readonly name = signal('');
-  readonly restart = signal(true);
 
   readonly releases = signal<GitHubRelease[]>([]);
   readonly releasesLoading = signal(false);
   readonly releaseId = signal<number | null>(null);
   readonly assetId = signal<number | null>(null);
   readonly assetFilter = signal('');
+  /** The user started the download (or said the file is already there). */
+  readonly downloaded = signal(false);
   readonly loadError = signal<string | null>(null);
   /** Repositories that were asked for releases and have none, so the list can mark them. */
   readonly reposWithoutReleases = signal<ReadonlySet<string>>(new Set());
 
   readonly result = signal<ResultState>('running');
   readonly uploaded = signal(false);
+  readonly restartState = signal<'idle' | 'running' | 'done' | 'failed'>('idle');
   readonly stepTitles: Record<StepId, string> = STEP_TITLES;
 
   readonly steps = computed<StepId[]>(() => {
@@ -187,6 +192,8 @@ export class ExtensionWizardComponent implements OnInit {
         return !!this.repository();
       case 'release':
         return !!this.asset();
+      case 'download':
+        return this.downloaded();
       case 'content':
         return this.selectedIds().size > 0 && !this.itemsLoading();
       case 'details':
@@ -208,6 +215,8 @@ export class ExtensionWizardComponent implements OnInit {
         return this.noReleases()
           ? gettext('This repository has no releases.')
           : gettext('Select an asset to continue.');
+      case 'download':
+        return gettext('Download the file to continue.');
       case 'content':
         return gettext('Select at least one item to continue.');
       case 'details':
@@ -257,6 +266,7 @@ export class ExtensionWizardComponent implements OnInit {
     this.releases.set([]);
     this.releaseId.set(null);
     this.assetId.set(null);
+    this.downloaded.set(false);
     this.loadError.set(null);
   }
 
@@ -382,6 +392,7 @@ export class ExtensionWizardComponent implements OnInit {
   chooseRelease(id: number | null): void {
     this.releaseId.set(id);
     this.assetFilter.set('');
+    this.downloaded.set(false);
     // With a single zip there is nothing to choose, and the list may sit below the fold.
     const [only, ...others] = this.assets();
     this.assetId.set(only && others.length === 0 ? only.id : null);
@@ -390,9 +401,16 @@ export class ExtensionWizardComponent implements OnInit {
   downloadAsset(): void {
     const asset = this.asset();
     if (asset) {
-      // One user gesture can start one download; the upload box below needs its own click.
+      // One user gesture can start one download; the upload step needs its own click.
       triggerBrowserDownload(asset.browserDownloadUrl, asset.name);
+      this.downloaded.set(true);
     }
+  }
+
+  /** For users who already have the file: continue without downloading it again. */
+  skipDownload(): void {
+    this.downloaded.set(true);
+    this.next();
   }
 
   private async create(): Promise<void> {
@@ -406,7 +424,6 @@ export class ExtensionWizardComponent implements OnInit {
       return;
     }
     const name = this.name().trim();
-    const restart = this.restart();
     const { sections, monitors } = toBuildInput(this.items(), this.selectedIds());
     try {
       const response = sections.length
@@ -416,27 +433,20 @@ export class ExtensionWizardComponent implements OnInit {
             sections,
             repository,
             true,
-            restart
+            false
           )
         : await this.repositoryService.createExtensionFromList(
             name,
             monitors,
             repository,
             true,
-            restart
+            false
           );
       if (response.status < 400) {
         this.alertService.success(
-          restart
-            ? this.messages.format(
-                gettext(
-                  'The extension "{{fileName}}" has been uploaded and Streaming Analytics Engine is restarting…'
-                ),
-                { fileName: `${name}.zip` }
-              )
-            : gettext(
-                'The selected blocks have been uploaded. They will be available in Analytics Builder after the next Apama restart.'
-              )
+          this.messages.format(gettext('The extension "{{fileName}}" has been uploaded.'), {
+            fileName: `${name}.zip`
+          })
         );
         this.result.set('done');
         return;
@@ -457,28 +467,20 @@ export class ExtensionWizardComponent implements OnInit {
       this.result.set('failed');
       return;
     }
-    const restart = this.restart();
     try {
       const { warning } = await this.repositoryService.deployReleaseAsset(
         repository,
         asset,
         release.tagName,
-        restart
+        false
       );
       if (warning) {
         this.alertService.warning(warning);
       }
       this.alertService.success(
-        restart
-          ? this.messages.format(
-              gettext(
-                'The extension "{{fileName}}" has been uploaded and Streaming Analytics Engine is restarting…'
-              ),
-              { fileName: asset.name }
-            )
-          : gettext(
-              'The extension has been uploaded. Its blocks will be available in Analytics Builder after the next Apama restart.'
-            )
+        this.messages.format(gettext('The extension "{{fileName}}" has been uploaded.'), {
+          fileName: asset.name
+        })
       );
       this.result.set('done');
     } catch (error) {
@@ -490,6 +492,48 @@ export class ExtensionWizardComponent implements OnInit {
 
   /** The extension name a release asset is stored under: the file name without `.zip`. */
   readonly assetExtensionName = computed(() => this.asset()?.name.replace(/\.zip$/i, '') ?? '');
+
+  private readonly extensionAdd = viewChild(ExtensionAddComponent);
+
+  /** Chromium only: a dialog that opens in the Downloads folder. Others keep the drop box. */
+  readonly canPickDownloaded = canPickFromDownloads();
+
+  /** The Downloads dialog; a property so tests can replace it. */
+  pickDownloadedFile: () => Promise<File | null> = () => pickZipFromDownloads();
+
+  /** Hands the file chosen in the Downloads dialog to the upload, as if it had been dropped. */
+  async selectDownloadedFile(): Promise<void> {
+    try {
+      const file = await this.pickDownloadedFile();
+      if (file) {
+        await this.extensionAdd()?.onFile(file);
+      }
+    } catch (error) {
+      console.error('[ExtensionWizardComponent] Could not open the Downloads dialog:', error);
+    }
+  }
+
+  /** An extension was added, whichever path: the restart is offered next, and is optional. */
+  readonly completed = computed(
+    () =>
+      (this.step() === 'result' && this.result() === 'done') ||
+      (this.step() === 'upload' && this.uploaded())
+  );
+
+  /**
+   * The optional restart that makes the new blocks available, offered the same way after every
+   * path. `AnalyticsService` shows the restart progress and any failure itself.
+   */
+  async restartNow(): Promise<void> {
+    this.restartState.set('running');
+    try {
+      await this.analyticsService.restartCepEngine();
+      this.restartState.set('done');
+    } catch (error) {
+      console.error('[ExtensionWizardComponent] Failed to restart the engine:', error);
+      this.restartState.set('failed');
+    }
+  }
 
   onUploaded(): void {
     this.uploaded.set(true);

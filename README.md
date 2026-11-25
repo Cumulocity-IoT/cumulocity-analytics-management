@@ -80,7 +80,7 @@ A tenant without configured repositories starts with [Cumulocity-IoT/analytics-b
 
 ## Backend service
 
-The plugin uses the backend microservice `analytics-ext-service` automatically when it is deployed and responding. Otherwise it works in browser-only mode, where you cannot build extensions. If the microservice is not deployed, the action bar of the **Block library** tab shows a **Re-check backend service** button. Select it after you deploy the microservice while the page is open.
+The plugin uses the backend microservice `analytics-ext-service` automatically when it is deployed and responding. Otherwise it works in browser-only mode, where you cannot build extensions. If the microservice is not deployed, the action bar of the **Block library** tab shows a **Backend service not deployed** warning button. Select it after you deploy the microservice while the page is open.
 
 ## Access control
 

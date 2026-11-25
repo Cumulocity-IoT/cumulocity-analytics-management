@@ -239,7 +239,7 @@
                         type="radio"
                         name="asset"
                         [checked]="assetId() === a.id"
-                        (change)="assetId.set(a.id)"
+                        (change)="assetId.set(a.id); downloaded.set(false)"
                       />
                       <span></span>
                       <span class="text-truncate">{{ a.name }}</span>
@@ -345,23 +345,6 @@
               >
             </c8y-messages>
           </c8y-form-group>
-          <c8y-form-group>
-            <label class="c8y-switch">
-              <input
-                type="checkbox"
-                [checked]="restart()"
-                (change)="restart.set($any($event.target).checked)"
-              />
-              <span></span>
-              <span>{{ 'Restart to deploy' | translate }}</span>
-            </label>
-            <p class="help-block">
-              {{
-                'Only after the restart, blocks are available to models in the Analytics Builder'
-                  | translate
-              }}
-            </p>
-          </c8y-form-group>
         </div>
       }
 
@@ -402,24 +385,6 @@
                   </span>
                 </div>
               }
-              <div class="wizard-review-row">
-                <span class="text-muted">{{ 'Restart' | translate }}</span>
-                @if (source() === 'release') {
-                  <label class="c8y-switch m-b-0">
-                    <input
-                      type="checkbox"
-                      [checked]="restart()"
-                      (change)="restart.set($any($event.target).checked)"
-                    />
-                    <span></span>
-                    <span>{{ 'Restart to deploy' | translate }}</span>
-                  </label>
-                } @else {
-                  <span>{{
-                    (restart() ? 'Yes, after the upload' : 'No, restart later') | translate
-                  }}</span>
-                }
-              </div>
             </div>
           </div>
           <div class="bg-level-1 p-16 rounded">
@@ -434,13 +399,11 @@
                 }}
               </li>
               <li>{{ 'Upload it to this tenant.' | translate }}</li>
-              @if (restart()) {
-                <li>
-                  {{
-                    'Restart the Streaming Analytics engine. This takes about a minute.' | translate
-                  }}
-                </li>
-              }
+              <li>
+                {{
+                  'Afterwards you can restart the engine to make the blocks available.' | translate
+                }}
+              </li>
             </ol>
           </div>
         </div>
@@ -453,13 +416,16 @@
               <c8y-loading [message]="'Building and uploading…' | translate"></c8y-loading>
             }
             @case ('done') {
-              <c8y-operation-result
-                class="lead"
-                type="success"
-                [text]="'Extension created' | translate"
-                [vertical]="true"
-                [size]="84"
-              ></c8y-operation-result>
+              <div class="d-col a-i-center">
+                <c8y-operation-result
+                  class="lead"
+                  type="success"
+                  [text]="'Extension created' | translate"
+                  [vertical]="true"
+                  [size]="84"
+                ></c8y-operation-result>
+                <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
+              </div>
             }
             @case ('failed') {
               <c8y-operation-result
@@ -485,18 +451,65 @@
           @if (asset(); as selected) {
             <button
               type="button"
-              class="btn btn-primary"
+              class="btn"
+              [class.btn-primary]="!downloaded()"
+              [class.btn-default]="downloaded()"
               (click)="downloadAsset()"
             >
               <i c8yIcon="download"></i>
-              {{ 'Download' | translate }} {{ selected.name }}
+              {{ (downloaded() ? 'Download again' : 'Download') | translate }} {{ selected.name }}
             </button>
             <small class="text-muted">{{ selected.size | bytes }}</small>
+            <small class="text-muted">
+              {{
+                'GitHub shows a "not found" page if the repository is private and this browser is not signed in to GitHub with access to it.'
+                  | translate
+              }}
+              <a
+                [href]="selected.browserDownloadUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ 'Open the file link' | translate }}</a
+              >
+            </small>
+            @if (downloaded()) {
+              <p
+                class="text-success m-b-0"
+                role="status"
+              >
+                <i c8yIcon="check-circle"></i>
+                {{
+                  'Download started. Find the file in your Downloads folder, then select Next.'
+                    | translate
+                }}
+              </p>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-link"
+                (click)="skipDownload()"
+              >
+                {{ 'I already have the file' | translate }}
+              </button>
+            }
           }
         </div>
       }
 
       @case ('upload') {
+        @if (source() === 'release' && canPickDownloaded && !uploaded()) {
+          <div class="d-flex a-i-center j-c-center gap-8 p-t-16 p-l-16 p-r-16">
+            <button
+              type="button"
+              class="btn btn-default"
+              (click)="selectDownloadedFile()"
+            >
+              <i c8yIcon="folder-open"></i>
+              {{ 'Select the downloaded file' | translate }}
+            </button>
+            <span class="text-muted">{{ 'or drop it below' | translate }}</span>
+          </div>
+        }
         <a17t-extension-add
           [embedded]="true"
           [headerText]="'Upload a *.zip file' | translate"
@@ -506,17 +519,81 @@
           [mode]="'add'"
           (uploaded)="onUploaded()"
         ></a17t-extension-add>
+        @if (uploaded()) {
+          <div class="p-l-16 p-r-16">
+            <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
+          </div>
+        }
       }
     }
   </div>
 </div>
+<ng-template #restartPanel>
+  <div
+    class="bg-level-1 p-16 rounded m-t-16 text-center"
+    role="status"
+  >
+    @switch (restartState()) {
+      @case ('running') {
+        <c8y-loading [message]="'Restarting the engine…' | translate"></c8y-loading>
+      }
+      @case ('done') {
+        <span class="text-success">
+          <i c8yIcon="check-circle"></i>
+          {{ 'The engine is restarting.' | translate }}
+        </span>
+      }
+      @case ('failed') {
+        <span class="text-danger">
+          <i c8yIcon="exclamation-circle"></i>
+          {{ 'The engine could not be restarted.' | translate }}
+        </span>
+      }
+      @default {
+        <p class="m-b-0">
+          {{
+            'The blocks of this extension are available in Analytics Builder after the Streaming Analytics engine restarts. The restart takes about a minute. You can also restart later.'
+              | translate
+          }}
+        </p>
+      }
+    }
+  </div>
+</ng-template>
+
 <div class="text-center card-footer p-24 separator flex-no-shrink">
-  @if (step() === 'result' || uploaded()) {
+  @if (completed()) {
+    @if (restartState() === 'idle') {
+      <button
+        type="button"
+        class="btn btn-default"
+        (click)="finish(true)"
+      >
+        {{ 'Done' | translate }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="restartNow()"
+      >
+        {{ 'Restart now' | translate }}
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="restartState() === 'running'"
+        (click)="finish(true)"
+      >
+        {{ 'Done' | translate }}
+      </button>
+    }
+  } @else if (step() === 'result') {
     <button
       type="button"
       class="btn btn-primary"
-      [disabled]="result() === 'running' && step() === 'result'"
-      (click)="finish(uploaded() || result() === 'done')"
+      [disabled]="result() === 'running'"
+      (click)="finish(false)"
     >
       {{ 'Done' | translate }}
     </button>

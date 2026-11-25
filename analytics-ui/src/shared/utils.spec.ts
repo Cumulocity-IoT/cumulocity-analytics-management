@@ -7,10 +7,62 @@ import {
   isCustomCepBlock,
   removeFileExtension,
   triggerBrowserDownload,
-  createShortId
+  createShortId,
+  removeZipSuffix,
+  canPickFromDownloads,
+  pickZipFromDownloads
 } from './utils';
 
 describe('utils', () => {
+  describe('removeZipSuffix', () => {
+    it('removes only a trailing .zip, in any case', () => {
+      expect(removeZipSuffix('Foo.zip')).toBe('Foo');
+      expect(removeZipSuffix('Foo.ZIP')).toBe('Foo');
+    });
+
+    it('keeps dotted names such as versions whole', () => {
+      expect(removeZipSuffix('Abs-1.0.1')).toBe('Abs-1.0.1');
+      expect(removeZipSuffix('Abs-1.0.1.zip')).toBe('Abs-1.0.1');
+      expect(removeZipSuffix('zip')).toBe('zip');
+    });
+  });
+
+  describe('picking a file from the Downloads folder', () => {
+    const win = (picker?: unknown) => ({ showOpenFilePicker: picker }) as unknown as Window;
+
+    it('is only offered where the browser has a file dialog', () => {
+      expect(canPickFromDownloads(win())).toBeFalse();
+      expect(canPickFromDownloads(win(() => Promise.resolve([])))).toBeTrue();
+    });
+
+    it('opens the dialog in Downloads, for one zip file, and returns the file', async () => {
+      const file = new File(['x'], 'Abs-1.0.1.zip');
+      const picker = jasmine.createSpy('picker').and.resolveTo([{ getFile: async () => file }]);
+
+      expect(await pickZipFromDownloads(win(picker))).toBe(file);
+
+      const [options] = picker.calls.mostRecent().args;
+      expect(options.startIn).toBe('downloads');
+      expect(options.multiple).toBeFalse();
+      expect(options.types[0].accept['application/zip']).toEqual(['.zip']);
+    });
+
+    it('returns null when the dialog is closed without a choice', async () => {
+      const abort = new DOMException('closed', 'AbortError');
+      expect(await pickZipFromDownloads(win(() => Promise.reject(abort)))).toBeNull();
+    });
+
+    it('passes other errors on', async () => {
+      await expectAsync(
+        pickZipFromDownloads(win(() => Promise.reject(new Error('denied'))))
+      ).toBeRejectedWithError('denied');
+    });
+
+    it('refuses when the browser has no file dialog', async () => {
+      await expectAsync(pickZipFromDownloads(win())).toBeRejected();
+    });
+  });
+
   describe('createShortId', () => {
     it('returns a 6 character alphanumeric id', () => {
       expect(createShortId()).toMatch(/^[a-z0-9]{1,6}$/);
@@ -169,6 +221,7 @@ describe('utils', () => {
       expect(clicked[0].href).toBe('https://example.com/file.zip');
       expect(clicked[0].download).toBe('file.zip');
       expect(clicked[0].rel).toBe('noopener');
+      expect(clicked[0].target).toBe('_blank');
       expect(document.body.contains(clicked[0])).toBeFalse();
     });
   });

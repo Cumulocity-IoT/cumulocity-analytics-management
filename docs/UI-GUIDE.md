@@ -91,7 +91,7 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 
 `RepositoryBlockGridComponent` (route `repository`) has these controls in its action bar:
 
-- **Re-check backend service** button, shown only while the microservice `analytics-ext-service` is not deployed.
+- **Backend service not deployed** warning button (click to check again), shown only while the microservice `analytics-ext-service` is not deployed.
   The backend is used automatically whenever it is deployed and responding.
 - **Repository** drop-down: lists every configured repository, enabled or not. The grid shows the blocks of the chosen repository only. The first enabled repository is chosen on first load.
 - **Hide installed** switch, **Add extension**, **Repositories** drawer, and **Reload**.
@@ -113,7 +113,11 @@ The page is for browsing one repository, which the grid title says ("Browse bloc
 An extension is built from exactly one repository. The Content step lists that repository's items and shows the reason
 next to every item that cannot be selected. `evaluateContent()` in `extension-wizard.logic.ts` holds these rules:
 already installed, not a monitor file, sections need the backend service, sections and individual files cannot be
-combined, and two items cannot define the same block. With the backend, a release is deployed server-side (`POST /extension/release`): the browser cannot read GitHub release assets, the service can. Without the backend the Download step hands the file to the user and the Upload step reuses `ExtensionAddComponent`.
+combined, and two items cannot define the same block. With the backend, a release is deployed server-side (`POST /extension/release`): the browser cannot read GitHub release assets, the service can. Without the backend the Download step hands the file to the user, and the Upload step reuses `ExtensionAddComponent`.
+
+The engine restart is never part of an add and not a step. After every path (build, release, upload) the finished screen
+offers it the same way: a note that the blocks are available after the restart, with **Restart now** and **Done**. No
+path restarts the engine on its own, so running models are not interrupted without the user choosing it.
 
 The grid title names the source: "Browse blocks from" followed by the repository name as a badge when all items come from one repository, and
 "Browse blocks from repositories" otherwise. With a single repository the **Repository Name** column is hidden,

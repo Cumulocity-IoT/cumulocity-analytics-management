@@ -27,7 +27,7 @@ button[title='Reload'] {
   border-radius: 4px;
   background: var(--c8y-brand-primary, #1776bf);
   color: var(--c8y-brand-primary-contrast, #fff);
-  font-size: 1.1em;
+  font-size: 0.8em;
   font-weight: 600;
   line-height: 1.3;
   vertical-align: baseline;

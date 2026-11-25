@@ -139,12 +139,15 @@
       type="button"
       class="btn btn-link"
       data-cy="repo-backend-recheck"
-      title="{{ 'Backend service not deployed' | translate }}"
+      title="{{ 'Check again whether the backend service is deployed' | translate }}"
       [disabled]="backendTogglePending"
       (click)="recheckBackend()"
     >
-      <i c8yIcon="refresh"></i>
-      {{ 'Re-check backend service' | translate }}
+      <i
+        c8yIcon="warning"
+        class="text-warning"
+      ></i>
+      {{ 'Backend service not deployed' | translate }}
     </button>
   </c8y-action-bar-item>
 }

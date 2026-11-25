@@ -3,6 +3,7 @@ import { FetchClient, IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { Category } from './analytics.model';
 import { CepError } from './cep-error';
+import { CepRestartService } from './cep-restart.service';
 import { ExtensionEnrichmentService } from './extension-enrichment.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
 
@@ -24,6 +25,7 @@ describe('ExtensionEnrichmentService', () => {
   let fetchClient: jasmine.SpyObj<FetchClient>;
   let inventory: jasmine.SpyObj<ExtensionInventoryService>;
   let alerts: jasmine.SpyObj<AlertService>;
+  let restart: jasmine.SpyObj<CepRestartService>;
   let routes: Record<string, () => Response>;
 
   const count = (url: string) => fetchClient.fetch.calls.allArgs().filter(a => a[0] === url).length;
@@ -42,11 +44,14 @@ describe('ExtensionEnrichmentService', () => {
     inventory = jasmine.createSpyObj('ExtensionInventoryService', ['getExtensionsFromInventory']);
     inventory.getExtensionsFromInventory.and.resolveTo([]);
     alerts = jasmine.createSpyObj('AlertService', ['danger']);
+    restart = jasmine.createSpyObj('CepRestartService', ['isExpectedTransientError']);
+    restart.isExpectedTransientError.and.returnValue(false);
     TestBed.configureTestingModule({
       providers: [
         { provide: FetchClient, useValue: fetchClient },
         { provide: ExtensionInventoryService, useValue: inventory },
-        { provide: AlertService, useValue: alerts }
+        { provide: AlertService, useValue: alerts },
+        { provide: CepRestartService, useValue: restart }
       ]
     });
     service = TestBed.inject(ExtensionEnrichmentService);
@@ -107,6 +112,22 @@ describe('ExtensionEnrichmentService', () => {
       service.invalidateCache();
       await service.getEnrichedExtensions();
       expect(inventory.getExtensionsFromInventory).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the dots of a versioned extension name, so it matches what the engine loaded', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs-1.0.1')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['name']).toBe('Abs-1.0.1');
+      expect(abs['loaded']).toBeTrue();
+    });
+
+    it('still ignores a ".zip" suffix on the inventory name', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Alpha.zip')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Alpha.json'], messages: [] });
+      const [alpha] = await service.getEnrichedExtensions();
+      expect(alpha['name']).toBe('Alpha');
+      expect(alpha['loaded']).toBeTrue();
     });
 
     it('rejects with a CepError without alerting, and does not cache the failure', async () => {
@@ -175,6 +196,22 @@ describe('ExtensionEnrichmentService', () => {
       expect(block).toEqual(
         jasmine.objectContaining({ file: '', type: '', url: '', downloadUrl: '', custom: true })
       );
+    });
+
+    it('does not show a "could not load" error while the engine restarts', async () => {
+      restart.isExpectedTransientError.and.returnValue(true);
+      routes[METADATA_URL] = () => ok({}, 503);
+      await expectAsync(service.getDeployedBlocks()).toBeRejectedWith(jasmine.any(CepError));
+      expect(alerts.danger).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    it('loads again after the restart, because the failure is not cached', async () => {
+      restart.isExpectedTransientError.and.returnValue(true);
+      routes[METADATA_URL] = () => ok({}, 503);
+      await expectAsync(service.getDeployedBlocks()).toBeRejected();
+      routes[METADATA_URL] = () => ok({ metadatas: [], messages: [] });
+      expect(await service.getDeployedBlocks()).toEqual([]);
     });
 
     it('alerts the user and does not cache when the metadata cannot be loaded', async () => {

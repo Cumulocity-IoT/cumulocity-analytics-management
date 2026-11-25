@@ -87,9 +87,11 @@ describe('ExtensionWizardComponent', () => {
     repositories.deployReleaseAsset.and.resolveTo({ id: '55' });
     analytics = jasmine.createSpyObj('AnalyticsService', [
       'isBackendServiceAvailable',
-      'uploadExtension'
+      'uploadExtension',
+      'restartCepEngine'
     ]);
     analytics.isBackendServiceAvailable.and.resolveTo(true);
+    analytics.restartCepEngine.and.resolveTo();
     github = jasmine.createSpyObj('GitHubReleaseService', ['parseOwnerRepo', 'listReleases']);
     github.parseOwnerRepo.and.returnValue({ owner: 'o', repo: 'r' });
     github.listReleases.and.resolveTo([release(2, ['b.zip', 'notes.txt']), release(1, ['a.zip'])]);
@@ -247,21 +249,10 @@ describe('ExtensionWizardComponent', () => {
         [component.items()[0]],
         jasmine.objectContaining({ id: 'a' }),
         true,
-        true
+        false
       );
       expect(component.result()).toBe('done');
       expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('"MyExt.zip"'));
-    });
-
-    it('uses the no-restart message when the restart option is off', async () => {
-      await toContent();
-      component.toggleItem(component.items()[0], true);
-      component.next();
-      component.restart.set(false);
-      component.next();
-      component.next();
-      await flush();
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('next Apama restart'));
     });
 
     it('builds from yaml sections through the yaml path', async () => {
@@ -281,7 +272,7 @@ describe('ExtensionWizardComponent', () => {
         ['Python'],
         jasmine.objectContaining({ id: 'a' }),
         true,
-        true
+        false
       );
     });
 
@@ -411,19 +402,10 @@ describe('ExtensionWizardComponent', () => {
         jasmine.objectContaining({ id: 'a' }),
         jasmine.objectContaining({ name: 'b.zip' }),
         'v2',
-        true
+        false
       );
       expect(component.result()).toBe('done');
       expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('"b.zip"'));
-    });
-
-    it('does not restart when the option is off', async () => {
-      await toReview();
-      component.restart.set(false);
-      component.next();
-      await flush();
-      expect(repositories.deployReleaseAsset.calls.mostRecent().args[3]).toBeFalse();
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('next Apama restart'));
     });
 
     it('passes the service warning on to the user', async () => {
@@ -443,15 +425,36 @@ describe('ExtensionWizardComponent', () => {
       expect(alerts.success).not.toHaveBeenCalled();
     });
 
-    it('lets the user continue from the download step without forcing the click', async () => {
+    it('needs the download before continuing, and says so', async () => {
       analytics.isBackendServiceAvailable.and.resolveTo(false);
       await toRelease();
       component.next();
       expect(component.step()).toBe('download');
+      expect(component.canContinue()).toBeFalse();
+      expect(component.blockedReason()).toBe('Download the file to continue.');
+      component.downloadAsset();
+      expect(component.downloaded()).toBeTrue();
       expect(component.canContinue()).toBeTrue();
       component.next();
       expect(component.step()).toBe('upload');
       expect(repositories.deployReleaseAsset).not.toHaveBeenCalled();
+    });
+
+    it('lets users who already have the file skip the download', async () => {
+      analytics.isBackendServiceAvailable.and.resolveTo(false);
+      await toRelease();
+      component.next();
+      component.skipDownload();
+      expect(component.step()).toBe('upload');
+    });
+
+    it('forgets the download when another release is chosen', async () => {
+      github.listReleases.and.resolveTo([release(3, ['a.zip', 'b.zip']), release(1, ['c.zip'])]);
+      await toRelease();
+      component.assetId.set(component.assets()[0].id);
+      component.downloadAsset();
+      component.chooseRelease(1);
+      expect(component.downloaded()).toBeFalse();
     });
 
     it('shows the reason when the releases cannot be listed', async () => {
@@ -465,6 +468,133 @@ describe('ExtensionWizardComponent', () => {
       await toRelease();
       expect(component.loadError()).toContain('could not be parsed');
       expect(github.listReleases).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('the optional restart', () => {
+    it('is not a step on any path', async () => {
+      analytics.isBackendServiceAvailable.and.resolveTo(false);
+      await create();
+      for (const source of ['release', 'build', 'upload'] as const) {
+        component.chooseSource(source);
+        expect(component.steps()).not.toContain('restart' as never);
+      }
+    });
+
+    it('is never done by the add itself: the service calls ask for no restart', async () => {
+      await create();
+      component.chooseSource('build');
+      component.next();
+      component.chooseRepository('a');
+      component.next();
+      await flush();
+      component.toggleItem(component.items()[0], true);
+      component.next();
+      component.next();
+      component.next();
+      await flush();
+      expect(repositories.createExtensionFromList.calls.mostRecent().args[4]).toBeFalse();
+      expect(analytics.restartCepEngine).not.toHaveBeenCalled();
+    });
+
+    it('is offered after a finished build', async () => {
+      await create();
+      component.chooseSource('build');
+      component.next();
+      component.chooseRepository('a');
+      component.next();
+      await flush();
+      component.toggleItem(component.items()[0], true);
+      component.next();
+      component.next();
+      expect(component.completed()).toBeFalse();
+      component.next();
+      await flush();
+      expect(component.completed()).toBeTrue();
+    });
+
+    it('is offered after a finished backend release deployment', async () => {
+      await create();
+      component.chooseSource('release');
+      component.next();
+      component.chooseRepository('a');
+      component.next();
+      await flush();
+      component.next();
+      component.next();
+      await flush();
+      expect(component.completed()).toBeTrue();
+      expect(repositories.deployReleaseAsset.calls.mostRecent().args[3]).toBeFalse();
+    });
+
+    it('is offered after a finished manual upload, which has no step after it', async () => {
+      await create('upload');
+      expect(component.completed()).toBeFalse();
+      component.onUploaded();
+      expect(component.completed()).toBeTrue();
+    });
+
+    it('is not offered after a failed build', async () => {
+      repositories.createExtensionFromList.and.rejectWith(new Error('x'));
+      await create();
+      component.chooseSource('build');
+      component.next();
+      component.chooseRepository('a');
+      component.next();
+      await flush();
+      component.toggleItem(component.items()[0], true);
+      component.next();
+      component.next();
+      component.next();
+      await flush();
+      expect(component.completed()).toBeFalse();
+    });
+
+    it('restarts the engine on request', async () => {
+      await create('upload');
+      component.onUploaded();
+      await component.restartNow();
+      expect(analytics.restartCepEngine).toHaveBeenCalledTimes(1);
+      expect(component.restartState()).toBe('done');
+    });
+
+    it('reports a failed restart', async () => {
+      analytics.restartCepEngine.and.rejectWith(new Error('down'));
+      await create('upload');
+      component.onUploaded();
+      await component.restartNow();
+      expect(component.restartState()).toBe('failed');
+    });
+  });
+
+  describe('selecting the downloaded file', () => {
+    it('hands the file from the Downloads dialog to the upload', async () => {
+      const file = new File(['x'], 'b.zip');
+      await create();
+      const spy = jasmine.createSpy('pick').and.resolveTo(file);
+      component.pickDownloadedFile = spy;
+      const onFile = jasmine.createSpy('onFile').and.resolveTo();
+      spyOn(component as never, 'extensionAdd' as never).and.returnValue({ onFile } as never);
+
+      await component.selectDownloadedFile();
+
+      expect(spy).toHaveBeenCalled();
+      expect(onFile).toHaveBeenCalledOnceWith(file);
+    });
+
+    it('does nothing when the dialog is closed without a choice', async () => {
+      await create();
+      component.pickDownloadedFile = () => Promise.resolve(null);
+      const onFile = jasmine.createSpy('onFile');
+      spyOn(component as never, 'extensionAdd' as never).and.returnValue({ onFile } as never);
+      await component.selectDownloadedFile();
+      expect(onFile).not.toHaveBeenCalled();
+    });
+
+    it('survives a browser that cannot open the dialog', async () => {
+      await create();
+      component.pickDownloadedFile = () => Promise.reject(new Error('no dialog'));
+      await expectAsync(component.selectDownloadedFile()).toBeResolved();
     });
   });
 

@@ -15,8 +15,9 @@ import {
   RawCepBlock
 } from './analytics.model';
 import { CepError, fetchCepJSON } from './cep-error';
+import { CepRestartService } from './cep-restart.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
-import { isCustomCepBlock, removeFileExtension } from './utils';
+import { isCustomCepBlock, removeFileExtension, removeZipSuffix } from './utils';
 
 /**
  * Cross-references inventory extensions against what the CEP correlator has
@@ -53,7 +54,8 @@ export class ExtensionEnrichmentService {
   constructor(
     private readonly alertService: AlertService,
     private readonly fetchClient: FetchClient,
-    private readonly extensionInventoryService: ExtensionInventoryService
+    private readonly extensionInventoryService: ExtensionInventoryService,
+    private readonly cepRestartService: CepRestartService
   ) {}
 
   /** Clears every cache invalidated by an extension being added/updated/deleted. */
@@ -94,10 +96,13 @@ export class ExtensionEnrichmentService {
     if (!this.cachedDeployedBlocks) {
       this.cachedDeployedBlocks = this.loadDeployedBlocks().catch(error => {
         this.cachedDeployedBlocks = null;
+        // While the engine restarts, the blocks cannot be read. That is expected and passes
+        // by itself, and the restart toast already says so: no "could not load" error.
+        const expected = this.cepRestartService.isExpectedTransientError(error);
         throw this.handleError(
           error,
           'Failed to load deployed blocks',
-          true,
+          !expected,
           gettext('Could not load deployed blocks. Please refresh.')
         );
       });
@@ -203,7 +208,8 @@ export class ExtensionEnrichmentService {
   ): Promise<IManagedObject> {
     // Some inventory entries keep the ".zip" suffix in their name; normalize
     // it so lookups against the correlator (which never uses ".zip") match.
-    const cleanName = removeFileExtension(extension['name']);
+    // Only ".zip": an extension named "Abs-1.0.1" must not lose its ".1" and so its match.
+    const cleanName = removeZipSuffix(extension['name']);
     const metadataKey = cleanName + CEP_METADATA_JSON_SUFFIX;
     const diagnosticsKey = cleanName + CEP_DIAGNOSTICS_ZIP_SUFFIX;
 
@@ -294,7 +300,14 @@ export class ExtensionEnrichmentService {
     showAlert: boolean = false,
     userMessage?: string
   ): Error {
-    console.error(`[ExtensionEnrichmentService] ${logMessage}:`, error);
+    if (this.cepRestartService.isExpectedTransientError(error)) {
+      console.warn(
+        `[ExtensionEnrichmentService] ${logMessage} (expected while the engine restarts):`,
+        error
+      );
+    } else {
+      console.error(`[ExtensionEnrichmentService] ${logMessage}:`, error);
+    }
 
     if (showAlert) {
       this.alertService.danger(userMessage || this.getErrorMessage(error));

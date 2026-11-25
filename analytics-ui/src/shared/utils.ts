@@ -14,6 +14,14 @@ export function removeFileExtension(name: string): string {
   return result;
 }
 
+/**
+ * Removes a trailing ".zip" and nothing else. Unlike `removeFileExtension`, a name that merely
+ * contains dots ("Abs-1.0.1", a version) is kept whole.
+ */
+export function removeZipSuffix(name: string): string {
+  return name.replace(/\.zip$/i, '');
+}
+
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);
@@ -97,6 +105,9 @@ export function triggerBrowserDownload(url: string, filename: string): void {
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
+  // A new tab: if GitHub answers with an error page (for example a 404 for a private repository
+  // the browser is not signed in to), it must not replace the app and the wizard in this tab.
+  anchor.target = '_blank';
   anchor.rel = 'noopener';
   document.body.appendChild(anchor);
   anchor.click();
@@ -154,5 +165,44 @@ function githubWebUrlToContentApi(githubWebUrl: string): string {
     throw new Error(
       `Failed to convert GitHub URL: ${error instanceof Error ? error.message : String(error)}`
     );
+  }
+}
+
+type OpenFilePicker = (options: unknown) => Promise<{ getFile(): Promise<File> }[]>;
+
+/** The File System Access API's open dialog, where the browser has it (Chromium based). */
+const filePicker = (win: Window): OpenFilePicker | undefined =>
+  (win as unknown as { showOpenFilePicker?: OpenFilePicker }).showOpenFilePicker?.bind(win);
+
+/** Whether `pickZipFromDownloads` can open a picker in this browser. */
+export function canPickFromDownloads(win: Window = window): boolean {
+  return !!filePicker(win);
+}
+
+/**
+ * Opens the file dialog in the user's Downloads folder, showing only zip files, so the file that
+ * was just downloaded is one click away. A page cannot select a file by itself.
+ *
+ * @returns the chosen file, or null if the dialog was closed without a choice
+ * @throws if the browser has no such dialog (check `canPickFromDownloads` first)
+ */
+export async function pickZipFromDownloads(win: Window = window): Promise<File | null> {
+  const open = filePicker(win);
+  if (!open) {
+    throw new Error('This browser cannot open a file dialog in the Downloads folder');
+  }
+  try {
+    const [handle] = await open({
+      id: 'a17t-extension-zip',
+      startIn: 'downloads',
+      multiple: false,
+      types: [{ description: 'Extension zip', accept: { 'application/zip': ['.zip'] } }]
+    });
+    return handle ? await handle.getFile() : null;
+  } catch (error) {
+    if ((error as DOMException)?.name === 'AbortError') {
+      return null;
+    }
+    throw error;
   }
 }
