@@ -18,6 +18,8 @@ import {
   UploadMode,
   canPickFromDownloads,
   pickZipFromDownloads,
+  removeZipSuffix,
+  splitExtensionVersion,
   triggerBrowserDownload
 } from '../../shared';
 import { MessageService } from '../../shared/message.service';
@@ -108,6 +110,13 @@ export class ExtensionWizardComponent implements OnInit {
 
   /** Set through `initialState` to skip the first step. */
   initialSource: WizardSource | null = null;
+
+  /**
+   * Set together with `initialSelectedIds` when the user has already ticked blocks in the Block
+   * library: the wizard then starts as a build from that repository, with those blocks chosen.
+   */
+  initialRepositoryId: string | null = null;
+  initialSelectedIds: string[] = [];
 
   readonly source = signal<WizardSource | null>(null);
   readonly stepIndex = signal(0);
@@ -238,9 +247,51 @@ export class ExtensionWizardComponent implements OnInit {
       .isBackendServiceAvailable()
       .then(available => this.backendAvailable.set(available))
       .catch(() => this.backendAvailable.set(false));
-    if (this.initialSource) {
+    if (this.initialRepositoryId && this.initialSelectedIds.length > 0) {
+      void this.startFromSelection(this.initialRepositoryId, this.initialSelectedIds);
+    } else if (this.initialSource) {
       this.chooseSource(this.initialSource);
       this.next();
+    }
+  }
+
+  /**
+   * Skips the source, repository and content steps: the blocks are already ticked in the Block
+   * library. What cannot be built (installed, a conflict, sections without the backend) is left
+   * out, and the content step stays open so that the user sees the difference.
+   */
+  private async startFromSelection(repositoryId: string, wantedIds: string[]): Promise<void> {
+    this.chooseSource('build');
+    this.chooseRepository(repositoryId);
+    const [repositories, backend] = await Promise.all([
+      firstValueFrom(this.repositoryService.getRepositories()),
+      this.analyticsService.isBackendServiceAvailable().catch(() => false)
+    ]);
+    this.repositories.set(repositories);
+    this.backendAvailable.set(backend);
+    this.stepIndex.set(this.steps().indexOf('content'));
+    await this.loadItems();
+
+    const wanted = new Set(wantedIds);
+    const chosen = new Set<string>();
+    for (const item of this.items()) {
+      if (
+        wanted.has(item.id) &&
+        !evaluateContent(this.items(), chosen, backend).get(item.id)?.disabled
+      ) {
+        chosen.add(item.id);
+      }
+    }
+    this.selectedIds.set(chosen);
+    if (chosen.size > 0 && chosen.size === wanted.size) {
+      this.suggestName();
+      this.stepIndex.set(this.steps().indexOf('details'));
+    }
+  }
+
+  private suggestName(): void {
+    if (!this.name()) {
+      this.name.set(this.selectedItems()[0]?.name.replace(/\.mon$/i, '') ?? '');
     }
   }
 
@@ -278,8 +329,10 @@ export class ExtensionWizardComponent implements OnInit {
       void this.loadItems();
     } else if (step === 'repository' && upcoming === 'release') {
       void this.loadReleases();
-    } else if (step === 'content' && upcoming === 'details' && !this.name()) {
-      this.name.set(this.selectedItems()[0]?.name.replace(/\.mon$/i, '') ?? '');
+    } else if (step === 'content' && upcoming === 'details') {
+      this.suggestName();
+    } else if (upcoming === 'review' && this.source() === 'release') {
+      void this.loadInstalledExtension();
     } else if (upcoming === 'result') {
       void this.create();
     }
@@ -459,6 +512,42 @@ export class ExtensionWizardComponent implements OnInit {
     }
   }
 
+  /** Tells what a release deployment replaces; empty when it installs something new. */
+  readonly replaceNote = computed(() => {
+    const installed = this.installedExtension();
+    if (!installed) {
+      return '';
+    }
+    const version = installed['build_information']?.version;
+    const extensionName = this.assetExtensionName();
+    return version
+      ? this.messages.format(
+          gettext(
+            'The installed extension "{{extensionName}}" (version {{version}}) will be replaced.'
+          ),
+          { extensionName, version }
+        )
+      : this.messages.format(
+          gettext('The installed extension "{{extensionName}}" will be replaced.'),
+          {
+            extensionName
+          }
+        );
+  });
+
+  private async loadInstalledExtension(): Promise<void> {
+    this.installedExtension.set(null);
+    try {
+      const name = this.assetExtensionName();
+      const installed = await this.analyticsService.getExtensionsFromInventory();
+      this.installedExtension.set(installed.find(ext => ext['name'] === name) ?? null);
+    } catch (error) {
+      // Without the list the deployment simply does not replace anything; the service refuses
+      // a name that exists and says so.
+      console.error('[ExtensionWizardComponent] Could not look up the installed extension:', error);
+    }
+  }
+
   /** Backend path: the service downloads the asset and uploads it as an extension. */
   private async deployRelease(repository: Repository): Promise<void> {
     const asset = this.asset();
@@ -472,7 +561,8 @@ export class ExtensionWizardComponent implements OnInit {
         repository,
         asset,
         release.tagName,
-        false
+        false,
+        !!this.installedExtension()
       );
       if (warning) {
         this.alertService.warning(warning);
@@ -490,8 +580,14 @@ export class ExtensionWizardComponent implements OnInit {
     }
   }
 
-  /** The extension name a release asset is stored under: the file name without `.zip`. */
-  readonly assetExtensionName = computed(() => this.asset()?.name.replace(/\.zip$/i, '') ?? '');
+  /** What a release asset is stored as: `Abs-1.0.1.zip` is the extension `Abs`, version `1.0.1`. */
+  readonly assetExtension = computed(() =>
+    splitExtensionVersion(removeZipSuffix(this.asset()?.name ?? ''))
+  );
+  readonly assetExtensionName = computed(() => this.assetExtension().name);
+
+  /** The installed extension a release deployment replaces, if there is one. */
+  readonly installedExtension = signal<IManagedObject | null>(null);
 
   private readonly extensionAdd = viewChild(ExtensionAddComponent);
 

@@ -344,7 +344,8 @@ paths:
       description: |
         The service downloads the asset of the configured repository (the browser cannot, GitHub sends
         no CORS headers for release assets) and uploads it as an extension named after the file without
-        `.zip`. The asset URL is built from the configured repository, never taken from the caller.
+        `.zip` and without its version (`Abs-1.0.1.zip` is the extension `Abs`, version `1.0.1`, kept in its build
+        information). The asset URL is built from the configured repository, never taken from the caller.
       operationId: deployExtensionFromRelease
       x-required-role: CREATE (ADMIN with deploy or replace)
       requestBody:
@@ -714,7 +715,7 @@ components:
           example: 987654
         asset_name:
           type: string
-          description: File name of the asset, ending in `.zip`. The extension is named after it.
+          description: File name of the asset, ending in `.zip`. The extension is named after it, without the version.
           example: Abs-1.0.1.zip
         release_tag:
           type: string

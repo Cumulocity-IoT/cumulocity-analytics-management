@@ -4,7 +4,6 @@ import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   Category,
-  CEP_METADATA_JSON_SUFFIX,
   CEP_DIAGNOSTICS_ZIP_SUFFIX,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_PATH_EN,
@@ -17,7 +16,12 @@ import {
 import { CepError, fetchCepJSON } from './cep-error';
 import { CepRestartService } from './cep-restart.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
-import { isCustomCepBlock, removeFileExtension, removeZipSuffix } from './utils';
+import {
+  isCustomCepBlock,
+  removeFileExtension,
+  removeZipSuffix,
+  splitExtensionVersion
+} from './utils';
 
 /**
  * Cross-references inventory extensions against what the CEP correlator has
@@ -168,9 +172,13 @@ export class ExtensionEnrichmentService {
 
     const inflight = (async () => {
       try {
+        // The engine keeps an uploaded extension's metadata under "<name>-<version>", while the
+        // extension itself is stored without the version.
+        const metadata = await this.getDeployedExtensionsMetadata().catch(() => undefined);
+        const metadataName = this.resolveMetadataName(extensionName, metadata) ?? extensionName;
         const data = await fetchCepJSON<CepExtension>(
           this.fetchClient,
-          `${CEP_PATH_EN}/${encodeURIComponent(extensionName)}.json`
+          `${CEP_PATH_EN}/${encodeURIComponent(metadataName)}.json`
         );
         return { ...data, name: extensionName };
       } catch (error) {
@@ -201,6 +209,22 @@ export class ExtensionEnrichmentService {
     return this.cachedDeployedExtensionsMetadata;
   }
 
+  /**
+   * The name the engine registered an extension's blocks under: the name itself, or the one
+   * entry that is the name plus a version ("Abs" is "Abs-1.0.1"). Null when it is not deployed.
+   */
+  private resolveMetadataName(
+    name: string,
+    metadata: CepExtensionsMetadata | undefined
+  ): string | null {
+    const registered = (metadata?.metadatas ?? []).map(removeFileExtension);
+    if (registered.includes(name)) {
+      return name;
+    }
+    const versioned = registered.filter(entry => splitExtensionVersion(entry).name === name);
+    return versioned.length === 1 ? versioned[0] : null;
+  }
+
   private async addDeploymentStatus(
     extension: IManagedObject,
     deployedMetadata: CepExtensionsMetadata,
@@ -210,22 +234,20 @@ export class ExtensionEnrichmentService {
     // it so lookups against the correlator (which never uses ".zip") match.
     // Only ".zip": an extension named "Abs-1.0.1" must not lose its ".1" and so its match.
     const cleanName = removeZipSuffix(extension['name']);
-    const metadataKey = cleanName + CEP_METADATA_JSON_SUFFIX;
     const diagnosticsKey = cleanName + CEP_DIAGNOSTICS_ZIP_SUFFIX;
 
     // Direction-agnostic match: handles entries returned as either "foo.json"
     // (exact) or "foo" (extension stripped). Matching only one direction is
     // fragile against API drift; this catches both shapes explicitly.
-    const isDeployedViaMetadata = deployedMetadata?.metadatas?.some(
-      name => name === metadataKey || removeFileExtension(name) === cleanName
-    );
+    const metadataName = this.resolveMetadataName(cleanName, deployedMetadata);
+    const isDeployedViaMetadata = metadataName !== null;
     const isDeployedViaDiagnostics =
       !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
     const isDeployed = isDeployedViaMetadata || isDeployedViaDiagnostics;
 
     let blockCount = 0;
     if (isDeployed) {
-      const details = await this.getDeployedExtensionDetails(cleanName);
+      const details = await this.getDeployedExtensionDetails(metadataName ?? cleanName);
       blockCount = details?.analytics?.length || 0;
     }
 

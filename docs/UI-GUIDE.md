@@ -96,7 +96,15 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 - **Repository** drop-down: lists every configured repository. The grid shows the blocks of the chosen repository only. The first repository is chosen on first load. Repositories have no enabled or disabled state; an `enabled` value stored by an older version is ignored.
 - **Hide installed** switch, **Add extension**, **Repositories** drawer, and **Reload**.
 
-The page is for browsing one repository, which the grid title says ("Browse blocks from …"). It has no row selection. **Add extension** opens the wizard (see below).
+The page is for browsing one repository, which the grid title says ("Browse blocks from …"). Tick rows to choose blocks: **Add extension** then opens the wizard as a build from that repository, with those blocks chosen, at the name step (a count on the button shows how many are ticked). Blocks that cannot be built are left out and the content step stays open. Without a selection **Add extension** opens the wizard (see below).
+
+### Extension names and versions
+
+The version is never part of an extension's name. `Abs-1.0.1.zip` is stored as the extension `Abs` with the version
+`1.0.1` in its build information, shown on the extension's details page. A newer version therefore replaces the
+installed one: the upload asks to update it, and a release deployment says what it replaces. The split is
+`splitExtensionVersion()` in the UI and `split_extension_version()` in `analytics-service`. The engine registers the
+blocks under the versioned name, so the UI looks the extension up under both.
 
 ### Add extension wizard
 

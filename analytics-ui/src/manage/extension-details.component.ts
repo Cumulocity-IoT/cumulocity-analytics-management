@@ -83,6 +83,14 @@ export class ExtensionDetailsComponent implements OnInit {
         });
       }
 
+      if (buildInfo.version) {
+        this.buildInformation.push({
+          label: 'Version',
+          type: 'string',
+          value: buildInfo.version
+        });
+      }
+
       // Add Repository information if available
       const repo = buildInfo.repository;
       if (repo?.name) {

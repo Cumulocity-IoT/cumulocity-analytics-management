@@ -26,7 +26,8 @@ import {
   DestroyRef,
   OnInit,
   ViewEncapsulation,
-  inject
+  inject,
+  viewChild
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
@@ -37,6 +38,7 @@ import {
   Column,
   ColumnDataType,
   CoreModule,
+  DataGridComponent,
   Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
@@ -318,6 +320,9 @@ export class RepositoryBlockGridComponent implements OnInit {
   }
 
   selectRepository(id: string): void {
+    if (id !== this.selectedRepositoryId) {
+      this.selectedItemIds = [];
+    }
     this.selectedRepositoryId = id;
     this.selectedRepositoryId$.next(id);
   }
@@ -326,9 +331,24 @@ export class RepositoryBlockGridComponent implements OnInit {
     this.showConfigRepositories = true;
   }
 
+  private readonly dataGrid = viewChild(DataGridComponent);
+
+  /** Ids of the rows ticked in the grid; the wizard starts with them chosen. */
+  selectedItemIds: string[] = [];
+
+  onItemsSelect(ids: string[]): void {
+    this.selectedItemIds = ids;
+  }
+
   addExtension(): void {
-    this.extensionWizard.open().subscribe(added => {
+    const options =
+      this.selectedItemIds.length > 0 && this.selectedRepositoryId
+        ? { repositoryId: this.selectedRepositoryId, selectedIds: this.selectedItemIds }
+        : undefined;
+    this.extensionWizard.open(options).subscribe(added => {
       if (added) {
+        this.dataGrid()?.cancel();
+        this.selectedItemIds = [];
         this.reload();
       }
     });

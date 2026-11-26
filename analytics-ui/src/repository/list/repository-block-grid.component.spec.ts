@@ -252,6 +252,35 @@ describe('RepositoryBlockGridComponent', () => {
       expect(component.showConfigRepositories).toBeFalse();
     });
 
+    it('starts the wizard with the ticked rows of the shown repository', async () => {
+      await create();
+      wizard.open.and.returnValue(new Subject<boolean>());
+      component.onItemsSelect(['A', 'B']);
+      component.addExtension();
+      expect(wizard.open).toHaveBeenCalledWith({ repositoryId: 'a', selectedIds: ['A', 'B'] });
+    });
+
+    it('starts the plain wizard when nothing is ticked', async () => {
+      await create();
+      wizard.open.and.returnValue(new Subject<boolean>());
+      component.addExtension();
+      expect(wizard.open).toHaveBeenCalledWith(undefined);
+    });
+
+    it('forgets the ticked rows when another repository is shown, and after an extension was added', async () => {
+      await create();
+      component.onItemsSelect(['A']);
+      component.selectRepository('b');
+      expect(component.selectedItemIds).toEqual([]);
+
+      const closed = new Subject<boolean>();
+      wizard.open.and.returnValue(closed);
+      component.onItemsSelect(['B']);
+      component.addExtension();
+      closed.next(true);
+      expect(component.selectedItemIds).toEqual([]);
+    });
+
     it('opens the add-extension wizard and reloads the items only when one was added', () => {
       const closed = new Subject<boolean>();
       wizard.open.and.returnValue(closed);

@@ -284,7 +284,8 @@ export class RepositoryBackendService {
     repository: Repository,
     asset: GitHubReleaseAsset,
     releaseTag: string,
-    deploy: boolean
+    deploy: boolean,
+    replace = false
   ): Promise<{ id: string; warning?: string }> {
     try {
       const response = await this.fetchClient.fetch(
@@ -296,7 +297,8 @@ export class RepositoryBackendService {
             asset_id: asset.id,
             asset_name: asset.name,
             release_tag: releaseTag,
-            deploy
+            deploy,
+            replace
           }),
           method: 'POST'
         }

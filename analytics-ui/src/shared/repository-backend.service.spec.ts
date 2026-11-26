@@ -225,8 +225,16 @@ describe('RepositoryBackendService', () => {
         asset_id: 987,
         asset_name: 'Abs-1.0.1.zip',
         release_tag: 'v1.0.1',
-        deploy: true
+        deploy: true,
+        replace: false
       });
+    });
+
+    it('asks to replace the installed extension on request', async () => {
+      fetchClient.fetch.and.resolveTo(response());
+      await service.deployReleaseAsset(repository, asset, 'v1', false, true);
+      const [, { body }] = fetchClient.fetch.calls.mostRecent().args as [string, any];
+      expect(JSON.parse(body).replace).toBeTrue();
     });
 
     it('never sends the access token or the download URL', async () => {

@@ -87,10 +87,12 @@ describe('ExtensionWizardComponent', () => {
     analytics = jasmine.createSpyObj('AnalyticsService', [
       'isBackendServiceAvailable',
       'uploadExtension',
-      'restartCepEngine'
+      'restartCepEngine',
+      'getExtensionsFromInventory'
     ]);
     analytics.isBackendServiceAvailable.and.resolveTo(true);
     analytics.restartCepEngine.and.resolveTo();
+    analytics.getExtensionsFromInventory.and.resolveTo([]);
     github = jasmine.createSpyObj('GitHubReleaseService', ['parseOwnerRepo', 'listReleases']);
     github.parseOwnerRepo.and.returnValue({ owner: 'o', repo: 'r' });
     github.listReleases.and.resolveTo([release(2, ['b.zip', 'notes.txt']), release(1, ['a.zip'])]);
@@ -393,7 +395,36 @@ describe('ExtensionWizardComponent', () => {
       expect(component.assetExtensionName()).toBe('b');
     });
 
-    it('deploys through the backend and reports success, restarting by default', async () => {
+    it('keeps the version out of the extension name', async () => {
+      github.listReleases.and.resolveTo([release(3, ['Abs-1.0.1.zip'])]);
+      await toRelease();
+      expect(component.assetExtension()).toEqual({ name: 'Abs', version: '1.0.1' });
+    });
+
+    it('says what the deployment replaces, and asks the service to replace it', async () => {
+      github.listReleases.and.resolveTo([release(3, ['Abs-1.0.1.zip'])]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { name: 'Abs', build_information: { version: '1.0.0' } } as never
+      ]);
+      await toRelease();
+      component.next();
+      await flush();
+      expect(component.replaceNote()).toContain('"Abs" (version 1.0.0) will be replaced');
+      component.next();
+      await flush();
+      expect(repositories.deployReleaseAsset.calls.mostRecent().args[4]).toBeTrue();
+    });
+
+    it('does not replace anything when the extension is new', async () => {
+      await toReview();
+      await flush();
+      expect(component.replaceNote()).toBe('');
+      component.next();
+      await flush();
+      expect(repositories.deployReleaseAsset.calls.mostRecent().args[4]).toBeFalse();
+    });
+
+    it('deploys through the backend and reports success without restarting', async () => {
       await toReview();
       component.next(); // result
       await flush();
@@ -401,6 +432,7 @@ describe('ExtensionWizardComponent', () => {
         jasmine.objectContaining({ id: 'a' }),
         jasmine.objectContaining({ name: 'b.zip' }),
         'v2',
+        false,
         false
       );
       expect(component.result()).toBe('done');
@@ -563,6 +595,67 @@ describe('ExtensionWizardComponent', () => {
       component.onUploaded();
       await component.restartNow();
       expect(component.restartState()).toBe('failed');
+    });
+  });
+
+  describe('starting from rows ticked in the Block library', () => {
+    const start = async (ids: string[], items?: RepositoryItem[]) => {
+      if (items) {
+        repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of(items));
+      }
+      const fixture = TestBed.createComponent(ExtensionWizardComponent);
+      component = fixture.componentInstance;
+      component.initialRepositoryId = 'a';
+      component.initialSelectedIds = ids;
+      component.ngOnInit();
+      await flush();
+      await flush();
+    };
+
+    it('starts as a build from that repository, at the name step, with the rows chosen', async () => {
+      await start(['Good']);
+      expect(component.source()).toBe('build');
+      expect(component.repositoryId()).toBe('a');
+      expect(component.step()).toBe('details');
+      expect([...component.selectedIds()]).toEqual(['Good']);
+      expect(component.name()).toBe('Good');
+    });
+
+    it('can go back to change the content', async () => {
+      await start(['Good']);
+      component.back();
+      expect(component.step()).toBe('content');
+      expect(component.selectedIds().size).toBe(1);
+    });
+
+    it('leaves out what cannot be built and stays on the content step to show it', async () => {
+      await start(['Good', 'Installed']);
+      expect(component.step()).toBe('content');
+      expect([...component.selectedIds()]).toEqual(['Good']);
+    });
+
+    it('stays on the content step when nothing ticked can be built', async () => {
+      await start(['Installed']);
+      expect(component.step()).toBe('content');
+      expect(component.selectedIds().size).toBe(0);
+    });
+
+    it('does not choose two rows that define the same block', async () => {
+      await start(
+        ['A', 'B'],
+        [item('A', { blockIds: ['x.Block'] }), item('B', { blockIds: ['x.Block'] })]
+      );
+      expect([...component.selectedIds()]).toEqual(['A']);
+      expect(component.step()).toBe('content');
+    });
+
+    it('builds the ticked row like any other selection', async () => {
+      await start(['Good']);
+      component.next();
+      component.next();
+      await flush();
+      expect(repositories.createExtensionFromList).toHaveBeenCalled();
+      expect(component.result()).toBe('done');
     });
   });
 

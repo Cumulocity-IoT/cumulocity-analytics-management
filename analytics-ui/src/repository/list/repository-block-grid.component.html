@@ -110,6 +110,9 @@
   >
     <i c8yIcon="plus-circle"></i>
     {{ 'Add extension' | translate }}
+    @if (selectedItemIds.length > 0) {
+      <span class="badge badge-primary m-l-4">{{ selectedItemIds.length }}</span>
+    }
   </button>
 </c8y-action-bar-item>
 
@@ -166,7 +169,8 @@
         [columns]="columnsSamples"
         [rows]="(repositoryItems$ | async) ?? []"
         [pagination]="pagination"
-        [selectable]="false"
+        [selectable]="true"
+        (itemsSelect)="onItemsSelect($event)"
         [actionControls]="actionControls"
       >
         <c8y-ui-empty-state

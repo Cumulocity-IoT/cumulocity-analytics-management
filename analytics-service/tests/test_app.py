@@ -940,13 +940,14 @@ class TestDeployFromRelease:
         assert resp.status_code == 201
         assert resp.get_json() == {"id": "55", "message": "Extension uploaded"}
         name, archive, build_info = agent_mock.upload_extension.call_args.args[1:4]
-        assert name == "Abs-1.0.1"
+        assert name == "Abs"
         assert archive.read(2) == b"PK"
         assert build_info == {
             "build_type": "release",
             "repository": {k: REPO[k] for k in ("id", "name", "url")},
             "release": "v1.0.1",
             "asset": "Abs-1.0.1.zip",
+            "version": "1.0.1",
         }
         agent_mock.restart_cep.assert_not_called()
 
@@ -1076,6 +1077,28 @@ class TestDeployFromRelease:
         monkeypatch.setattr(app_module.requests, "get", get)
         assert client.post(self.URL, json=self.BODY).status_code == 413
         env[0].upload_extension.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "asset_name,name,version",
+        [
+            ("Abs-1.0.1.zip", "Abs", "1.0.1"),
+            ("contrib-blocks-1.0.1.zip", "contrib-blocks", "1.0.1"),
+            ("Foo_v2.3.zip", "Foo", "2.3"),
+            ("Foo-1.0.0-rc.1.zip", "Foo", "1.0.0-rc.1"),
+            ("HttpOutputBlock.zip", "HttpOutputBlock", None),
+            ("Block-2.zip", "Block", "2"),
+        ],
+    )
+    def test_the_version_is_metadata_not_part_of_the_name(
+        self, client, env, asset_name, name, version
+    ):
+        agent_mock, _ = env
+        resp = client.post(self.URL, json={**self.BODY, "asset_name": asset_name})
+        assert resp.status_code == 201
+        sent_name, _, build_info = agent_mock.upload_extension.call_args.args[1:4]
+        assert sent_name == name
+        assert build_info["version"] == version
+        assert agent_mock.count_extensions.call_args.args[1] == name
 
     def test_the_download_is_always_closed(self, client, env, monkeypatch, fake_response):
         closed = []

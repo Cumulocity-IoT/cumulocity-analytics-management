@@ -122,6 +122,31 @@ describe('ExtensionEnrichmentService', () => {
       expect(abs['loaded']).toBeTrue();
     });
 
+    it('finds an extension stored without its version under the versioned name the engine registered', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      routes[detailUrl('Abs-1.0.1')] = () => ok({ analytics: [{ id: 'a.Abs' }] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['name']).toBe('Abs');
+      expect(abs['loaded']).toBeTrue();
+      expect(abs['blocksCount']).toBe(1);
+    });
+
+    it('does not mix up extensions that merely start with the same name', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['AbsoluteValue-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['loaded']).toBeFalse();
+    });
+
+    it('does not guess when several versions are registered', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () =>
+        ok({ metadatas: ['Abs-1.0.0.json', 'Abs-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['loaded']).toBeFalse();
+    });
+
     it('still ignores a ".zip" suffix on the inventory name', async () => {
       inventory.getExtensionsFromInventory.and.resolveTo([ext('Alpha.zip')]);
       routes[METADATA_URL] = () => ok({ metadatas: ['Alpha.json'], messages: [] });
@@ -277,6 +302,13 @@ describe('ExtensionEnrichmentService', () => {
       expect(first).toEqual(jasmine.objectContaining({ name: 'E', version: '1' }));
       await service.getDeployedExtensionDetails('E');
       expect(count(detailUrl('E'))).toBe(1);
+    });
+
+    it('reads the metadata of an extension stored without its version', async () => {
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      routes[detailUrl('Abs-1.0.1')] = () => ok({ analytics: [], version: '27.x.y' });
+      const details = await service.getDeployedExtensionDetails('Abs');
+      expect(details).toEqual(jasmine.objectContaining({ name: 'Abs', version: '27.x.y' }));
     });
 
     it('returns null for failures and retries on the next call', async () => {

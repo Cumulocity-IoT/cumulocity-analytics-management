@@ -384,9 +384,16 @@ export class RepositoryService implements OnDestroy {
     repository: Repository,
     asset: GitHubReleaseAsset,
     releaseTag: string,
-    deploy: boolean
+    deploy: boolean,
+    replace = false
   ): Promise<{ id: string; warning?: string }> {
-    return this.repositoryBackendService.deployReleaseAsset(repository, asset, releaseTag, deploy);
+    return this.repositoryBackendService.deployReleaseAsset(
+      repository,
+      asset,
+      releaseTag,
+      deploy,
+      replace
+    );
   }
 
   createExtensionFromList(

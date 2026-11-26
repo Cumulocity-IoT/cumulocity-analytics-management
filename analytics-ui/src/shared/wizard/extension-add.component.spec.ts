@@ -113,14 +113,15 @@ describe('ExtensionAddComponent', () => {
     it('drops the " (1)" a browser adds to a repeated download', async () => {
       create();
       await component.onFile(await zipFile('Foo-1.0.1 (1).zip', { 'files/Foo.mon': MON }));
-      expect(uploaded()[1]['name']).toBe('Foo-1.0.1');
+      expect(uploaded()[1]['name']).toBe('Foo');
+      expect(uploaded()[1]['build_information'].version).toBe('1.0.1');
     });
 
     it('drops any number in brackets, with or without a space', async () => {
       for (const [fileName, expected] of [
-        ['Foo-1.0.1 (2).zip', 'Foo-1.0.1'],
-        ['Foo-1.0.1 (12).zip', 'Foo-1.0.1'],
-        ['Foo-1.0.1(3).zip', 'Foo-1.0.1']
+        ['Foo-1.0.1 (2).zip', 'Foo'],
+        ['Foo-1.0.1 (12).zip', 'Foo'],
+        ['Foo-1.0.1(3).zip', 'Foo']
       ]) {
         create();
         await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
@@ -137,7 +138,8 @@ describe('ExtensionAddComponent', () => {
             'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
           })
         );
-        expect(uploaded()[1]['name']).withContext(fileName).toBe('Foo-1.0.1');
+        expect(uploaded()[1]['name']).withContext(fileName).toBe('Foo');
+        expect(uploaded()[1]['build_information'].version).withContext(fileName).toBe('1.0.1');
       }
     });
 
@@ -149,8 +151,9 @@ describe('ExtensionAddComponent', () => {
           'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
         })
       );
-      expect(uploaded()[1]['name']).toBe('Foo-1.0.1');
-      expect(uploaded()[1]['pas_extension']).toBe('Foo-1.0.1');
+      expect(uploaded()[1]['name']).toBe('Foo');
+      expect(uploaded()[1]['pas_extension']).toBe('Foo');
+      expect(uploaded()[1]['build_information'].version).toBe('1.0.1');
     });
 
     it('keeps the file name when it matches one of several metadata files (a bundle)', async () => {
@@ -173,6 +176,33 @@ describe('ExtensionAddComponent', () => {
         })
       );
       expect(uploaded()[1]['name']).toBe('mine');
+    });
+
+    it('keeps the version out of the name and stores it in the build information', async () => {
+      const cases: [string, string, string | undefined][] = [
+        ['Abs-1.0.1.zip', 'Abs', '1.0.1'],
+        ['contrib-blocks-1.0.1.zip', 'contrib-blocks', '1.0.1'],
+        ['Foo_v2.3.zip', 'Foo', '2.3'],
+        ['HttpOutputBlock.zip', 'HttpOutputBlock', undefined]
+      ];
+      for (const [fileName, name, version] of cases) {
+        create();
+        await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+        const [, extension] = uploaded();
+        expect(extension['name']).withContext(fileName).toBe(name);
+        expect(extension['pas_extension']).withContext(fileName).toBe(name);
+        expect(extension['build_information'].version).withContext(fileName).toBe(version);
+      }
+    });
+
+    it('replaces the installed version of the same extension instead of adding another', async () => {
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '7', name: 'Abs', build_information: { version: '1.0.0' } } as never
+      ]);
+      create();
+      await component.onFile(await zipFile('Abs-1.0.1.zip', { 'files/Foo.mon': MON }));
+      expect(component.state.requiresUpdate).toBeTrue();
+      expect(modals.show).toHaveBeenCalled();
     });
 
     it('keeps the whole file name when it has no extension', async () => {

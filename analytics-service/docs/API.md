@@ -124,7 +124,7 @@ are skipped; invalid names are reported as failed.
 ### `POST /extension/release`
 Deploys a pre-built extension zip from a GitHub release asset. The service downloads the asset, because the browser
 cannot (GitHub sends no CORS headers for release assets), and uploads it as an extension named after the file
-without `.zip`.
+without `.zip` and without its version: `Abs-1.0.1.zip` becomes the extension `Abs`, version `1.0.1`.
 
 Body: `repository: {id}`, `asset_id` (numeric id of a release asset of that repository), `asset_name` (a `.zip`
 file name), optional `release_tag`, `deploy` (restart CEP, ADMIN) and `replace` (replace an extension of the same name,
@@ -135,7 +135,7 @@ sent only to `api.github.com` for that repository.
 - `201 {"id", "message"}`, plus a `warning` when the replaced extension could not be deleted.
 - `409` if an extension of that name exists and `replace` is false. `413` if the asset is larger than 100 MB.
   `400` if the asset is not a zip file.
-- The build information records `build_type: "release"`, the repository, the release tag and the asset name.
+- The build information records `build_type: "release"`, the repository, the release tag, the asset name and the `version`.
 
 ---
 

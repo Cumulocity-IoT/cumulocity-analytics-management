@@ -366,6 +366,12 @@
                   <span class="text-muted">{{ 'Extension' | translate }}</span>
                   <strong>{{ assetExtensionName() }}</strong>
                 </div>
+                @if (assetExtension().version) {
+                  <div class="wizard-review-row">
+                    <span class="text-muted">{{ 'Version' | translate }}</span>
+                    <span>{{ assetExtension().version }}</span>
+                  </div>
+                }
               } @else {
                 <div class="wizard-review-row">
                   <span class="text-muted">{{ 'Extension' | translate }}</span>
@@ -384,6 +390,11 @@
               }
             </div>
           </div>
+          @if (replaceNote()) {
+            <c8y-messages>
+              <c8y-message type="warning">{{ replaceNote() }}</c8y-message>
+            </c8y-messages>
+          }
           <div class="bg-level-1 p-16 rounded">
             <h5 class="m-t-0">{{ 'What happens next' | translate }}</h5>
             <ol class="m-b-0 p-l-16 text-muted">

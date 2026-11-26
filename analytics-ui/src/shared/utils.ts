@@ -22,6 +22,16 @@ export function removeZipSuffix(name: string): string {
   return name.replace(/\.zip$/i, '');
 }
 
+/**
+ * Splits a trailing version off an extension name: "Abs-1.0.1" becomes `Abs` and `1.0.1`. The
+ * version belongs in the extension's metadata, not in its name, so a newer version replaces
+ * the installed one instead of installing next to it. A name without a version is kept whole.
+ */
+export function splitExtensionVersion(baseName: string): { name: string; version?: string } {
+  const match = /^(.+?)[-_]v?(\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.]+)?)$/.exec(baseName);
+  return match ? { name: match[1], version: match[2] } : { name: baseName };
+}
+
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);

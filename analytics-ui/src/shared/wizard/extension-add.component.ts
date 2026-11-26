@@ -10,7 +10,7 @@ import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 import { ParsedBlockMetadata, parseBlockMetadataEvt } from '../apama-block-metadata';
-import { extractBlockFqns } from '../utils';
+import { extractBlockFqns, splitExtensionVersion } from '../utils';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import JSZip from 'jszip';
@@ -48,6 +48,8 @@ interface FileMetadata {
 
 interface BuildInformation {
   build_type: string;
+  /** The version taken off the file name: `Abs-1.0.1.zip` is the extension `Abs`, version `1.0.1`. */
+  version?: string;
   monitors: MonitorMetadata[];
   files: FileMetadata[];
 }
@@ -136,11 +138,18 @@ export class ExtensionAddComponent implements OnDestroy {
     this.progress.next(0);
 
     try {
-      const extensionName = await this.resolveExtensionName(file);
+      // The version is metadata: a newer version of the same extension then replaces the
+      // installed one instead of installing next to it.
+      const { name: extensionName, version } = splitExtensionVersion(
+        await this.resolveExtensionName(file)
+      );
       const existingExtension = await this.findExistingExtension(extensionName);
 
       // Analyze ZIP content
-      const buildInformation = await this.analyzeZipContent(file);
+      const buildInformation = {
+        ...(await this.analyzeZipContent(file)),
+        ...(version ? { version } : {})
+      };
 
       this.state.extension = existingExtension || {
         pas_extension: extensionName,

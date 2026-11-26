@@ -819,6 +819,13 @@ def create_extension_from_yaml():
 # Largest release asset the service downloads and uploads (extension zips are a few MB at most).
 RELEASE_ASSET_MAX_BYTES = 100 * 1024 * 1024
 _VALID_RELEASE_ASSET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*\.zip$", re.IGNORECASE)
+_EXTENSION_VERSION_RE = re.compile(r"^(.+?)[-_]v?(\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.]+)?)$")
+
+
+def split_extension_version(base_name: str):
+    """Split a trailing version off an extension name: "Abs-1.0.1" gives ("Abs", "1.0.1")."""
+    match = _EXTENSION_VERSION_RE.match(base_name)
+    return (match.group(1), match.group(2)) if match else (base_name, None)
 
 
 class _AssetTooLarge(Exception):
@@ -849,13 +856,15 @@ def deploy_extension_from_release():
     Deploy a pre-built extension zip from a GitHub release asset.
 
     The service downloads the asset (the browser cannot: GitHub sends no CORS headers for
-    release assets) and uploads it to Cumulocity as an extension named after the asset.
+    release assets) and uploads it to Cumulocity as an extension named after the asset without `.zip` and without its
+    version: `Abs-1.0.1.zip` becomes the extension `Abs`, version `1.0.1`. The version is kept in the
+    build information, so a newer version replaces the installed one.
 
     Request Body:
         {
             "repository": {"id": "repo-1"},        // Required: configured repository
             "asset_id": 123456,                    // Required: id of a release asset of that repository
-            "asset_name": "Abs-1.0.1.zip",         // Required: file name, becomes the extension name
+            "asset_name": "Abs-1.0.1.zip",         // Required: file name, gives the extension name and version
             "release_tag": "v1.0.1",               // Optional: recorded in the build information
             "deploy": false,                       // Optional: restart CEP after the upload (ADMIN)
             "replace": false                       // Optional: replace an extension of the same name (ADMIN)
@@ -893,7 +902,8 @@ def deploy_extension_from_release():
     if release_tag is not None and (not isinstance(release_tag, str) or len(release_tag) > 200):
         return create_error_response("Parameter release_tag must be a short string", 400)
 
-    extension_name = asset_name[: -len(".zip")]
+    # The version is metadata, not part of the name, so a newer version replaces the installed one.
+    extension_name, version = split_extension_version(asset_name[: -len(".zip")])
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
@@ -940,6 +950,7 @@ def deploy_extension_from_release():
         "repository": {k: repo_config.get(k) for k in ("id", "name", "url")},
         "release": release_tag,
         "asset": asset_name,
+        "version": version,
     }
     previous_ids = agent.find_extension_ids(request, extension_name) if replace else []
     ext_id = agent.upload_extension(request, extension_name, archive, build_info)

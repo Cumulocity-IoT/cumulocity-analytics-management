@@ -9,11 +9,34 @@ import {
   triggerBrowserDownload,
   createShortId,
   removeZipSuffix,
+  splitExtensionVersion,
   canPickFromDownloads,
   pickZipFromDownloads
 } from './utils';
 
 describe('utils', () => {
+  describe('splitExtensionVersion', () => {
+    it('takes a trailing version off the name', () => {
+      expect(splitExtensionVersion('Abs-1.0.1')).toEqual({ name: 'Abs', version: '1.0.1' });
+      expect(splitExtensionVersion('contrib-blocks-1.0.1')).toEqual({
+        name: 'contrib-blocks',
+        version: '1.0.1'
+      });
+      expect(splitExtensionVersion('Foo_v2.3')).toEqual({ name: 'Foo', version: '2.3' });
+      expect(splitExtensionVersion('Block-2')).toEqual({ name: 'Block', version: '2' });
+      expect(splitExtensionVersion('Foo-1.0.0-rc.1')).toEqual({
+        name: 'Foo',
+        version: '1.0.0-rc.1'
+      });
+    });
+
+    it('keeps a name without a version whole', () => {
+      for (const name of ['HttpOutputBlock', 'pkg.v2', 'My.Ext', '1.0.1', 'Foo-bar', 'Foo-']) {
+        expect(splitExtensionVersion(name)).toEqual({ name });
+      }
+    });
+  });
+
   describe('removeZipSuffix', () => {
     it('removes only a trailing .zip, in any case', () => {
       expect(removeZipSuffix('Foo.zip')).toBe('Foo');

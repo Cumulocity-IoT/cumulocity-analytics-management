@@ -25,8 +25,22 @@ describe('ExtensionWizardService', () => {
     service.open('build');
     const [component, options] = drawers.openDrawer.calls.mostRecent().args as [unknown, any];
     expect(component).toBe(ExtensionWizardComponent);
-    expect(options.initialState).toEqual({ initialSource: 'build' });
+    expect(options.initialState).toEqual({
+      initialSource: 'build',
+      initialRepositoryId: null,
+      initialSelectedIds: []
+    });
     expect(options.closeOnNavigation).toBeTrue();
+  });
+
+  it('starts a build with the blocks that are already ticked', () => {
+    service.open({ repositoryId: 'r1', selectedIds: ['A', 'B'] });
+    const [, options] = drawers.openDrawer.calls.mostRecent().args as [unknown, any];
+    expect(options.initialState).toEqual({
+      initialSource: null,
+      initialRepositoryId: 'r1',
+      initialSelectedIds: ['A', 'B']
+    });
   });
 
   it('emits once when the drawer closes, with whether an extension was added', () => {

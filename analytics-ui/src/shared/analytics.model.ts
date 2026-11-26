@@ -285,6 +285,8 @@ export type UploadMode = 'add' | 'update';
 /** Build information stored on an extension managed object (`build_information`). */
 export interface ExtensionBuildInformation {
   build_type: 'repository' | 'list' | 'yaml' | 'release';
+  /** The version of an uploaded or deployed extension; it is not part of the extension name. */
+  version?: string;
   repository: Repository;
   monitors?: RepositoryItem[];
   yaml?: RepositoryItem;

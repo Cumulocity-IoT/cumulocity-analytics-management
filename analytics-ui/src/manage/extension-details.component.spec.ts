@@ -81,6 +81,20 @@ describe('ExtensionDetailsComponent', () => {
       ]);
     });
 
+    it('shows the version, which is not part of the extension name', async () => {
+      navigationState = buildInfo({
+        build_type: 'external',
+        repository: undefined,
+        version: '1.0.1'
+      });
+      const component = create();
+      await component.ngOnInit();
+      expect(component.buildInformation.map(b => [b.label, b.value])).toEqual([
+        ['Build Type', 'external'],
+        ['Version', '1.0.1']
+      ]);
+    });
+
     it('opens the repository link in a new, isolated window', async () => {
       navigationState = buildInfo();
       const open = spyOn(window, 'open');
