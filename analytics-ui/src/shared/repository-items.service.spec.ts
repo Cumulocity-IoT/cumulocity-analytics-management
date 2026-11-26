@@ -145,6 +145,25 @@ describe('RepositoryItemsService', () => {
       expect(result.every(i => i.installed)).toBeTrue(); // the deployed-file lookup uses basenames
     });
 
+    it('keeps a deployed extensions.yaml when hiding installed items, so its sections can still be listed', async () => {
+      github.getContent.and.resolveTo([ghEntry('extensions.yaml'), ghEntry('Offset.mon')]);
+      github.getItemContent.and.resolveTo('Offset:\n  - Offset.mon\nPython:\n  - Python.mon\n');
+
+      const listed = await firstValueFrom(
+        service.getItemsForRepositories(
+          [repo()],
+          [],
+          true,
+          new Set(['extensions.yaml', 'Offset.mon'])
+        )
+      );
+      expect(listed.map(i => i.file)).toContain('extensions.yaml');
+      expect(listed.map(i => i.file)).not.toContain('Offset.mon');
+
+      const result = await firstValueFrom(service.analyzeRepositoryItems(listed));
+      expect(result.map(i => i.name)).toEqual(['Python']);
+    });
+
     it('yields no sections for an unparsable or non-object yaml', async () => {
       const yaml = item({ file: 'extensions.yaml' });
       github.getItemContent.and.resolveTo('key: [unclosed');
