@@ -270,7 +270,6 @@ def load_repositories():
                 "name": "My Repository",
                 "url": "https://github.com/user/repo/tree/main/path",
                 "accessToken": "_DUMMY_ACCESS_CODE_",
-                "enabled": true
             },
             ...
         ]
@@ -299,7 +298,6 @@ def update_repositories():
                 "name": "My Repository",
                 "url": "https://github.com/user/repo/tree/main/path",
                 "accessToken": "ghp_xxxxx",  // Optional, use _DUMMY_ACCESS_CODE_ to keep existing
-                "enabled": true
             },
             ...
         ]
@@ -317,7 +315,7 @@ def update_repositories():
         POST /repository/configuration
         Content-Type: application/json
         
-        [{"id": "repo-1", "name": "Test", "url": "https://...", "enabled": true}]
+        [{"id": "repo-1", "name": "Test", "url": "https://..."}]
     """
     repositories = request.get_json(silent=True)
 

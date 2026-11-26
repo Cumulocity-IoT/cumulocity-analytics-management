@@ -11,13 +11,12 @@ import {
 } from '../../shared';
 import { ExtensionWizardComponent } from './extension-wizard.component';
 
-const repo = (id: string, enabled = true): Repository =>
+const repo = (id: string): Repository =>
   ({
     id,
     name: `Repo ${id}`,
     url: 'https://github.com/o/r',
-    accessToken: '',
-    enabled
+    accessToken: ''
   }) as Repository;
 const item = (name: string, over: Partial<RepositoryItem> = {}): RepositoryItem =>
   ({
@@ -76,7 +75,7 @@ describe('ExtensionWizardComponent', () => {
       'deployReleaseAsset'
     ]);
     repositories.getRepositories.and.returnValue(
-      new BehaviorSubject<Repository[]>([repo('a'), repo('off', false)])
+      new BehaviorSubject<Repository[]>([repo('a'), repo('off')])
     );
     repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
       of([item('Good'), item('Installed', { installed: true })])

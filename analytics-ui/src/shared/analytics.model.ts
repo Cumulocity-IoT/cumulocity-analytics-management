@@ -114,7 +114,6 @@ export interface Repository {
   name: string;
   url: string;
   accessToken: string;
-  enabled: boolean;
 }
 
 export interface RepositoryTestResult {
@@ -226,40 +225,34 @@ export function createDefaultRepository(): Repository {
     id: createShortId(),
     name: 'Community Blocks (analytics-builder-blocks-contrib)',
     url: DEFAULT_REPOSITORY_URL,
-    accessToken: '',
-    enabled: true
+    accessToken: ''
   };
 }
 export const REPO_SAMPLES = [
   {
     id: createShortId(),
     name: 'Block SDK Quick Start Samples',
-    url: REPO_ANALYTICS_MANAGEMENT,
-    enabled: true
+    url: REPO_ANALYTICS_MANAGEMENT
   },
   {
     id: createShortId(),
     name: 'Block SDK Samples',
-    url: REPO_BLOCKSDK,
-    enabled: true
+    url: REPO_BLOCKSDK
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Block',
-    url: REPO_CONTRIB_BLOCK,
-    enabled: false
+    url: REPO_CONTRIB_BLOCK
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Simulation-Block',
-    url: REPO_CONTRIB_SIMULATION,
-    enabled: false
+    url: REPO_CONTRIB_SIMULATION
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Cumulocity-Block',
-    url: REPO_CONTRIB_CUMULOCITY,
-    enabled: false
+    url: REPO_CONTRIB_CUMULOCITY
   }
 ] as Repository[];
 

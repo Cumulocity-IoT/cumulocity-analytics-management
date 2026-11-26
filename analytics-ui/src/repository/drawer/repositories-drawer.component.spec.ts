@@ -11,7 +11,6 @@ const repo = (over: Partial<Repository> = {}): Repository =>
     name: 'Contrib',
     url: 'https://github.com/Cumulocity-IoT/blocks/tree/main/blocks',
     accessToken: DUMMY_ACCESS_TOKEN,
-    enabled: true,
     ...over
   }) as Repository;
 
@@ -27,7 +26,7 @@ describe('RepositoriesDrawerComponent', () => {
   async function create(
     initial: Repository[] = [
       repo(),
-      repo({ id: 'r2', name: 'Other', url: 'https://github.com/o/other', enabled: false })
+      repo({ id: 'r2', name: 'Other', url: 'https://github.com/o/other' })
     ]
   ) {
     TestBed.resetTestingModule();
@@ -55,21 +54,15 @@ describe('RepositoriesDrawerComponent', () => {
       'setGlobalAccessToken',
       'getRepositories',
       'whenReady',
-      'hasUnsavedChanges',
       'addRepository',
       'updateRepository',
       'deleteRepository',
-      'saveAllRepositories',
-      'toggleRepositoryEnabled',
       'testRepository',
-      'cancelChanges',
       'updateHideInstalledFilter'
     ]);
     service.getGlobalAccessTokenMasked.and.resolveTo('');
-    service.hasUnsavedChanges.and.returnValue(false);
     service.addRepository.and.resolveTo();
     service.updateRepository.and.resolveTo();
-    service.saveAllRepositories.and.resolveTo();
     service.deleteRepository.and.resolveTo();
     alerts = jasmine.createSpyObj<AlertService>('AlertService', ['success', 'danger', 'warning']);
     modalClose$ = new Subject<boolean>();
@@ -88,7 +81,6 @@ describe('RepositoriesDrawerComponent', () => {
       expect(component.selectedRepositoryIndex).toBe(0);
       expect(component.showAddRepository).toBeTrue();
       expect(component.repositoryForm.value.url).toBe('Cumulocity-IoT/blocks/tree/main/blocks');
-      expect(component.activeRepository.id).toBe('r1');
     });
 
     it('opens an "add repository" placeholder when there are no repositories', async () => {
@@ -197,12 +189,6 @@ describe('RepositoriesDrawerComponent', () => {
       expect(component.isSaveDisabled).toBeFalse();
     });
 
-    it('is enabled when only enabled-toggles are pending in the service', () => {
-      service.hasUnsavedChanges.and.returnValue(true);
-      expect(component.isSaveDisabled).toBeFalse();
-      expect(component.hasUnsavedChanges).toBeTrue();
-    });
-
     it('is disabled while saving or when the form is invalid', () => {
       component.repositoryForm.patchValue({ name: 'Renamed' });
       component.isSaving = true;
@@ -256,17 +242,16 @@ describe('RepositoriesDrawerComponent', () => {
       expect(component.displayList[component.displayList.length - 1].name).toBe('Typed');
     });
 
-    it('onSave() adds a disabled repository with a full github url and a new id, then commits', async () => {
+    it('onSave() adds a repository with a full github url and a new id, then commits', async () => {
       component.createCustomRepository();
       component.repositoryForm.patchValue({ name: 'New', url: 'o/new', accessToken: 'ghp_x' });
-      const committed: Repository[] = [];
-      component.commit.subscribe(r => committed.push(r));
+      const committed: unknown[] = [];
+      component.commit.subscribe(() => committed.push(true));
 
       await component.onSave();
 
       const [added] = service.addRepository.calls.mostRecent().args;
       expect(added.url).toBe('https://github.com/o/new');
-      expect(added.enabled).toBeFalse();
       expect(added.id).toBeTruthy();
       expect(added.accessToken).toBe('ghp_x');
       expect(service.updateHideInstalledFilter).toHaveBeenCalled();
@@ -304,22 +289,13 @@ describe('RepositoriesDrawerComponent', () => {
       const [updated] = service.updateRepository.calls.mostRecent().args;
       expect(updated.name).toBe('Renamed');
       expect(updated.url).toBe('https://github.com/o/else');
-      expect(service.saveAllRepositories).not.toHaveBeenCalled();
-    });
-
-    it('persists only the enabled state when the form is untouched', async () => {
-      service.hasUnsavedChanges.and.returnValue(true);
-      await component.onSave();
-      expect(service.saveAllRepositories).toHaveBeenCalled();
-      expect(service.updateRepository).not.toHaveBeenCalled();
     });
 
     it('saves nothing when nothing changed, but still emits commit', async () => {
-      const committed: Repository[] = [];
-      component.commit.subscribe(r => committed.push(r));
+      const committed: unknown[] = [];
+      component.commit.subscribe(() => committed.push(true));
       await component.onSave();
       expect(service.updateRepository).not.toHaveBeenCalled();
-      expect(service.saveAllRepositories).not.toHaveBeenCalled();
       expect(committed.length).toBe(1);
     });
 
@@ -364,7 +340,6 @@ describe('RepositoriesDrawerComponent', () => {
 
       modalClose$.next(true);
       expect(component.repositoryForm.value.name).toBe('Contrib');
-      expect(service.cancelChanges).toHaveBeenCalled();
       expect(cancelled).toBe(1);
       expect(modalHide).toHaveBeenCalled();
     });
@@ -378,7 +353,6 @@ describe('RepositoriesDrawerComponent', () => {
       modalClose$.next(false);
 
       expect(component.repositoryForm.value.name).toBe('Renamed');
-      expect(service.cancelChanges).not.toHaveBeenCalled();
       expect(cancelled).toBe(0);
       expect(modalHide).toHaveBeenCalled();
     });
@@ -424,23 +398,6 @@ describe('RepositoriesDrawerComponent', () => {
       await Promise.resolve();
       await Promise.resolve();
       expect(component.isAddingNew).toBeTrue();
-    });
-  });
-
-  describe('toggleActivation', () => {
-    beforeEach(async () => create());
-
-    it('toggles the repository and tracks the newly activated one', () => {
-      const [, other] = component.repositoriesList;
-      component.toggleActivation(other);
-      expect(service.toggleRepositoryEnabled).toHaveBeenCalledWith('r2');
-      expect(component.activeRepository.id).toBe('r2');
-    });
-
-    it('ignores the placeholder of a repository being added', () => {
-      component.createCustomRepository();
-      component.toggleActivation(component.tempNewRepository as Repository);
-      expect(service.toggleRepositoryEnabled).not.toHaveBeenCalled();
     });
   });
 

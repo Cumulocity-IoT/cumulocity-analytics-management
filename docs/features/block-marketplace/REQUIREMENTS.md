@@ -8,7 +8,7 @@
 
 Today it does four things server-side:
 
-1. Stores GitHub repository configuration (URL, name, enabled) and access token (PAT) as masked Cumulocity tenant options.
+1. Stores GitHub repository configuration (URL, name) and access token (PAT) as masked Cumulocity tenant options.
 2. Proxies GitHub Content API calls (list/read files) using the stored PAT.
 3. Downloads the selected `.mon` file(s)/directory/YAML-selected files and runs the Apama CLI (`analytics_builder build extension`) to package them into a `.zip`.
 4. Uploads the `.zip` as a Cumulocity `Binary` extension, deletes extensions, and relays `apama-ctrl` CEP status/restart calls.
@@ -43,7 +43,7 @@ A first implementation now exists in `analytics-ui` and changes the framing from
 
 ### Repository configuration
 - FR1: A user can add, edit, enable/disable, and remove a GitHub repository entry (name, web URL, optional PAT) from the UI.
-- FR2: Repository entries (name, URL, enabled flag) are stored as Cumulocity tenant options, as they are today, so configuration survives across browser sessions/devices.
+- FR2: Repository entries (name, URL) are stored as Cumulocity tenant options, as they are today, so configuration survives across browser sessions/devices.
 - FR3: A user can "test" a repository's connection (and PAT, if supplied) before saving, getting a clear success/failure result.
 
 ### Browsing and selecting blocks

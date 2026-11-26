@@ -11,7 +11,7 @@ import { RepositoryBackendService } from './repository-backend.service';
 import { RepositoryError } from './repository-error';
 import { RepositoryModeService } from './repository-mode.service';
 
-const repository = { id: 'r1', name: 'R', url: 'u', accessToken: '', enabled: true } as Repository;
+const repository = { id: 'r1', name: 'R', url: 'u', accessToken: '' } as Repository;
 const item = (file: string, over: Partial<RepositoryItem> = {}): RepositoryItem =>
   ({
     id: '',

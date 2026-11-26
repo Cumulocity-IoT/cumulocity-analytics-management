@@ -15,7 +15,6 @@ REPO = {
     "name": "Repo",
     "url": "https://github.com/o/r/tree/main/blocks",
     "accessToken": "ghp_secret",
-    "enabled": True,
 }
 
 

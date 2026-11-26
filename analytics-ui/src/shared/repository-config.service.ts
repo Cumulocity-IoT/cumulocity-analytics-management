@@ -287,8 +287,7 @@ export class RepositoryConfigService {
       id: option.key,
       name: parsed.name || '',
       url: parsed.url,
-      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : '',
-      enabled: !!parsed.enabled
+      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : ''
     };
   }
 
@@ -327,8 +326,7 @@ export class RepositoryConfigService {
 
     const value: Record<string, unknown> = {
       name: repo.name,
-      url: repo.url,
-      enabled: !!repo.enabled
+      url: repo.url
     };
     if (accessToken) {
       value['accessToken'] = accessToken;

@@ -8,8 +8,8 @@ import { RepositoryError } from './repository-error';
 import { RepositoryItemsService } from './repository-items.service';
 import { RepositoryModeService } from './repository-mode.service';
 
-const repo = (id = 'r1', enabled = true): Repository =>
-  ({ id, name: `Repo ${id}`, url: 'u', accessToken: '', enabled }) as Repository;
+const repo = (id = 'r1'): Repository =>
+  ({ id, name: `Repo ${id}`, url: 'u', accessToken: '' }) as Repository;
 const item = (over: Partial<RepositoryItem>): RepositoryItem =>
   ({
     id: '',
@@ -185,10 +185,8 @@ describe('RepositoryItemsService', () => {
   });
 
   describe('getItemsForRepositories', () => {
-    it('returns nothing without enabled repositories', async () => {
-      expect(
-        await firstValueFrom(service.getItemsForRepositories([repo('r1', false)], [], false))
-      ).toEqual([]);
+    it('returns nothing without repositories', async () => {
+      expect(await firstValueFrom(service.getItemsForRepositories([], [], false))).toEqual([]);
       expect(github.getContent).not.toHaveBeenCalled();
     });
 

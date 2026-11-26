@@ -609,8 +609,6 @@ components:
             `GET /repository/configuration`; send that same sentinel back on
             update to keep the stored token unchanged, or a real token to
             replace it.
-        enabled:
-          type: boolean
 
     RepositoryRef:
       type: object

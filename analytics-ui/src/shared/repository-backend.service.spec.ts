@@ -19,8 +19,7 @@ const repository = {
   id: 'r1',
   name: 'Repo',
   url: 'https://github.com/o/r/tree/main/blocks',
-  accessToken: '',
-  enabled: true
+  accessToken: ''
 } as Repository;
 const item = { name: 'Foo', url: 'https://raw/Foo.mon', repositoryId: 'r1' } as RepositoryItem;
 

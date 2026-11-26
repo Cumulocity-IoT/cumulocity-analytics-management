@@ -137,9 +137,6 @@
                   @if (source() === 'release' && reposWithoutReleases().has(repo.id)) {
                     <span class="label label-warning m-l-8">{{ 'No releases' | translate }}</span>
                   }
-                  @if (!repo.enabled) {
-                    <span class="label label-default m-l-8">{{ 'Disabled' | translate }}</span>
-                  }
                   <small class="d-block text-muted text-truncate">{{ repo.url }}</small>
                 </span>
               </button>

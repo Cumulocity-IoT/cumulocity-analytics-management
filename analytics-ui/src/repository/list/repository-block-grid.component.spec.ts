@@ -19,8 +19,7 @@ const item = (over: Partial<RepositoryItem>): RepositoryItem =>
     repositoryName: 'R',
     ...over
   }) as RepositoryItem;
-const repo = (id: string, enabled: boolean): Repository =>
-  ({ id, name: id, url: 'u', accessToken: '', enabled }) as Repository;
+const repo = (id: string): Repository => ({ id, name: id, url: 'u', accessToken: '' });
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('RepositoryBlockGridComponent', () => {
@@ -42,7 +41,7 @@ describe('RepositoryBlockGridComponent', () => {
   };
 
   beforeEach(() => {
-    repos$ = new BehaviorSubject<Repository[]>([repo('a', false), repo('b', true)]);
+    repos$ = new BehaviorSubject<Repository[]>([repo('a'), repo('b')]);
     repositories = jasmine.createSpyObj('RepositoryService', [
       'getRepositories',
       'getRepositoryItemsAnalyzedFor',
@@ -107,32 +106,25 @@ describe('RepositoryBlockGridComponent', () => {
       expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
     });
 
-    it('browses the first enabled repository by default', async () => {
+    it('browses the first repository by default', async () => {
       await create();
-      expect(component.selectedRepositoryId).toBe('b');
-      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('b');
+      expect(component.selectedRepositoryId).toBe('a');
+      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('a');
       expect(component.repositories.map(r => r.id)).toEqual(['a', 'b']);
     });
 
-    it('offers every configured repository, and marks disabled ones in the label', async () => {
-      await create();
-      const [disabled, enabled] = component.repositories;
-      expect(component.repositoryLabel(enabled)).toBe('b');
-      expect(component.repositoryLabel(disabled)).toBe('a (disabled)');
-    });
-
-    it('loads the items of the repository the user picks, disabled ones too', async () => {
+    it('loads the items of the repository the user picks', async () => {
       await create();
       repositories.getRepositoryItemsAnalyzedFor.and.returnValue(of([item({ id: 'x' })]));
-      component.selectRepository('a');
+      component.selectRepository('b');
       await flush();
-      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('a');
+      expect(repositories.getRepositoryItemsAnalyzedFor).toHaveBeenCalledWith('b');
       expect(component.repositoryItems.map(i => i.id)).toEqual(['x']);
     });
 
     it('falls back to another repository when the chosen one is removed', async () => {
       await create();
-      repos$.next([repo('a', false)]);
+      repos$.next([repo('a')]);
       expect(component.selectedRepositoryId).toBe('a');
       repos$.next([]);
       expect(component.selectedRepositoryId).toBeNull();
@@ -181,13 +173,6 @@ describe('RepositoryBlockGridComponent', () => {
       await create();
       expect(component.titleRepository).toBe('R');
     });
-  });
-
-  it('tracks the enabled repository as the active one, and an empty one when none is enabled', async () => {
-    await create();
-    expect(component.activeRepository.id).toBe('b');
-    repos$.next([repo('a', false)]);
-    expect(component.activeRepository).toEqual({} as Repository);
   });
 
   it('offers a "View Source" action for files only', async () => {

@@ -62,7 +62,7 @@
       (ngModelChange)="selectRepository($event)"
     >
       @for (repo of repositories; track repo.id) {
-        <option [value]="repo.id">{{ repositoryLabel(repo) }}</option>
+        <option [value]="repo.id">{{ repo.name }}</option>
       }
     </select>
   </div>
@@ -209,7 +209,7 @@
     @if (showConfigRepositories) {
       <a17t-repositories-drawer
         (cancelled)="onRepositoryCancel()"
-        (commit)="onRepositoryCommit($event)"
+        (commit)="onRepositoryCommit()"
         [hideInstalled]="hideInstalled"
       >
       </a17t-repositories-drawer>

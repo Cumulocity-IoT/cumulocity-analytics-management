@@ -59,9 +59,13 @@ class TestParseRepositoryValue:
         self.agent = C8YAgent()
 
     def test_masks_token_by_default(self):
-        value = json.dumps({"name": "n", "url": "u", "accessToken": "secret", "enabled": True})
+        value = json.dumps({"name": "n", "url": "u", "accessToken": "secret"})
         result = self.agent._parse_repository_value(value, "id1")
-        assert result == {"id": "id1", "name": "n", "url": "u", "accessToken": DUMMY, "enabled": True}
+        assert result == {"id": "id1", "name": "n", "url": "u", "accessToken": DUMMY}
+
+    def test_ignores_a_stored_enabled_flag_from_older_versions(self):
+        value = json.dumps({"name": "n", "url": "u", "enabled": True})
+        assert "enabled" not in self.agent._parse_repository_value(value, "id1")
 
     def test_returns_real_token_when_requested(self):
         value = json.dumps({"accessToken": "secret"})
@@ -73,7 +77,7 @@ class TestParseRepositoryValue:
     def test_non_json_value_falls_back_to_defaults(self):
         result = self.agent._parse_repository_value("legacy-value", "i")
         assert result["name"] == "legacy-value"
-        assert result["enabled"] is False
+        assert "enabled" not in result
 
     def test_none_value(self):
         assert self.agent._parse_repository_value(None, "i")["id"] == "i"
@@ -162,7 +166,7 @@ class TestSaveRepository:
         await self._save(C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u", "enabled": 1})
         assert created[0]["category"] == C8YAgent.CATEGORY
         assert created[0]["key"] == "r"
-        assert json.loads(created[0]["value"]) == {"name": "n", "url": "u", "enabled": True}
+        assert json.loads(created[0]["value"]) == {"name": "n", "url": "u"}
 
     @pytest.mark.asyncio
     async def test_missing_id_raises(self, tenant):

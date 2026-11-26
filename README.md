@@ -244,7 +244,7 @@ Custom blocks are developed with the [Analytics Builder block SDK](https://githu
 * **Is an extension deployed?** Look for a message like the following in the analytics engine log (Administration > Ecosystem > Microservices > apama-ctrl-1c-4g > Logs):
   `[correlator]  2023-12-04 12:29:43.752 INFO [139659199286272] - Applying extension "/config/extensions/Sample_AB_Extension.zip"`
 * **No extension is loaded after an upload:** the engine is probably in [Safe Mode](#safe-mode); delete the suspected extension and restart.
-* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** make sure a repository is configured and enabled in the **Repositories** drawer.
+* **Repository list is empty with a 401 error:** configure a personal access token, see [Sample repositories](#sample-repositories-and-building-custom-extensions). **Repository list is empty without an error:** make sure a repository is configured in the **Repositories** drawer.
 * **Cannot build extensions:** check that the backend microservice is deployed, see [Backend service](#backend-service).
 
 

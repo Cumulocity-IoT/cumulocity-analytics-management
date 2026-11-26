@@ -62,13 +62,12 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
 
   @Input() hideInstalled: boolean = false;
   readonly cancelled = output<void>();
-  readonly commit = output<Repository>();
+  readonly commit = output<void>();
 
   repositories$!: Observable<Repository[]>;
   repositoriesList: Repository[] = [];
   displayList: Repository[] = [];
   filteredDisplayList: Repository[] = [];
-  activeRepository!: Repository;
   repositoryForm: FormGroup;
   selectedRepositoryIndex: number = -1;
   isAddingNew: boolean = false;
@@ -132,8 +131,7 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
         {
           autocomplete: 'new-password'
         }
-      ],
-      enabled: [false]
+      ]
     });
 
     this.globalAccessTokenForm = this.fb.group({
@@ -185,11 +183,6 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
     }
     this.repositories$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(repos => {
       this.repositoriesList = repos;
-      const enabledRepo = repos.find(r => r.enabled);
-      if (enabledRepo) {
-        this.activeRepository = enabledRepo;
-      }
-
       if (this.isAddingNew && this.tempNewRepository) {
         const addedRepo = repos.find(r => r.name === this.tempNewRepository?.name);
         if (addedRepo) {
@@ -298,18 +291,16 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
       return this.repositoryForm.invalid || this.isSaving;
     }
 
-    // For existing repositories, enable save if:
-    // 1. Form is valid AND
-    // 2. (There are form changes OR there are unsaved enabled changes)
+    // For existing repositories, enable save if the form is valid and has changes.
     if (this.repositoryForm.invalid || this.isSaving) {
       return true;
     }
 
-    return !this.hasFormChanges() && !this.repositoryService.hasUnsavedChanges();
+    return !this.hasFormChanges();
   }
 
   get hasUnsavedChanges(): boolean {
-    return this.hasFormChanges() || this.repositoryService.hasUnsavedChanges();
+    return this.hasFormChanges();
   }
 
   /**
@@ -351,8 +342,7 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
       id: rep.id,
       name: rep.name,
       url: rep.url,
-      accessToken: rep.accessToken || '',
-      enabled: rep.enabled
+      accessToken: rep.accessToken || ''
     };
 
     // Set form with URL without prefix
@@ -392,8 +382,8 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
       id: `temp-${createShortId()}`,
       name: 'New repository',
       url: '',
-      enabled: false
-    } as Repository;
+      accessToken: ''
+    };
 
     this.updateDisplayList();
     this.selectedRepositoryIndex = this.displayList.length - 1;
@@ -451,23 +441,10 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
       const newRepository: Repository = this.repositoryForm.value;
       newRepository.url = this.GITHUB_URL + this.repositoryForm.value.url;
       newRepository.id = createShortId();
-      newRepository.enabled = false;
 
       await this.repositoryService.addRepository(newRepository);
 
       this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
-    }
-  }
-
-  toggleActivation(repository: Repository): void {
-    if (this.isAddingNew && this.tempNewRepository && repository.id === this.tempNewRepository.id) {
-      return;
-    }
-
-    this.repositoryService.toggleRepositoryEnabled(repository.id);
-
-    if (!repository.enabled) {
-      this.activeRepository = repository;
     }
   }
 
@@ -483,8 +460,7 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
         id: updatedRepository.id,
         name: updatedRepository.name,
         url: updatedRepository.url,
-        accessToken: updatedRepository.accessToken || '',
-        enabled: updatedRepository.enabled
+        accessToken: updatedRepository.accessToken || ''
       };
 
       this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
@@ -557,24 +533,13 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
         // Adding a new repository
         await this.addRepository();
       } else if (this.selectedRepositoryIndex !== -1) {
-        const hasFormModifications = this.hasFormChanges();
-        const hasEnabledChanges = this.repositoryService.hasUnsavedChanges();
-
-        if (hasFormModifications) {
-          // Form changed (name, url, token), possibly alongside enabled
-          // toggles. updateRepository() persists the whole repository
-          // list — which already includes any enabled-state changes — so
-          // it covers both cases in a single save (and a single toast).
+        if (this.hasFormChanges()) {
           await this.updateRepository();
-          this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
-        } else if (hasEnabledChanges) {
-          // Only enabled status changed
-          await this.repositoryService.saveAllRepositories();
           this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
         }
       }
 
-      this.commit.emit(this.activeRepository);
+      this.commit.emit();
     } catch (error) {
       console.error('Failed to save:', error);
     } finally {
@@ -613,8 +578,6 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
           if (this.originalFormValues) {
             this.repositoryForm.patchValue(this.originalFormValues);
           }
-          // Revert enabled changes
-          this.repositoryService.cancelChanges();
           this.cancelled.emit();
         }
         confirmCancelModalRef.hide();

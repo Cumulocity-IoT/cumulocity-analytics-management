@@ -41,13 +41,12 @@ import { RepositoryModeService } from './repository-mode.service';
 
 interface RepositoryState {
   repositories: Repository[];
-  savedRepositories: Repository[];
   hideInstalled: boolean;
 }
 
 /**
  * Public facade for everything repository-related. Holds the reactive
- * state (configured repositories, item listing, unsaved-changes tracking)
+ * state (configured repositories, item listing)
  * and delegates actual work to focused services:
  *
  * - `RepositoryModeService` — the single "backend or browser?" decision
@@ -69,7 +68,6 @@ export class RepositoryService implements OnDestroy {
 
   private readonly state$ = new BehaviorSubject<RepositoryState>({
     repositories: [],
-    savedRepositories: [],
     hideInstalled: false
   });
 
@@ -110,12 +108,6 @@ export class RepositoryService implements OnDestroy {
     switchMap(([_, state]) => this.loadRepositoryItemsWithStatus(state.hideInstalled)),
     shareReplay({ bufferSize: 1, refCount: true }),
     takeUntil(this.destroy$)
-  );
-
-  readonly hasUnsavedChanges$ = this.state$.pipe(
-    map(state => this.hasUnsavedChanges(state)),
-    distinctUntilChanged(),
-    shareReplay({ bufferSize: 1, refCount: true })
   );
 
   constructor(
@@ -164,16 +156,12 @@ export class RepositoryService implements OnDestroy {
   addRepository(repository: Repository): Promise<void> {
     return this.enqueueMutation(async () => {
       const state = this.state$.value;
-      // Persist the live `repositories` list (not the last-saved baseline) so
-      // an unrelated repo's already-pending enabled-toggle is committed along
-      // with this add, matching onSave()'s "a single save covers both" intent.
       const updatedRepositories = this.addRepositoryToList(state.repositories, repository);
 
       try {
         await this.repositoryConfigService.saveRepositories(updatedRepositories);
         this.updateState({
-          repositories: updatedRepositories,
-          savedRepositories: [...updatedRepositories]
+          repositories: updatedRepositories
         });
         this.invalidateCache();
         this.alertService.success(gettext('Repository added'));
@@ -196,9 +184,6 @@ export class RepositoryService implements OnDestroy {
         throw new RepositoryError('Repository not found', gettext('Repository not found.'));
       }
 
-      // Same reasoning as addRepository(): persist the live `repositories`
-      // list so an unrelated repo's pending enabled-toggle is committed
-      // along with this update rather than silently dropped.
       const updatedRepositories = this.replaceRepositoryInList(
         state.repositories,
         updatedRepository
@@ -207,8 +192,7 @@ export class RepositoryService implements OnDestroy {
       try {
         await this.repositoryConfigService.saveRepositories(updatedRepositories);
         this.updateState({
-          repositories: updatedRepositories,
-          savedRepositories: [...updatedRepositories]
+          repositories: updatedRepositories
         });
         this.invalidateCache();
         this.alertService.success(gettext('Repository updated'));
@@ -239,94 +223,15 @@ export class RepositoryService implements OnDestroy {
     return list.filter(r => r.id !== repositoryId);
   }
 
-  toggleRepositoryEnabled(repositoryId: string): void {
-    // Routed through the same mutationQueue as add/update/delete/saveAll so
-    // this read-modify-write of state$ can't land between another mutation's
-    // state read and its write-back and get silently overwritten.
-    this.enqueueMutation(async () => {
-      const state = this.state$.value;
-      const targetRepo = state.repositories.find(r => r.id === repositoryId);
-
-      if (!targetRepo) {
-        this.handleError(
-          new Error('Repository not found'),
-          `Repository not found: ${repositoryId}`,
-          false
-        );
-        return;
-      }
-
-      const newEnabledState = !targetRepo.enabled;
-      const updated = state.repositories.map(repo => {
-        if (repo.id === repositoryId) {
-          return { ...repo, enabled: newEnabledState };
-        }
-        if (newEnabledState && repo.enabled) {
-          return { ...repo, enabled: false };
-        }
-        return repo;
-      });
-
-      this.updateState({ repositories: updated });
-      this.invalidateCache();
-    });
-  }
-
-  saveAllRepositories(): Promise<void> {
-    return this.enqueueMutation(async () => {
-      const state = this.state$.value;
-
-      try {
-        await this.repositoryConfigService.saveRepositories(state.repositories);
-        this.updateState({
-          savedRepositories: [...state.repositories]
-        });
-        this.invalidateCache();
-        this.alertService.success(gettext('Repositories saved'));
-      } catch (error) {
-        throw this.handleError(
-          error,
-          'Failed to save repositories',
-          true,
-          gettext('Failed to save repositories. Please try again.')
-        );
-      }
-    });
-  }
-
-  hasUnsavedChanges(state?: RepositoryState): boolean {
-    const currentState = state || this.state$.value;
-    return currentState.repositories.some(repo => {
-      const saved = currentState.savedRepositories.find(sr => sr.id === repo.id);
-      return saved && saved.enabled !== repo.enabled;
-    });
-  }
-
-  cancelChanges(): void {
-    // Same reasoning as toggleRepositoryEnabled(): route through the queue
-    // so this doesn't race a concurrent add/update/delete/saveAll.
-    this.enqueueMutation(async () => {
-      const state = this.state$.value;
-      this.updateState({
-        repositories: [...state.savedRepositories]
-      });
-      this.invalidateCache();
-    });
-  }
-
   deleteRepository(repositoryId: string): Promise<void> {
     return this.enqueueMutation(async () => {
       const state = this.state$.value;
-      // Same reasoning as addRepository()/updateRepository(): persist the
-      // live `repositories` list so an unrelated repo's pending
-      // enabled-toggle is committed along with this delete.
       const updatedRepositories = this.removeRepositoryFromList(state.repositories, repositoryId);
 
       try {
         await this.repositoryConfigService.saveRepositories(updatedRepositories);
         this.updateState({
-          repositories: updatedRepositories,
-          savedRepositories: [...updatedRepositories]
+          repositories: updatedRepositories
         });
         this.invalidateCache();
         this.alertService.success(gettext('Repository deleted'));
@@ -397,13 +302,11 @@ export class RepositoryService implements OnDestroy {
   }
 
   /**
-   * Items of a single repository, analyzed on their own, whether or not it is enabled.
-   * `getRepositoryItemsAnalyzed()` analyzes all enabled repositories together, which is
+   * Items of a single repository, analyzed on their own.
+   * `getRepositoryItemsAnalyzed()` analyzes all repositories together, which is
    * wrong when one extension is built from exactly one repository.
    */
   getRepositoryItemsAnalyzedFor(repositoryId: string): Observable<RepositoryItem[]> {
-    // Works for disabled repositories too: "enabled" only decides what the block list shows,
-    // not what a user may build from.
     // Re-emits whenever the caches are invalidated (reload, saved repositories, restart).
     return this.reloadTrigger$.pipe(
       switchMap(() =>
@@ -416,12 +319,7 @@ export class RepositoryService implements OnDestroy {
           switchMap(([repos, loaded, files]) => {
             const repo = repos.find(r => r.id === repositoryId);
             return repo
-              ? this.repositoryItemsService.getItemsForRepositories(
-                  [{ ...repo, enabled: true }],
-                  loaded,
-                  false,
-                  files
-                )
+              ? this.repositoryItemsService.getItemsForRepositories([repo], loaded, false, files)
               : of([]);
           })
         )
@@ -568,8 +466,7 @@ export class RepositoryService implements OnDestroy {
       switchMap(repos => (repos.length > 0 ? of(repos) : from(this.seedDefaultRepository()))),
       tap(repos => {
         this.updateState({
-          repositories: repos,
-          savedRepositories: [...repos]
+          repositories: repos
         });
       }),
       catchError(error => {
@@ -659,10 +556,7 @@ export class RepositoryService implements OnDestroy {
     if (a.length !== b.length) return false;
     return a.every(
       (repo, index) =>
-        repo.id === b[index].id &&
-        repo.enabled === b[index].enabled &&
-        repo.name === b[index].name &&
-        repo.url === b[index].url
+        repo.id === b[index].id && repo.name === b[index].name && repo.url === b[index].url
     );
   }
 

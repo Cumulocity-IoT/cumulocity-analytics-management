@@ -94,7 +94,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   backendDeployed: boolean = false;
   backendTogglePending: boolean = false;
 
-  activeRepository!: Repository;
   repositoryItems$!: Observable<RepositoryItem[]>;
   repositoryItems!: RepositoryItem[];
 
@@ -164,7 +163,7 @@ export class RepositoryBlockGridComponent implements OnInit {
   // `await` or inside a subscription is not rendered by itself.
   private readonly cdr = inject(ChangeDetectorRef);
 
-  /** All configured repositories, enabled or not: any of them can be browsed. */
+  /** All configured repositories: any of them can be browsed. */
   repositories: Repository[] = [];
   selectedRepositoryId: string | null = null;
   private readonly selectedRepositoryId$ = new BehaviorSubject<string | null>(null);
@@ -249,41 +248,20 @@ export class RepositoryBlockGridComponent implements OnInit {
   }
 
   initializeActiveRepository(): void {
-    // Subscribe to repositories$ to find and set the active repository
-
     this.repositoryService
       .getRepositories()
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(repositories => {
         this.repositories = repositories;
-        // Keep the choice while it exists; otherwise fall back to the first enabled repository.
+        // Keep the choice while it exists; otherwise fall back to the first repository.
         if (!repositories.some(r => r.id === this.selectedRepositoryId)) {
-          const fallback = repositories.find(r => r.enabled) ?? repositories[0];
+          const [fallback] = repositories;
           this.selectRepository(fallback?.id ?? '');
           if (!fallback) {
             this.selectedRepositoryId = null;
           }
         }
         this.cdr.markForCheck();
-      });
-
-    this.repositoryService
-      .getRepositories()
-      .pipe(
-        // Transform the array to find the enabled repository
-        map(repositories => repositories.find(repo => repo.enabled)),
-        // Only emit when the enabled repository changes
-        distinctUntilChanged(
-          (prev, curr) => prev?.id === curr?.id && prev?.enabled === curr?.enabled
-        ),
-        takeUntilDestroyed(this.destroyRef)
-      )
-      .subscribe(enabledRepository => {
-        // Set the active repository
-        this.activeRepository = enabledRepository || ({} as Repository);
-
-        // You can perform additional actions here when active repository changes
-        // console.log('Active repository changed:', this.activeRepository);
       });
   }
 
@@ -342,14 +320,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   selectRepository(id: string): void {
     this.selectedRepositoryId = id;
     this.selectedRepositoryId$.next(id);
-  }
-
-  repositoryLabel(repository: Repository): string {
-    return repository.enabled
-      ? repository.name
-      : this.messages.format(gettext('{{repositoryName}} (disabled)'), {
-          repositoryName: repository.name
-        });
   }
 
   openRepositoriesDrawer(): void {

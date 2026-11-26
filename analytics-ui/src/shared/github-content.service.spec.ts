@@ -17,8 +17,7 @@ const repository = {
   id: 'r1',
   name: 'Repo',
   url: 'https://github.com/o/r/tree/dev/blocks',
-  accessToken: '',
-  enabled: true
+  accessToken: ''
 } as Repository;
 
 describe('GitHubContentService', () => {

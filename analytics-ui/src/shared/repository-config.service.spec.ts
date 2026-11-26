@@ -19,7 +19,6 @@ const repo = (over: Partial<Repository> = {}): Repository =>
     name: 'Repo',
     url: 'https://github.com/o/r',
     accessToken: '',
-    enabled: false,
     ...over
   }) as Repository;
 
@@ -63,7 +62,7 @@ describe('RepositoryConfigService', () => {
     JSON.parse(options.create.calls.argsFor(index)[0].value as string);
 
   describe('fetchRepositories', () => {
-    it('requests the category-scoped endpoint and masks access tokens', async () => {
+    it('requests the category-scoped endpoint, masks access tokens and ignores a stored enabled flag', async () => {
       stored({
         a: { name: 'A', url: 'https://github.com/o/a', accessToken: 'secret', enabled: true },
         b: { name: 'B', url: 'https://github.com/o/b' }
@@ -79,10 +78,9 @@ describe('RepositoryConfigService', () => {
           id: 'a',
           name: 'A',
           url: 'https://github.com/o/a',
-          accessToken: DUMMY_ACCESS_TOKEN,
-          enabled: true
+          accessToken: DUMMY_ACCESS_TOKEN
         },
-        { id: 'b', name: 'B', url: 'https://github.com/o/b', accessToken: '', enabled: false }
+        { id: 'b', name: 'B', url: 'https://github.com/o/b', accessToken: '' }
       ]);
     });
 
@@ -115,7 +113,7 @@ describe('RepositoryConfigService', () => {
   describe('saveRepositories', () => {
     it('creates a tenant option per repository', async () => {
       stored({});
-      await service.saveRepositories([repo({ accessToken: 'new', enabled: true })]);
+      await service.saveRepositories([repo({ accessToken: 'new' })]);
 
       const [call] = options.create.calls.mostRecent().args;
       expect(call.category).toBe(REPOSITORY_OPTION_CATEGORY);
@@ -123,7 +121,6 @@ describe('RepositoryConfigService', () => {
       expect(createdValue()).toEqual({
         name: 'Repo',
         url: 'https://github.com/o/r',
-        enabled: true,
         accessToken: 'new'
       });
     });

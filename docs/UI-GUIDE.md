@@ -93,7 +93,7 @@ The microservice is reached through `/service/analytics-ext-service/...`.
 
 - **Backend service not deployed** warning button (click to check again), shown only while the microservice `analytics-ext-service` is not deployed.
   The backend is used automatically whenever it is deployed and responding.
-- **Repository** drop-down: lists every configured repository, enabled or not. The grid shows the blocks of the chosen repository only. The first enabled repository is chosen on first load.
+- **Repository** drop-down: lists every configured repository. The grid shows the blocks of the chosen repository only. The first repository is chosen on first load. Repositories have no enabled or disabled state; an `enabled` value stored by an older version is ignored.
 - **Hide installed** switch, **Add extension**, **Repositories** drawer, and **Reload**.
 
 The page is for browsing one repository, which the grid title says ("Browse blocks from …"). It has no row selection. **Add extension** opens the wizard (see below).

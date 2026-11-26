@@ -70,10 +70,10 @@ There is no rate limiting in the service itself.
 Repositories are stored as tenant options. Access tokens are returned as `_DUMMY_ACCESS_CODE_`.
 
 ### `GET /repository/configuration`
-`200` array of `{id, name, url, accessToken, enabled}`.
+`200` array of `{id, name, url, accessToken}`.
 
 ### `POST /repository/configuration`
-Body: array of `{id, name, url, accessToken?, enabled?}` (all three of `id`, `name`, `url` required per item).
+Body: array of `{id, name, url, accessToken?}` (all three of `id`, `name`, `url` required per item).
 **Replaces** the stored list: repositories not in the body are deleted.
 `accessToken`: omitted or `_DUMMY_ACCESS_CODE_` keeps the stored token, `""` clears it, any other value sets it;
 changing `url` without a new token clears the stored token.

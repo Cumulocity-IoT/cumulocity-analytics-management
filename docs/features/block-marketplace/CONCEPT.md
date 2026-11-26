@@ -75,7 +75,7 @@ This is why the microservice already does string-level annotation parsing itself
 | Upload extension as Cumulocity `Binary` | `Binary(...).create()` via `c8y-api` (server) | ✅ **Implemented** (`@c8y/client`'s `InventoryBinaryService`/`FetchClient`) | The Angular app already runs authenticated against the tenant; no separate service user is needed to write a binary the logged-in user is allowed to create. |
 | Delete extension(s) | Server, via `tenant.binaries.delete()` | ✅ **Implemented** (same `@c8y/client` binary API) | Standard REST DELETE the browser can call directly. |
 | CEP status / restart | Server calls `/service/cep/diagnostics/apamaCtrlStatus`, `/service/cep/restart` | ✅ **Implemented** (direct call through Cumulocity's own microservice proxy) | These are plain platform REST paths reached through the tenant's normal auth (cookie/OAuth), not exclusive to the `analytics-service` microservice identity — the server today is just relaying them. |
-| Repository config (URL, name, enabled) | Tenant option, server-mediated | ✅ **Implemented** (Tenant Options API directly from UI) | No secret involved here. |
+| Repository config (URL, name) | Tenant option, server-mediated | ✅ **Implemented** (Tenant Options API directly from UI) | No secret involved here. |
 | **GitHub PAT storage** | Tenant option, **masked on read**, only ever used server-side | ✅ **Implemented**, landed differently than recommended | Kept in the same Tenant Option, masked on read, resolved client-side on demand — see "The one real blocker: PAT custody" below for the actual decision and why. |
 
 ---

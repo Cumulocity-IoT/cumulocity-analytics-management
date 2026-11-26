@@ -165,19 +165,6 @@
                     ></i>
                     <span class="m-r-8 text-truncate">{{ repository.name }}</span>
                     @if (
-                      !(isAddingNew && tempNewRepository && repository.id === tempNewRepository.id)
-                    ) {
-                      <span
-                        class="m-l-auto label m-r-16"
-                        [class.label-success]="repository.enabled"
-                        [class.label-default]="!repository.enabled"
-                      >
-                        {{
-                          repository.enabled ? ('Enabled' | translate) : ('Disabled' | translate)
-                        }}
-                      </span>
-                    }
-                    @if (
                       isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
                     ) {
                       <span class="m-l-auto label label-default m-r-16">
@@ -210,21 +197,6 @@
                   type="hidden"
                   formControlName="id"
                 />
-                @if (!isAddingNew && selectedRepositoryIndex !== -1) {
-                  <div class="d-flex j-c-end a-i-center m-b-8">
-                    <label class="c8y-switch flex-no-shrink m-b-0">
-                      <input
-                        type="checkbox"
-                        formControlName="enabled"
-                        (change)="toggleActivation(repositoriesList[selectedRepositoryIndex])"
-                      />
-                      <span></span>
-                      <span class="m-l-8">{{
-                        (repositoryForm.value.enabled ? 'Enabled' : 'Disabled') | translate
-                      }}</span>
-                    </label>
-                  </div>
-                }
                 <c8y-form-group>
                   <label for="name">{{ 'Name' | translate }}</label>
                   <input

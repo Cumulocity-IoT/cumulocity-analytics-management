@@ -445,7 +445,6 @@ class C8YAgent:
             "name": "",
             "url": "",
             "accessToken": "",
-            "enabled": False,
         }
 
         try:
@@ -459,7 +458,6 @@ class C8YAgent:
                 "name": value_dict.get("name", ""),
                 "url": value_dict.get("url", ""),
                 "accessToken": value_dict.get("accessToken", ""),
-                "enabled": value_dict.get("enabled", False),
             }
 
             # Replace token if needed
@@ -511,7 +509,6 @@ class C8YAgent:
         value_dict = {
             "name": repository.get("name", ""),
             "url": repository.get("url", ""),
-            "enabled": bool(repository.get("enabled", False)),
         }
 
         if access_token:

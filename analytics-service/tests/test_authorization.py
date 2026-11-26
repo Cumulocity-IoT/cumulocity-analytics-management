@@ -12,7 +12,7 @@ CREATE = app_module.ROLE_CREATE
 ADMIN = app_module.ROLE_ADMIN
 
 REPO_URL = "https://github.com/o/r/tree/main/blocks"
-REPO = {"id": "repo-1", "name": "Repo", "url": REPO_URL, "accessToken": "", "enabled": True}
+REPO = {"id": "repo-1", "name": "Repo", "url": REPO_URL, "accessToken": ""}
 BUILD_BODY = {"extension_name": "E", "repository": {"id": "repo-1"}}
 LIST_BODY = {**BUILD_BODY, "monitors": [{"url": "https://github.com/o/r", "type": "file"}]}
 RELEASE_BODY = {

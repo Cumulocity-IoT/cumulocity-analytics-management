@@ -72,7 +72,7 @@ Flask routes (app.py)
   lower ones. Build requests also check the flags in the body: `upload=true` needs CREATE, and
   `rebuild=true` or `deploy=true` needs ADMIN (`_build_role_error`).
 - **Repositories:** stored as tenant options in category `analytics-management.repository`,
-  one option per repository id, JSON value `{name, url, enabled, accessToken?}`.
+  one option per repository id, JSON value `{name, url, accessToken?}`. An `enabled` flag written by older versions is ignored.
   Tokens are masked as `_DUMMY_ACCESS_CODE_` in API responses; sending the sentinel (or omitting
   the field) keeps the stored token, sending `""` clears it, changing the URL without a new token
   clears it.

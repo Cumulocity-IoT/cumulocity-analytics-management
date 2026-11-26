@@ -38,7 +38,7 @@ export class RepositoryItemsService {
   }
 
   /**
-   * Items for every enabled repository, combined and given "installed"
+   * Items for every given repository, combined and given "installed"
    * status against the currently deployed blocks.
    */
   getItemsForRepositories(
@@ -47,17 +47,16 @@ export class RepositoryItemsService {
     hideInstalled: boolean,
     deployedFiles: ReadonlySet<string> = new Set()
   ): Observable<RepositoryItem[]> {
-    const enabledRepos = repos.filter(repo => repo.enabled);
     // `analyzeRepositoryItems` builds the extensions.yaml sections after this
     // listing and needs the same deployment state to mark them installed.
     this.deployedFiles = deployedFiles;
     this.hideInstalled = hideInstalled;
 
-    if (!enabledRepos.length) {
+    if (!repos.length) {
       return of([]);
     }
 
-    return forkJoin(enabledRepos.map(repo => this.getCachedRepositoryItems(repo))).pipe(
+    return forkJoin(repos.map(repo => this.getCachedRepositoryItems(repo))).pipe(
       map(blocks =>
         this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled, deployedFiles)
       ),
