@@ -37,13 +37,6 @@ export class AnalyticsTabFactory implements TabFactory {
         icon: 'plugin',
         orientation: 'horizontal'
       } as Tab);
-      tabs.push({
-        path: ROUTES.installedBlocks,
-        priority: 940,
-        label: PAGE_LABELS.installedBlocks,
-        icon: 'flow-chart',
-        orientation: 'horizontal'
-      } as Tab);
       // Always shown: repository config (Tenant Options) and the
       // "Deploy from GitHub Release" flow both work without the
       // analytics-service microservice — only browsing/building from a
@@ -51,9 +44,16 @@ export class AnalyticsTabFactory implements TabFactory {
       // on that page rather than requiring the whole tab to be hidden.
       tabs.push({
         path: ROUTES.repository,
-        priority: 920,
+        priority: 940,
         label: PAGE_LABELS.blockLibrary,
         icon: 'test',
+        orientation: 'horizontal'
+      } as Tab);
+      tabs.push({
+        path: ROUTES.installedBlocks,
+        priority: 920,
+        label: PAGE_LABELS.installedBlocks,
+        icon: 'flow-chart',
         orientation: 'horizontal'
       } as Tab);
     }

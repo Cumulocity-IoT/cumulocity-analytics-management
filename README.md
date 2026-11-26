@@ -44,7 +44,7 @@ Analytics Builder blocks are built using the [Analytics Builder Block SDK](https
 
 ![Extension installation](resources/images/extension-upload.png)
 
-The plugin adds three tabs: **Extensions**, **Installed blocks**, and **Block library**. The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks, and the extension package they belong to.
+The plugin adds three tabs: **Extensions**, **Block library**, and **Installed blocks**. The **Installed blocks** tab lists all installed analytics blocks with their name, category, whether they are custom blocks, and the extension package they belong to.
 
 ![Block list](resources/images/block-list.png)
 
