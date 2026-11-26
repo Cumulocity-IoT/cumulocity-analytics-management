@@ -1,7 +1,9 @@
-<c8y-wizard-header>
-  <h1 [c8yIcon]="headerIcon"></h1>
-  <h4>{{ headerText | translate }}</h4>
-</c8y-wizard-header>
+@if (!embedded) {
+  <c8y-wizard-header>
+    <h1 [c8yIcon]="headerIcon"></h1>
+    <h4>{{ headerText | translate }}</h4>
+  </c8y-wizard-header>
+}
 
 <div class="modal-inner-scroll animated fadeIn">
   <div class="modal-body">
@@ -9,7 +11,7 @@
       <c8y-form-group
         [hasError]="!!errorMessage"
         class="m-auto form-group-upload"
-        >
+      >
         <c8y-drop-area
           (dropped)="onFileDroppedEvent($event)"
           [accept]="'.zip'"
@@ -18,7 +20,7 @@
           [message]="'Upload a *.zip file' | translate"
           [progress]="(progress | async) ?? 0"
           class="drop-area"
-          >
+        >
         </c8y-drop-area>
         @if (errorMessage) {
           <c8y-messages class="m-t-8 m-b-8">
@@ -29,42 +31,43 @@
         }
       </c8y-form-group>
     } @else {
-      <div class="d-flex a-i-center j-c-center" style="min-height: 285px">
+      <div class="d-flex a-i-center j-c-center result-container">
         <c8y-operation-result
           [text]="successText | translate"
           [vertical]="true"
           [size]="84"
           class="lead"
           type="success"
-          >
+        >
         </c8y-operation-result>
       </div>
     }
-
   </div>
 </div>
 
-<c8y-wizard-footer>
-  @if (!isComplete) {
-    <button
-      (click)="cancel()"
-      class="btn btn-default"
-      [title]="'Cancel' | translate"
-      type="button"
-      [disabled]="isLoading"
+@if (!embedded) {
+  <c8y-wizard-footer>
+    @if (!isComplete) {
+      <button
+        (click)="cancel()"
+        class="btn btn-default"
+        [title]="'Cancel' | translate"
+        type="button"
+        [disabled]="isLoading"
       >
-      {{ 'Cancel' | translate }}
-    </button>
-  }
+        {{ 'Cancel' | translate }}
+      </button>
+    }
 
-  @if (isComplete) {
-    <button
-      (click)="done()"
-      class="btn btn-primary"
-      [title]="'Done' | translate"
-      type="button"
+    @if (isComplete) {
+      <button
+        (click)="done()"
+        class="btn btn-primary"
+        [title]="'Done' | translate"
+        type="button"
       >
-      {{ 'Done' | translate }}
-    </button>
-  }
-</c8y-wizard-footer>
+        {{ 'Done' | translate }}
+      </button>
+    }
+  </c8y-wizard-footer>
+}

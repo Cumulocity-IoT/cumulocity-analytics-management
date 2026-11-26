@@ -1,3 +1,5 @@
+import { take } from 'rxjs/operators';
+import { MessageService } from '../../shared/message.service';
 /*
  * Copyright (c) 2025 Cumulocity GmbH
  *
@@ -18,53 +20,67 @@
  * @authors Christof Strack
  */
 
-import { Component, DestroyRef, OnInit, ViewChild, ViewEncapsulation, inject } from '@angular/core';
+import {
+  ChangeDetectorRef,
+  Component,
+  DestroyRef,
+  OnInit,
+  ViewEncapsulation,
+  inject,
+  viewChild
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import {
   ActionControl,
   AlertService,
-  BulkActionControl,
   Column,
   ColumnDataType,
   CoreModule,
   DataGridComponent,
-  Pagination,
+  Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
   BooleanRendererComponent,
-  DESCRIPTOR_YAML,
   Repository,
   RepositoryItem,
   RepositoryService,
+  AnalyticsService,
   PAGE_LABELS,
   ROUTES
 } from '../../shared';
-import { BehaviorSubject, distinctUntilChanged, map, Observable, shareReplay, switchMap, tap } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  distinctUntilChanged,
+  map,
+  Observable,
+  shareReplay,
+  switchMap,
+  tap
+} from 'rxjs';
 import { catchError, of } from 'rxjs';
-import { ExtensionCreateModalComponent } from '../create-extension/extension-create-modal.component';
+import { ExtensionWizardService } from '../wizard/extension-wizard.service';
 import { LabelRendererComponent } from '../../shared/component/label-renderer.component';
 import { RepositoriesDrawerComponent } from '../drawer/repositories-drawer.component';
-import { ReleaseDeployWizardComponent } from '../release-deploy/release-deploy-wizard.component';
 import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
+import { gettext } from '@c8y/ngx-components/gettext';
 
 @Component({
   selector: 'a17t-repository-block-grid',
   templateUrl: 'repository-block-grid.component.html',
   styleUrls: ['./repository-block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
-  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent, ReleaseDeployWizardComponent]
+  imports: [CommonModule, FormsModule, CoreModule, PopoverModule, RepositoriesDrawerComponent]
 })
 export class RepositoryBlockGridComponent implements OnInit {
+  private readonly messages = inject(MessageService);
   readonly labels = PAGE_LABELS;
   readonly routes = ROUTES;
-
-  @ViewChild(DataGridComponent, { static: false }) dataGrid!: DataGridComponent;
 
   showConfigSample: boolean = false;
   hideInstalled: boolean = false;
@@ -72,22 +88,27 @@ export class RepositoryBlockGridComponent implements OnInit {
   // blocks lookup) is comparatively expensive, so it's opt-in: off by
   // default, and persisted as a tenant option (see updateMode()) — not
   // localStorage — the same way repository config/PAT is stored.
-  expertMode: boolean = false;
   loading: boolean = false;
-  singleSelection: boolean = false;
   showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;
   showConfigRepositories: boolean = false;
-  showDeployRelease: boolean = false;
 
-  activeRepository!: Repository;
+  backendDeployed: boolean = false;
+  backendTogglePending: boolean = false;
+
   repositoryItems$!: Observable<RepositoryItem[]>;
   repositoryItems!: RepositoryItem[];
 
   actionControls: ActionControl[] = [];
-  bulkActionControls: BulkActionControl[] = [];
 
-  titleSample: string = 'Blocks from repositories';
+  /** The repository name shown as a badge after the grid title; null when items come from several. */
+  titleRepository: string | null = null;
+  gridTitle: string = gettext('Browse blocks from repositories');
+  /**
+   * CSS string for the badge (`::after` of the grid title). The grid title is plain text and
+   * cannot hold markup, so the repository name is drawn as a badge through a custom property.
+   */
+  repositoryBadge: string | null = null;
 
   columnsSamples: Column[] = [
     {
@@ -96,7 +117,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       path: 'name',
       dataType: ColumnDataType.TextLong,
       filterable: true,
-      visible: true,
+      visible: true
     },
     {
       name: 'type',
@@ -131,7 +152,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       dataType: ColumnDataType.TextLong,
       filterable: true,
       visible: false
-    },
+    }
   ];
 
   pagination: Pagination = {
@@ -140,100 +161,121 @@ export class RepositoryBlockGridComponent implements OnInit {
   };
 
   private destroyRef = inject(DestroyRef);
-  // Drives repositoryItems$ below — starts at the same `false` default as
-  // `expertMode` so nothing is fetched until the persisted setting (or a
-  // user toggle) says otherwise.
-  private readonly expertMode$ = new BehaviorSubject<boolean>(false);
+  // The shell may run Angular without zone.js, where a plain field changed after an
+  // `await` or inside a subscription is not rendered by itself.
+  private readonly cdr = inject(ChangeDetectorRef);
+
+  /** All configured repositories: any of them can be browsed. */
+  repositories: Repository[] = [];
+  selectedRepositoryId: string | null = null;
+  private readonly selectedRepositoryId$ = new BehaviorSubject<string | null>(null);
+  private readonly hideInstalled$ = new BehaviorSubject<boolean>(false);
 
   constructor(
     public repositoryService: RepositoryService,
+    private analyticsService: AnalyticsService,
     public alertService: AlertService,
-    private bsModalService: BsModalService
+    private bsModalService: BsModalService,
+    private extensionWizard: ExtensionWizardService
   ) {
-    this.repositoryItems$ = this.expertMode$.pipe(
-      switchMap(expertMode => expertMode
-        ? this.repositoryService.getRepositoryItemsAnalyzed()
-        : of([])
+    this.repositoryItems$ = combineLatest([
+      this.selectedRepositoryId$.pipe(distinctUntilChanged()),
+      this.hideInstalled$
+    ]).pipe(
+      switchMap(([repositoryId, hideInstalled]) =>
+        repositoryId
+          ? this.repositoryService
+              .getRepositoryItemsAnalyzedFor(repositoryId)
+              .pipe(map(items => (hideInstalled ? items.filter(item => !item.installed) : items)))
+          : of([] as RepositoryItem[])
       ),
       shareReplay(1),
       tap(items => {
-        const isYaml = items.some(item => item.file == DESCRIPTOR_YAML);
-        // console.log("isYaml", isYaml, "current singleSelection:", this.singleSelection);
-
-        const type = isYaml ? 'contains extensions.yaml' : 'list assets';
-        this.titleSample = `Blocks from repositories (${type})`;
-        this.singleSelection = false;
-        // Only recreate the grid if the selection type actually changes
-        // if (this.singleSelection !== isYaml) {
-        //   //console.log("Selection type changed, recreating grid");
-        //   this.showDataGrid = false;
-        //   this.singleSelection = isYaml;
-
-        //   // Recreate the grid on the next change detection cycle
-        //   setTimeout(() => {
-        //     this.showDataGrid = true;
-        //   }, 0);
-        // }
+        // With a single source repository the name is the same on every row:
+        // show it in the title and hide the column instead.
+        const repoNames = [...new Set(items.map(item => item.repositoryName))];
+        const singleRepo = repoNames.length === 1 && !!repoNames[0];
+        this.titleRepository = singleRepo ? repoNames[0] : null;
+        this.gridTitle = this.titleRepository
+          ? gettext('Browse blocks from')
+          : gettext('Browse blocks from repositories');
+        this.repositoryBadge = this.titleRepository
+          ? `"${this.titleRepository.replace(/[\\"]/g, '\\$&').replace(/[\r\n]+/g, ' ')}"`
+          : null;
+        this.columnsSamples = this.columnsSamples.map(column =>
+          column.name === 'repositoryName' ? { ...column, visible: !singleRepo } : column
+        );
       })
     );
   }
 
   ngOnInit() {
-    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((samples) => (this.repositoryItems = samples));
-
-    this.repositoryService.getExpertMode().then(expertMode => {
-      this.expertMode = expertMode;
-      this.expertMode$.next(expertMode);
-    });
-
-    this.bulkActionControls.push({
-      type: 'CREATE',
-      text: 'Create extension',
-      icon: 'export',
-      callback: this.createExtension.bind(this)
+    this.repositoryItems$?.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(samples => {
+      this.repositoryItems = samples;
+      this.cdr.markForCheck();
     });
 
     this.actionControls.push({
       text: 'View Source',
       type: 'VIEW',
       icon: 'document-with-code',
-      showIf: (item) => item['type'] == 'file',
+      showIf: item => item['type'] == 'file',
       callback: this.viewMonitor.bind(this)
     });
 
     this.initializeActiveRepository();
+    this.loadBackendStatus();
   }
 
+  private async loadBackendStatus(): Promise<void> {
+    try {
+      this.backendDeployed = await this.analyticsService.isBackendServiceDeployed();
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Failed to load backend service status:', error);
+    }
+  }
+
+  async recheckBackend(): Promise<void> {
+    this.backendTogglePending = true;
+    try {
+      this.backendDeployed = await this.analyticsService.recheckBackendServiceDeployed();
+      this.cdr.markForCheck();
+    } catch (error) {
+      console.error('Failed to re-check the backend service:', error);
+    } finally {
+      this.backendTogglePending = false;
+      this.cdr.markForCheck();
+    }
+  }
 
   initializeActiveRepository(): void {
-    // Subscribe to repositories$ to find and set the active repository
-
-    this.repositoryService.getRepositories().pipe(
-      // Transform the array to find the enabled repository
-      map(repositories => repositories.find(repo => repo.enabled)),
-      // Only emit when the enabled repository changes
-      distinctUntilChanged((prev, curr) =>
-        prev?.id === curr?.id && prev?.enabled === curr?.enabled
-      ),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(enabledRepository => {
-      // Set the active repository
-      this.activeRepository = enabledRepository || ({} as Repository);
-
-      // You can perform additional actions here when active repository changes
-      // console.log('Active repository changed:', this.activeRepository);
-    });
+    this.repositoryService
+      .getRepositories()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(repositories => {
+        this.repositories = repositories;
+        // Keep the choice while it exists; otherwise fall back to the first repository.
+        if (!repositories.some(r => r.id === this.selectedRepositoryId)) {
+          const [fallback] = repositories;
+          this.selectRepository(fallback?.id ?? '');
+          if (!fallback) {
+            this.selectedRepositoryId = null;
+          }
+        }
+        this.cdr.markForCheck();
+      });
   }
 
   viewMonitor(block: RepositoryItem) {
     const initialState = {
-      source$: this.repositoryService.getRepositoryItemContent(
-        block,
-        false
-      ).pipe(
+      source$: this.repositoryService.getRepositoryItemContent(block, false).pipe(
         catchError(() => {
-          this.alertService.danger(`Failed to load content for "${block.name}".`);
+          this.alertService.danger(
+            this.messages.format(gettext('Failed to load content for "{{blockName}}".'), {
+              blockName: block.name
+            })
+          );
           return of('');
         })
       ),
@@ -248,103 +290,9 @@ export class RepositoryBlockGridComponent implements OnInit {
     }).content as EditorModalComponent;
   }
 
-
-  checkSelection(ids: string[]) {
-    const idSet = new Set(ids);
-    const invalid: RepositoryItem[] = [];
-    let hasInvalidType = false;
-    this.repositoryItems.forEach((sample) => {
-      if (!idSet.has(sample.id)) return;
-      if (sample.installed) {
-        this.alertService.warning(
-          `Not allowed to deploy the block twice. Block ${sample.name} is already installed and will be ignored!`
-        );
-        invalid.push(sample);
-        return;
-      }
-      if (sample.type == 'file' && !sample.file.endsWith('.mon') && sample.file !== DESCRIPTOR_YAML) {
-        invalid.push(sample);
-        hasInvalidType = true;
-      }
-    });
-    if (invalid.length > 0) {
-      setTimeout(() => {
-        this.dataGrid.setItemsSelected(invalid, false);
-        if (hasInvalidType) {
-          this.alertService.warning("Only files with extension '.mon', directories or 'extensions.yaml' are selectable!");
-        }
-      }, 0);
-    }
-  }
-
-  async createExtension(ids: string[]) {
-    const idSet = new Set(ids);
-    const selectedSections: string[] = [];
-    const selectedMonitors: RepositoryItem[] = [];
-    this.repositoryItems.forEach((sample) => {
-      if (idSet.has(sample.id) && !sample.installed) {
-        if (sample.extensionsYamlItem) {
-          selectedSections.push(sample.name);
-          selectedMonitors[0] = sample.extensionsYamlItem;
-        } else {
-          selectedMonitors.push(sample);
-        }
-      }
-    });
-
-    // parse content of yaml file and return list of first level entries as string[], e.g. Python, Offset
-    // Python:
-    //   - plugin.yaml
-    //   - Python.mon
-    //   - pythonBlockPlugin.py
-    //   - venv
-    // Offset:
-    //   - Offset.mon
-
-    if (selectedSections.length > 0) {
-      // Subscribe to the observable to process the data
-
-      const initialState = {
-        activeRepository: this.activeRepository,
-        monitors: selectedMonitors,
-        sections: selectedSections
-      };
-
-      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
-        class: 'modal-md',
-        initialState
-      });
-
-      if (modalRef.content) {
-        modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel();
-          modalRef.hide();
-        });
-      }
-
-    } else {
-      const initialState = {
-        activeRepository: this.activeRepository,
-        monitors: selectedMonitors
-      };
-
-      const modalRef = this.bsModalService.show(ExtensionCreateModalComponent, {
-        class: 'modal-md',
-        initialState
-      });
-
-      if (modalRef.content) {
-        modalRef.content.closeSubject.subscribe(() => {
-          this.dataGrid.cancel();
-          modalRef.hide();
-        });
-      }
-    }
-  }
-
   /**
- * Reload repository items (clears cache only)
- */
+   * Reload repository items (clears cache only)
+   */
   reload(): void {
     this.repositoryService.reload();
   }
@@ -354,6 +302,7 @@ export class RepositoryBlockGridComponent implements OnInit {
    */
   async reloadAll(): Promise<void> {
     this.loading = true;
+    this.cdr.markForCheck();
     try {
       await this.repositoryService.reloadAll();
     } catch (error) {
@@ -361,43 +310,48 @@ export class RepositoryBlockGridComponent implements OnInit {
       console.error('Failed to reload:', error);
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 
   async updateFilter() {
     this.repositoryService.updateHideInstalledFilter(this.hideInstalled);
+    this.hideInstalled$.next(this.hideInstalled);
   }
 
-  /**
-   * Toggling Expert mode on/off immediately gates whether `repositoryItems$`
-   * loads anything (see the constructor); persisting is best-effort — a
-   * failed save only logs, since the in-memory toggle already took effect
-   * for this session.
-   */
-  async updateMode() {
-    this.expertMode$.next(this.expertMode);
-    try {
-      await this.repositoryService.setExpertMode(this.expertMode);
-    } catch (error) {
-      console.error('Failed to persist Expert mode setting:', error);
+  selectRepository(id: string): void {
+    if (id !== this.selectedRepositoryId) {
+      this.selectedItemIds = [];
     }
+    this.selectedRepositoryId = id;
+    this.selectedRepositoryId$.next(id);
   }
 
   openRepositoriesDrawer(): void {
     this.showConfigRepositories = true;
   }
 
-  deployFromRelease(): void {
-    this.showDeployRelease = true;
+  private readonly dataGrid = viewChild(DataGridComponent);
+
+  /** Ids of the rows ticked in the grid; the wizard starts with them chosen. */
+  selectedItemIds: string[] = [];
+
+  onItemsSelect(ids: string[]): void {
+    this.selectedItemIds = ids;
   }
 
-  onDeployReleaseCancel(): void {
-    this.showDeployRelease = false;
-  }
-
-  onDeployReleaseCommit(): void {
-    this.showDeployRelease = false;
-    this.reload();
+  addExtension(): void {
+    const options =
+      this.selectedItemIds.length > 0 && this.selectedRepositoryId
+        ? { repositoryId: this.selectedRepositoryId, selectedIds: this.selectedItemIds }
+        : undefined;
+    this.extensionWizard.open(options).subscribe(added => {
+      if (added) {
+        this.dataGrid()?.cancel();
+        this.selectedItemIds = [];
+        this.reload();
+      }
+    });
   }
 
   openLayoutHelp(): void {
@@ -406,7 +360,7 @@ export class RepositoryBlockGridComponent implements OnInit {
       ariaLabelledBy: 'modal-title',
       ignoreBackdropClick: false
     });
-    modalRef.content?.closeSubject.subscribe(() => modalRef.hide());
+    modalRef.content?.closeSubject.pipe(take(1)).subscribe(() => modalRef.hide());
   }
 
   onRepositoryCommit(): void {
@@ -417,6 +371,5 @@ export class RepositoryBlockGridComponent implements OnInit {
 
   onRepositoryCancel(): void {
     this.showConfigRepositories = false;
-
   }
 }

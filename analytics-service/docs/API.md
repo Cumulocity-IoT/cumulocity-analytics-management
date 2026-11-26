@@ -1,6 +1,6 @@
 # Analytics Service API
 
-Aligned with `app.py` on 2026-10-14. The route docstrings in `app.py` carry the full detail.
+Aligned with `src/app.py` on 2026-10-14. The route docstrings in `app.py` carry the full detail.
 
 ## Base URL
 
@@ -14,7 +14,21 @@ Locally (`python app.py`): `http://localhost:80`.
 
 Every request must carry the caller's Cumulocity credentials (Basic auth, OAuth cookie/token) or it is
 rejected by the platform. The service forwards the request headers/cookies to Cumulocity and acts as that
-user/tenant. `GET /health` needs no authentication.
+user: Cumulocity checks the credentials, and the service then checks the caller's application role.
+`GET /health` needs no authentication. A missing or invalid login returns `401`, a missing role returns
+`403` with `{"error": "Missing required role ..."}`.
+
+The service declares three roles. A higher role includes the lower ones, so one assignment per person is
+enough.
+
+| Role | Allows |
+|------|--------|
+| `ROLE_ANALYTICS_MANAGEMENT_READ` | CEP status, list repositories, browse repository content, build an extension as a download |
+| `ROLE_ANALYTICS_MANAGEMENT_CREATE` | everything in READ, build with `upload=true`, and `POST /extension/release` |
+| `ROLE_ANALYTICS_MANAGEMENT_ADMIN` | everything in CREATE, and change repositories, delete extensions, `rebuild=true`, and `deploy=true` (CEP restart) |
+
+The platform calls themselves run as the microservice's service user, so callers need none of the
+platform roles such as `ROLE_INVENTORY_ADMIN`.
 
 ## Responses and errors
 
@@ -56,10 +70,10 @@ There is no rate limiting in the service itself.
 Repositories are stored as tenant options. Access tokens are returned as `_DUMMY_ACCESS_CODE_`.
 
 ### `GET /repository/configuration`
-`200` array of `{id, name, url, accessToken, enabled}`.
+`200` array of `{id, name, url, accessToken}`.
 
 ### `POST /repository/configuration`
-Body: array of `{id, name, url, accessToken?, enabled?}` (all three of `id`, `name`, `url` required per item).
+Body: array of `{id, name, url, accessToken?}` (all three of `id`, `name`, `url` required per item).
 **Replaces** the stored list: repositories not in the body are deleted.
 `accessToken`: omitted or `_DUMMY_ACCESS_CODE_` keeps the stored token, `""` clears it, any other value sets it;
 changing `url` without a new token clears the stored token.
@@ -81,13 +95,15 @@ Returns `text/plain`.
 ## Building extensions
 
 Common body fields: `extension_name` (`[A-Za-z0-9_-]+`), `repository: {id}`, and the booleans
-`upload` (default false), `deploy` (restart CEP after upload), `rebuild` (delete existing extension(s) of that
-name first; `404` if none exists).
+`upload` (default false), `deploy` (restart CEP after upload), `rebuild` (replace the existing extension(s) of that
+name; `404` if none exists).
 
 - `upload=false`: `200` with the extension zip (`application/zip`, attachment `<name>.zip`).
 - `upload=true`: `201 {"id": "<binary id>", "message": "Extension uploaded"}`.
 
-`rebuild` deletes the old extension **before** the new one is built.
+`rebuild` deletes the old extension(s) only **after** the new one was built and uploaded, so a failed build keeps the
+current extension. If the old one cannot be deleted, the response is still `201` and carries a `warning` text. A
+build that runs longer than `BUILD_TIMEOUT_SECONDS` (default 600) answers `504`.
 
 ### `POST /extension/repository`
 Builds from the whole repository path configured in `repository.id`.
@@ -104,6 +120,22 @@ are skipped; invalid names are reported as failed.
 - Download mode returns the zip of the first processed section.
 - Upload mode: `201 {"uploaded_extensions": [{"name", "id"}]}`; `207` with `failed_sections` and `message` if
   some failed; `400` if none succeeded. With `deploy=true` CEP is restarted once, after all sections, if at least one succeeded.
+
+### `POST /extension/release`
+Deploys a pre-built extension zip from a GitHub release asset. The service downloads the asset, because the browser
+cannot (GitHub sends no CORS headers for release assets), and uploads it as an extension named after the file
+without `.zip` and without its version: `Abs-1.0.1.zip` becomes the extension `Abs`, version `1.0.1`.
+
+Body: `repository: {id}`, `asset_id` (numeric id of a release asset of that repository), `asset_name` (a `.zip`
+file name), optional `release_tag`, `deploy` (restart CEP, ADMIN) and `replace` (replace an extension of the same name,
+ADMIN). The asset URL is built from the configured repository, never taken from the caller, and the stored token is
+sent only to `api.github.com` for that repository.
+
+- Always needs `ROLE_ANALYTICS_MANAGEMENT_CREATE`.
+- `201 {"id", "message"}`, plus a `warning` when the replaced extension could not be deleted.
+- `409` if an extension of that name exists and `replace` is false. `413` if the asset is larger than 100 MB.
+  `400` if the asset is not a zip file.
+- The build information records `build_type: "release"`, the repository, the release tag, the asset name and the `version`.
 
 ---
 

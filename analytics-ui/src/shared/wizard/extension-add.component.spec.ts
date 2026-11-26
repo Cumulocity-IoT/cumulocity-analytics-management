@@ -9,7 +9,8 @@ import { AnalyticsService } from '../analytics.service';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { ExtensionAddComponent } from './extension-add.component';
 
-const MON = 'package com.acme;\n/** Foo Block.\n *\n * Does foo.\n *\n * @$blockCategory Calculation\n */\nevent Foo { BlockBase $base; }';
+const MON =
+  'package com.acme;\n/** Foo Block.\n *\n * Does foo.\n *\n * @$blockCategory Calculation\n */\nevent Foo { BlockBase $base; }';
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 /** Builds an uploadable zip from path -> content. */
@@ -21,7 +22,9 @@ async function zipFile(name: string, entries: Record<string, string>): Promise<F
 
 describe('ExtensionAddComponent', () => {
   let component: ExtensionAddComponent;
-  let analytics: jasmine.SpyObj<AnalyticsService> & { uploadProgress$: BehaviorSubject<number | null> };
+  let analytics: jasmine.SpyObj<AnalyticsService> & {
+    uploadProgress$: BehaviorSubject<number | null>;
+  };
   let alerts: jasmine.SpyObj<AlertService>;
   let modals: jasmine.SpyObj<BsModalService>;
   let handler: jasmine.Spy;
@@ -45,7 +48,11 @@ describe('ExtensionAddComponent', () => {
 
   beforeEach(() => {
     analytics = Object.assign(
-      jasmine.createSpyObj('AnalyticsService', ['getExtensionsFromInventory', 'cancelExtensionCreation', 'triggerCacheReload']),
+      jasmine.createSpyObj('AnalyticsService', [
+        'getExtensionsFromInventory',
+        'cancelExtensionCreation',
+        'triggerCacheReload'
+      ]),
       { uploadProgress$: new BehaviorSubject<number | null>(null) }
     );
     analytics.getExtensionsFromInventory.and.resolveTo([]);
@@ -63,7 +70,9 @@ describe('ExtensionAddComponent', () => {
         { provide: BsModalService, useValue: modals }
       ]
     });
-    TestBed.overrideComponent(ExtensionAddComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ExtensionAddComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     spyOn(console, 'error');
     spyOn(console, 'warn');
   });
@@ -99,6 +108,103 @@ describe('ExtensionAddComponent', () => {
       expect(mode).toBe('add');
     });
 
+    const evt = (name: string) => buildBlockMetadataEvt(name, []);
+
+    it('drops the " (1)" a browser adds to a repeated download', async () => {
+      create();
+      await component.onFile(await zipFile('Foo-1.0.1 (1).zip', { 'files/Foo.mon': MON }));
+      expect(uploaded()[1]['name']).toBe('Foo');
+      expect(uploaded()[1]['build_information'].version).toBe('1.0.1');
+    });
+
+    it('drops any number in brackets, with or without a space', async () => {
+      for (const [fileName, expected] of [
+        ['Foo-1.0.1 (2).zip', 'Foo'],
+        ['Foo-1.0.1 (12).zip', 'Foo'],
+        ['Foo-1.0.1(3).zip', 'Foo']
+      ]) {
+        create();
+        await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+        expect(uploaded()[1]['name']).withContext(fileName).toBe(expected);
+      }
+    });
+
+    it('lets the single metadata file correct any other renaming', async () => {
+      for (const fileName of ['Foo-1.0.1 2.zip', 'Foo-1.0.1 copy.zip', 'Foo-1.0.1 - Copy.zip']) {
+        create();
+        await component.onFile(
+          await zipFile(fileName, {
+            'files/Foo.mon': MON,
+            'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
+          })
+        );
+        expect(uploaded()[1]['name']).withContext(fileName).toBe('Foo');
+        expect(uploaded()[1]['build_information'].version).withContext(fileName).toBe('1.0.1');
+      }
+    });
+
+    it('takes the name from the metadata file when the file name matches none', async () => {
+      create();
+      await component.onFile(
+        await zipFile('renamed.zip', {
+          'files/Foo.mon': MON,
+          'files/events/Foo-1.0.1_metadata.evt': evt('Foo-1.0.1')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('Foo');
+      expect(uploaded()[1]['pas_extension']).toBe('Foo');
+      expect(uploaded()[1]['build_information'].version).toBe('1.0.1');
+    });
+
+    it('keeps the file name when it matches one of several metadata files (a bundle)', async () => {
+      create();
+      await component.onFile(
+        await zipFile('bundle.zip', {
+          'files/events/bundle_metadata.evt': evt('bundle'),
+          'files/events/Other_metadata.evt': evt('Other')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('bundle');
+    });
+
+    it('keeps the file name when several metadata files and none matches it', async () => {
+      create();
+      await component.onFile(
+        await zipFile('mine.zip', {
+          'files/events/A_metadata.evt': evt('A'),
+          'files/events/B_metadata.evt': evt('B')
+        })
+      );
+      expect(uploaded()[1]['name']).toBe('mine');
+    });
+
+    it('keeps the version out of the name and stores it in the build information', async () => {
+      const cases: [string, string, string | undefined][] = [
+        ['Abs-1.0.1.zip', 'Abs', '1.0.1'],
+        ['contrib-blocks-1.0.1.zip', 'contrib-blocks', '1.0.1'],
+        ['Foo_v2.3.zip', 'Foo', '2.3'],
+        ['HttpOutputBlock.zip', 'HttpOutputBlock', undefined]
+      ];
+      for (const [fileName, name, version] of cases) {
+        create();
+        await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+        const [, extension] = uploaded();
+        expect(extension['name']).withContext(fileName).toBe(name);
+        expect(extension['pas_extension']).withContext(fileName).toBe(name);
+        expect(extension['build_information'].version).withContext(fileName).toBe(version);
+      }
+    });
+
+    it('replaces the installed version of the same extension instead of adding another', async () => {
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '7', name: 'Abs', build_information: { version: '1.0.0' } } as never
+      ]);
+      create();
+      await component.onFile(await zipFile('Abs-1.0.1.zip', { 'files/Foo.mon': MON }));
+      expect(component.state.requiresUpdate).toBeTrue();
+      expect(modals.show).toHaveBeenCalled();
+    });
+
     it('keeps the whole file name when it has no extension', async () => {
       create();
       const file = await zipFile('README', { 'files/Foo.mon': MON });
@@ -107,7 +213,11 @@ describe('ExtensionAddComponent', () => {
     });
 
     it('strips only the last extension of other files and keeps dot-only names', async () => {
-      for (const [fileName, expected] of [['pkg.v2.tar', 'pkg.v2'], ['.zip', '.zip'], ['.hidden', '.hidden']]) {
+      for (const [fileName, expected] of [
+        ['pkg.v2.tar', 'pkg.v2'],
+        ['.zip', '.zip'],
+        ['.hidden', '.hidden']
+      ]) {
         create();
         await component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
         expect(uploaded()[1]['name']).withContext(fileName).toBe(expected);
@@ -117,7 +227,7 @@ describe('ExtensionAddComponent', () => {
     it('reports success, completes the progress and leaves the loading state', async () => {
       create();
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));
-      expect(alerts.success).toHaveBeenCalledWith('Uploaded extension E successfully.');
+      expect(alerts.success).toHaveBeenCalledWith('Extension "E" uploaded.');
       expect(component.isComplete).toBeTrue();
       expect(component.isLoading).toBeFalse();
       expect(component.progress.value).toBe(100);
@@ -126,12 +236,14 @@ describe('ExtensionAddComponent', () => {
     });
 
     it('says "Updated" in update mode and uploads directly even if the extension exists', async () => {
-      analytics.getExtensionsFromInventory.and.resolveTo([{ id: '9', name: 'E' }] as unknown as IManagedObject[]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '9', name: 'E' }
+      ] as unknown as IManagedObject[]);
       create('update');
       await component.onFile(await zipFile('E.zip', { 'files/Foo.mon': MON }));
       expect(uploaded()[2]).toBe('update');
       expect(uploaded()[1]['id']).toBe('9'); // keeps the existing managed object
-      expect(alerts.success).toHaveBeenCalledWith('Updated extension E successfully.');
+      expect(alerts.success).toHaveBeenCalledWith('Extension "E" updated.');
       expect(modals.show).not.toHaveBeenCalled();
     });
   });
@@ -140,50 +252,112 @@ describe('ExtensionAddComponent', () => {
     const buildInfo = async (entries: Record<string, string>) => {
       create();
       await component.onFile(await zipFile('E.zip', entries));
-      return uploaded()[1]['build_information'] as { build_type: string; monitors: any[]; files: any[] };
+      return uploaded()[1]['build_information'] as {
+        build_type: string;
+        monitors: any[];
+        files: any[];
+      };
     };
 
     it('marks the extension as externally built and lists monitors and other files separately', async () => {
-      const info = await buildInfo({ 'files/Foo.mon': MON, 'files/helper.py': 'x', 'files/config.json': '{}', 'files/blob.bin': 'x' });
+      const info = await buildInfo({
+        'files/Foo.mon': MON,
+        'files/helper.py': 'x',
+        'files/config.json': '{}',
+        'files/blob.bin': 'x'
+      });
       expect(info.build_type).toBe('external');
       expect(info.monitors.map(m => m.file)).toEqual(['files/Foo.mon']);
-      expect(info.files.map(f => [f.name, f.type])).toEqual(jasmine.arrayContaining([['helper.py', 'script'], ['config.json', 'config'], ['blob.bin', 'file']]));
+      expect(info.files.map(f => [f.name, f.type])).toEqual(
+        jasmine.arrayContaining([
+          ['helper.py', 'script'],
+          ['config.json', 'config'],
+          ['blob.bin', 'file']
+        ])
+      );
     });
 
-    it('derives monitor name and a default id from the file', async () => {
+    it('derives monitor name and the block id from the file', async () => {
       const [monitor] = (await buildInfo({ 'files/sub/Foo.mon': MON })).monitors;
-      expect(monitor).toEqual(jasmine.objectContaining({ name: 'Foo', id: 'apamax.analyticsbuilder.custom.Foo', custom: true, type: 'file' }));
+      expect(monitor).toEqual(
+        jasmine.objectContaining({ name: 'Foo', id: 'com.acme.Foo', custom: true, type: 'file' })
+      );
     });
 
     it('reads category, description and id from the generated metadata event file', async () => {
       const blocks = parseApamaBlockMetadata(MON, 'com.acme');
-      const [monitor] = (await buildInfo({
-        'files/Foo.mon': MON,
-        'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', blocks)
-      })).monitors;
+      const [monitor] = (
+        await buildInfo({
+          'files/Foo.mon': MON,
+          'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', blocks)
+        })
+      ).monitors;
       expect(monitor.id).toBe('com.acme.Foo');
       expect(monitor.category).toBe('Calculation');
       expect(monitor.description).toBe('Does foo.');
     });
 
+    it('reads one extension-wide metadata file whose name matches no monitor, for every block', async () => {
+      const two =
+        'package com.acme;\n/** Bar Block.\n *\n * Does "bar".\n *\n * @$blockCategory Input\n */\nevent Bar { BlockBase $base; }';
+      const blocks = [
+        ...parseApamaBlockMetadata(MON, 'com.acme'),
+        ...parseApamaBlockMetadata(two, 'com.acme')
+      ];
+      const info = await buildInfo({
+        'files/Foo.mon': MON,
+        'files/Bar.mon': two,
+        'files/events/E_metadata.evt': buildBlockMetadataEvt('E', blocks)
+      });
+      const byName = Object.fromEntries(info.monitors.map(m => [m.name, m]));
+      expect(byName['Foo'].category).toBe('Calculation');
+      expect(byName['Bar'].category).toBe('Input');
+      expect(byName['Bar'].description).toBe('Does "bar".');
+      expect(info.files).toEqual([]);
+    });
+
+    it('matches a file that defines several blocks to its metadata, whatever the file is called', async () => {
+      const pair =
+        'package com.acme;\n/** Send. */\nevent Send { BlockBase $base; }\n/** Receive. */\nevent Receive { BlockBase $base; }';
+      const info = await buildInfo({
+        'files/Pair.mon': pair,
+        'files/events/E_metadata.evt': buildBlockMetadataEvt(
+          'E',
+          parseApamaBlockMetadata(pair, 'com.acme')
+        )
+      });
+      expect(info.monitors[0].id).toBe('com.acme.Send');
+      expect(info.monitors[0].blockIds).toEqual(['com.acme.Send', 'com.acme.Receive']);
+      expect(info.monitors[0].name).toBe('Pair');
+    });
+
     it('does not list the consumed metadata file again, but lists other event files', async () => {
       const info = await buildInfo({
         'files/Foo.mon': MON,
-        'files/events/Foo_metadata.evt': buildBlockMetadataEvt('E', parseApamaBlockMetadata(MON, 'com.acme')),
+        'files/events/Foo_metadata.evt': buildBlockMetadataEvt(
+          'E',
+          parseApamaBlockMetadata(MON, 'com.acme')
+        ),
         'files/events/E_messages.evt': 'x'
       });
       expect(info.files.map(f => f.file)).toEqual(['files/events/E_messages.evt']);
     });
 
-    it('falls back to the defaults when the metadata cannot be parsed', async () => {
-      const [monitor] = (await buildInfo({ 'files/Foo.mon': MON, 'files/events/Foo_metadata.evt': 'garbage' })).monitors;
-      expect(monitor.id).toBe('apamax.analyticsbuilder.custom.Foo');
+    it('keeps the block id and omits the details when the metadata cannot be parsed', async () => {
+      const [monitor] = (
+        await buildInfo({ 'files/Foo.mon': MON, 'files/events/Foo_metadata.evt': 'garbage' })
+      ).monitors;
+      expect(monitor.id).toBe('com.acme.Foo');
       expect(monitor.category).toBeUndefined();
     });
 
     it('ignores operating system and tooling noise', async () => {
       const info = await buildInfo({
-        'files/Foo.mon': MON, '__MACOSX/files/._Foo.mon': 'x', 'files/.DS_Store': 'x', '.git/config': 'x', 'node_modules/a/index.js': 'x'
+        'files/Foo.mon': MON,
+        '__MACOSX/files/._Foo.mon': 'x',
+        'files/.DS_Store': 'x',
+        '.git/config': 'x',
+        'node_modules/a/index.js': 'x'
       });
       expect(info.files).toEqual([]);
     });
@@ -199,7 +373,9 @@ describe('ExtensionAddComponent', () => {
 
   describe('when the extension already exists (add mode)', () => {
     beforeEach(() => {
-      analytics.getExtensionsFromInventory.and.resolveTo([{ id: '9', name: 'E' }] as unknown as IManagedObject[]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '9', name: 'E' }
+      ] as unknown as IManagedObject[]);
     });
 
     const drop = async () => {
@@ -209,7 +385,10 @@ describe('ExtensionAddComponent', () => {
 
     it('asks before updating and does not upload yet', async () => {
       await drop();
-      const [type, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { message: string } }];
+      const [type, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { message: string } }
+      ];
       expect(type).toBe(ConfirmationModalComponent);
       expect(options.initialState.message).toContain('"E" already exists');
       expect(handler).not.toHaveBeenCalled();

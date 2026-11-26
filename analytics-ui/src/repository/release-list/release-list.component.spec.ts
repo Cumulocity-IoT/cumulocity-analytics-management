@@ -7,7 +7,9 @@ describe('ReleaseListComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [ReleaseListComponent] });
-    TestBed.overrideComponent(ReleaseListComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ReleaseListComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     component = TestBed.createComponent(ReleaseListComponent).componentInstance;
   });
 
@@ -24,7 +26,9 @@ describe('ReleaseListComponent', () => {
   it('filters by name, case-insensitively and ignoring surrounding spaces', () => {
     component.filterTerm = '  ABS ';
     expect(component.filteredBlocks.map(a => a.name)).toContain('Abs');
-    expect(component.filteredBlocks.every(a => (a.name + a.description).toLowerCase().includes('abs'))).toBeTrue();
+    expect(
+      component.filteredBlocks.every(a => (a.name + a.description).toLowerCase().includes('abs'))
+    ).toBeTrue();
   });
 
   it('filters by description', () => {

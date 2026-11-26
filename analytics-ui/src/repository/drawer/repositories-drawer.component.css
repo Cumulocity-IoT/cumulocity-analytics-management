@@ -1,0 +1,44 @@
+/* The drawer fills the platform's bottom drawer; the card (max-height by the platform) keeps its
+   header, the token bar and the footer, and the split view takes what is left. */
+a17t-repositories-drawer {
+  display: block;
+  height: 100%;
+}
+
+.a17t-repo-drawer {
+  min-height: 0;
+}
+
+.a17t-repo-drawer > .card {
+  min-height: 0;
+}
+
+/* The panel has a size from the flex layout. The split view fills it by position, which does not
+   depend on a percentage height being resolvable: its panes scroll, the footer stays in view. */
+.a17t-repo-panel {
+  position: relative;
+  flex: 1 1 0;
+  min-height: 240px;
+  border-top: 1px solid var(--c8y-root-component-separator-color, #ddd);
+}
+
+.a17t-repo-panel c8y-sv {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.a17t-repo-panel [data-cy='c8y-sv'],
+.a17t-repo-panel c8y-resizable-grid,
+.a17t-repo-panel [right-pane],
+.a17t-repo-panel [left-pane] {
+  height: 100%;
+  min-height: 0;
+}
+
+.a17t-repo-panel [data-cy='c8y-sv-details'],
+.a17t-repo-panel .split-view__list {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}

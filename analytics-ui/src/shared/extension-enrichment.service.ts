@@ -4,7 +4,6 @@ import { AlertService } from '@c8y/ngx-components';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   Category,
-  CEP_METADATA_JSON_SUFFIX,
   CEP_DIAGNOSTICS_ZIP_SUFFIX,
   CEP_PATH_DIAGNOSTICS_EXTENSION_NAMES,
   CEP_PATH_EN,
@@ -15,8 +14,14 @@ import {
   RawCepBlock
 } from './analytics.model';
 import { CepError, fetchCepJSON } from './cep-error';
+import { CepRestartService } from './cep-restart.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
-import { isCustomCepBlock, removeFileExtension } from './utils';
+import {
+  isCustomCepBlock,
+  removeFileExtension,
+  removeZipSuffix,
+  splitExtensionVersion
+} from './utils';
 
 /**
  * Cross-references inventory extensions against what the CEP correlator has
@@ -33,20 +38,28 @@ export class ExtensionEnrichmentService {
   private cachedExtensionDetails = new Map<string, Promise<CepExtension | null>>();
 
   // Order matters: first match wins. UTILITY also serves as the default fallback.
-  private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> = [
-    [Category.INPUT, ['input', 'trigger', 'measurement', 'event']],
-    [Category.OUTPUT, ['output', 'send', 'http', 'email', 'alarm']],
-    [Category.AGGREGATE, ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']],
-    [Category.CALCULATION, ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']],
-    [Category.LOGIC, ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
-    [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
-    [Category.UTILITY, ['random', 'generator', 'constant', 'noise', 'walk']],
-  ];
+  private static readonly CATEGORY_KEYWORDS: ReadonlyArray<readonly [Category, readonly string[]]> =
+    [
+      [Category.INPUT, ['input', 'trigger', 'measurement', 'event']],
+      [Category.OUTPUT, ['output', 'send', 'http', 'email', 'alarm']],
+      [
+        Category.AGGREGATE,
+        ['sum', 'count', 'average', 'mean', 'aggregate', 'statistics', 'discrete']
+      ],
+      [
+        Category.CALCULATION,
+        ['math', 'calculation', 'operation', 'base', 'multiply', 'divide', 'limit']
+      ],
+      [Category.LOGIC, ['if', 'compare', 'filter', 'logic', 'condition', 'anomaly']],
+      [Category.FLOW_MANIPULATION, ['delay', 'rate', 'throttle', 'flow', 'state']],
+      [Category.UTILITY, ['random', 'generator', 'constant', 'noise', 'walk']]
+    ];
 
   constructor(
     private readonly alertService: AlertService,
     private readonly fetchClient: FetchClient,
-    private readonly extensionInventoryService: ExtensionInventoryService
+    private readonly extensionInventoryService: ExtensionInventoryService,
+    private readonly cepRestartService: CepRestartService
   ) {}
 
   /** Clears every cache invalidated by an extension being added/updated/deleted. */
@@ -79,9 +92,7 @@ export class ExtensionEnrichmentService {
     ]);
 
     return Promise.all(
-      inventoryExtensions.map(ext =>
-        this.addDeploymentStatus(ext, deployedMetadata, diagnostics)
-      )
+      inventoryExtensions.map(ext => this.addDeploymentStatus(ext, deployedMetadata, diagnostics))
     );
   }
 
@@ -89,10 +100,13 @@ export class ExtensionEnrichmentService {
     if (!this.cachedDeployedBlocks) {
       this.cachedDeployedBlocks = this.loadDeployedBlocks().catch(error => {
         this.cachedDeployedBlocks = null;
+        // While the engine restarts, the blocks cannot be read. That is expected and passes
+        // by itself, and the restart toast already says so: no "could not load" error.
+        const expected = this.cepRestartService.isExpectedTransientError(error);
         throw this.handleError(
           error,
           'Failed to load deployed blocks',
-          true,
+          !expected,
           gettext('Could not load deployed blocks. Please refresh.')
         );
       });
@@ -109,17 +123,32 @@ export class ExtensionEnrichmentService {
     // mapped once (otherwise its blocks would appear twice).
     const extensionNames = [...new Set(metadata.metadatas.map(removeFileExtension))];
 
+    let failedExtensions = 0;
     const perExtensionBlocks = await Promise.all(
-      extensionNames.map(async (extensionName) => {
+      extensionNames.map(async extensionName => {
         // Shares the per-name memo with addDeploymentStatus — no duplicate HTTP fetch
         const ext = await this.getDeployedExtensionDetails(extensionName);
-        if (!ext?.analytics?.length) return [];
+        if (!ext) {
+          failedExtensions++;
+          return [];
+        }
+        if (!ext.analytics?.length) return [];
         // Drop malformed blocks instead of failing the whole load.
         return ext.analytics
           .map(block => this.addBlockMetadata(block, ext.name))
           .filter((block): block is CepBlock => block !== null);
       })
     );
+
+    if (failedExtensions > 0) {
+      // A list built without some extensions must not be memoized: it would hide
+      // their blocks until the next explicit cache invalidation. The next caller
+      // retries (the failed details are already evicted from their own memo).
+      this.cachedDeployedBlocks = null;
+      console.warn(
+        `Deployed blocks are incomplete: ${failedExtensions} extension(s) could not be read.`
+      );
+    }
 
     return perExtensionBlocks.flat();
   }
@@ -143,7 +172,14 @@ export class ExtensionEnrichmentService {
 
     const inflight = (async () => {
       try {
-        const data = await fetchCepJSON<CepExtension>(this.fetchClient, `${CEP_PATH_EN}/${extensionName}.json`);
+        // The engine keeps an uploaded extension's metadata under "<name>-<version>", while the
+        // extension itself is stored without the version.
+        const metadata = await this.getDeployedExtensionsMetadata().catch(() => undefined);
+        const metadataName = this.resolveMetadataName(extensionName, metadata) ?? extensionName;
+        const data = await fetchCepJSON<CepExtension>(
+          this.fetchClient,
+          `${CEP_PATH_EN}/${encodeURIComponent(metadataName)}.json`
+        );
         return { ...data, name: extensionName };
       } catch (error) {
         console.warn(`Failed to get extension details for ${extensionName}:`, error);
@@ -173,6 +209,22 @@ export class ExtensionEnrichmentService {
     return this.cachedDeployedExtensionsMetadata;
   }
 
+  /**
+   * The name the engine registered an extension's blocks under: the name itself, or the one
+   * entry that is the name plus a version ("Abs" is "Abs-1.0.1"). Null when it is not deployed.
+   */
+  private resolveMetadataName(
+    name: string,
+    metadata: CepExtensionsMetadata | undefined
+  ): string | null {
+    const registered = (metadata?.metadatas ?? []).map(removeFileExtension);
+    if (registered.includes(name)) {
+      return name;
+    }
+    const versioned = registered.filter(entry => splitExtensionVersion(entry).name === name);
+    return versioned.length === 1 ? versioned[0] : null;
+  }
+
   private async addDeploymentStatus(
     extension: IManagedObject,
     deployedMetadata: CepExtensionsMetadata,
@@ -180,22 +232,22 @@ export class ExtensionEnrichmentService {
   ): Promise<IManagedObject> {
     // Some inventory entries keep the ".zip" suffix in their name; normalize
     // it so lookups against the correlator (which never uses ".zip") match.
-    const cleanName = removeFileExtension(extension['name']);
-    const metadataKey = cleanName + CEP_METADATA_JSON_SUFFIX;
+    // Only ".zip": an extension named "Abs-1.0.1" must not lose its ".1" and so its match.
+    const cleanName = removeZipSuffix(extension['name']);
     const diagnosticsKey = cleanName + CEP_DIAGNOSTICS_ZIP_SUFFIX;
 
     // Direction-agnostic match: handles entries returned as either "foo.json"
     // (exact) or "foo" (extension stripped). Matching only one direction is
     // fragile against API drift; this catches both shapes explicitly.
-    const isDeployedViaMetadata = deployedMetadata?.metadatas?.some(
-      name => name === metadataKey || removeFileExtension(name) === cleanName
-    );
-    const isDeployedViaDiagnostics = !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
+    const metadataName = this.resolveMetadataName(cleanName, deployedMetadata);
+    const isDeployedViaMetadata = metadataName !== null;
+    const isDeployedViaDiagnostics =
+      !!diagnostics && diagnosticsKey in (diagnostics as unknown as Record<string, unknown>);
     const isDeployed = isDeployedViaMetadata || isDeployedViaDiagnostics;
 
     let blockCount = 0;
     if (isDeployed) {
-      const details = await this.getDeployedExtensionDetails(cleanName);
+      const details = await this.getDeployedExtensionDetails(metadataName ?? cleanName);
       blockCount = details?.analytics?.length || 0;
     }
 
@@ -215,7 +267,10 @@ export class ExtensionEnrichmentService {
    * empty strings. `repositoryName`/`repositoryId` are intentionally omitted:
    * deployed blocks have no originating repository.
    */
-  private addBlockMetadata(block: RawCepBlock | null | undefined, extensionName: string): CepBlock | null {
+  private addBlockMetadata(
+    block: RawCepBlock | null | undefined,
+    extensionName: string
+  ): CepBlock | null {
     const id = block?.id?.trim() ?? '';
     const name = block?.name?.trim() ?? '';
     if (!block || typeof block !== 'object' || !id || !name) {
@@ -241,10 +296,22 @@ export class ExtensionEnrichmentService {
     };
   }
 
+  /**
+   * Whole-word matching on the words of the name and description (camelCase is
+   * split). A substring test would classify "Notification" as Logic because it
+   * contains "if", or "Prevent" as Input because it contains "event".
+   */
   private determineBlockCategory(block: Partial<CepBlock>): Category {
-    const text = `${block.name ?? ''} ${block.description ?? ''}`.toLowerCase();
+    const text = `${block.name ?? ''} ${block.description ?? ''}`;
+    const words = new Set(
+      text
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .toLowerCase()
+        .split(/[^a-z0-9]+/)
+        .filter(Boolean)
+    );
     for (const [category, keywords] of ExtensionEnrichmentService.CATEGORY_KEYWORDS) {
-      if (keywords.some(kw => text.includes(kw))) return category;
+      if (keywords.some(kw => words.has(kw) || words.has(`${kw}s`))) return category;
     }
     return Category.UTILITY;
   }
@@ -255,7 +322,14 @@ export class ExtensionEnrichmentService {
     showAlert: boolean = false,
     userMessage?: string
   ): Error {
-    console.error(`[ExtensionEnrichmentService] ${logMessage}:`, error);
+    if (this.cepRestartService.isExpectedTransientError(error)) {
+      console.warn(
+        `[ExtensionEnrichmentService] ${logMessage} (expected while the engine restarts):`,
+        error
+      );
+    } else {
+      console.error(`[ExtensionEnrichmentService] ${logMessage}:`, error);
+    }
 
     if (showAlert) {
       this.alertService.danger(userMessage || this.getErrorMessage(error));

@@ -1,6 +1,16 @@
 {
-    "singleQuote": true,
-    "semi": true,
-    "trailingComma" : "none",
-    "bracketSpacing": true
+  "singleQuote": true,
+  "printWidth": 100,
+  "trailingComma": "none",
+  "arrowParens": "avoid",
+  "overrides": [
+    {
+      "files": "*.html",
+      "options": {
+        "parser": "angular",
+        "singleAttributePerLine": true,
+        "htmlWhitespaceSensitivity": "css"
+      }
+    }
+  ]
 }

@@ -15,7 +15,6 @@ REPO = {
     "name": "Repo",
     "url": "https://github.com/o/r/tree/main/blocks",
     "accessToken": "ghp_secret",
-    "enabled": True,
 }
 
 
@@ -437,33 +436,74 @@ class TestExtensionFromRepository:
 
     def test_rebuild_without_existing_extension_is_404(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.return_value = 0
+        agent_mock.count_extensions.return_value = 0
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
         )
         assert resp.status_code == 404
         agent_mock.upload_extension.assert_not_called()
+        agent_mock.delete_extension.assert_not_called()
 
-    def test_rebuild_delete_failure_is_400(self, client, agent_mock, build_env):
+    def test_rebuild_lookup_failure_is_400(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.side_effect = C8YAgentError("boom")
+        agent_mock.count_extensions.side_effect = C8YAgentError("boom")
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "rebuild": True},
         )
         assert resp.status_code == 400
 
-    def test_rebuild_deletes_then_uploads(self, client, agent_mock, build_env):
+    def test_rebuild_uploads_first_then_deletes_the_previous_extension(self, client, agent_mock, build_env):
         agent_mock.load_repository.return_value = REPO
-        agent_mock.delete_extension.return_value = 1
+        agent_mock.count_extensions.return_value = 1
+        agent_mock.find_extension_ids.return_value = ["4"]
         agent_mock.upload_extension.return_value = "9"
+        order = []
+        agent_mock.upload_extension.side_effect = lambda *a, **k: order.append("upload") or "9"
+        agent_mock.delete_extension.side_effect = lambda *a, **k: order.append("delete") or 1
         resp = client.post(
             self.URL,
             json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
         )
         assert resp.status_code == 201
-        agent_mock.delete_extension.assert_called_once()
+        assert order == ["upload", "delete"]
+        assert agent_mock.delete_extension.call_args.kwargs == {"extension_name": "E", "only_ids": ["4"]}
+
+    def test_failed_build_keeps_the_existing_extension_on_rebuild(self, client, agent_mock, monkeypatch, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.count_extensions.return_value = 1
+        monkeypatch.setattr(
+            app_module, "_build_extension",
+            MagicMock(side_effect=subprocess.CalledProcessError(1, "sdk", stderr="compile error")),
+        )
+        resp = client.post(
+            self.URL,
+            json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
+        )
+        assert resp.status_code == 500
+        agent_mock.delete_extension.assert_not_called()
+
+    def test_rebuild_reports_a_warning_when_the_old_extension_cannot_be_deleted(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.count_extensions.return_value = 1
+        agent_mock.upload_extension.return_value = "9"
+        agent_mock.delete_extension.side_effect = C8YAgentError("locked")
+        resp = client.post(
+            self.URL,
+            json={"extension_name": "E", "repository": {"id": "r"}, "upload": True, "rebuild": True},
+        )
+        assert resp.status_code == 201
+        assert "locked" in resp.get_json()["warning"]
+
+    def test_build_timeout_is_504(self, client, agent_mock, monkeypatch, build_env):
+        agent_mock.load_repository.return_value = REPO
+        monkeypatch.setattr(
+            app_module, "_build_extension",
+            MagicMock(side_effect=subprocess.TimeoutExpired("sdk", 1)),
+        )
+        resp = client.post(self.URL, json={"extension_name": "E", "repository": {"id": "r"}})
+        assert resp.status_code == 504
 
     def test_download_failure_is_400(self, client, agent_mock, monkeypatch):
         agent_mock.load_repository.return_value = REPO
@@ -556,6 +596,7 @@ class TestExtensionFromYaml:
         agent_mock.load_repository.return_value = REPO
         agent_mock.upload_extension.side_effect = lambda *a, **k: f"id-{a[1]}"
         agent_mock.delete_extension.return_value = 1
+        agent_mock.count_extensions.return_value = 1
         self.agent = agent_mock
         self.yaml_text = self.YAML
         monkeypatch.setattr(
@@ -630,7 +671,7 @@ class TestExtensionFromYaml:
         assert resp.get_json()["failed_sections"][0]["section"] == "bad name"
 
     def test_rebuild_without_existing_extension_fails_that_section(self, client):
-        self.agent.delete_extension.side_effect = [1, 0]
+        self.agent.count_extensions.side_effect = [1, 0]
         resp = self._post(client, upload=True, rebuild=True)
         assert resp.status_code == 207
         assert resp.get_json()["failed_sections"][0]["section"] == "Beta"
@@ -677,3 +718,398 @@ class TestDeleteExtension:
     def test_by_name_agent_error_is_500(self, client, agent_mock):
         agent_mock.delete_extension.side_effect = C8YAgentError("x")
         assert client.delete("/extension?name=Foo").status_code == 500
+
+
+# ------------------------------------------------------------ security hardening
+
+
+class TestRepositoryBinding:
+    """The stored PAT must only reach URLs inside the configured repository."""
+
+    def test_content_list_other_repo_is_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/other/private", "repository_id": "repo-1"},
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_content_other_repo_is_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/content",
+            query_string={
+                "url": "https://raw.githubusercontent.com/other/private/main/A.mon",
+                "repository_id": "repo-1",
+            },
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_content_list_dot_segments_are_rejected(self, client, agent_mock, monkeypatch):
+        agent_mock.load_repository.return_value = REPO
+        get = MagicMock()
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/o/r/tree/main/../../../x", "repository_id": "repo-1"},
+        )
+        assert resp.status_code == 400
+        get.assert_not_called()
+
+    def test_bad_repository_id_is_rejected(self, client, agent_mock):
+        resp = client.get(
+            "/repository/contentList",
+            query_string={"url": "https://github.com/o/r", "repository_id": "../../x"},
+        )
+        assert resp.status_code == 400
+        agent_mock.load_repository.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.github.com/repos/o/r/contents/../../../other/private/contents/x",
+            "https://api.github.com/repos/o/r/contents/%2e%2e/%2e%2e/x",
+            "https://github.com/o/r/tree/main/../../x",
+        ],
+    )
+    def test_url_with_dot_segments_is_not_in_repository(self, url):
+        assert app_module._url_error_for_repository(url, REPO)
+
+    def test_list_monitor_with_dot_segments_is_400(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        resp = client.post(
+            "/extension/list",
+            json={
+                "extension_name": "E",
+                "repository": {"id": "repo-1"},
+                "monitors": [{
+                    "url": "https://api.github.com/repos/o/r/contents/../../../other/private/contents/A.mon",
+                    "type": "file",
+                }],
+            },
+        )
+        assert resp.status_code == 400
+
+
+class TestIdentifierValidation:
+    @pytest.mark.parametrize("bad", ["../x", "a/b", "a b", "", "x" * 65, "a?b=c"])
+    def test_repository_config_rejects_bad_id(self, client, agent_mock, bad):
+        resp = client.post(
+            "/repository/configuration", json=[{"id": bad, "name": "n", "url": "u"}]
+        )
+        assert resp.status_code == 400
+        agent_mock.update_repositories.assert_not_called()
+
+    @pytest.mark.parametrize("bad", ["../x", "1%3Fx=y", "abc", "1%2F2"])
+    def test_delete_by_id_rejects_non_numeric(self, client, agent_mock, bad):
+        resp = client.delete(f"/extension/{bad}")
+        assert resp.status_code in (400, 404)
+        agent_mock.delete_extension.assert_not_called()
+
+    @pytest.mark.parametrize("bad", [{"id": "../x"}, {"id": 5}, "repo-1"])
+    def test_extension_routes_reject_bad_repository(self, client, agent_mock, bad):
+        for url, extra in (
+            ("/extension/repository", {}),
+            ("/extension/list", {"monitors": [{"url": "https://github.com/o/r"}]}),
+        ):
+            resp = client.post(url, json={"extension_name": "E", "repository": bad, **extra})
+            assert resp.status_code == 400
+        agent_mock.load_repository.assert_not_called()
+
+
+class TestBuildInfoHasNoToken:
+    def test_upload_build_info_omits_access_token(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.upload_extension.return_value = "1"
+        client.post(
+            "/extension/repository",
+            json={"extension_name": "E", "repository": {"id": "repo-1"}, "upload": True},
+        )
+        build_info = agent_mock.upload_extension.call_args.args[3]
+        assert build_info["repository"] == {
+            "id": "repo-1", "name": "Repo", "url": REPO["url"],
+        }
+        assert "ghp_secret" not in str(build_info)
+
+
+class TestYamlFilesValidation:
+    def _run(self, monkeypatch, fake_response, yaml_text, build_env_installed=True):
+        monkeypatch.setattr(
+            app_module.requests, "get", MagicMock(return_value=fake_response(200, text=yaml_text))
+        )
+        with app_module.app.test_request_context():
+            return app_module._process_yaml_sections(
+                {"url": "https://raw.githubusercontent.com/o/r/main/e.yaml"},
+                [], REPO, upload=True, deploy=False,
+            )
+
+    def test_traversal_in_files_fails_the_section(self, agent_mock, monkeypatch, fake_response, build_env):
+        out = self._run(monkeypatch, fake_response, "Evil:\n  files:\n    - ../../../other/private/x.mon\n")
+        assert out.status_code == 400
+        agent_mock.upload_extension.assert_not_called()
+
+    @pytest.mark.parametrize("files", ["abc", "[1, 2]", "['/etc/passwd']"])
+    def test_malformed_files_fail_the_section(self, agent_mock, monkeypatch, fake_response, build_env, files):
+        out = self._run(monkeypatch, fake_response, f"S:\n  files: {files}\n")
+        assert out.status_code == 400
+        agent_mock.upload_extension.assert_not_called()
+
+    def test_non_dict_section_fails_without_crashing(self, agent_mock, monkeypatch, fake_response, build_env):
+        out = self._run(monkeypatch, fake_response, "S: just-a-string\n")
+        assert out.status_code == 400
+
+
+class TestStoredMonitors:
+    def test_only_known_plain_fields_are_stored_on_the_extension(self, client, agent_mock, build_env):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.upload_extension.return_value = "9"
+        monitor = {
+            "url": "https://api.github.com/repos/o/r/contents/blocks/A.mon?ref=main",
+            "name": "A", "type": "file", "id": "a.A", "blockIds": ["a.A", 5],
+            "accessToken": "secret", "extensionsYamlItem": {"nested": True},
+        }
+        resp = client.post(
+            "/extension/list",
+            json={"extension_name": "E", "repository": {"id": "r"}, "monitors": [monitor], "upload": True},
+        )
+        assert resp.status_code == 201
+        stored = agent_mock.upload_extension.call_args.args[3]["monitors"]
+        assert stored == [{
+            "id": "a.A", "name": "A", "type": "file", "url": monitor["url"], "blockIds": ["a.A"],
+        }]
+
+
+class TestExtractFqn:
+    def test_ignores_package_text_in_comments(self):
+        content = "// the package x.y; is documented elsewhere\npackage real.pkg;\nevent A {}"
+        assert app_module._extract_fqn(content, "A") == "real.pkg.A"
+
+    def test_missing_package_is_an_error(self):
+        with pytest.raises(ValueError):
+            app_module._extract_fqn("// package x;\nevent A {}", "A")
+
+
+# ------------------------------------------------------- release asset deployment
+
+
+class TestDeployFromRelease:
+    URL = "/extension/release"
+    BODY = {
+        "repository": {"id": "repo-1"},
+        "asset_id": 987,
+        "asset_name": "Abs-1.0.1.zip",
+        "release_tag": "v1.0.1",
+    }
+
+    @staticmethod
+    def _zip_bytes():
+        import zipfile
+
+        buffer = io.BytesIO()
+        with zipfile.ZipFile(buffer, "w") as archive:
+            archive.writestr("files/Abs.mon", "monitor Abs {}")
+        return buffer.getvalue()
+
+    @pytest.fixture
+    def env(self, agent_mock, monkeypatch, fake_response):
+        agent_mock.load_repository.return_value = REPO
+        agent_mock.count_extensions.return_value = 0
+        agent_mock.upload_extension.return_value = "55"
+        agent_mock.find_extension_ids.return_value = []
+        calls = []
+        data = self._zip_bytes()
+
+        def get(url, headers=None, **kwargs):
+            calls.append((url, headers, kwargs))
+            resp = fake_response(200, content=data, headers={"Content-Length": str(len(data))})
+            resp.iter_content.return_value = [data[:20], data[20:]]
+            return resp
+
+        monkeypatch.setattr(app_module.requests, "get", get)
+        return agent_mock, calls
+
+    def test_downloads_the_asset_and_uploads_it_named_after_the_file(self, client, env):
+        agent_mock, calls = env
+        resp = client.post(self.URL, json=self.BODY)
+        assert resp.status_code == 201
+        assert resp.get_json() == {"id": "55", "message": "Extension uploaded"}
+        name, archive, build_info = agent_mock.upload_extension.call_args.args[1:4]
+        assert name == "Abs"
+        assert archive.read(2) == b"PK"
+        assert build_info == {
+            "build_type": "release",
+            "repository": {k: REPO[k] for k in ("id", "name", "url")},
+            "release": "v1.0.1",
+            "asset": "Abs-1.0.1.zip",
+            "version": "1.0.1",
+        }
+        agent_mock.restart_cep.assert_not_called()
+
+    def test_asset_url_comes_from_the_configured_repository_with_its_token(self, client, env):
+        _, calls = env
+        client.post(self.URL, json=self.BODY)
+        url, headers, kwargs = calls[0]
+        assert url == "https://api.github.com/repos/o/r/releases/assets/987"
+        assert headers["Authorization"] == "Bearer ghp_secret"
+        assert headers["Accept"] == "application/octet-stream"
+        assert kwargs["stream"] is True
+
+    def test_the_access_token_is_never_stored_with_the_extension(self, client, env):
+        agent_mock, _ = env
+        client.post(self.URL, json=self.BODY)
+        assert "ghp_secret" not in json.dumps(agent_mock.upload_extension.call_args.args[3])
+
+    def test_deploy_restarts_cep(self, client, env):
+        agent_mock, _ = env
+        client.post(self.URL, json={**self.BODY, "deploy": True})
+        agent_mock.restart_cep.assert_called_once()
+
+    def test_existing_extension_is_a_conflict_unless_replaced(self, client, env):
+        agent_mock, _ = env
+        agent_mock.count_extensions.return_value = 1
+        resp = client.post(self.URL, json=self.BODY)
+        assert resp.status_code == 409
+        agent_mock.upload_extension.assert_not_called()
+
+    def test_replace_deletes_only_the_previous_extensions_after_the_upload(self, client, env):
+        agent_mock, _ = env
+        agent_mock.count_extensions.return_value = 1
+        agent_mock.find_extension_ids.return_value = ["7"]
+        resp = client.post(self.URL, json={**self.BODY, "replace": True})
+        assert resp.status_code == 201
+        agent_mock.delete_extension.assert_called_once()
+        assert agent_mock.delete_extension.call_args.kwargs["only_ids"] == ["7"]
+
+    def test_failed_delete_is_reported_as_a_warning(self, client, env):
+        agent_mock, _ = env
+        agent_mock.find_extension_ids.return_value = ["7"]
+        agent_mock.delete_extension.side_effect = C8YAgentError("nope")
+        resp = client.post(self.URL, json={**self.BODY, "replace": True})
+        assert resp.status_code == 201
+        assert "could not be deleted" in resp.get_json()["warning"]
+
+    @pytest.mark.parametrize(
+        "patch",
+        [
+            {"asset_id": "abc"},
+            {"asset_id": True},
+            {"asset_id": None},
+            {"asset_name": "../evil.zip"},
+            {"asset_name": "notazip.txt"},
+            {"asset_name": ".zip"},
+            {"release_tag": 5},
+            {"repository": {}},
+            {"repository": {"id": "a b"}},
+        ],
+    )
+    def test_invalid_parameters_are_rejected(self, client, env, patch):
+        agent_mock, calls = env
+        resp = client.post(self.URL, json={**self.BODY, **patch})
+        assert resp.status_code == 400
+        assert not calls
+        agent_mock.upload_extension.assert_not_called()
+
+    def test_body_must_be_an_object(self, client, env):
+        assert client.post(self.URL, json=[1]).status_code == 400
+
+    def test_unknown_repository_is_404(self, client, env):
+        agent_mock, calls = env
+        agent_mock.load_repository.return_value = None
+        assert client.post(self.URL, json=self.BODY).status_code == 404
+        assert not calls
+
+    def test_non_github_repository_is_rejected_without_sending_the_token(
+        self, client, env
+    ):
+        agent_mock, calls = env
+        agent_mock.load_repository.return_value = {**REPO, "url": "https://evil.example/o/r"}
+        assert client.post(self.URL, json=self.BODY).status_code == 400
+        assert not calls
+
+    def test_github_errors_are_translated(self, client, env, monkeypatch, fake_response):
+        monkeypatch.setattr(
+            app_module.requests, "get", lambda *a, **k: fake_response(404, text="Not Found")
+        )
+        resp = client.post(self.URL, json=self.BODY)
+        assert resp.status_code == 404
+        env[0].upload_extension.assert_not_called()
+
+    def test_something_that_is_not_a_zip_is_refused(self, client, env, monkeypatch, fake_response):
+        def get(*a, **k):
+            resp = fake_response(200, content=b"<html>")
+            resp.iter_content.return_value = [b"<html>"]
+            return resp
+
+        monkeypatch.setattr(app_module.requests, "get", get)
+        resp = client.post(self.URL, json=self.BODY)
+        assert resp.status_code == 400
+        assert "not a zip" in resp.get_json()["error"].lower()
+        env[0].upload_extension.assert_not_called()
+
+    def test_too_large_assets_are_refused_by_the_declared_size(
+        self, client, env, monkeypatch, fake_response
+    ):
+        monkeypatch.setattr(
+            app_module.requests,
+            "get",
+            lambda *a, **k: fake_response(
+                200, headers={"Content-Length": str(app_module.RELEASE_ASSET_MAX_BYTES + 1)}
+            ),
+        )
+        assert client.post(self.URL, json=self.BODY).status_code == 413
+
+    def test_too_large_assets_are_refused_while_streaming(
+        self, client, env, monkeypatch, fake_response
+    ):
+        monkeypatch.setattr(app_module, "RELEASE_ASSET_MAX_BYTES", 10)
+
+        def get(*a, **k):
+            resp = fake_response(200)
+            resp.iter_content.return_value = [b"x" * 8, b"x" * 8]
+            return resp
+
+        monkeypatch.setattr(app_module.requests, "get", get)
+        assert client.post(self.URL, json=self.BODY).status_code == 413
+        env[0].upload_extension.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "asset_name,name,version",
+        [
+            ("Abs-1.0.1.zip", "Abs", "1.0.1"),
+            ("contrib-blocks-1.0.1.zip", "contrib-blocks", "1.0.1"),
+            ("Foo_v2.3.zip", "Foo", "2.3"),
+            ("Foo-1.0.0-rc.1.zip", "Foo", "1.0.0-rc.1"),
+            ("HttpOutputBlock.zip", "HttpOutputBlock", None),
+            ("Block-2.zip", "Block", "2"),
+            ("Abs-1.0.0-rc-1.zip", "Abs", "1.0.0-rc-1"),
+            ("Abs-1.0.0-rc.1+build.2.zip", "Abs", "1.0.0-rc.1+build.2"),
+        ],
+    )
+    def test_the_version_is_metadata_not_part_of_the_name(
+        self, client, env, asset_name, name, version
+    ):
+        agent_mock, _ = env
+        resp = client.post(self.URL, json={**self.BODY, "asset_name": asset_name})
+        assert resp.status_code == 201
+        sent_name, _, build_info = agent_mock.upload_extension.call_args.args[1:4]
+        assert sent_name == name
+        assert build_info["version"] == version
+        assert agent_mock.count_extensions.call_args.args[1] == name
+
+    def test_the_download_is_always_closed(self, client, env, monkeypatch, fake_response):
+        closed = []
+
+        def get(*a, **k):
+            resp = fake_response(404)
+            resp.close.side_effect = lambda: closed.append(True)
+            return resp
+
+        monkeypatch.setattr(app_module.requests, "get", get)
+        client.post(self.URL, json=self.BODY)
+        assert closed == [True]

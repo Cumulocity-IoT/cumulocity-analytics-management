@@ -1,23 +1,16 @@
-import {
-  Component,
-  EventEmitter,
-  Input,
-  Output,
-  ViewChild,
-  OnDestroy
-} from '@angular/core';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { MessageService } from '../message.service';
+import { Component, Input, ViewChild, OnDestroy, inject, output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
-import {
-  AlertService,
-  CoreModule,
-  DropAreaComponent
-} from '@c8y/ngx-components';
+import { AlertService, CoreModule, DropAreaComponent } from '@c8y/ngx-components';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { take } from 'rxjs/operators';
 import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
+import { ParsedBlockMetadata, parseBlockMetadataEvt } from '../apama-block-metadata';
+import { extractBlockFqns, splitExtensionVersion } from '../utils';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import JSZip from 'jszip';
@@ -42,6 +35,8 @@ interface MonitorMetadata {
   inputs?: any[];
   outputs?: any[];
   parameters?: any[];
+  /** All block ids of a file that defines more than one block. */
+  blockIds?: string[];
 }
 
 interface FileMetadata {
@@ -53,6 +48,8 @@ interface FileMetadata {
 
 interface BuildInformation {
   build_type: string;
+  /** The version taken off the file name: `Abs-1.0.1.zip` is the extension `Abs`, version `1.0.1`. */
+  version?: string;
   monitors: MonitorMetadata[];
   files: FileMetadata[];
 }
@@ -61,10 +58,10 @@ interface BuildInformation {
   selector: 'a17t-extension-add',
   templateUrl: './extension-add.component.html',
   styleUrls: ['./extension-add.component.css'],
-  standalone: true,
   imports: [CommonModule, CoreModule]
 })
 export class ExtensionAddComponent implements OnDestroy {
+  private readonly messages = inject(MessageService);
   @Input() headerText!: string;
   @Input() headerIcon!: string;
   @Input() successText!: string;
@@ -74,8 +71,14 @@ export class ExtensionAddComponent implements OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
-  @Output() cancelled = new EventEmitter<void>();
-  @Output() completed = new EventEmitter<void>();
+  /** Inside another wizard: that wizard owns the header and footer, this one only shows the upload. */
+  @Input() embedded = false;
+  readonly cancelled = output<void>();
+  readonly completed = output<void>();
+  /** Emits as soon as the upload succeeded, before the user presses Done. */
+  readonly uploaded = output<void>();
+  /** Emits while an upload is running, so a containing wizard can block navigation. */
+  readonly loadingChange = output<boolean>();
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
@@ -95,7 +98,7 @@ export class ExtensionAddComponent implements OnDestroy {
     private analyticsService: AnalyticsService,
     private alertService: AlertService,
     private bsModalService: BsModalService
-  ) { }
+  ) {}
 
   ngOnDestroy(): void {
     this.destroy$.next();
@@ -105,6 +108,11 @@ export class ExtensionAddComponent implements OnDestroy {
 
   get progress(): BehaviorSubject<number | null> {
     return this.analyticsService.uploadProgress$;
+  }
+
+  private setLoading(value: boolean): void {
+    this.state.isLoading = value;
+    this.loadingChange.emit(value);
   }
 
   get isLoading(): boolean {
@@ -133,15 +141,22 @@ export class ExtensionAddComponent implements OnDestroy {
   async onFile(file: File): Promise<void> {
     this.resetState();
     this.state.file = file;
-    this.state.isLoading = true;
+    this.setLoading(true);
     this.progress.next(0);
 
     try {
-      const extensionName = this.extractExtensionName(file.name);
+      // The version is metadata: a newer version of the same extension then replaces the
+      // installed one instead of installing next to it.
+      const { name: extensionName, version } = splitExtensionVersion(
+        await this.resolveExtensionName(file)
+      );
       const existingExtension = await this.findExistingExtension(extensionName);
 
       // Analyze ZIP content
-      const buildInformation = await this.analyzeZipContent(file);
+      const buildInformation = {
+        ...(await this.analyzeZipContent(file)),
+        ...(version ? { version } : {})
+      };
 
       this.state.extension = existingExtension || {
         pas_extension: extensionName,
@@ -189,22 +204,26 @@ export class ExtensionAddComponent implements OnDestroy {
         }
       });
 
+      // The SDK writes ONE `<extension>_metadata.evt` for all monitors of an extension,
+      // and its name does not have to match any monitor. Read every such file, then
+      // match blocks to monitors by the block names each monitor file defines.
+      const blocksById = new Map<string, ParsedBlockMetadata>();
+      for (const path of Object.keys(zip.files)) {
+        const entry = zip.files[path];
+        if (entry.dir || !path.endsWith('_metadata.evt')) continue;
+        processedFiles.add(path);
+        try {
+          for (const block of parseBlockMetadataEvt(await entry.async('text'))) {
+            if (!blocksById.has(block.id)) blocksById.set(block.id, block);
+          }
+        } catch (error) {
+          console.warn(`Failed to read block metadata ${path}:`, error);
+        }
+      }
+
       // Process each monitor file
       for (const monitorPath of monitorFiles) {
         const monitorName = this.extractMonitorName(monitorPath);
-        const monitorDir = monitorPath.includes('/')
-          ? monitorPath.slice(0, monitorPath.lastIndexOf('/') + 1)
-          : '';
-        const metadataPath = `${monitorDir}events/${monitorName}_metadata.evt`;
-
-        // Try to find corresponding metadata file
-        const metadataFile = zip.file(metadataPath);
-
-        // Mark metadata file as processed
-        if (metadataFile) {
-          processedFiles.add(metadataPath);
-        }
-
         const monitorMetadata: MonitorMetadata = {
           custom: true,
           file: monitorPath,
@@ -213,27 +232,24 @@ export class ExtensionAddComponent implements OnDestroy {
           type: 'file'
         };
 
-        // Parse metadata if available
-        if (metadataFile) {
-          try {
-            const metadataContent = await metadataFile.async('text');
-            const parsedMetadata = this.parseEventMetadata(metadataContent);
-
-            if (parsedMetadata) {
-              monitorMetadata.category = parsedMetadata.category;
-              monitorMetadata.description = parsedMetadata.description;
-              monitorMetadata.inputs = parsedMetadata.inputs;
-              monitorMetadata.outputs = parsedMetadata.outputs;
-              monitorMetadata.parameters = parsedMetadata.parameters;
-
-              // Use the ID from metadata if available
-              if (parsedMetadata.id) {
-                monitorMetadata.id = parsedMetadata.id;
-              }
-            }
-          } catch (error) {
-            console.warn(`Failed to parse metadata for ${monitorName}:`, error);
+        try {
+          const content = await zip.file(monitorPath)!.async('text');
+          const blockIds = extractBlockFqns(content, monitorName);
+          // Same id the repository list and the engine use for this file.
+          monitorMetadata.id = blockIds[0];
+          const block = blockIds.map(id => blocksById.get(id)).find(found => !!found);
+          if (block) {
+            monitorMetadata.category = block.category;
+            monitorMetadata.description = block.description;
+            monitorMetadata.inputs = block.inputs;
+            monitorMetadata.outputs = block.outputs;
+            monitorMetadata.parameters = block.parameters;
           }
+          if (blockIds.length > 1) {
+            monitorMetadata.blockIds = blockIds;
+          }
+        } catch (error) {
+          console.warn(`Failed to read monitor ${monitorPath}:`, error);
         }
 
         monitors.push(monitorMetadata);
@@ -247,12 +263,7 @@ export class ExtensionAddComponent implements OnDestroy {
         }
 
         // Skip common metadata/config files that shouldn't be listed
-        const skipPatterns = [
-          /^__MACOSX\//,
-          /\.DS_Store$/,
-          /^\.git\//,
-          /^node_modules\//
-        ];
+        const skipPatterns = [/^__MACOSX\//, /\.DS_Store$/, /^\.git\//, /^node_modules\//];
 
         if (skipPatterns.some(pattern => pattern.test(relativePath))) {
           return;
@@ -295,28 +306,28 @@ export class ExtensionAddComponent implements OnDestroy {
    */
   private mapFileType(extension: string): string {
     const typeMap: { [key: string]: string } = {
-      'json': 'config',
-      'xml': 'config',
-      'yaml': 'config',
-      'yml': 'config',
-      'txt': 'text',
-      'md': 'documentation',
-      'pdf': 'documentation',
-      'evt': 'event',
-      'mon': 'monitor',
-      'jar': 'library',
-      'js': 'script',
-      'ts': 'script',
-      'py': 'script',
-      'sh': 'script',
-      'bat': 'script',
-      'html': 'web',
-      'css': 'web',
-      'png': 'image',
-      'jpg': 'image',
-      'jpeg': 'image',
-      'gif': 'image',
-      'svg': 'image'
+      json: 'config',
+      xml: 'config',
+      yaml: 'config',
+      yml: 'config',
+      txt: 'text',
+      md: 'documentation',
+      pdf: 'documentation',
+      evt: 'event',
+      mon: 'monitor',
+      jar: 'library',
+      js: 'script',
+      ts: 'script',
+      py: 'script',
+      sh: 'script',
+      bat: 'script',
+      html: 'web',
+      css: 'web',
+      png: 'image',
+      jpg: 'image',
+      jpeg: 'image',
+      gif: 'image',
+      svg: 'image'
     };
 
     return typeMap[extension] || 'file';
@@ -331,38 +342,6 @@ export class ExtensionAddComponent implements OnDestroy {
     return fileName.replace('.mon', '');
   }
 
-  /**
-   * Parses the .evt metadata file content
-   * Format: "analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMetadata("Name", "EN", "{...json...}")
-   */
-  private parseEventMetadata(content: string): any | null {
-    try {
-      // Extract JSON from the metadata format
-      const jsonMatch = content.match(/BlockMetadata\([^,]+,\s*"[^"]+",\s*"({.*})"\)/);
-
-      if (!jsonMatch || !jsonMatch[1]) {
-        return null;
-      }
-
-      // Unescape the JSON string
-      const jsonString = jsonMatch[1]
-        .replace(/\\"/g, '"')
-        .replace(/\\\\/g, '\\');
-
-      const metadata = JSON.parse(jsonString);
-
-      // Extract analytics information (first element in analytics array)
-      if (metadata.analytics && metadata.analytics.length > 0) {
-        return metadata.analytics[0];
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Failed to parse event metadata:', error);
-      return null;
-    }
-  }
-
   cancel(): void {
     this.cleanup();
     this.cancelled.emit();
@@ -370,6 +349,34 @@ export class ExtensionAddComponent implements OnDestroy {
 
   done(): void {
     this.completed.emit();
+  }
+
+  /**
+   * The extension has to carry the name the engine registers its blocks under, which is the
+   * prefix of `<extension>_metadata.evt` in the zip. The file name is only a guess: a browser
+   * renames a second download to "AlarmBand-1.0.1 (1).zip". The zip wins when the file name
+   * matches none of its metadata files and there is exactly one to choose; a bundle with several
+   * keeps the file name.
+   */
+  private async resolveExtensionName(file: File): Promise<string> {
+    const fromFile = this.extractExtensionName(file.name).replace(/\s*\(\d+\)$/, '');
+    try {
+      const zip = await JSZip.loadAsync(file);
+      const names = new Set<string>();
+      for (const [path, entry] of Object.entries(zip.files)) {
+        const match = entry.dir ? null : /(?:^|\/)([^/]+)_metadata\.evt$/.exec(path);
+        if (match) names.add(match[1]);
+      }
+      if (names.has(fromFile)) {
+        return fromFile;
+      }
+      if (names.size === 1) {
+        return [...names][0];
+      }
+    } catch {
+      // Not a readable zip: the analysis that follows reports it.
+    }
+    return fromFile;
   }
 
   private extractExtensionName(fileName: string): string {
@@ -382,9 +389,7 @@ export class ExtensionAddComponent implements OnDestroy {
     return stripped || fileName;
   }
 
-  private async findExistingExtension(
-    name: string
-  ): Promise<IManagedObject | null> {
+  private async findExistingExtension(name: string): Promise<IManagedObject | null> {
     const extensions = await this.analyticsService.getExtensionsFromInventory();
     return extensions.find(ext => ext['name'] === name) || null;
   }
@@ -395,11 +400,7 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private async performUpload(mode: UploadMode): Promise<void> {
-    const result = await this.uploadExtensionHandler(
-      this.state.file!,
-      this.state.extension!,
-      mode
-    );
+    const result = await this.uploadExtensionHandler(this.state.file!, this.state.extension!, mode);
 
     if (result) {
       this.handleUploadSuccess(mode);
@@ -409,11 +410,15 @@ export class ExtensionAddComponent implements OnDestroy {
   }
 
   private handleUploadSuccess(mode: UploadMode): void {
-    const action = mode === 'update' ? 'Updated' : 'Uploaded';
-    const extensionName = this.state.extension?.['name'] || 'Extension';
-    this.alertService.success(`${action} extension ${extensionName} successfully.`);
+    const extensionName = this.state.extension?.['name'] || gettext('Extension');
+    const key =
+      mode === 'update'
+        ? gettext('Extension "{{extensionName}}" updated.')
+        : gettext('Extension "{{extensionName}}" uploaded.');
+    this.alertService.success(this.messages.format(key, { extensionName }));
     this.state.isComplete = true;
     this.progress.next(100);
+    this.uploaded.emit();
   }
 
   private handleUploadFailure(): void {
@@ -435,7 +440,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private finalizeUpload(): void {
     this.progress.next(100);
-    this.state.isLoading = false;
+    this.setLoading(false);
   }
 
   private showUpdateConfirmation(): void {
@@ -448,25 +453,22 @@ export class ExtensionAddComponent implements OnDestroy {
       }
     };
 
-    this.modalRef = this.bsModalService.show(
-      ConfirmationModalComponent,
-      { initialState }
-    );
+    // The wizard closes itself right before this dialog opens, which destroys this
+    // component. The dialog must therefore not be bound to the component lifecycle
+    // (no takeUntil(destroy$), not tracked in this.modalRef, which cleanup() hides).
+    const confirmRef = this.bsModalService.show(ConfirmationModalComponent, { initialState });
 
-    this.modalRef.content.closeSubject
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(async (confirmed: boolean) => {
-        if (confirmed) {
-          await this.handleUpdateConfirmed();
-        }
-        this.modalRef?.hide();
-        this.modalRef = null;
-      });
+    confirmRef.content!.closeSubject.pipe(take(1)).subscribe(async (confirmed: boolean) => {
+      if (confirmed) {
+        await this.handleUpdateConfirmed();
+      }
+      confirmRef.hide();
+    });
   }
 
   private async handleUpdateConfirmed(): Promise<void> {
     try {
-      this.state.isLoading = true;
+      this.setLoading(true);
       await this.performUpload('update');
       this.analyticsService.triggerCacheReload(true);
     } catch (error) {
@@ -475,7 +477,7 @@ export class ExtensionAddComponent implements OnDestroy {
         this.alertService.addServerFailure(error);
       }
     } finally {
-      this.state.isLoading = false;
+      this.setLoading(false);
     }
   }
 

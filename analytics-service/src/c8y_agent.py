@@ -6,7 +6,7 @@ import asyncio
 import json
 import re
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Collection, Dict, List, Optional, Set, Tuple
 
 from dotenv import load_dotenv
 
@@ -17,6 +17,12 @@ from pyc8y.model.tenant_option import TenantOption
 
 class C8YAgentError(Exception):
     """Custom exception for C8Y Agent errors."""
+
+    pass
+
+
+class C8YAuthenticationError(C8YAgentError):
+    """The caller's credentials were not accepted by Cumulocity."""
 
     pass
 
@@ -49,8 +55,16 @@ class C8YAgent:
         self._logger = logging.getLogger(self.__class__.__name__)
         load_dotenv()
 
+    # Matches the platform's wording, e.g. "Invalid GET request. Status: 401, Response: ..."
+    _AUTH_STATUS_RE = re.compile(r"Status: (401|403)\b")
+
     def _execute(self, request, work):
         """Run `work(tenant)` inside a fresh, request-scoped tenant session.
+
+        The session uses the microservice's service user, so it can do whatever
+        the manifest's `requiredRoles` allow. It does NOT check who the caller
+        is: the Flask layer must have authorized the request first (see the
+        role check in app.py). Use `get_caller_roles` to learn the caller's roles.
 
         Args:
             request: Flask request object
@@ -72,6 +86,48 @@ class C8YAgent:
                     )
                     raise C8YAgentError("Failed to authenticate with Cumulocity") from e
                 return await work(tenant)
+
+        return asyncio.run(_runner())
+
+    def get_caller_roles(self, request) -> Set[str]:
+        """Roles of the user who sent the request, as Cumulocity sees them.
+
+        Reads `/user/currentUser` with the caller's own credentials, so the
+        platform authenticates the caller and the result cannot be forged by
+        request headers. Every user may read their own record, so this needs no
+        extra role.
+
+        Raises:
+            C8YAuthenticationError: the credentials were rejected
+            C8YAgentError: the roles could not be read for another reason
+        """
+
+        async def _runner():
+            async with MultiTenantCumulocityApp() as c8y_app:
+                try:
+                    user = await c8y_app.get_user_instance(
+                        headers=request.headers, cookies=request.cookies
+                    )
+                except Exception as e:
+                    # No usable credentials in the request (building the session needs no network)
+                    self._logger.warning(f"Could not authenticate caller: {e}")
+                    raise C8YAuthenticationError(
+                        "Failed to authenticate with Cumulocity"
+                    ) from e
+                try:
+                    current_user = await user.get("/user/currentUser")
+                except Exception as e:
+                    if self._AUTH_STATUS_RE.search(str(e)):
+                        raise C8YAuthenticationError(
+                            "Failed to authenticate with Cumulocity"
+                        ) from e
+                    self._logger.error(f"Failed to read caller roles: {e}", exc_info=True)
+                    raise C8YAgentError("Failed to read the roles of the caller") from e
+                return {
+                    role["id"]
+                    for role in current_user.get("effectiveRoles", [])
+                    if isinstance(role, dict) and role.get("id")
+                }
 
         return asyncio.run(_runner())
 
@@ -106,8 +162,42 @@ class C8YAgent:
             )
             raise C8YAgentError(f"Failed to upload extension: {e}") from e
 
+    def find_extension_ids(self, request, extension_name: str) -> List[str]:
+        """IDs of the extensions with the given name."""
+        if any(c in extension_name for c in "'\\"):
+            raise ValueError("Extension name contains invalid characters")
+
+        async def _work(tenant):
+            query = f"name eq '{extension_name}' and has(pas_extension)"
+            return [str(mo.id) async for mo in tenant.inventory.select(query=query, limit=None)]
+
+        try:
+            return self._execute(request, _work)
+        except Exception as e:
+            self._logger.error(f"Failed to look up extension {extension_name}: {e}", exc_info=True)
+            raise C8YAgentError(f"Failed to look up extension: {e}") from e
+
+    def count_extensions(self, request, extension_name: str) -> int:
+        """Number of extensions with the given name."""
+        if any(c in extension_name for c in "'\\"):
+            raise ValueError("Extension name contains invalid characters")
+
+        async def _work(tenant):
+            query = f"name eq '{extension_name}' and has(pas_extension)"
+            return len([mo async for mo in tenant.inventory.select(query=query, limit=None)])
+
+        try:
+            return self._execute(request, _work)
+        except Exception as e:
+            self._logger.error(f"Failed to look up extension {extension_name}: {e}", exc_info=True)
+            raise C8YAgentError(f"Failed to look up extension: {e}") from e
+
     def delete_extension(
-        self, request, extension_id: Optional[str] = None, extension_name: Optional[str] = None
+        self,
+        request,
+        extension_id: Optional[str] = None,
+        extension_name: Optional[str] = None,
+        only_ids: Optional[Collection[str]] = None,
     ) -> int:
         """
         Delete extension(s) from Cumulocity inventory.
@@ -116,6 +206,9 @@ class C8YAgent:
             request: Flask request object
             extension_id: ID of the extension to delete (takes precedence)
             extension_name: Name of extension(s) to delete
+            only_ids: With extension_name, delete only these extensions. Callers
+                replacing an extension pass the IDs they saw before uploading, so
+                a concurrent replacement of the same name is never deleted.
 
         Returns:
             Number of extensions deleted
@@ -151,7 +244,10 @@ class C8YAgent:
 
             # Delete by name - find all matching extensions
             query = f"name eq '{extension_name}' and has(pas_extension)"
-            extensions = [mo async for mo in tenant.inventory.select(query=query, limit=None)]
+            extensions = [
+                mo async for mo in tenant.inventory.select(query=query, limit=None)
+                if only_ids is None or str(mo.id) in {str(i) for i in only_ids}
+            ]
 
             if not extensions:
                 # Return 0 so callers can distinguish "not found" from errors
@@ -349,7 +445,6 @@ class C8YAgent:
             "name": "",
             "url": "",
             "accessToken": "",
-            "enabled": False,
         }
 
         try:
@@ -363,7 +458,6 @@ class C8YAgent:
                 "name": value_dict.get("name", ""),
                 "url": value_dict.get("url", ""),
                 "accessToken": value_dict.get("accessToken", ""),
-                "enabled": value_dict.get("enabled", False),
             }
 
             # Replace token if needed
@@ -415,7 +509,6 @@ class C8YAgent:
         value_dict = {
             "name": repository.get("name", ""),
             "url": repository.get("url", ""),
-            "enabled": bool(repository.get("enabled", False)),
         }
 
         if access_token:

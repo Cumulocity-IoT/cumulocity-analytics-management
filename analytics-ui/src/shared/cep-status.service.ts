@@ -17,7 +17,6 @@ import {
 } from './analytics.model';
 import { CepError, fetchCepJSON } from './cep-error';
 import { CepRestartService } from './cep-restart.service';
-import { RepositoryConfigService } from './repository-config.service';
 
 /**
  * Owns the CEP/Apama operation-object realtime stream, its derived status,
@@ -32,7 +31,6 @@ export class CepStatusService implements OnDestroy {
   private cachedCepOperationObjectId: Promise<string | undefined> | null = null;
   private cachedCepStatus: Promise<CepStatusObject> | null = null;
   private cachedBackendAvailability: Promise<boolean> | null = null;
-  private cachedBackendEnabled: Promise<boolean> | null = null;
 
   private readonly realtime: Realtime;
   private readonly destroy$ = new Subject<void>();
@@ -41,8 +39,7 @@ export class CepStatusService implements OnDestroy {
     private readonly inventoryService: InventoryService,
     private readonly fetchClient: FetchClient,
     private readonly applicationService: ApplicationService,
-    private readonly cepRestartService: CepRestartService,
-    private readonly repositoryConfigService: RepositoryConfigService
+    private readonly cepRestartService: CepRestartService
   ) {
     this.realtime = new Realtime(this.fetchClient);
     this.initializeMonitoring();
@@ -122,25 +119,17 @@ export class CepStatusService implements OnDestroy {
   }
 
   /**
-   * Whether the `analytics-service` backend should actually be used right
-   * now — it must be deployed (see `isBackendServiceDeployed()`) AND the
-   * user hasn't explicitly disabled it via the "use backend service" switch
-   * (see `isBackendServiceEnabled()`/`setBackendServiceEnabled()`). Every
+   * Whether the `analytics-service` backend should be used right now: it is
+   * deployed and responding (see `isBackendServiceDeployed()`). Every
    * mode-dependent decision in the app goes through this one method.
    */
   async isBackendServiceAvailable(): Promise<boolean> {
-    const [deployed, enabled] = await Promise.all([
-      this.isBackendServiceDeployed(),
-      this.isBackendServiceEnabled()
-    ]);
-    return deployed && enabled;
+    return this.isBackendServiceDeployed();
   }
 
   /**
    * Whether the `analytics-service` backend is actually deployed and
-   * responding right now — independent of the user's enable/disable
-   * preference, so a UI indicator can show the real deployment state even
-   * while the user has chosen to not use it.
+   * responding right now —
    *
    * `applicationService.isAvailable()` alone is NOT enough — per its own
    * doc comment, it only reports whether the microservice is *subscribed*
@@ -162,26 +151,6 @@ export class CepStatusService implements OnDestroy {
       });
     }
     return this.cachedBackendAvailability;
-  }
-
-  /** The user's "use backend service" preference — see `USE_BACKEND_SERVICE_OPTION_KEY`. */
-  async isBackendServiceEnabled(): Promise<boolean> {
-    if (!this.cachedBackendEnabled) {
-      this.cachedBackendEnabled = this.repositoryConfigService.getUseBackendServiceEnabled();
-    }
-    return this.cachedBackendEnabled;
-  }
-
-  /**
-   * Persists the "use backend service" preference and clears the caches
-   * that depend on which mode is active, so the next status/operation-object
-   * read picks up the new mode immediately instead of serving a stale,
-   * previously-cached one.
-   */
-  async setBackendServiceEnabled(enabled: boolean): Promise<void> {
-    await this.repositoryConfigService.setUseBackendServiceEnabled(enabled);
-    this.cachedBackendEnabled = Promise.resolve(enabled);
-    this.clearCache();
   }
 
   /**
@@ -207,10 +176,9 @@ export class CepStatusService implements OnDestroy {
     // `isBackendServiceDeployed()`, which reports "unavailable" for this call
     // but doesn't cache it, so a transient blip can't pin the whole session
     // to browser-only mode.
-    const response = await this.fetchClient.fetch(
-      `${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`,
-      { method: 'GET' }
-    );
+    const response = await this.fetchClient.fetch(`${BACKEND_PATH_BASE}/${CEP_ENDPOINT}/status`, {
+      method: 'GET'
+    });
     // A 404 here is Cumulocity's platform-level "no such microservice
     // instance" routing error, not an application-level status response —
     // analytics-service always returns valid JSON for this endpoint when
@@ -276,7 +244,9 @@ export class CepStatusService implements OnDestroy {
         `fetchOperationIdFromBackend: request to ${url} failed — ${error instanceof CepError ? error.message : String(error)}`,
         error instanceof CepError
           ? error.userMessage
-          : gettext('Failed to retrieve the Streaming Analytics operation object ID from the backend service.'),
+          : gettext(
+              'Failed to retrieve the Streaming Analytics operation object ID from the backend service.'
+            ),
         error instanceof Error ? error : undefined,
         error instanceof CepError ? error.status : undefined
       );
@@ -285,7 +255,9 @@ export class CepStatusService implements OnDestroy {
     if (!data?.id) {
       throw new CepError(
         `fetchOperationIdFromBackend: ${url} returned no id (response body: ${JSON.stringify(data)})`,
-        gettext('The backend service returned an unexpected response when requesting the Streaming Analytics operation object ID.')
+        gettext(
+          'The backend service returned an unexpected response when requesting the Streaming Analytics operation object ID.'
+        )
       );
     }
 
@@ -293,7 +265,10 @@ export class CepStatusService implements OnDestroy {
   }
 
   private async fetchOperationIdFromCepStatus(): Promise<string> {
-    const statusData = await fetchCepJSON<any>(this.fetchClient, `${CEP_PATH_STATUS}`);
+    const statusData = await fetchCepJSON<{
+      microservice_name: string;
+      microservice_application_id: string;
+    }>(this.fetchClient, `${CEP_PATH_STATUS}`);
     const { microservice_name, microservice_application_id } = statusData;
 
     const { data } = await this.inventoryService.listQuery(
@@ -335,10 +310,7 @@ export class CepStatusService implements OnDestroy {
         this.handleCepOperationObjectUpdate.bind(this)
       );
     } catch (error) {
-      throw this.handleError(
-        error,
-        'Failed to subscribe to operation object updates'
-      );
+      throw this.handleError(error, 'Failed to subscribe to operation object updates');
     }
   }
 
@@ -372,9 +344,7 @@ export class CepStatusService implements OnDestroy {
 
     if (isUp) {
       this.cachedCepStatus = null;
-      this.getCepStatus().catch(err =>
-        console.warn('Failed to refresh Cep status:', err)
-      );
+      this.getCepStatus().catch(err => console.warn('Failed to refresh Cep status:', err));
     }
 
     if (this.cepRestartService.isRestarting()) {
@@ -405,7 +375,9 @@ export class CepStatusService implements OnDestroy {
 
     return new CepError(
       logMessage,
-      error instanceof Error ? error.message : gettext('An unexpected error occurred. Please try again.'),
+      error instanceof Error
+        ? error.message
+        : gettext('An unexpected error occurred. Please try again.'),
       error instanceof Error ? error : undefined
     );
   }

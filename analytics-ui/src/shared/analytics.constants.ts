@@ -9,15 +9,9 @@ export const ERROR_MESSAGES = {
     'Could not subscribe to the microservice because another application with the same context path is already subscribed.'
   ),
   [ErrorType.NO_MANIFEST_FILE]: gettext('Could not find a manifest.'),
-  [ErrorType.INVALID_PACKAGE]: gettext(
-    'You have not uploaded a valid package.'
-  ),
-  [ErrorType.INVALID_APPLICATION]: gettext(
-    'You have not uploaded a valid application.'
-  ),
-  [ErrorType.INTERNAL_ERROR]: gettext(
-    'An internal error occurred, try to upload again.'
-  )
+  [ErrorType.INVALID_PACKAGE]: gettext('You have not uploaded a valid package.'),
+  [ErrorType.INVALID_APPLICATION]: gettext('You have not uploaded a valid application.'),
+  [ErrorType.INTERNAL_ERROR]: gettext('An internal error occurred, try to upload again.')
 };
 
 /** Root path of all pages contributed by this plugin. */
@@ -28,7 +22,6 @@ export const ROUTES = {
   manage: `${ROUTE_ROOT}/manage`,
   installedBlocks: `${ROUTE_ROOT}/installed-blocks`,
   repository: `${ROUTE_ROOT}/repository`,
-  monitoring: `${ROUTE_ROOT}/monitoring`,
   release: `${ROUTE_ROOT}/release`
 };
 
@@ -40,6 +33,5 @@ export const ROUTES = {
 export const PAGE_LABELS = {
   extensions: gettext('Extensions'),
   installedBlocks: gettext('Installed blocks'),
-  repositories: gettext('Repositories'),
-  monitoring: gettext('Monitoring')
+  blockLibrary: gettext('Block library')
 };

@@ -21,108 +21,164 @@
 <c8y-title>Details {{ extensionFromCep?.name }}</c8y-title>
 
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'plugin'" [label]="labels.extensions | translate"
-    [path]="routes.manage">
+  <c8y-breadcrumb-item
+    [icon]="'c8y-atom'"
+    [label]="'Ecosystem' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-streaming-analytics'"
+    [label]="'Analytics' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'plugin'"
+    [label]="labels.extensions | translate"
+    [path]="routes.manage"
+  >
   </c8y-breadcrumb-item>
   <c8y-breadcrumb-item [label]="extensionFromCep?.name"></c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
-<!-- Row 1: Blocks — full width, natural height -->
-<div class="row p-l-24 p-r-24 p-t-16">
-  <div class="col-lg-12">
-    <div class="card">
-      <div class="card-header">
-        <h4 class="card-title d-flex">
-          <span class="m-t-8">{{ 'Blocks' | translate }}</span>
-        </h4>
-      </div>
-      <div class="card-block">
-        <table class="table _table-striped">
-          <thead class="headers" role="rowgroup">
-            <tr>
-              <th style="width: 40%">{{ 'Block Name' | translate }}</th>
-              <th style="width: 15%">{{ 'Block Category' | translate }}</th>
-              <th>{{ 'Block Description' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @if (!extensionFromCep || extensionFromCep?.analytics?.length === 0) {
-              <tr>
-                <td colspan="3">
-                  <c8y-ui-empty-state [icon]="'c8y-icon c8y-icon-apama-epl'"
-                    [title]="'This extension contains no .mon files or extension is not loaded.' | translate"
-                    [horizontal]="false">
-                  </c8y-ui-empty-state>
-                </td>
-              </tr>
-            }
-            @for (block of extensionFromCep?.analytics || []; track block) {
-              <tr>
-                <td [title]="block.id">{{ block.id }}</td>
-                <td [title]="block.category">{{ block.category }}</td>
-                <td [title]="block.description">{{ block.description }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+<!-- Codex split view: the sections of the extension on the left, the selected section on the right. -->
+<div class="p-l-24 p-r-24 p-t-16 p-b-24">
+  <div
+    class="a17t-details-panel"
+    data-cy="extension-details-panel"
+  >
+    <c8y-sv
+      #sv
+      initialSelection="blocks"
+      [resizableConfig]="{ trackId: 'a17t-extension-details-split-view', collapsible: false }"
+    >
+      <c8y-sv-list
+        [title]="'Details' | translate"
+        [showEmptyState]="false"
+      >
+        <div
+          class="p-8 d-flex d-col gap-8"
+          role="listbox"
+          [attr.aria-label]="'Sections' | translate"
+        >
+          @for (section of sections; track section.id) {
+            <div
+              class="a17t-section-row"
+              role="option"
+              tabindex="0"
+              [attr.aria-selected]="sv.selectionService.isSelected(section.id)"
+              [class.active]="sv.selectionService.isSelected(section.id)"
+              [attr.data-cy]="'extension-section-' + section.id"
+              (click)="sv.selectionService.select(section.id)"
+              (keydown.enter)="sv.selectionService.select(section.id)"
+            >
+              <i
+                [c8yIcon]="section.icon"
+                class="m-r-8"
+              ></i>
+              <span class="flex-grow">{{ section.label | translate }}</span>
+              @if (sectionCount(section.id); as count) {
+                <span class="badge badge-info">{{ count }}</span>
+              }
+            </div>
+          }
+        </div>
+      </c8y-sv-list>
 
-<!-- Row 2: Files (narrower) + Build information (wider) -->
-<div class="row p-l-24 p-r-24 p-b-24 p-t-0">
-  <div class="col-lg-5">
-    <div class="card">
-      <div class="card-header">
-        <h4 class="card-title d-flex">
-          <span class="m-t-8">{{ 'Files' | translate }}</span>
-        </h4>
-      </div>
-      <div class="card-block">
-        <table class="table table-striped">
-          <thead>
-            <tr>
-              <th style="width: 5%">#</th>
-              <th>{{ 'File Name' | translate }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (file of extensionContent; track file; let i = $index) {
-              <tr>
-                <td>{{ i + 1 }}</td>
-                <td>{{ file }}</td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-
-  <div class="col-lg-7">
-    <div class="card">
-      <div class="card-header">
-        <h4 class="card-title d-flex">
-          <span class="m-t-8">{{ 'Build information' | translate }}</span>
-        </h4>
-      </div>
-      <div class="card-block">
-        @if (buildInformation.length > 0) {
-          <c8y-properties-list [emptyLabel]="'--'" [properties]="buildInformation">
-          </c8y-properties-list>
+      <c8y-sv-details
+        emptyStateIcon="list"
+        [ariaLabel]="'Section details' | translate"
+        [title]="sectionLabel(sv.selectionService.selectedItem) | translate"
+        [emptyStateTitle]="'No section selected' | translate"
+        [emptyStateSubtitle]="'Select a section from the list.' | translate"
+        (backClick)="sv.selectionService.clearSelection()"
+      >
+        @switch (sv.selectionService.selectedItem) {
+          @case ('blocks') {
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-blocks"
+            >
+              @if (!extensionFromCep || extensionFromCep?.analytics?.length === 0) {
+                <c8y-ui-empty-state
+                  [icon]="'c8y-icon c8y-icon-apama-epl'"
+                  [title]="
+                    'This extension contains no .mon files or extension is not loaded.' | translate
+                  "
+                  [horizontal]="false"
+                >
+                </c8y-ui-empty-state>
+              }
+              @for (block of extensionFromCep?.analytics || []; track block) {
+                <div class="a17t-block-item">
+                  <div class="d-flex a-i-center j-c-between gap-8">
+                    <strong
+                      class="a17t-block-name"
+                      [title]="block.id"
+                      >{{ block.id }}</strong
+                    >
+                    @if (block.category) {
+                      <span
+                        class="label label-default flex-no-shrink"
+                        [title]="'Block Category' | translate"
+                        >{{ block.category }}</span
+                      >
+                    }
+                  </div>
+                  @if (block.description) {
+                    <p class="text-muted m-t-8 m-b-0">{{ block.description }}</p>
+                  }
+                </div>
+              }
+            </div>
+          }
+          @case ('files') {
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-files"
+            >
+              @for (file of extensionContent; track file; let i = $index) {
+                <div class="a17t-file-item">
+                  <span class="text-muted text-12 a17t-file-index">{{ i + 1 }}</span>
+                  <span
+                    class="a17t-block-name"
+                    [title]="file"
+                    >{{ file }}</span
+                  >
+                </div>
+              }
+            </div>
+          }
+          @case ('build') {
+            <div
+              class="a17t-detail-body"
+              data-cy="extension-build-information"
+            >
+              @for (item of buildInformation; track item.label) {
+                <div class="a17t-block-item">
+                  <div class="text-muted text-12">{{ item.label | translate }}</div>
+                  @if (item.type === 'link') {
+                    <a
+                      class="a17t-link"
+                      [href]="item.value"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      >{{ item.value }}</a
+                    >
+                  } @else {
+                    <div class="a17t-block-name m-t-4">{{ item.value }}</div>
+                  }
+                </div>
+              }
+              @if (buildInformation.length === 0) {
+                <div class="c8y-empty-state">
+                  <h1 [c8yIcon]="'monitoring'"></h1>
+                  <p>
+                    <strong>{{ 'Extension contains no build information.' | translate }}</strong>
+                  </p>
+                </div>
+              }
+            </div>
+          }
         }
-        @if (buildInformation.length === 0) {
-          <div class="c8y-empty-state">
-            <h1 [c8yIcon]="'monitoring'"></h1>
-            <p>
-              <strong>{{ 'Extension contains no build information.' | translate }}</strong>
-            </p>
-          </div>
-        }
-      </div>
-    </div>
+      </c8y-sv-details>
+    </c8y-sv>
   </div>
 </div>

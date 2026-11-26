@@ -29,7 +29,8 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     preventDuplicates: true
   });
 
-  constructor(private permissions: Permissions,
+  constructor(
+    private permissions: Permissions,
     private as: AppStateService
   ) {}
 
@@ -37,7 +38,7 @@ export class AnalyticsNavigationFactory implements NavigatorNodeFactory {
     // console.log('AppState', this.as);
     if (this.canActivate()) {
       // id running in
-      if (this.as['options'].contextPath == 'streaminganalytics'){
+      if (this.as['options'].contextPath == 'streaminganalytics') {
         // console.log('AppState contextPath', this.as['options'].contextPath);
         this.extensionsNode['label'] = gettext('Extensions');
       }

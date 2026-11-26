@@ -6,7 +6,9 @@ describe('ExtensionLayoutHelpModalComponent', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({ imports: [ExtensionLayoutHelpModalComponent] });
-    TestBed.overrideComponent(ExtensionLayoutHelpModalComponent, { set: { template: '', templateUrl: undefined, imports: [] } });
+    TestBed.overrideComponent(ExtensionLayoutHelpModalComponent, {
+      set: { template: '', templateUrl: undefined, imports: [] }
+    });
     component = TestBed.createComponent(ExtensionLayoutHelpModalComponent).componentInstance;
   });
 

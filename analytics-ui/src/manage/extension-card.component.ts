@@ -1,41 +1,29 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { take } from 'rxjs/operators';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { MessageService } from '../shared/message.service';
+import { Component, inject, input, output } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
-import {
-  AlertService,
-  CoreModule,
-  WizardConfig,
-  WizardModalService
-} from '@c8y/ngx-components';
+import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
 import { saveAs } from 'file-saver';
 import { BsModalRef, BsModalService, ModalOptions } from 'ngx-bootstrap/modal';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { PopoverModule } from 'ngx-bootstrap/popover';
-import { AnalyticsService, Repository, RepositoryService } from '../shared';
+import { AnalyticsService, ExtensionBuildInformation, RepositoryService } from '../shared';
 import { ConfirmationModalComponent } from '../shared/component/confirmation-modal.component';
-
-interface BuildInformation {
-  build_type: 'repository' | 'list' | 'yaml';
-  repository: Repository;
-  monitors?: Record<string, unknown>[];
-  yaml?: Record<string, unknown>;
-  sections?: string[];
-  section_name?: string;
-  files?: string[];
-}
 
 @Component({
   selector: 'a17t-extension-card',
   templateUrl: './extension-card.component.html',
   styleUrls: ['./extension-card.component.css'],
-  standalone: true,
   imports: [CoreModule, BsDropdownModule, PopoverModule]
 })
 export class ExtensionCardComponent {
-  @Input() extension!: IManagedObject;
-  @Input() isBackendServiceAvailable!: boolean;
-  @Output() extensionChanged: EventEmitter<void> = new EventEmitter();
+  private readonly messages = inject(MessageService);
+  readonly extension = input.required<IManagedObject>();
+  readonly isBackendServiceAvailable = input.required<boolean>();
+  readonly extensionChanged = output<void>();
 
   constructor(
     private readonly analyticsService: AnalyticsService,
@@ -48,37 +36,37 @@ export class ExtensionCardComponent {
   ) {}
 
   async detail(): Promise<void> {
-    await this.router.navigate(['details', this.extension['name']], {
+    await this.router.navigate(['details', this.extension()['name']], {
       relativeTo: this.activatedRoute,
       state: {
-        extension: this.extension
+        extension: this.extension()
       }
     });
   }
 
   isBuildInternally(): boolean {
     return (
-      this.extension?.['build_information'] &&
-      (this.extension?.['build_information'].build_type == 'list' ||
-        this.extension?.['build_information'].build_type == 'yaml' ||
-        this.extension?.['build_information'].build_type == 'repository')
+      this.extension()?.['build_information'] &&
+      (this.extension()?.['build_information'].build_type == 'list' ||
+        this.extension()?.['build_information'].build_type == 'yaml' ||
+        this.extension()?.['build_information'].build_type == 'repository')
     );
   }
 
   hasBuildInformation(): boolean {
-    return this.extension?.['build_information'];
+    return this.extension()?.['build_information'];
   }
 
   getBuildType(): string {
-    return this.extension?.['build_information']
-      ? this.extension?.['build_information'].build_type
+    return this.extension()?.['build_information']
+      ? this.extension()?.['build_information'].build_type
       : 'Unknown';
   }
 
   async delete(): Promise<void> {
     const initialState = {
       title: 'Delete extension',
-      message: `You are about to delete the extension "${this.extension['name']}". Do you want to proceed?`,
+      message: `You are about to delete the extension "${this.extension()['name']}". Do you want to proceed?`,
       labels: {
         ok: 'Delete',
         cancel: 'Cancel'
@@ -90,11 +78,12 @@ export class ExtensionCardComponent {
       { initialState }
     );
 
-    confirmDeletionModalRef.content.closeSubject.subscribe(
-      async (result: boolean) => {
+    confirmDeletionModalRef.content.closeSubject
+      .pipe(take(1))
+      .subscribe(async (result: boolean) => {
         if (result) {
           try {
-            await this.analyticsService.deleteExtension(this.extension, true);
+            await this.analyticsService.deleteExtension(this.extension(), true);
             this.extensionChanged.emit();
           } catch (ex) {
             if (ex) {
@@ -103,17 +92,14 @@ export class ExtensionCardComponent {
           }
         }
         confirmDeletionModalRef.hide();
-      }
-    );
+      });
   }
 
   async download(): Promise<void> {
     try {
-      const bin: ArrayBuffer = await this.analyticsService.downloadExtension(
-        this.extension
-      );
+      const bin: ArrayBuffer = await this.analyticsService.downloadExtension(this.extension());
       const blob = new Blob([bin], { type: 'application/zip' });
-      saveAs(blob, `${this.extension['name']}.zip`);
+      saveAs(blob, `${this.extension()['name']}.zip`);
     } catch (ex) {
       if (ex) {
         this.alertService.addServerFailure(ex);
@@ -131,7 +117,7 @@ export class ExtensionCardComponent {
       id: 'uploadAnalyticsExtension',
       componentInitialState: {
         mode: 'update',
-        extensionToReplace: this.extension,
+        extensionToReplace: this.extension(),
         headerText: 'Update extension'
       }
     };
@@ -140,20 +126,21 @@ export class ExtensionCardComponent {
 
     const modalRef = this.wizardModalService.show(modalOptions);
     if (modalRef.content) {
-      modalRef.content.onClose.subscribe(() => {
+      modalRef.content.onClose.pipe(take(1)).subscribe(() => {
         this.extensionChanged.emit();
       });
     }
   }
 
   async rebuild(): Promise<void> {
-    const buildInfo = this.extension['build_information'] as BuildInformation;
+    const buildInfo = this.extension()['build_information'] as ExtensionBuildInformation;
 
     // Validate build information exists
     if (!buildInfo) {
       this.alertService.warning(
-        'Cannot rebuild: No build information found for this extension. ' +
-          'This extension may have been created manually or with an older version.'
+        gettext(
+          'Cannot rebuild: No build information found for this extension. This extension may have been created manually or with an older version.'
+        )
       );
       return;
     }
@@ -161,7 +148,7 @@ export class ExtensionCardComponent {
     // Validate repository information
     if (!buildInfo.repository || !buildInfo.repository.id) {
       this.alertService.warning(
-        'Cannot rebuild: Repository information is missing or incomplete.'
+        gettext('Cannot rebuild: Repository information is missing or incomplete.')
       );
       return;
     }
@@ -169,7 +156,7 @@ export class ExtensionCardComponent {
     // Show confirmation dialog
     const initialState = {
       title: 'Rebuild extension',
-      message: `You are about to rebuild and deploy the extension "${this.extension['name']}" from the repository "${buildInfo.repository.name}". This will replace the current version. Do you want to proceed?`,
+      message: `You are about to rebuild and deploy the extension "${this.extension()['name']}" from the repository "${buildInfo.repository.name}". This will replace the current version. Do you want to proceed?`,
       labels: {
         ok: 'Rebuild',
         cancel: 'Cancel'
@@ -181,25 +168,25 @@ export class ExtensionCardComponent {
       { initialState }
     );
 
-    confirmRebuildModalRef.content.closeSubject.subscribe(
-      async (result: boolean) => {
-        if (result) {
-          try {
-            await this.performRebuild(buildInfo);
-          } catch (ex) {
-            if (ex) {
-              this.alertService.addServerFailure(ex);
-            }
+    confirmRebuildModalRef.content.closeSubject.pipe(take(1)).subscribe(async (result: boolean) => {
+      if (result) {
+        try {
+          await this.performRebuild(buildInfo);
+        } catch (ex) {
+          if (ex) {
+            this.alertService.addServerFailure(ex);
           }
         }
-        confirmRebuildModalRef.hide();
       }
-    );
+      confirmRebuildModalRef.hide();
+    });
   }
 
-  private async performRebuild(buildInfo: BuildInformation): Promise<void> {
+  private async performRebuild(buildInfo: ExtensionBuildInformation): Promise<void> {
     this.alertService.info(
-      `Rebuilding extension "${this.extension['name']}"...`
+      this.messages.format(gettext('Rebuilding extension "{{extensionName}}"…'), {
+        extensionName: this.extension()['name']
+      })
     );
 
     try {
@@ -221,18 +208,21 @@ export class ExtensionCardComponent {
       }
 
       this.alertService.success(
-        `Extension "${this.extension['name']}" rebuilt successfully`
+        this.messages.format(gettext('Extension "{{extensionName}}" rebuilt.'), {
+          extensionName: this.extension()['name']
+        })
       );
       this.extensionChanged.emit();
     } catch (error) {
       const err = error as { status?: number; message?: string };
-      if (
-        err?.status === 404 ||
-        err?.message?.includes('no existing extension')
-      ) {
+      if (err?.status === 404 || err?.message?.includes('no existing extension')) {
         this.alertService.danger(
-          `Rebuild failed: The extension "${this.extension['name']}" was not found in Cumulocity. ` +
-            'It may have been deleted. Please create it again instead.'
+          this.messages.format(
+            gettext(
+              'Rebuild failed: The extension "{{extensionName}}" was not found in Cumulocity. It may have been deleted. Please create it again instead.'
+            ),
+            { extensionName: this.extension()['name'] }
+          )
         );
       } else {
         throw error;
@@ -240,11 +230,9 @@ export class ExtensionCardComponent {
     }
   }
 
-  private async rebuildFromRepository(
-    buildInfo: BuildInformation
-  ): Promise<void> {
+  private async rebuildFromRepository(buildInfo: ExtensionBuildInformation): Promise<void> {
     await this.repositoryService.createExtensionFromRepository(
-      this.extension['name'],
+      this.extension()['name'],
       buildInfo.repository,
       true, // upload
       true, // deploy
@@ -252,13 +240,13 @@ export class ExtensionCardComponent {
     );
   }
 
-  private async rebuildFromList(buildInfo: any): Promise<void> {
+  private async rebuildFromList(buildInfo: ExtensionBuildInformation): Promise<void> {
     if (!buildInfo.monitors || buildInfo.monitors.length === 0) {
       throw new Error('No monitors information found in build information');
     }
 
     await this.repositoryService.createExtensionFromList(
-      this.extension['name'],
+      this.extension()['name'],
       buildInfo.monitors,
       buildInfo.repository,
       true, // upload
@@ -267,7 +255,7 @@ export class ExtensionCardComponent {
     );
   }
 
-  private async rebuildFromYaml(buildInfo: any): Promise<void> {
+  private async rebuildFromYaml(buildInfo: ExtensionBuildInformation): Promise<void> {
     if (!buildInfo.yaml) {
       throw new Error('No YAML information found in build information');
     }
@@ -276,7 +264,7 @@ export class ExtensionCardComponent {
     const sections = buildInfo.section_name ? [buildInfo.section_name] : [];
 
     await this.repositoryService.createExtensionFromYaml(
-      this.extension['name'],
+      this.extension()['name'],
       buildInfo.yaml,
       sections,
       buildInfo.repository,

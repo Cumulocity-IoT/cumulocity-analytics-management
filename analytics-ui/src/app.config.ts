@@ -32,6 +32,6 @@ export const appConfig: ApplicationConfig = {
     importProvidersFrom(CoreModule.forRoot()),
     importProvidersFrom(BulkOperationSchedulerModule),
     // Get rid of a default version factory
-    importProvidersFrom(VersionModule.config({ disableWebSDKPluginVersionFactory: true })),
+    importProvidersFrom(VersionModule.config({ disableWebSDKPluginVersionFactory: true }))
   ]
 };

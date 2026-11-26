@@ -20,21 +20,39 @@
 
 <c8y-title translate>Community blocks release</c8y-title>
 <c8y-breadcrumb>
-  <c8y-breadcrumb-item [icon]="'c8y-atom'" [label]="'Ecosystem' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'c8y-streaming-analytics'" [label]="'Analytics' | translate"></c8y-breadcrumb-item>
-  <c8y-breadcrumb-item [icon]="'cloud-download'" [label]="'Community release' | translate"
-    [path]="'c8y-pkg-analytics-extension/release'">
+  <c8y-breadcrumb-item
+    [icon]="'c8y-atom'"
+    [label]="'Ecosystem' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'c8y-streaming-analytics'"
+    [label]="'Analytics' | translate"
+  ></c8y-breadcrumb-item>
+  <c8y-breadcrumb-item
+    [icon]="'cloud-download'"
+    [label]="'Community release' | translate"
+    [path]="'c8y-pkg-analytics-extension/release'"
+  >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 
 <c8y-action-bar-item [placement]="'right'">
-  <a class="btn btn-link" [href]="releaseTagUrl" target="_blank" rel="noopener" title="{{ 'Open release on GitHub' | translate }}">
+  <a
+    class="btn btn-link"
+    [href]="releaseTagUrl"
+    target="_blank"
+    rel="noopener"
+    title="{{ 'Open release on GitHub' | translate }}"
+  >
     <i c8yIcon="c8y-github"></i>
     {{ 'Open on GitHub' | translate }}
   </a>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'left'" itemClass="p-r-8 p-l-8">
+<c8y-action-bar-item
+  [placement]="'left'"
+  itemClass="p-r-8 p-l-8"
+>
   <div class="input-group">
     <span class="input-group-addon"><i c8yIcon="search"></i></span>
     <input
@@ -46,20 +64,30 @@
   </div>
 </c8y-action-bar-item>
 
-<c8y-action-bar-item [placement]="'left'" itemClass="navbar-form hidden-xs">
-  <c8y-list-display-switch
-    (onListClassChange)="listClass = $event"
-    [listLength]="filteredBundles.length + filteredBlocks.length">
+<c8y-action-bar-item
+  [placement]="'left'"
+  itemClass="navbar-form hidden-xs"
+>
+  <c8y-list-display-switch [listLength]="filteredBundles.length + filteredBlocks.length">
   </c8y-list-display-switch>
 </c8y-action-bar-item>
 
 <div class="source-note m-l-16 m-r-16 m-t-8">
   {{ 'Static mockup — data taken from the' | translate }}
-  <a [href]="releaseTagUrl" target="_blank" rel="noopener">analytics-builder-blocks-contrib release 1.0.1</a>,
-  {{ 'published' | translate }} {{ releasePublishedAt }}. {{ 'Not wired to a live feed.' | translate }}
+  <a
+    [href]="releaseTagUrl"
+    target="_blank"
+    rel="noopener"
+    >analytics-builder-blocks-contrib release 1.0.1</a
+  >, {{ 'published' | translate }} {{ releasePublishedAt }}.
+  {{ 'Not wired to a live feed.' | translate }}
 </div>
 
-<ng-template #assetCard let-asset="asset" let-isBundle="isBundle">
+<ng-template
+  #assetCard
+  let-asset="asset"
+  let-isBundle="isBundle"
+>
   <div class="card pointer card--d-col notFeature">
     <div class="card-block text-center card-column-40">
       <button
@@ -72,8 +100,13 @@
       <div class="card-appicon">
         <i [c8yIcon]="isBundle ? 'big-parcel' : 'flow-chart'"></i>
       </div>
-      <div style="line-height: 1.3">
-        <p class="text-medium text-break-word" [title]="asset.name">{{ asset.name }}</p>
+      <div class="asset-title">
+        <p
+          class="text-medium text-break-word"
+          [title]="asset.name"
+        >
+          {{ asset.name }}
+        </p>
         <p class="small text-muted">
           <em>{{ asset.version }}</em>
         </p>
@@ -87,8 +120,14 @@
           <p class="small l-h-tight p-b-8 p-l-0 p-r-0 text-break-word">{{ asset.description }}</p>
         </div>
       </div>
-      <div class="card-block no-min-height p-t-0 p-b-0 d-flex card-column-20 text-center-grid flex-wrap gap-8">
-        <span class="label" [ngClass]="isBundle ? 'label-success' : 'label-info'">
+      <div
+        class="card-block no-min-height p-t-0 p-b-0 d-flex card-column-20 text-center-grid flex-wrap gap-8"
+      >
+        <span
+          class="label"
+          [class.label-success]="isBundle"
+          [class.label-info]="!isBundle"
+        >
           {{ (isBundle ? 'Bundle' : 'Block') | translate }}
         </span>
         <span class="small text-muted">{{ formatSize(asset.sizeBytes) }}</span>
@@ -102,7 +141,10 @@
           rel="noopener noreferrer"
           title="{{ 'Deploy' | translate }}"
         >
-          <i class="m-r-4" c8yIcon="export"></i>
+          <i
+            class="m-r-4"
+            c8yIcon="export"
+          ></i>
           {{ 'Deploy' | translate }}
         </a>
         <div class="p-b-32 card-hidden-list"></div>
@@ -114,10 +156,13 @@
 
 @if (filteredBundles.length > 0) {
   <h4 class="m-l-16 m-t-16">{{ 'Bundles' | translate }} ({{ filteredBundles.length }})</h4>
-  <div class="card-group" [ngClass]="listClass">
+  <div class="card-group">
     @for (asset of filteredBundles; track trackByAsset($index, asset)) {
       <div class="col-xs-12 col-sm-4 col-md-3">
-        <ng-container [ngTemplateOutlet]="assetCard" [ngTemplateOutletContext]="{ asset: asset, isBundle: true }"></ng-container>
+        <ng-container
+          [ngTemplateOutlet]="assetCard"
+          [ngTemplateOutletContext]="{ asset: asset, isBundle: true }"
+        ></ng-container>
       </div>
     }
   </div>
@@ -125,10 +170,13 @@
 
 @if (filteredBlocks.length > 0) {
   <h4 class="m-l-16 m-t-16">{{ 'Individual blocks' | translate }} ({{ filteredBlocks.length }})</h4>
-  <div class="card-group" [ngClass]="listClass">
+  <div class="card-group">
     @for (asset of filteredBlocks; track trackByAsset($index, asset)) {
       <div class="col-xs-12 col-sm-4 col-md-3">
-        <ng-container [ngTemplateOutlet]="assetCard" [ngTemplateOutletContext]="{ asset: asset, isBundle: false }"></ng-container>
+        <ng-container
+          [ngTemplateOutlet]="assetCard"
+          [ngTemplateOutletContext]="{ asset: asset, isBundle: false }"
+        ></ng-container>
       </div>
     }
   </div>
@@ -138,6 +186,7 @@
   <c8y-ui-empty-state
     [icon]="'search'"
     [title]="'No matching blocks.' | translate"
-    [subtitle]="'Refine your search terms' | translate">
+    [subtitle]="'Refine your search terms' | translate"
+  >
   </c8y-ui-empty-state>
 }

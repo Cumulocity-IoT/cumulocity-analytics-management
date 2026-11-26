@@ -35,7 +35,7 @@ cp .env.example .env
 # Update .env with your Cumulocity credentials
 
 # Run app
-python app.py
+python src/app.py
 ```
 
 ## Development Workflow
@@ -175,7 +175,7 @@ test(services): add error handler tests
 
 - Check [ARCHITECTURE.md](docs/ARCHITECTURE.md) for design decisions
 - Check [README.md](README.md) for project overview
-- Check [API.md](analytics-service/API.md) for API documentation
+- Check [API.md](analytics-service/docs/API.md) for API documentation
 - Open an issue or discussion for questions
 
 ## License

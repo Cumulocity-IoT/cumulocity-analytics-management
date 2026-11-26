@@ -1,0 +1,648 @@
+<div class="card-header d-col gap-16 p-t-16 p-b-16 p-l-24 p-r-24 separator-bottom flex-no-shrink">
+  <h4
+    class="card-title text-center"
+    id="drawerTitle"
+  >
+    <i
+      c8yIcon="plugin"
+      class="m-r-8"
+    ></i
+    >{{ 'Add extension' | translate }}
+  </h4>
+  <ul
+    class="c8y-stepper fit-w wizard-stepper m-b-8"
+    [attr.aria-label]="'Progress' | translate"
+  >
+    @for (id of steps(); track id; let i = $index) {
+      <li>
+        <button
+          type="button"
+          class="c8y-step"
+          tabindex="-1"
+          disabled
+          [class.active]="i === stepIndex()"
+          [class.step-done]="i < stepIndex()"
+          [attr.aria-current]="i === stepIndex() ? 'step' : null"
+        >
+          @if (i < stepIndex()) {
+            <span c8yIcon="check"></span>
+          } @else {
+            <span>{{ i + 1 }}</span>
+          }
+        </button>
+        <div class="c8y-step__label">{{ stepLabels[id] | translate }}</div>
+      </li>
+    }
+  </ul>
+</div>
+<div
+  class="inner-scroll flex-grow"
+  id="modal-body"
+>
+  <div class="wizard-content p-t-24 p-b-24">
+    <p
+      class="p-t-8 p-b-16 p-l-16 p-r-16 text-center text-medium separator-bottom sticky-top bg-level-0"
+    >
+      {{ stepTitles[step()] | translate }}
+    </p>
+
+    @switch (step()) {
+      @case ('source') {
+        <div
+          class="c8y-wizard-list-nav"
+          role="listbox"
+          [attr.aria-label]="'Source' | translate"
+        >
+          <button
+            type="button"
+            class="list-group-item bg-component p-t-16 p-b-16"
+            [class.active]="source() === 'release'"
+            (click)="chooseSource('release'); next()"
+          >
+            <i
+              class="list-group-icon"
+              c8yIcon="cloud-download"
+            ></i>
+            <span>
+              {{ 'Deploy a release' | translate }}
+              <small class="d-block text-muted">{{
+                'Install a ready-made extension from a GitHub release. No build step.' | translate
+              }}</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="list-group-item bg-component p-t-16 p-b-16"
+            [class.active]="source() === 'build'"
+            (click)="chooseSource('build'); next()"
+          >
+            <i
+              class="list-group-icon"
+              c8yIcon="plugin"
+            ></i>
+            <span>
+              {{ 'Build a new extension' | translate }}
+              <small class="d-block text-muted">{{
+                'Pick blocks from one repository and package them into a new extension.' | translate
+              }}</small>
+            </span>
+          </button>
+          <button
+            type="button"
+            class="list-group-item bg-component p-t-16 p-b-16"
+            [class.active]="source() === 'upload'"
+            (click)="chooseSource('upload'); next()"
+          >
+            <i
+              class="list-group-icon"
+              c8yIcon="upload"
+            ></i>
+            <span>
+              {{ 'Upload a file' | translate }}
+              <small class="d-block text-muted">{{
+                'Upload an extension zip file from your computer.' | translate
+              }}</small>
+            </span>
+          </button>
+        </div>
+      }
+
+      @case ('repository') {
+        @if (repositories().length === 0) {
+          <c8y-ui-empty-state
+            [icon]="'cog'"
+            [title]="'No repository is configured.' | translate"
+            [subtitle]="'Add one in the repository settings of the Block library.' | translate"
+            [horizontal]="true"
+          ></c8y-ui-empty-state>
+        } @else {
+          <div
+            class="c8y-wizard-list-nav"
+            role="listbox"
+            [attr.aria-label]="'Repository' | translate"
+          >
+            @for (repo of repositories(); track repo.id) {
+              <button
+                type="button"
+                class="list-group-item bg-component p-t-16 p-b-16"
+                [class.active]="repositoryId() === repo.id"
+                (click)="chooseRepository(repo.id); next()"
+              >
+                <i
+                  class="list-group-icon"
+                  c8yIcon="github"
+                ></i>
+                <span class="text-truncate">
+                  {{ repo.name }}
+                  @if (source() === 'release' && reposWithoutReleases().has(repo.id)) {
+                    <span class="label label-warning m-l-8">{{ 'No releases' | translate }}</span>
+                  }
+                  <small class="d-block text-muted text-truncate">{{ repo.url }}</small>
+                </span>
+              </button>
+            }
+          </div>
+        }
+      }
+
+      @case ('release') {
+        @if (releasesLoading()) {
+          <c8y-loading></c8y-loading>
+        } @else if (loadError()) {
+          <div class="p-16">
+            <c8y-messages>
+              <c8y-message type="danger">{{ loadError() | translate }}</c8y-message>
+            </c8y-messages>
+          </div>
+        } @else if (noReleases()) {
+          <c8y-ui-empty-state
+            [icon]="'cloud-download'"
+            [title]="'This repository has no releases' | translate"
+            [subtitle]="
+              'Nothing is published as a GitHub release for this repository, so there is nothing to deploy. Build an extension from its blocks instead, or choose another repository.'
+                | translate
+            "
+            [horizontal]="true"
+          >
+            <div class="m-t-16">
+              <button
+                type="button"
+                class="btn btn-default"
+                (click)="back()"
+              >
+                {{ 'Choose another repository' | translate }}
+              </button>
+              <button
+                type="button"
+                class="btn btn-primary m-l-8"
+                (click)="buildFromRepository()"
+              >
+                {{ 'Build from this repository' | translate }}
+              </button>
+            </div>
+          </c8y-ui-empty-state>
+        } @else {
+          <div class="p-l-16 p-r-16">
+            <c8y-form-group>
+              <label for="release">{{ 'Release' | translate }}</label>
+              <div class="c8y-select-wrapper">
+                <select
+                  id="release"
+                  class="form-control"
+                  [ngModel]="releaseId()"
+                  (ngModelChange)="chooseRelease($event)"
+                >
+                  @for (rel of releases(); track rel.id) {
+                    <option [ngValue]="rel.id">{{ rel.name || rel.tagName }}</option>
+                  }
+                </select>
+              </div>
+            </c8y-form-group>
+            @if (release() && assets().length === 0) {
+              <c8y-messages>
+                <c8y-message type="info">{{
+                  'This release has no .zip assets.' | translate
+                }}</c8y-message>
+              </c8y-messages>
+            }
+            @if (assets().length > 0) {
+              <div class="separator-top m-t-8">
+                <div class="d-flex a-i-center gap-16 p-t-8 p-b-8">
+                  <strong>{{ 'Asset' | translate }}</strong>
+                  @if (assets().length > 8) {
+                    <input
+                      type="text"
+                      class="form-control wizard-filter"
+                      [placeholder]="'Filter' | translate"
+                      [attr.aria-label]="'Filter assets' | translate"
+                      [ngModel]="assetFilter()"
+                      (ngModelChange)="assetFilter.set($event)"
+                    />
+                  }
+                  <span class="text-muted m-l-auto text-nowrap"
+                    >{{ visibleAssets().length }} / {{ assets().length }}</span
+                  >
+                </div>
+                <div
+                  class="wizard-rows separator-top"
+                  role="radiogroup"
+                  [attr.aria-label]="'Asset' | translate"
+                >
+                  @for (a of visibleAssets(); track a.id) {
+                    <label
+                      class="c8y-radio d-flex a-i-center gap-8 p-t-8 p-b-8 m-b-0 separator-bottom"
+                    >
+                      <input
+                        type="radio"
+                        name="asset"
+                        [checked]="assetId() === a.id"
+                        (change)="assetId.set(a.id); downloaded.set(false)"
+                      />
+                      <span></span>
+                      <span class="text-truncate">{{ a.name }}</span>
+                      <small class="text-muted m-l-auto text-nowrap">{{ a.size | bytes }}</small>
+                    </label>
+                  } @empty {
+                    <c8y-ui-empty-state
+                      [icon]="'search'"
+                      [title]="'No assets match the filter.' | translate"
+                      [horizontal]="true"
+                    ></c8y-ui-empty-state>
+                  }
+                </div>
+                @if (asset(); as chosen) {
+                  <p class="p-t-8 m-b-0 text-muted text-truncate">
+                    {{ 'Selected' | translate }}: <strong>{{ chosen.name }}</strong>
+                  </p>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+
+      @case ('content') {
+        @if (itemsLoading()) {
+          <c8y-loading></c8y-loading>
+        } @else {
+          <div class="d-flex a-i-center gap-16 p-l-16 p-r-16 p-t-8 p-b-8 separator-bottom">
+            <label class="c8y-checkbox m-b-0">
+              <input
+                type="checkbox"
+                [checked]="allSelected()"
+                [disabled]="selectableCount() === 0"
+                (change)="toggleAll($any($event.target).checked)"
+              />
+              <span></span>
+              <span>{{ 'Select all available' | translate }}</span>
+            </label>
+            <input
+              type="text"
+              class="form-control wizard-filter"
+              [placeholder]="'Filter' | translate"
+              [attr.aria-label]="'Filter' | translate"
+              [ngModel]="filter()"
+              (ngModelChange)="filter.set($event)"
+            />
+            <span class="text-muted m-l-auto text-nowrap"
+              >{{ selectedIds().size }} {{ 'selected' | translate }}</span
+            >
+          </div>
+          <div class="wizard-rows">
+            @for (item of visibleItems(); track item.id) {
+              <div class="d-flex a-i-center gap-8 p-l-16 p-r-16 p-t-8 p-b-8 separator-bottom">
+                <label
+                  class="c8y-checkbox m-b-0 flex-grow min-width-0"
+                  [class.text-muted]="isDisabled(item)"
+                >
+                  <input
+                    type="checkbox"
+                    [checked]="selectedIds().has(item.id)"
+                    [disabled]="isDisabled(item)"
+                    (change)="toggleItem(item, $any($event.target).checked)"
+                  />
+                  <span></span>
+                  <span class="text-truncate">
+                    {{ item.name }}
+                    <small class="d-block text-muted">{{ kind(item) | translate }}</small>
+                  </span>
+                </label>
+                @if (reason(item)) {
+                  <span class="label label-default">{{ reason(item) }}</span>
+                }
+              </div>
+            } @empty {
+              <c8y-ui-empty-state
+                [icon]="'search'"
+                [title]="'No items to show.' | translate"
+                [horizontal]="true"
+              ></c8y-ui-empty-state>
+            }
+          </div>
+        }
+      }
+
+      @case ('details') {
+        <div class="p-l-16 p-r-16">
+          <c8y-form-group>
+            <label for="extName">{{ 'Extension name' | translate }}</label>
+            <input
+              id="extName"
+              type="text"
+              class="form-control"
+              required
+              [ngModel]="name()"
+              (ngModelChange)="name.set($event)"
+            />
+            <c8y-messages>
+              <c8y-message
+                name="info"
+                type="info"
+                >{{ name().trim() || '…' }}.zip</c8y-message
+              >
+            </c8y-messages>
+          </c8y-form-group>
+        </div>
+      }
+
+      @case ('review') {
+        <div class="d-col gap-24 p-l-16 p-r-16">
+          <div class="card m-b-0">
+            <div class="card-block p-0">
+              <div class="wizard-review-row">
+                <span class="text-muted">{{ 'Repository' | translate }}</span>
+                <strong>{{ repository()?.name }}</strong>
+              </div>
+              @if (source() === 'release') {
+                <div class="wizard-review-row">
+                  <span class="text-muted">{{ 'Release' | translate }}</span>
+                  <strong>{{ release()?.name || release()?.tagName }}</strong>
+                </div>
+                <div class="wizard-review-row">
+                  <span class="text-muted">{{ 'Asset' | translate }}</span>
+                  <span>{{ asset()?.name }} ({{ asset()?.size | bytes }})</span>
+                </div>
+                <div class="wizard-review-row">
+                  <span class="text-muted">{{ 'Extension' | translate }}</span>
+                  <strong>{{ assetExtensionName() }}</strong>
+                </div>
+                @if (assetExtension().version) {
+                  <div class="wizard-review-row">
+                    <span class="text-muted">{{ 'Version' | translate }}</span>
+                    <span>{{ assetExtension().version }}</span>
+                  </div>
+                }
+              } @else {
+                <div class="wizard-review-row">
+                  <span class="text-muted">{{ 'Extension' | translate }}</span>
+                  <strong>{{ name().trim() }}.zip</strong>
+                </div>
+                <div class="wizard-review-row">
+                  <span class="text-muted"
+                    >{{ 'Content' | translate }} ({{ selectedItems().length }})</span
+                  >
+                  <span class="d-flex flex-wrap gap-4">
+                    @for (item of selectedItems(); track item.id) {
+                      <span class="label label-default">{{ item.name }}</span>
+                    }
+                  </span>
+                </div>
+              }
+            </div>
+          </div>
+          @if (replaceNote()) {
+            <c8y-messages>
+              <c8y-message type="warning">{{ replaceNote() }}</c8y-message>
+            </c8y-messages>
+          }
+          <div class="bg-level-1 p-16 rounded">
+            <h5 class="m-t-0">{{ 'What happens next' | translate }}</h5>
+            <ol class="m-b-0 p-l-16 text-muted">
+              <li>
+                {{
+                  (source() === 'release'
+                    ? 'The service downloads the asset from GitHub.'
+                    : 'Build the extension package.'
+                  ) | translate
+                }}
+              </li>
+              <li>{{ 'Upload it to this tenant.' | translate }}</li>
+              <li>
+                {{
+                  'Afterwards you can restart the engine to make the blocks available.' | translate
+                }}
+              </li>
+            </ol>
+          </div>
+        </div>
+      }
+
+      @case ('result') {
+        <div class="d-flex a-i-center j-c-center wizard-result">
+          @switch (result()) {
+            @case ('running') {
+              <c8y-loading [message]="'Building and uploading…' | translate"></c8y-loading>
+            }
+            @case ('done') {
+              <div class="d-col a-i-center">
+                <c8y-operation-result
+                  class="lead"
+                  type="success"
+                  [text]="'Extension created' | translate"
+                  [vertical]="true"
+                  [size]="84"
+                ></c8y-operation-result>
+                <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
+              </div>
+            }
+            @case ('failed') {
+              <c8y-operation-result
+                class="lead"
+                type="error"
+                [text]="'The extension could not be created' | translate"
+                [vertical]="true"
+                [size]="84"
+              ></c8y-operation-result>
+            }
+          }
+        </div>
+      }
+
+      @case ('download') {
+        <div class="d-col a-i-center gap-16 p-24 text-center">
+          <p class="m-b-0">
+            {{
+              'The backend service is not available, so the file has to go through your computer. Download it first, then upload it in the next step.'
+                | translate
+            }}
+          </p>
+          @if (asset(); as selected) {
+            <button
+              type="button"
+              class="btn"
+              [class.btn-primary]="!downloaded()"
+              [class.btn-default]="downloaded()"
+              (click)="downloadAsset()"
+            >
+              <i c8yIcon="download"></i>
+              {{ (downloaded() ? 'Download again' : 'Download') | translate }} {{ selected.name }}
+            </button>
+            <small class="text-muted">{{ selected.size | bytes }}</small>
+            <small class="text-muted">
+              {{
+                'GitHub shows a "not found" page if the repository is private and this browser is not signed in to GitHub with access to it.'
+                  | translate
+              }}
+              <a
+                [href]="selected.browserDownloadUrl"
+                target="_blank"
+                rel="noopener noreferrer"
+                >{{ 'Open the file link' | translate }}</a
+              >
+            </small>
+            @if (downloaded()) {
+              <p
+                class="text-success m-b-0"
+                role="status"
+              >
+                <i c8yIcon="check-circle"></i>
+                {{
+                  'Download started. Find the file in your Downloads folder, then select Next.'
+                    | translate
+                }}
+              </p>
+            } @else {
+              <button
+                type="button"
+                class="btn btn-link"
+                (click)="skipDownload()"
+              >
+                {{ 'I already have the file' | translate }}
+              </button>
+            }
+          }
+        </div>
+      }
+
+      @case ('upload') {
+        @if (source() === 'release' && canPickDownloaded && !uploaded()) {
+          <div class="d-flex a-i-center j-c-center gap-8 p-t-16 p-l-16 p-r-16">
+            <button
+              type="button"
+              class="btn btn-default"
+              (click)="selectDownloadedFile()"
+            >
+              <i c8yIcon="folder-open"></i>
+              {{ 'Select the downloaded file' | translate }}
+            </button>
+            <span class="text-muted">{{ 'or drop it below' | translate }}</span>
+          </div>
+        }
+        <a17t-extension-add
+          [embedded]="true"
+          [headerText]="'Upload a *.zip file' | translate"
+          [headerIcon]="'upload'"
+          [successText]="'Extension created' | translate"
+          [uploadExtensionHandler]="uploadExtensionHandler"
+          [mode]="'add'"
+          (uploaded)="onUploaded()"
+          (loadingChange)="uploading.set($event)"
+        ></a17t-extension-add>
+        @if (uploaded()) {
+          <div class="p-l-16 p-r-16">
+            <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
+          </div>
+        }
+      }
+    }
+  </div>
+</div>
+<ng-template #restartPanel>
+  <div
+    class="bg-level-1 p-16 rounded m-t-16 text-center"
+    role="status"
+  >
+    @switch (restartState()) {
+      @case ('running') {
+        <c8y-loading [message]="'Restarting the engine…' | translate"></c8y-loading>
+      }
+      @case ('done') {
+        <span class="text-success">
+          <i c8yIcon="check-circle"></i>
+          {{ 'The engine is restarting.' | translate }}
+        </span>
+      }
+      @case ('failed') {
+        <span class="text-danger">
+          <i c8yIcon="exclamation-circle"></i>
+          {{ 'The engine could not be restarted.' | translate }}
+        </span>
+      }
+      @default {
+        <p class="m-b-0">
+          {{
+            'The blocks of this extension are available in Analytics Builder after the Streaming Analytics engine restarts. The restart takes about a minute. You can also restart later.'
+              | translate
+          }}
+        </p>
+      }
+    }
+  </div>
+</ng-template>
+
+<div class="text-center card-footer p-24 separator flex-no-shrink">
+  @if (completed()) {
+    @if (restartState() === 'idle') {
+      <button
+        type="button"
+        class="btn btn-default"
+        (click)="finish(true)"
+      >
+        {{ 'Done' | translate }}
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="restartNow()"
+      >
+        {{ 'Restart now' | translate }}
+      </button>
+    } @else {
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="restartState() === 'running'"
+        (click)="finish(true)"
+      >
+        {{ 'Done' | translate }}
+      </button>
+    }
+  } @else if (step() === 'result') {
+    <button
+      type="button"
+      class="btn btn-primary"
+      [disabled]="result() === 'running'"
+      (click)="finish(false)"
+    >
+      {{ 'Done' | translate }}
+    </button>
+  } @else {
+    <button
+      type="button"
+      class="btn btn-default"
+      [disabled]="uploading()"
+      (click)="finish(false)"
+    >
+      {{ 'Cancel' | translate }}
+    </button>
+    @if (stepIndex() > 0) {
+      <button
+        type="button"
+        class="btn btn-default"
+        [disabled]="uploading()"
+        (click)="back()"
+      >
+        {{ 'Back' | translate }}
+      </button>
+    }
+    @if (step() !== 'upload') {
+      <button
+        type="button"
+        class="btn btn-primary"
+        [disabled]="!canContinue()"
+        [title]="blockedReason() | translate"
+        [attr.aria-describedby]="blockedReason() ? 'next-help' : null"
+        (click)="next()"
+      >
+        {{ (step() === 'review' ? 'Create extension' : 'Next') | translate }}
+      </button>
+      @if (blockedReason()) {
+        <span
+          id="next-help"
+          class="sr-only"
+          >{{ blockedReason() | translate }}</span
+        >
+      }
+    }
+  }
+</div>

@@ -12,11 +12,19 @@ describe('ExtensionDetailsComponent', () => {
       imports: [ExtensionDetailsComponent],
       providers: [
         { provide: AnalyticsService, useValue: analytics },
-        { provide: Router, useValue: { currentNavigation: () => (navigationState ? { extras: { state: navigationState } } : null) } },
+        {
+          provide: Router,
+          useValue: {
+            currentNavigation: () =>
+              navigationState ? { extras: { state: navigationState } } : null
+          }
+        },
         { provide: ActivatedRoute, useValue: { snapshot: { data, params: { name } } } }
       ]
     });
-    TestBed.overrideComponent(ExtensionDetailsComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ExtensionDetailsComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     return TestBed.createComponent(ExtensionDetailsComponent).componentInstance;
   };
 
@@ -44,12 +52,22 @@ describe('ExtensionDetailsComponent', () => {
   it('points the breadcrumb at the extensions page', async () => {
     const component = create();
     await component.ngOnInit();
-    expect(component.breadcrumbConfig).toEqual({ icon: 'plugin', label: 'Extensions', path: 'c8y-pkg-analytics-extension/manage' });
+    expect(component.breadcrumbConfig).toEqual({
+      icon: 'plugin',
+      label: 'Extensions',
+      path: 'c8y-pkg-analytics-extension/manage'
+    });
   });
 
   describe('build information', () => {
     const buildInfo = (extra: Record<string, unknown> = {}) => ({
-      extension: { build_information: { build_type: 'repository', repository: { name: 'Repo', url: 'https://github.com/o/r' }, ...extra } }
+      extension: {
+        build_information: {
+          build_type: 'repository',
+          repository: { name: 'Repo', url: 'https://github.com/o/r' },
+          ...extra
+        }
+      }
     });
 
     it('lists build type, repository name and a repository link', async () => {
@@ -60,6 +78,20 @@ describe('ExtensionDetailsComponent', () => {
         ['Build Type', 'string', 'repository'],
         ['Repository Name', 'string', 'Repo'],
         ['Repository Url', 'link', 'https://github.com/o/r']
+      ]);
+    });
+
+    it('shows the version, which is not part of the extension name', async () => {
+      navigationState = buildInfo({
+        build_type: 'external',
+        repository: undefined,
+        version: '1.0.1'
+      });
+      const component = create();
+      await component.ngOnInit();
+      expect(component.buildInformation.map(b => [b.label, b.value])).toEqual([
+        ['Build Type', 'external'],
+        ['Version', '1.0.1']
       ]);
     });
 
@@ -98,7 +130,9 @@ describe('ExtensionDetailsComponent', () => {
 
     it('adds the contents the engine reports for a deployed extension', async () => {
       navigationState = { extension: { build_information: { monitors: [{ file: 'A.mon' }] } } };
-      analytics.getExtensionNamesFromCep.and.resolveTo({ 'E.zip': { contents: ['files/A.mon', 'files/events/E_metadata.evt'] } } as never);
+      analytics.getExtensionNamesFromCep.and.resolveTo({
+        'E.zip': { contents: ['files/A.mon', 'files/events/E_metadata.evt'] }
+      } as never);
       const component = create({ extensionFromCep: { name: 'E' } }, 'E');
       await component.ngOnInit();
       expect(component.extensionContent).toEqual(['A.mon', 'events/E_metadata.evt']);

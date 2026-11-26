@@ -1,3 +1,4 @@
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 /*
  * Copyright (c) 2025 Cumulocity GmbH
  *
@@ -19,10 +20,13 @@
  */
 
 import {
+  ChangeDetectorRef,
   Component,
   EventEmitter,
+  inject,
   OnInit,
-  ViewEncapsulation
+  ViewEncapsulation,
+  DestroyRef
 } from '@angular/core';
 
 import {
@@ -33,9 +37,13 @@ import {
   CoreModule,
   Pagination
 } from '@c8y/ngx-components';
-import {AnalyticsService,
+import {
+  AnalyticsService,
   BooleanRendererComponent,
-  CepBlock, PAGE_LABELS, ROUTES } from '../shared';
+  CepBlock,
+  PAGE_LABELS,
+  ROUTES
+} from '../shared';
 import { LabelRendererComponent } from '../shared/component/label-renderer.component';
 
 import { gettext } from '@c8y/ngx-components/gettext';
@@ -45,16 +53,16 @@ import { gettext } from '@c8y/ngx-components/gettext';
   templateUrl: 'block-grid.component.html',
   styleUrls: ['./block-grid.component.css'],
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [CoreModule]
 })
 export class BlockGridComponent implements OnInit {
+  private readonly destroyRef = inject(DestroyRef);
   readonly labels = PAGE_LABELS;
   readonly routes = ROUTES;
 
   loading: boolean = true;
 
-  refresh: EventEmitter<any> = new EventEmitter<any>();
+  refresh: EventEmitter<void> = new EventEmitter<void>();
 
   blocks: CepBlock[] = [];
   actionControls: ActionControl[] = [];
@@ -114,6 +122,10 @@ export class BlockGridComponent implements OnInit {
     currentPage: 1
   };
 
+  // The shell may run Angular without zone.js, where a plain field changed after an
+  // `await` is not rendered by itself. `markForCheck` asks for a render in either mode.
+  private readonly cdr = inject(ChangeDetectorRef);
+
   constructor(
     public analyticsService: AnalyticsService,
     public alertService: AlertService
@@ -121,19 +133,22 @@ export class BlockGridComponent implements OnInit {
 
   async ngOnInit() {
     await this.loadBlocks();
-    this.refresh.subscribe(() => {
+    this.refresh.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.loadBlocks();
     });
   }
 
   async loadBlocks() {
     this.loading = true;
+    this.cdr.markForCheck();
     try {
       this.analyticsService.clearAllCaches();
       const blocks = await this.analyticsService.getDeployedBlocks();
       this.blocks = blocks;
+      this.cdr.markForCheck();
     } finally {
       this.loading = false;
+      this.cdr.markForCheck();
     }
   }
 }

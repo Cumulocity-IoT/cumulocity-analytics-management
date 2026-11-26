@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { Injectable, inject } from '@angular/core';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { GITHUB_BASE, GitHubRelease, Repository } from './analytics.model';
 
@@ -7,6 +8,21 @@ import { GITHUB_BASE, GitHubRelease, Repository } from './analytics.model';
  * is always safe to show directly in the UI (parity with `repository.service.ts`'s
  * rate-limit/auth/not-found messages).
  */
+/** Subset of the GitHub REST "release" payload that this service reads. */
+interface GitHubApiRelease {
+  id: number;
+  tag_name: string;
+  name?: string | null;
+  published_at: string;
+  assets?: {
+    id: number;
+    name: string;
+    size: number;
+    browser_download_url: string;
+    content_type: string;
+  }[];
+}
+
 export class GitHubReleaseError extends Error {
   constructor(
     message: string,
@@ -30,6 +46,7 @@ export class GitHubReleaseError extends Error {
   providedIn: 'root'
 })
 export class GitHubReleaseService {
+  private readonly messages = inject(MessageService);
   /**
    * Extracts `{owner, repo}` from a `Repository.url`, which is either a GitHub
    * Contents API URL (`https://api.github.com/repos/{owner}/{repo}/contents/...`,
@@ -67,11 +84,7 @@ export class GitHubReleaseService {
     return null;
   }
 
-  async listReleases(
-    owner: string,
-    repo: string,
-    accessToken?: string
-  ): Promise<GitHubRelease[]> {
+  async listReleases(owner: string, repo: string, accessToken?: string): Promise<GitHubRelease[]> {
     const headers: Record<string, string> = {
       accept: 'application/vnd.github+json'
     };
@@ -97,16 +110,16 @@ export class GitHubReleaseService {
     }
 
     const data = await response.json();
-    return (data as any[]).map(release => this.toGitHubRelease(release));
+    return (data as GitHubApiRelease[]).map(release => this.toGitHubRelease(release));
   }
 
-  private toGitHubRelease(raw: any): GitHubRelease {
+  private toGitHubRelease(raw: GitHubApiRelease): GitHubRelease {
     return {
       id: raw.id,
       tagName: raw.tag_name,
       name: raw.name || raw.tag_name,
       publishedAt: raw.published_at,
-      assets: (raw.assets || []).map((asset: any) => ({
+      assets: (raw.assets || []).map(asset => ({
         id: asset.id,
         name: asset.name,
         size: asset.size,
@@ -121,14 +134,18 @@ export class GitHubReleaseService {
       case 401:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext('Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'),
+          gettext(
+            'Authentication failed. The access token is invalid or expired (or not SSO-authorized for the organization).'
+          ),
           status
         );
       case 403:
       case 429:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext('Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'),
+          gettext(
+            'Access denied or GitHub API rate limit exceeded. Unauthenticated requests are limited to 60/hour per IP — add a valid Personal Access Token to raise the limit to 5000/hour.'
+          ),
           status
         );
       case 404:
@@ -140,7 +157,10 @@ export class GitHubReleaseService {
       default:
         return new GitHubReleaseError(
           `Failed to list releases: ${status}`,
-          gettext(`Failed to list releases (status: ${status}). Please try again.`),
+          this.messages.format(
+            gettext('Failed to list releases (status: {{status}}). Please try again.'),
+            { status }
+          ),
           status
         );
     }

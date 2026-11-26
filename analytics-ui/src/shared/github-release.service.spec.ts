@@ -65,26 +65,31 @@ describe('GitHubReleaseService', () => {
       fetchSpy.and.resolveTo({
         ok: true,
         status: 200,
-        json: () => Promise.resolve([
-          {
-            id: 1,
-            tag_name: '1.0.1',
-            name: 'Release 1.0.1',
-            published_at: '2026-02-12T15:11:06Z',
-            assets: [
-              {
-                id: 10,
-                name: 'Abs-1.0.1.zip',
-                size: 1544,
-                browser_download_url: 'https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/download/1.0.1/Abs-1.0.1.zip',
-                content_type: 'application/zip'
-              }
-            ]
-          }
-        ])
+        json: () =>
+          Promise.resolve([
+            {
+              id: 1,
+              tag_name: '1.0.1',
+              name: 'Release 1.0.1',
+              published_at: '2026-02-12T15:11:06Z',
+              assets: [
+                {
+                  id: 10,
+                  name: 'Abs-1.0.1.zip',
+                  size: 1544,
+                  browser_download_url:
+                    'https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/download/1.0.1/Abs-1.0.1.zip',
+                  content_type: 'application/zip'
+                }
+              ]
+            }
+          ])
       } as unknown as Response);
 
-      const releases = await service.listReleases('Cumulocity-IoT', 'analytics-builder-blocks-contrib');
+      const releases = await service.listReleases(
+        'Cumulocity-IoT',
+        'analytics-builder-blocks-contrib'
+      );
 
       expect(releases.length).toBe(1);
       expect(releases[0].tagName).toBe('1.0.1');
@@ -96,7 +101,11 @@ describe('GitHubReleaseService', () => {
     });
 
     it('attaches an Authorization header when an access token is given', async () => {
-      fetchSpy.and.resolveTo({ ok: true, status: 200, json: () => Promise.resolve([]) } as unknown as Response);
+      fetchSpy.and.resolveTo({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve([])
+      } as unknown as Response);
 
       await service.listReleases('owner', 'repo', 'my-token');
 

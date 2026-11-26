@@ -23,19 +23,23 @@ import re
 import subprocess
 import tempfile
 import urllib.parse
+import zipfile
 from typing import Dict, List, Optional
 
 import requests
 import yaml
-from flask import Flask, jsonify, make_response, request, send_file
+from flask import Flask, g, jsonify, make_response, request, send_file
 
-from c8y_agent import C8YAgent, C8YAgentError
+from c8y_agent import C8YAgent, C8YAgentError, C8YAuthenticationError
 from logging_config import setup_logging
 from solution_utils import (
     content_api_to_github_web_url,
     create_error_response,
     github_web_url_to_content_api,
     handle_errors,
+    has_unsafe_path_segment,
+    is_valid_identifier,
+    is_valid_numeric_id,
     parse_boolean,
     parse_github_web_url,
     remove_root_folders,
@@ -46,8 +50,112 @@ from solution_utils import (
 setup_logging()
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
+# No static folder: every route must declare its role (see _authorize_request)
+app = Flask(__name__, static_folder=None)
 agent = C8YAgent()
+
+
+# ============================================================================
+# Authorization
+# ============================================================================
+#
+# Platform calls run as the microservice's service user, so this layer decides
+# who may do what. Callers hold one of three roles, and a higher role includes
+# the lower ones:
+#
+#   READ    view status, repositories and repository content, build as download
+#   CREATE  build and upload extensions
+#   ADMIN   change repositories, delete and rebuild extensions, restart CEP
+
+ROLE_READ = "ROLE_ANALYTICS_MANAGEMENT_READ"
+ROLE_CREATE = "ROLE_ANALYTICS_MANAGEMENT_CREATE"
+ROLE_ADMIN = "ROLE_ANALYTICS_MANAGEMENT_ADMIN"
+
+# Roles that satisfy a requirement: the role itself and every higher one
+_SATISFIED_BY = {
+    ROLE_READ: {ROLE_READ, ROLE_CREATE, ROLE_ADMIN},
+    ROLE_CREATE: {ROLE_CREATE, ROLE_ADMIN},
+    ROLE_ADMIN: {ROLE_ADMIN},
+}
+
+
+def public(view):
+    """Mark a route as reachable without credentials."""
+    view.is_public = True
+    return view
+
+
+def requires_role(role: str):
+    """Declare the minimum role a route needs (checked in `_authorize_request`)."""
+    if role not in _SATISFIED_BY:
+        raise ValueError(f"Unknown role: {role}")
+
+    def decorator(view):
+        view.required_role = role
+        return view
+
+    return decorator
+
+
+def _has_role(roles, required: str) -> bool:
+    return bool(_SATISFIED_BY[required] & set(roles))
+
+
+def _forbidden(required: str):
+    return create_error_response(f"Missing required role {required}", 403)
+
+
+def _require_role(required: str):
+    """For checks that depend on the request body: an error response, or None if allowed.
+
+    Call it before the first side effect of the request.
+    """
+    if _has_role(getattr(g, "roles", ()), required):
+        return None
+    return _forbidden(required)
+
+
+def _build_role_error(upload, deploy, rebuild):
+    """Error response if the caller may not do what a build request asks for.
+
+    A plain build (download) needs READ, which every route already requires.
+    Uploading needs CREATE, and rebuilding (deletes the existing extension) or
+    deploying (restarts CEP) needs ADMIN. The truthiness matches how the
+    routes act on the flags.
+    """
+    if rebuild or deploy:
+        return _require_role(ROLE_ADMIN)
+    if upload:
+        return _require_role(ROLE_CREATE)
+    return None
+
+
+@app.before_request
+def _authorize_request():
+    """Deny by default: authenticate the caller and check the route's minimum role."""
+    if request.endpoint is None:  # unknown URL, Flask answers 404
+        return None
+
+    view = app.view_functions[request.endpoint]
+    if getattr(view, "is_public", False):
+        return None
+
+    required = getattr(view, "required_role", None)
+    if required is None:
+        logger.error("Route %s declares no role, denying", request.endpoint)
+        return create_error_response("Access denied", 403)
+
+    try:
+        g.roles = agent.get_caller_roles(request)
+    except C8YAuthenticationError:
+        return create_error_response("Authentication required", 401)
+    except C8YAgentError as e:
+        return create_error_response(str(e), 503)
+
+    if not _has_role(g.roles, required):
+        logger.warning("Denied %s %s: missing %s", request.method, request.path, required)
+        return _forbidden(required)
+    return None
 
 
 # ============================================================================
@@ -56,6 +164,7 @@ agent = C8YAgent()
 
 
 @app.route("/health")
+@public
 def health():
     """
     Health check endpoint.
@@ -75,6 +184,7 @@ def health():
 
 
 @app.route("/cep/id", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_cep_operationobject_id():
     """
@@ -101,6 +211,7 @@ def get_cep_operationobject_id():
 
 
 @app.route("/cep/status", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_cep_ctrl_status():
     """
@@ -140,6 +251,7 @@ def get_cep_ctrl_status():
 
 
 @app.route("/repository/configuration", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def load_repositories():
     """
@@ -158,7 +270,6 @@ def load_repositories():
                 "name": "My Repository",
                 "url": "https://github.com/user/repo/tree/main/path",
                 "accessToken": "_DUMMY_ACCESS_CODE_",
-                "enabled": true
             },
             ...
         ]
@@ -171,6 +282,7 @@ def load_repositories():
 
 
 @app.route("/repository/configuration", methods=["POST"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def update_repositories():
     """
@@ -186,7 +298,6 @@ def update_repositories():
                 "name": "My Repository",
                 "url": "https://github.com/user/repo/tree/main/path",
                 "accessToken": "ghp_xxxxx",  // Optional, use _DUMMY_ACCESS_CODE_ to keep existing
-                "enabled": true
             },
             ...
         ]
@@ -204,7 +315,7 @@ def update_repositories():
         POST /repository/configuration
         Content-Type: application/json
         
-        [{"id": "repo-1", "name": "Test", "url": "https://...", "enabled": true}]
+        [{"id": "repo-1", "name": "Test", "url": "https://..."}]
     """
     repositories = request.get_json(silent=True)
 
@@ -219,6 +330,10 @@ def update_repositories():
             return create_error_response(
                 "Each repository must have id, name, and url", 400
             )
+        if not is_valid_identifier(repo["id"]):
+            return create_error_response(
+                "Repository id may only contain letters, digits, hyphens and underscores", 400
+            )
 
     return agent.update_repositories(request, repositories)
 
@@ -229,6 +344,7 @@ def update_repositories():
 
 
 @app.route("/repository/contentList", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_content_list():
     """
@@ -257,8 +373,8 @@ def get_content_list():
     if not encoded_url:
         return create_error_response("URL parameter is required", 400)
 
-    headers = _get_repository_headers(repository_id, access_token)
     decoded_url = urllib.parse.unquote(encoded_url)
+    headers = _get_repository_headers(repository_id, access_token, url=decoded_url)
     content_url = github_web_url_to_content_api(decoded_url)
 
     logger.info(f"Fetching content list from: {content_url}")
@@ -272,6 +388,7 @@ def get_content_list():
 
 
 @app.route("/repository/content", methods=["GET"])
+@requires_role(ROLE_READ)
 @handle_errors
 def get_content():
     """
@@ -309,7 +426,7 @@ def get_content():
     if not _is_github_url(decoded_url):
         return create_error_response("URL must be an https GitHub URL", 400)
 
-    headers = _get_repository_headers(repository_id, access_token)
+    headers = _get_repository_headers(repository_id, access_token, url=decoded_url)
 
     response = requests.get(decoded_url, headers=headers, timeout=30)
     error = _github_error_response(response)
@@ -333,6 +450,7 @@ def get_content():
 
 
 @app.route("/extension/repository", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_repository():
     """
@@ -349,13 +467,13 @@ def create_extension_from_repository():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extension after a successful build (default: false)
         }
     
     Behavior:
         - If upload=false: Returns the .zip file for download
         - If upload=true: Uploads to Cumulocity and returns extension ID
-        - If rebuild=true: Deletes existing extension(s) with same name before building
+        - If rebuild=true: Deletes existing extension(s) with same name after the new one was uploaded
           - If no existing extension found, returns 404 error
         - If deploy=true: Restarts CEP engine after successful upload
     
@@ -391,35 +509,26 @@ def create_extension_from_repository():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
+
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
         return create_error_response("Repository not found", 404)
 
-    # Handle rebuild - delete existing extension(s) before building
+    # Rebuild replaces the existing extension AFTER the new one is built and
+    # uploaded (see _build_and_process_extension), so a failed build keeps it.
     if rebuild:
-        try:
-            deleted_count = agent.delete_extension(
-                request, extension_name=extension_name
-            )
-            if deleted_count == 0:
-                error_msg = (
-                    f"Rebuild requested but no existing extension named '{extension_name}' "
-                    "was found to delete. Cannot proceed with rebuild."
-                )
-                logger.error(error_msg)
-                return create_error_response(error_msg, 404)
-            
-            logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
-        except C8YAgentError as e:
-            error_msg = f"Failed to delete existing extension during rebuild: {e}"
-            logger.error(error_msg)
-            return create_error_response(error_msg, 400)
+        rebuild_error = _rebuild_precheck(extension_name)
+        if rebuild_error:
+            return rebuild_error
 
     return _build_and_process_extension(
         extension_name=extension_name,
@@ -430,10 +539,12 @@ def create_extension_from_repository():
         source_fetcher=lambda work_dir, headers: _download_full_repository(
             repo_config["url"], headers, work_dir
         ),
+        replace_existing=bool(rebuild),
     )
 
 
 @app.route("/extension/list", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_list():
     """
@@ -457,7 +568,7 @@ def create_extension_from_list():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extension first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extension after a successful build (default: false)
         }
     
     Behavior:
@@ -501,12 +612,16 @@ def create_extension_from_list():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
+
     name_error = _validate_extension_name(extension_name)
     if name_error:
         return create_error_response(name_error, 400)
     if not isinstance(monitors, list) or not monitors:
         return create_error_response("At least one monitor is required", 400)
-    if not isinstance(repository, dict) or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
@@ -522,25 +637,11 @@ def create_extension_from_list():
         if url_error:
             return create_error_response(f"Monitor {url_error}", 400)
 
-    # Handle rebuild
+    # Rebuild replaces the existing extension after a successful build and upload.
     if rebuild:
-        try:
-            deleted_count = agent.delete_extension(
-                request, extension_name=extension_name
-            )
-            if deleted_count == 0:
-                error_msg = (
-                    f"Rebuild requested but no existing extension named '{extension_name}' "
-                    "was found to delete. Cannot proceed with rebuild."
-                )
-                logger.error(error_msg)
-                return create_error_response(error_msg, 404)
-            
-            logger.info(f"Deleted {deleted_count} existing extension(s) for rebuild")
-        except C8YAgentError as e:
-            error_msg = f"Failed to delete existing extension during rebuild: {e}"
-            logger.error(error_msg)
-            return create_error_response(error_msg, 400)
+        rebuild_error = _rebuild_precheck(extension_name)
+        if rebuild_error:
+            return rebuild_error
 
     def source_fetcher(work_dir, headers):
         for monitor in monitors:
@@ -563,12 +664,14 @@ def create_extension_from_list():
         upload=upload,
         deploy=deploy,
         build_type="list",
-        build_info_extra={"monitors": monitors},
+        build_info_extra={"monitors": _sanitize_monitors(monitors)},
         source_fetcher=source_fetcher,
+        replace_existing=bool(rebuild),
     )
 
 
 @app.route("/extension/yaml", methods=["POST"])
+@requires_role(ROLE_READ)
 @handle_errors
 def create_extension_from_yaml():
     """
@@ -608,7 +711,7 @@ def create_extension_from_yaml():
             },
             "upload": false,                      // Optional: Upload to Cumulocity (default: false)
             "deploy": false,                      // Optional: Restart CEP after last upload (default: false)
-            "rebuild": false                      // Optional: Delete existing extensions first (default: false)
+            "rebuild": false                      // Optional: Replace the existing extensions after a successful build (default: false)
         }
     
     Sections Parameter Explained:
@@ -623,7 +726,7 @@ def create_extension_from_yaml():
           1. Downloads all files listed in section.files
           2. Builds extension named after the section
           3. Optionally uploads to Cumulocity
-        - If rebuild=true: Deletes existing extension for each section before building
+        - If rebuild=true: Deletes the existing extension of each section after its new one was uploaded
           - If any section's extension doesn't exist, that section fails but others continue
         - If deploy=true: Restarts CEP only after ALL sections are processed
     
@@ -684,10 +787,16 @@ def create_extension_from_yaml():
     deploy = data.get("deploy", False)
     rebuild = data.get("rebuild", False)
 
-    if not yaml_data or not yaml_data.get("url"):
+    role_error = _build_role_error(upload, deploy, rebuild)
+    if role_error:
+        return role_error
+
+    if not isinstance(yaml_data, dict) or not yaml_data.get("url"):
         return create_error_response("Parameter yaml with url is required", 400)
-    if not repository or not repository.get("id"):
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
         return create_error_response("Parameter repository with id is required", 400)
+    if not isinstance(sections, list):
+        return create_error_response("Parameter sections must be an array", 400)
 
     repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
     if not repo_config:
@@ -707,7 +816,163 @@ def create_extension_from_yaml():
     )
 
 
+# Largest release asset the service downloads and uploads (extension zips are a few MB at most).
+RELEASE_ASSET_MAX_BYTES = 100 * 1024 * 1024
+_VALID_RELEASE_ASSET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*\.zip$", re.IGNORECASE)
+_EXTENSION_VERSION_RE = re.compile(r"^(.+?)[-_]v?(\d+(?:\.\d+)*(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$")
+
+
+def split_extension_version(base_name: str):
+    """Split a trailing version off an extension name: "Abs-1.0.1" gives ("Abs", "1.0.1")."""
+    match = _EXTENSION_VERSION_RE.match(base_name)
+    return (match.group(1), match.group(2)) if match else (base_name, None)
+
+
+class _AssetTooLarge(Exception):
+    """The release asset exceeds ``RELEASE_ASSET_MAX_BYTES``."""
+
+
+def _read_limited(response: requests.Response, limit: int) -> io.BytesIO:
+    """Read a streamed response body, refusing anything larger than ``limit`` bytes."""
+    declared = response.headers.get("Content-Length")
+    if declared and str(declared).isdigit() and int(declared) > limit:
+        raise _AssetTooLarge()
+    buffer = io.BytesIO()
+    size = 0
+    for chunk in response.iter_content(chunk_size=64 * 1024):
+        size += len(chunk)
+        if size > limit:
+            raise _AssetTooLarge()
+        buffer.write(chunk)
+    buffer.seek(0)
+    return buffer
+
+
+@app.route("/extension/release", methods=["POST"])
+@requires_role(ROLE_CREATE)
+@handle_errors
+def deploy_extension_from_release():
+    """
+    Deploy a pre-built extension zip from a GitHub release asset.
+
+    The service downloads the asset (the browser cannot: GitHub sends no CORS headers for
+    release assets) and uploads it to Cumulocity as an extension named after the asset without `.zip` and without its
+    version: `Abs-1.0.1.zip` becomes the extension `Abs`, version `1.0.1`. The version is kept in the
+    build information, so a newer version replaces the installed one.
+
+    Request Body:
+        {
+            "repository": {"id": "repo-1"},        // Required: configured repository
+            "asset_id": 123456,                    // Required: id of a release asset of that repository
+            "asset_name": "Abs-1.0.1.zip",         // Required: file name, gives the extension name and version
+            "release_tag": "v1.0.1",               // Optional: recorded in the build information
+            "deploy": false,                       // Optional: restart CEP after the upload (ADMIN)
+            "replace": false                       // Optional: replace an extension of the same name (ADMIN)
+        }
+
+    Returns:
+        201: Extension uploaded, body ``{"id": "...", "message": "Extension uploaded"}``
+        400: Invalid request, the asset is not a zip file, or the download failed
+        404: Repository or asset not found
+        409: An extension with that name exists and ``replace`` is false
+        413: The asset is larger than the limit
+    """
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return create_error_response("Request body must be a JSON object", 400)
+    repository = data.get("repository")
+    asset_id = data.get("asset_id")
+    asset_name = data.get("asset_name")
+    release_tag = data.get("release_tag")
+    deploy = parse_boolean(data.get("deploy", False))
+    replace = parse_boolean(data.get("replace", False))
+
+    # The route itself needs CREATE (it always uploads); deploying (restart) or replacing
+    # (delete) needs ADMIN.
+    role_error = _build_role_error(True, deploy, replace)
+    if role_error:
+        return role_error
+
+    if not isinstance(repository, dict) or not is_valid_identifier(repository.get("id")):
+        return create_error_response("Parameter repository with id is required", 400)
+    if isinstance(asset_id, bool) or not isinstance(asset_id, (int, str)) or not is_valid_numeric_id(str(asset_id)):
+        return create_error_response("Parameter asset_id must be a numeric id", 400)
+    if not isinstance(asset_name, str) or not _VALID_RELEASE_ASSET_NAME_RE.match(asset_name):
+        return create_error_response("Parameter asset_name must be the name of a .zip file", 400)
+    if release_tag is not None and (not isinstance(release_tag, str) or len(release_tag) > 200):
+        return create_error_response("Parameter release_tag must be a short string", 400)
+
+    # The version is metadata, not part of the name, so a newer version replaces the installed one.
+    extension_name, version = split_extension_version(asset_name[: -len(".zip")])
+
+    repo_config = agent.load_repository(request, repository["id"], replace_access_token=False)
+    if not repo_config:
+        return create_error_response("Repository not found", 404)
+    owner_repo = _github_owner_repo(repo_config.get("url", ""))
+    if not owner_repo or not _is_github_url(repo_config.get("url", "")):
+        return create_error_response("The repository is not a GitHub repository", 400)
+
+    if not replace and agent.count_extensions(request, extension_name) > 0:
+        return create_error_response(
+            f"An extension named {extension_name} already exists", 409
+        )
+
+    # The asset API URL is built from the configured repository, never taken from the caller,
+    # so the stored PAT cannot be sent anywhere else.
+    owner, repo = owner_repo
+    asset_url = f"https://api.github.com/repos/{owner}/{repo}/releases/assets/{asset_id}"
+    headers = {"Accept": "application/octet-stream"}
+    if repo_config.get("accessToken"):
+        headers["Authorization"] = f"Bearer {repo_config['accessToken']}"
+
+    response = requests.get(asset_url, headers=headers, stream=True, timeout=(10, 120))
+    try:
+        error = _github_error_response(response)
+        if error:
+            return error
+        try:
+            archive = _read_limited(response, RELEASE_ASSET_MAX_BYTES)
+        except _AssetTooLarge:
+            return create_error_response(
+                f"The asset is larger than {RELEASE_ASSET_MAX_BYTES // (1024 * 1024)} MB", 413
+            )
+    finally:
+        response.close()
+
+    if not zipfile.is_zipfile(archive):
+        return create_error_response("The asset is not a zip file", 400)
+    archive.seek(0)
+
+    # Stored on the extension's managed object, which every inventory reader can see,
+    # so it must never carry the access token.
+    build_info = {
+        "build_type": "release",
+        "repository": {k: repo_config.get(k) for k in ("id", "name", "url")},
+        "release": release_tag,
+        "asset": asset_name,
+        "version": version,
+    }
+    previous_ids = agent.find_extension_ids(request, extension_name) if replace else []
+    ext_id = agent.upload_extension(request, extension_name, archive, build_info)
+    logger.info(f"Uploaded release asset {asset_name} as extension {ext_id}")
+
+    body = {"id": ext_id, "message": "Extension uploaded"}
+    if replace and previous_ids:
+        try:
+            agent.delete_extension(request, extension_name=extension_name, only_ids=previous_ids)
+        except Exception as e:
+            logger.error(f"Failed to remove the replaced extension: {e}", exc_info=True)
+            body["warning"] = (
+                "The new extension was uploaded, but the previous one with the same "
+                f"name could not be deleted: {e}"
+            )
+    if deploy:
+        agent.restart_cep(request)
+    return jsonify(body), 201
+
+
 @app.route("/extension/<extension_id>", methods=["DELETE"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def delete_extension_by_id(extension_id):
     """
@@ -728,6 +993,9 @@ def delete_extension_by_id(extension_id):
     Example:
         DELETE /extension/12345678
     """
+    if not is_valid_numeric_id(extension_id):
+        return create_error_response("Extension id must be numeric", 400)
+
     try:
         agent.delete_extension(request, extension_id=extension_id)
         return jsonify({"message": "Extension deleted successfully"}), 200
@@ -736,6 +1004,7 @@ def delete_extension_by_id(extension_id):
 
 
 @app.route("/extension", methods=["DELETE"])
+@requires_role(ROLE_ADMIN)
 @handle_errors
 def delete_extensions_by_name():
     """
@@ -817,6 +1086,8 @@ def _url_error_for_repository(url, repo_config: Dict) -> Optional[str]:
     """
     if not isinstance(url, str) or not _is_github_url(url):
         return "url must be an https GitHub url"
+    if has_unsafe_path_segment(urllib.parse.urlparse(url).path):
+        return "url must not contain relative path segments"
     if _github_owner_repo(url) != _github_owner_repo(repo_config.get("url", "")):
         return "url must belong to the configured repository"
     return None
@@ -837,8 +1108,13 @@ def _validate_extension_name(name: str) -> Optional[str]:
 def _get_repository_headers(
     repository_id: Optional[str] = None,
     access_token: Optional[str] = None,
+    url: Optional[str] = None,
 ) -> Dict[str, str]:
     """Get headers for GitHub API requests with authentication.
+
+    When ``url`` is given together with ``repository_id``, the stored PAT is only
+    attached if the URL lies inside that repository (ValueError otherwise), so a
+    stored token cannot be used against another repository or API endpoint.
 
     Resolution order for the PAT:
       1. ``access_token`` argument (typically sourced from the ``X-Repository-Access-Token``
@@ -855,7 +1131,13 @@ def _get_repository_headers(
         return headers
 
     if repository_id:
+        if not is_valid_identifier(repository_id):
+            raise ValueError("Invalid repository_id")
         repo_config = agent.load_repository(request, repository_id, replace_access_token=False)
+        if repo_config and url is not None:
+            url_error = _url_error_for_repository(url, repo_config)
+            if url_error:
+                raise ValueError(f"Parameter {url_error}")
         if repo_config and repo_config.get("accessToken"):
             headers["Authorization"] = f"Bearer {repo_config['accessToken']}"
             logger.info("Repository %s: sending request WITH stored PAT", repository_id)
@@ -940,9 +1222,50 @@ def _github_error_response(response: requests.Response):
     )
 
 
+_MONITOR_FIELDS = ("id", "name", "file", "type", "url", "repositoryId", "repositoryName")
+_MAX_MONITORS = 500
+
+
+def _sanitize_monitors(monitors: List) -> List[Dict]:
+    """Keep only the known, plain fields of the monitors a client sent.
+
+    The list is stored on the extension's managed object, which every inventory
+    reader can see, so it must not carry arbitrary client data or grow unbounded.
+    """
+    cleaned = []
+    for monitor in monitors[:_MAX_MONITORS]:
+        entry = {
+            key: monitor[key][:1024]
+            for key in _MONITOR_FIELDS
+            if isinstance(monitor.get(key), str)
+        }
+        if isinstance(monitor.get("blockIds"), list):
+            entry["blockIds"] = [b[:512] for b in monitor["blockIds"][:50] if isinstance(b, str)]
+        cleaned.append(entry)
+    return cleaned
+
+
+def _rebuild_precheck(extension_name: str):
+    """Error response when a rebuild has nothing to replace, otherwise ``None``."""
+    try:
+        if agent.count_extensions(request, extension_name) > 0:
+            return None
+    except C8YAgentError as e:
+        error_msg = f"Failed to look up the existing extension during rebuild: {e}"
+        logger.error(error_msg)
+        return create_error_response(error_msg, 400)
+    error_msg = (
+        f"Rebuild requested but no existing extension named '{extension_name}' "
+        "was found to replace. Cannot proceed with rebuild."
+    )
+    logger.error(error_msg)
+    return create_error_response(error_msg, 404)
+
+
 def _extract_fqn(content: str, block_name: str) -> str:
     """Extract fully qualified name from monitor file."""
-    package_match = re.search(r"package\s+([\w.]+)\s*;", content)
+    # Anchored to a line start: "package x;" inside a comment or string is not the declaration.
+    package_match = re.search(r"^[ \t]*package\s+([\w.]+)\s*;", content, re.MULTILINE)
     if not package_match:
         raise ValueError("Package name not found in monitor file")
 
@@ -1116,6 +1439,9 @@ def _download_file(item: Dict, headers: Dict, full_path: str) -> None:
         f.write(content)
 
 
+BUILD_TIMEOUT_SECONDS = int(os.environ.get("BUILD_TIMEOUT_SECONDS", "600"))
+
+
 def _build_extension(work_dir: str, extension_name: str) -> str:
     """Build an Apama extension."""
     extension_file = f"{extension_name}.zip"
@@ -1134,6 +1460,7 @@ def _build_extension(work_dir: str, extension_name: str) -> str:
         check=True,
         capture_output=True,
         text=True,
+        timeout=BUILD_TIMEOUT_SECONDS,
     )
 
     return extension_path
@@ -1147,8 +1474,14 @@ def _build_and_process_extension(
     build_type: str,
     source_fetcher,
     build_info_extra: Optional[Dict] = None,
+    replace_existing: bool = False,
 ):
-    """Build and optionally upload an extension."""
+    """Build and optionally upload an extension.
+
+    With ``replace_existing`` the extensions of the same name that existed before
+    are deleted once the new one is uploaded, never before: a failed download or
+    build must not cost the user the extension that works.
+    """
     with tempfile.TemporaryDirectory() as work_dir:
         try:
             # `repository` here is already the loaded repo_config (with its
@@ -1162,6 +1495,11 @@ def _build_and_process_extension(
 
         try:
             extension_path = _build_extension(work_dir, extension_name)
+        except subprocess.TimeoutExpired:
+            logger.error(f"Build timed out after {BUILD_TIMEOUT_SECONDS}s")
+            return create_error_response(
+                f"Build timed out after {BUILD_TIMEOUT_SECONDS} seconds", 504
+            )
         except subprocess.CalledProcessError as e:
             logger.error(f"Build failed: {e.stderr}", exc_info=True)
             return create_error_response(f"Build failed: {e.stderr}", 500)
@@ -1176,18 +1514,43 @@ def _build_and_process_extension(
                         download_name=f"{extension_name}.zip",
                     )
 
+                # Stored on the extension's managed object, which every inventory
+                # reader can see, so it must never carry the access token.
                 build_info = {
                     "build_type": build_type,
-                    "repository": repository,
+                    "repository": {
+                        k: repository.get(k) for k in ("id", "name", "url")
+                    },
                     **(build_info_extra or {}),
                 }
+                # Taken before the upload: only these are replaced, so a concurrent
+                # rebuild of the same extension keeps its own new binary.
+                previous_ids = (
+                    agent.find_extension_ids(request, extension_name) if replace_existing else []
+                )
                 ext_id = agent.upload_extension(request, extension_name, ext_file, build_info)
                 logger.info(f"Uploaded extension {extension_name} as {ext_id}")
+
+                body = {"id": ext_id, "message": "Extension uploaded"}
+                if replace_existing and previous_ids:
+                    try:
+                        replaced = agent.delete_extension(
+                            request, extension_name=extension_name, only_ids=previous_ids
+                        )
+                        logger.info(
+                            f"Replaced {replaced} existing extension(s) named {extension_name}"
+                        )
+                    except Exception as e:
+                        logger.error(f"Failed to remove the replaced extension: {e}", exc_info=True)
+                        body["warning"] = (
+                            "The new extension was uploaded, but the previous one with the same "
+                            f"name could not be deleted: {e}"
+                        )
 
                 if deploy:
                     agent.restart_cep(request)
 
-                return jsonify({"id": ext_id, "message": "Extension uploaded"}), 201
+                return jsonify(body), 201
 
         except Exception as e:
             logger.error(f"Processing failed: {e}", exc_info=True)
@@ -1235,43 +1598,28 @@ def _process_yaml_sections(
             continue
 
         section_data = yaml_structure[section_name]
-        files = section_data.get("files", [])
+        files = section_data.get("files", []) if isinstance(section_data, dict) else []
+        if not isinstance(files, list) or not all(
+            isinstance(f, str) and f and not f.startswith("/") for f in files
+        ):
+            logger.warning(f"Section '{section_name}' has an invalid files list")
+            failed_sections.append(
+                {"section": section_name, "error": "files must be a list of relative paths"}
+            )
+            continue
 
         if not files:
             logger.warning(f"Section '{section_name}' has no files")
             continue
 
-        # Handle rebuild for this section
+        # Rebuild replaces the existing extension after this section built and
+        # uploaded successfully, so a failed build keeps the current one.
         if rebuild and upload:
-            try:
-                deleted_count = agent.delete_extension(
-                    request, extension_name=section_name
-                )
-                if deleted_count == 0:
-                    error_msg = (
-                        f"Rebuild requested but no existing extension named '{section_name}' "
-                        "was found to delete. Cannot proceed with rebuild for this section."
-                    )
-                    logger.error(error_msg)
-                    failed_sections.append({
-                        "section": section_name,
-                        "error": error_msg
-                    })
-                    continue
-                
-                logger.info(
-                    f"Deleted {deleted_count} existing extension(s) "
-                    f"for section '{section_name}' rebuild"
-                )
-            except C8YAgentError as e:
-                error_msg = (
-                    f"Failed to delete existing extension for section "
-                    f"'{section_name}' during rebuild: {e}"
-                )
-                logger.error(error_msg)
+            rebuild_error = _rebuild_precheck(section_name)
+            if rebuild_error:
                 failed_sections.append({
                     "section": section_name,
-                    "error": str(e)
+                    "error": (rebuild_error[0] if isinstance(rebuild_error, tuple) else rebuild_error).get_json().get("error"),
                 })
                 continue
 
@@ -1302,6 +1650,7 @@ def _process_yaml_sections(
                     "files": files,
                 },
                 source_fetcher=fetch_section_files,
+                replace_existing=bool(rebuild and upload),
             )
 
             if upload:

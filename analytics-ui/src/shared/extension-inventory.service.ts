@@ -1,4 +1,5 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { MessageService } from './message.service';
+import { EventEmitter, Injectable, inject } from '@angular/core';
 import {
   IManagedObject,
   IManagedObjectBinary,
@@ -20,6 +21,7 @@ import { CepError } from './cep-error';
  */
 @Injectable({ providedIn: 'root' })
 export class ExtensionInventoryService {
+  private readonly messages = inject(MessageService);
   readonly extensionChanged$ = new EventEmitter<IManagedObject>();
   readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
 
@@ -68,17 +70,25 @@ export class ExtensionInventoryService {
     mode: UploadMode
   ): Promise<IManagedObjectBinary> {
     try {
-      const extensionToCreate = mode === 'update'
-        ? await this.prepareExtensionForUpdate(extension)
-        : extension;
+      // An update uploads the new binary FIRST and removes the old one afterwards:
+      // a failed upload must not cost the user the extension that works.
+      const extensionToCreate =
+        mode === 'update' ? this.prepareExtensionForUpdate(extension) : extension;
 
       const result = await this.inventoryBinaryService.create(file, extensionToCreate);
 
       if (!result.res.ok) {
         throw new CepError(
           `Upload failed with status ${result.res.status}`,
-          gettext(`Could not upload extension "${extension['name']}". Please try again.`)
+          this.messages.format(
+            gettext('Could not upload extension "{{extensionName}}". Please try again.'),
+            { extensionName: extension['name'] }
+          )
         );
+      }
+
+      if (mode === 'update') {
+        await this.removeReplacedExtension(extension, result.data as IManagedObject);
       }
 
       this.extensionChanged$.emit(result.data as IManagedObject);
@@ -91,7 +101,10 @@ export class ExtensionInventoryService {
         true,
         error instanceof CepError
           ? error.userMessage
-          : gettext(`Error uploading extension "${extension['name']}". Please try again.`)
+          : this.messages.format(
+              gettext('Error uploading extension "{{extensionName}}". Please try again.'),
+              { extensionName: extension['name'] }
+            )
       );
     }
   }
@@ -104,7 +117,7 @@ export class ExtensionInventoryService {
       const result = await this.inventoryBinaryService.delete(extension.id);
 
       if (showSuccessMessage) {
-        this.alertService.success(gettext('Extension deleted successfully.'));
+        this.alertService.success(gettext('Extension deleted.'));
       }
 
       this.extensionChanged$.emit(extension);
@@ -128,7 +141,10 @@ export class ExtensionInventoryService {
         error,
         `Failed to download extension ${extension['name']}`,
         true,
-        gettext(`Failed to download extension "${extension['name']}". Please try again.`)
+        this.messages.format(
+          gettext('Failed to download extension "{{extensionName}}". Please try again.'),
+          { extensionName: extension['name'] }
+        )
       );
     }
   }
@@ -148,15 +164,42 @@ export class ExtensionInventoryService {
     this.uploadProgress$.next(progress);
   }
 
-  private async prepareExtensionForUpdate(
-    extension: IManagedObject
-  ): Promise<Partial<IManagedObject>> {
-    await this.deleteExtension(extension, false);
-
+  /**
+   * Fields of the managed object to create for an update. `build_information`
+   * is kept: the caller already replaced it with the analysis of the NEW file,
+   * and dropping it would leave the extension without its file and block list.
+   */
+  private prepareExtensionForUpdate(extension: IManagedObject): Partial<IManagedObject> {
     return {
       name: extension['name'],
-      pas_extension: extension['name']
+      pas_extension: extension['name'],
+      ...(extension['build_information']
+        ? { build_information: extension['build_information'] }
+        : {})
     };
+  }
+
+  /** Deletes the replaced binary once its replacement exists. Never fails the update. */
+  private async removeReplacedExtension(
+    replaced: IManagedObject,
+    replacement: IManagedObject
+  ): Promise<void> {
+    if (!replaced?.id || replaced.id === replacement?.id) {
+      return;
+    }
+    try {
+      await this.deleteExtension(replaced, false);
+    } catch {
+      // deleteExtension already showed an error alert; the new version is uploaded.
+      this.alertService.warning(
+        this.messages.format(
+          gettext(
+            'The new version of "{{extensionName}}" was uploaded, but the previous version could not be deleted. Delete it manually.'
+          ),
+          { extensionName: replaced['name'] }
+        )
+      );
+    }
   }
 
   private handleError(

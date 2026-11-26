@@ -16,7 +16,7 @@ describe('ExtensionInventoryService', () => {
   beforeEach(() => {
     inventory = jasmine.createSpyObj('InventoryService', ['list']);
     binaries = jasmine.createSpyObj('InventoryBinaryService', ['create', 'delete', 'download']);
-    alerts = jasmine.createSpyObj('AlertService', ['success', 'danger']);
+    alerts = jasmine.createSpyObj('AlertService', ['success', 'danger', 'warning']);
     TestBed.configureTestingModule({
       providers: [
         { provide: InventoryService, useValue: inventory },
@@ -33,7 +33,9 @@ describe('ExtensionInventoryService', () => {
     it('queries extensions by fragment and returns a single short page', async () => {
       inventory.list.and.resolveTo({ data: page(3), paging: { nextPage: null } } as never);
       expect((await service.getExtensionsFromInventory()).length).toBe(3);
-      expect(inventory.list).toHaveBeenCalledOnceWith(jasmine.objectContaining({ fragmentType: 'pas_extension', currentPage: 1, pageSize: 100 }));
+      expect(inventory.list).toHaveBeenCalledOnceWith(
+        jasmine.objectContaining({ fragmentType: 'pas_extension', currentPage: 1, pageSize: 100 })
+      );
     });
 
     it('pages through all results while the server reports a next page', async () => {
@@ -43,7 +45,9 @@ describe('ExtensionInventoryService', () => {
         Promise.resolve({ data: page(7, 200), paging: { nextPage: null } } as never)
       );
       expect((await service.getExtensionsFromInventory()).length).toBe(207);
-      expect(inventory.list.calls.allArgs().map(a => (a[0] as { currentPage: number }).currentPage)).toEqual([1, 2, 3]);
+      expect(
+        inventory.list.calls.allArgs().map(a => (a[0] as { currentPage: number }).currentPage)
+      ).toEqual([1, 2, 3]);
     });
 
     it('stops on a short page even if a next page is announced', async () => {
@@ -54,7 +58,9 @@ describe('ExtensionInventoryService', () => {
 
     it('alerts and raises a CepError on failure', async () => {
       inventory.list.and.rejectWith(new Error('down'));
-      await expectAsync(service.getExtensionsFromInventory()).toBeRejectedWith(jasmine.any(CepError));
+      await expectAsync(service.getExtensionsFromInventory()).toBeRejectedWith(
+        jasmine.any(CepError)
+      );
       expect(alerts.danger).toHaveBeenCalled();
     });
   });
@@ -74,27 +80,68 @@ describe('ExtensionInventoryService', () => {
       expect(binaries.delete).not.toHaveBeenCalled();
     });
 
-    it('in update mode first deletes the old binary and re-creates it with only name/pas_extension', async () => {
-      binaries.delete.and.resolveTo({} as never);
-      binaries.create.and.resolveTo(created as never);
+    it('in update mode uploads the new binary first, keeps its build information, then deletes the old one', async () => {
+      const order: string[] = [];
+      binaries.create.and.callFake((async () => {
+        order.push('create');
+        return created;
+      }) as never);
+      binaries.delete.and.callFake((async () => {
+        order.push('delete');
+        return {};
+      }) as never);
 
-      await service.uploadExtension(file, { ...mo('5', 'E'), build_information: { x: 1 } } as never, 'update');
+      await service.uploadExtension(
+        file,
+        { ...mo('5', 'E'), build_information: { x: 1 } } as never,
+        'update'
+      );
 
+      expect(order).toEqual(['create', 'delete']);
+      expect(binaries.create).toHaveBeenCalledWith(file, {
+        name: 'E',
+        pas_extension: 'E',
+        build_information: { x: 1 }
+      });
       expect(binaries.delete).toHaveBeenCalledWith('5');
-      expect(binaries.create).toHaveBeenCalledWith(file, { name: 'E', pas_extension: 'E' });
       expect(alerts.success).not.toHaveBeenCalled(); // silent delete
+    });
+
+    it('in update mode keeps the existing extension when the upload fails', async () => {
+      binaries.create.and.resolveTo({ res: { ok: false, status: 500 }, data: {} } as never);
+      await expectAsync(service.uploadExtension(file, mo('5', 'E'), 'update')).toBeRejected();
+      expect(binaries.delete).not.toHaveBeenCalled();
+    });
+
+    it('in update mode still succeeds, with a warning, when the old binary cannot be deleted', async () => {
+      binaries.create.and.resolveTo(created as never);
+      binaries.delete.and.rejectWith(new Error('locked'));
+      await service.uploadExtension(file, mo('5', 'E'), 'update');
+      expect(alerts.warning).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('could not be deleted')
+      );
+    });
+
+    it('in update mode does not try to delete an extension that has no id yet', async () => {
+      binaries.create.and.resolveTo(created as never);
+      await service.uploadExtension(file, mo('', 'E'), 'update');
+      expect(binaries.delete).not.toHaveBeenCalled();
     });
 
     it('fails with the friendly message for a non-OK response', async () => {
       binaries.create.and.resolveTo({ res: { ok: false, status: 500 }, data: {} } as never);
       const error = await service.uploadExtension(file, mo('', 'E'), 'add').catch(e => e);
       expect(error).toBeInstanceOf(CepError);
-      expect(alerts.danger).toHaveBeenCalledOnceWith(jasmine.stringContaining('Could not upload extension "E"'));
+      expect(alerts.danger).toHaveBeenCalledOnceWith(
+        jasmine.stringContaining('Could not upload extension "E"')
+      );
     });
 
     it('wraps unexpected errors', async () => {
       binaries.create.and.rejectWith(new Error('net'));
-      await expectAsync(service.uploadExtension(file, mo('', 'E'), 'add')).toBeRejectedWith(jasmine.any(CepError));
+      await expectAsync(service.uploadExtension(file, mo('', 'E'), 'add')).toBeRejectedWith(
+        jasmine.any(CepError)
+      );
     });
   });
 
@@ -134,7 +181,9 @@ describe('ExtensionInventoryService', () => {
 
     it('raises a CepError naming the extension on failure', async () => {
       binaries.download.and.rejectWith(new Error('404'));
-      await expectAsync(service.downloadExtension(mo('1', 'E'))).toBeRejectedWith(jasmine.any(CepError));
+      await expectAsync(service.downloadExtension(mo('1', 'E'))).toBeRejectedWith(
+        jasmine.any(CepError)
+      );
       expect(alerts.danger).toHaveBeenCalledWith(jasmine.stringContaining('"E"'));
     });
   });
@@ -156,7 +205,8 @@ describe('ExtensionInventoryService', () => {
   });
 
   describe('updateUploadProgress', () => {
-    const event = (loaded: number, total: number, lengthComputable = true) => ({ loaded, total, lengthComputable }) as ProgressEvent;
+    const event = (loaded: number, total: number, lengthComputable = true) =>
+      ({ loaded, total, lengthComputable }) as ProgressEvent;
     let progress: (number | null)[];
     beforeEach(() => {
       progress = [];

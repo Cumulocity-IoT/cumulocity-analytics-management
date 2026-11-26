@@ -1,3 +1,6 @@
+/* ::ng-deep is intentional in this file: every rule below targets the internals of
+   Cumulocity components (c8y-properties-list, c8y-sv, c8y-resizable-grid) that expose
+   no design tokens or inputs for this styling. */
 /* Break long URLs in the properties list so they don't overflow the card.
    c8y-properties-list applies text-truncate (white-space:nowrap) to links,
    so white-space and text-overflow must also be overridden. */
@@ -13,4 +16,90 @@
 :host ::ng-deep c8y-properties-list li > span {
   min-width: 0;
   overflow: hidden;
+}
+
+/* The split view needs a height: its panes scroll instead of the page. */
+.a17t-details-panel {
+  height: clamp(320px, calc(100vh - 280px), 640px);
+  border: 1px solid var(--c8y-root-component-separator-color, #ddd);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.a17t-details-panel c8y-sv {
+  display: block;
+  height: 100%;
+}
+
+.a17t-details-panel ::ng-deep [data-cy='c8y-sv'],
+.a17t-details-panel ::ng-deep c8y-resizable-grid,
+.a17t-details-panel ::ng-deep [right-pane],
+.a17t-details-panel ::ng-deep [left-pane] {
+  height: 100%;
+  min-height: 0;
+}
+
+.a17t-details-panel ::ng-deep [data-cy='c8y-sv-details'],
+.a17t-details-panel ::ng-deep .split-view__list {
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.a17t-section-row {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--c8y-root-component-separator-color, #ddd);
+  border-radius: 4px;
+  background: var(--c8y-root-component-bg, #fff);
+  cursor: pointer;
+}
+
+.a17t-section-row:hover {
+  border-color: var(--c8y-text-muted, #6f7a82);
+}
+
+.a17t-section-row:focus-visible {
+  outline: 2px solid var(--c8y-brand-primary, #1776bf);
+  outline-offset: 1px;
+}
+
+.a17t-section-row.active {
+  border-color: var(--c8y-brand-primary, #1776bf);
+  background: var(--c8y-component-background-active, #e8f2fb);
+}
+
+.a17t-detail-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+}
+
+.a17t-block-item,
+.a17t-file-item {
+  padding: 10px 12px;
+  border: 1px solid var(--c8y-root-component-separator-color, #ddd);
+  border-radius: 4px;
+  background: var(--c8y-root-component-bg, #fff);
+}
+
+.a17t-file-item {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.a17t-block-name {
+  min-width: 0;
+  font-family: var(--c8y-font-family-monospace, monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.a17t-link {
+  display: block;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
 }

@@ -1,18 +1,18 @@
-# Architecture & Development Guides
+# Architecture and development guides
 
-> The ADRs record decisions; each now carries an **Implementation status** note (aligned with the code on 2026-10-14). Decisions are not all implemented, check the status before relying on one.
+> The ADRs record decisions; each now carries an **Implementation status** note (aligned with the code on 2026-10-14, test figures and the notes marked 2026-10-29 re-verified on that date). Not every decision is implemented: check the status before relying on one.
 
-## Quick Navigation
+## Quick navigation
 
-- **[UI Development Guide](./UI-GUIDE.md)** - Frontend architecture, components, testing, and best practices
-- **[Backend Development Guide](./BACKEND-GUIDE.md)** - API design, deployment, logging, and best practices
-- **Architecture Decision Records** - Key architectural decisions documented below
+- **[UI development guide](./UI-GUIDE.md)** - Frontend architecture, components, testing, and best practices
+- **[Backend development guide](./BACKEND-GUIDE.md)** - API design, deployment, logging, and best practices
+- **Architecture decision records** - key architectural decisions documented below
 
 ---
 
-## Architecture Decision Records (ADRs)
+## Architecture decision records (ADRs)
 
-## ADR-001: Use Standalone Angular Components Over NgModule
+## ADR-001: Use standalone Angular components over NgModule
 
 **Status:** ACCEPTED - IMPLEMENTED (plugin module retained)  
 **Date:** 2026-05-28  
@@ -21,7 +21,8 @@
 > **Implementation status (2026-10-14):** All feature components are standalone. `analytics-extension.module.ts`
 > is deliberately kept as the plugin's NgModule: the Cumulocity plugin mechanism requires it to register routes,
 > tabs, navigation and wizard hooks. The "remove the NgModule" part of the decision does not apply to that file.
-> The bundle-size estimate below was never measured.
+> The bundle-size estimate below was never measured. The project now uses Angular 21; the decision text below keeps
+> the Angular 20 wording of the time.
 
 ### Context
 The analytics-ui was using a mixture of NgModule-based and standalone components. With Angular 20, standalone components are the recommended approach for new code.
@@ -38,7 +39,7 @@ Migrate all components to standalone Angular 20 components and remove the NgModu
 
 ### Consequences
 - **Positive:**
-  - Smaller bundle size (estimated 15-20% reduction)
+  - Smaller bundle size (estimated 15-20% reduction, never measured)
   - Simpler codebase
   - Better performance
 - **Negative:**
@@ -52,7 +53,7 @@ Migrate all components to standalone Angular 20 components and remove the NgModu
 
 ---
 
-## ADR-002: Error Handling with Retry Logic via HTTP Interceptors
+## ADR-002: Error handling with retry logic via HTTP interceptors
 
 **Status:** ACCEPTED - NOT ENABLED  
 **Date:** 2026-05-28  
@@ -78,7 +79,7 @@ Implement a centralized HTTP interceptor with automatic retry logic and standard
 - **User-friendly:** Standardized error messages instead of technical responses
 - **Observable:** Request tracing with unique IDs for debugging
 
-### Features Implemented
+### Features implemented in the code (not enabled)
 - Automatic retry with exponential backoff
 - User-friendly error messages
 - Request/response logging
@@ -96,7 +97,7 @@ Implement a centralized HTTP interceptor with automatic retry logic and standard
 
 ---
 
-## ADR-003: Structured Logging with JSON Format
+## ADR-003: Structured logging with JSON format
 
 **Status:** ACCEPTED - IMPLEMENTED (partially)  
 **Date:** 2026-05-28  
@@ -123,7 +124,7 @@ Implement structured logging with JSON format for production environments.
 - Custom JSON formatter for production
 - Standard text format for development
 - Configurable via LOG_FORMAT environment variable
-- Includes request ID for tracing
+- The JSON formatter emits a `request_id` field when a log record carries one; nothing sets it yet
 
 ### Consequences
 - **Positive:**
@@ -136,13 +137,13 @@ Implement structured logging with JSON format for production environments.
 
 ---
 
-## ADR-004: Use Pydantic for Request Validation
+## ADR-004: Use Pydantic for request validation
 
 **Status:** ACCEPTED - PLANNED (not implemented)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
 
-> **Implementation status (2026-10-14): not implemented.** `pydantic` is in `requirements.txt` but unused.
+> **Implementation status (2026-10-14): not implemented.** `pydantic` is pinned in `requirements-dev.txt` only, not in the runtime `requirements.txt`, and no code imports it.
 > Routes validate input by hand (`isinstance` checks, `_validate_extension_name`, required-field checks) and return
 > `{"error": ...}` with 400. All roadmap steps below are open.
 
@@ -159,7 +160,7 @@ Adopt Pydantic for declarative request validation and serialization.
 - **Consistent:** All endpoints use same validation logic
 - **Documented:** Models serve as self-documentation
 
-### Implementation Roadmap
+### Implementation roadmap
 1. Define Pydantic models for all request types
 2. Add request validation middleware
 3. Return structured validation errors to clients
@@ -175,14 +176,14 @@ Adopt Pydantic for declarative request validation and serialization.
 
 ---
 
-## ADR-005: Implement Health Checks Endpoint
+## ADR-005: Implement health checks endpoint
 
 **Status:** ACCEPTED - PARTIAL (static liveness only)  
 **Date:** 2026-05-28  
 **Authors:** Development Team
 
 > **Implementation status (2026-10-14):** `GET /health` returns `{"status": "UP"}` without checking anything.
-> `health_check.py` (system/Cumulocity/GitHub checks) is not imported by `app.py` and not copied into the Docker image.
+> `health_check.py` (system, Cumulocity, and GitHub checks) is not imported by `app.py`, is not copied into the Docker image, and has 0% test coverage.
 > Decide whether to wire it in (keeping external calls out of the liveness probe) or delete it.
 
 ### Context
@@ -197,7 +198,7 @@ Implement a comprehensive `/health` endpoint that checks system, Cumulocity, and
 - **Deployment:** Required for Kubernetes liveness probes
 - **Visibility:** Provides status of all external dependencies
 
-### Checks Included
+### Checks included (in `health_check.py`, not wired in)
 - System resources (memory, CPU, disk)
 - Cumulocity credentials availability
 - GitHub API connectivity
@@ -214,15 +215,15 @@ Implement a comprehensive `/health` endpoint that checks system, Cumulocity, and
 
 ---
 
-## ADR-006: Enable TypeScript Strict Mode
+## ADR-006: Enable TypeScript strict mode
 
 **Status:** ACCEPTED - PARTIAL  
 **Date:** 2026-05-28  
 **Authors:** Development Team
 
 > **Implementation status (2026-10-14):** `tsconfig.json` has `strict: true`, but `tsconfig.app.json` (used by the build)
-> overrides it with `strict: false`, and roughly 40 `any` usages remain in non-test code. Specs compile under strict.
-> `noUnusedLocals` is not enabled. Enabling strict mode for the app build is still open.
+> overrides it with `strict: false`, and about 30 `any` usages remain in non-test code (re-counted 2026-10-29). Specs compile under strict.
+> `noUnusedLocals` is not enabled in any tsconfig. Enabling strict mode for the app build is still open.
 
 ### Context
 The analytics-ui had loose TypeScript configuration with `any` types and missing null checks, leading to runtime errors.
@@ -237,12 +238,12 @@ Enable TypeScript strict mode and eliminate `any` types throughout the codebase.
 - **Documentation:** Types serve as code documentation
 - **Performance:** Enables better optimization
 
-### Strict Mode Settings Enabled
+### Strict mode settings planned
 - `strict: true` - Enables all strict type checking options
 - `noImplicitAny: true` - Error on implicit any
 - `strictNullChecks: true` - Better null/undefined handling
-- `noUnusedLocals: true` - Error on unused variables
-- `noFallthroughCasesInSwitch: true` - Prevent logic errors
+- `noUnusedLocals: true` - Error on unused variables (not enabled)
+- `noFallthroughCasesInSwitch: true` - Prevent logic errors (enabled in `tsconfig.json`)
 
 ### Consequences
 - **Positive:**
@@ -253,7 +254,7 @@ Enable TypeScript strict mode and eliminate `any` types throughout the codebase.
   - More verbose code initially
   - Requires fixing existing type issues
 
-### Migration Plan
+### Migration plan
 1. Enable strict mode in tsconfig.json
 2. Fix compilation errors systematically
 3. Add type definitions for all public APIs
@@ -261,16 +262,16 @@ Enable TypeScript strict mode and eliminate `any` types throughout the codebase.
 
 ---
 
-## ADR-007: Testing Strategy
+## ADR-007: Testing strategy
 
 **Status:** ACCEPTED - IMPLEMENTED (unit level, in CI); E2E open  
 **Date:** 2026-05-28  
 **Authors:** Development Team
 
-> **Implementation status (2026-10-14):** Backend: pytest with about 166 tests, ~91% line coverage (target 70% met).
-> Frontend: Karma/Jasmine with about 580 specs covering all services and components (~96% lines), so the 80%/70% targets are met.
-> CI (`check-push.yml`) runs lint, naming rules and both test suites on every push/PR. Not done: Cypress/E2E tests, PR coverage comments, gating the release workflow on these checks.
-> Jest/Protractor are not used. See [BACKEND-GUIDE.md](./BACKEND-GUIDE.md#testing) and [UI-GUIDE.md](./UI-GUIDE.md#testing).
+> **Implementation status (2026-10-29):** Backend: pytest with 316 tests, 94% line coverage (target 70% met).
+> Frontend: Karma/Jasmine with 588 specs covering all services and components (95% lines), so the 80%/70% targets are met.
+> CI (`check-push.yml`) runs a spell check, lint, naming rules, and both test suites on every push and pull request. Not done: Cypress end-to-end tests, pull request coverage comments, and gating the release workflow on these checks.
+> Jest and Protractor are not used. See [BACKEND-GUIDE.md](./BACKEND-GUIDE.md#testing) and [UI-GUIDE.md](./UI-GUIDE.md#testing).
 
 ### Context
 The project had no comprehensive testing strategy or automated test execution.
@@ -284,7 +285,7 @@ Implement multi-layered testing approach with unit, integration, and E2E tests.
 - **Documentation:** Tests document expected behavior
 - **Regression prevention:** Catch regressions early
 
-### Testing Layers
+### Testing layers
 
 **Frontend (Analytics-UI):**
 - Unit tests: Individual services and components (Jest/Karma)
@@ -297,7 +298,7 @@ Implement multi-layered testing approach with unit, integration, and E2E tests.
 - Integration tests: API endpoints with mocked dependencies (pytest)
 - Target coverage: 70%+
 
-### CI/CD Integration
+### CI/CD integration
 - Run tests on every PR
 - Block merge if tests fail
 - Generate coverage reports
@@ -314,16 +315,16 @@ Implement multi-layered testing approach with unit, integration, and E2E tests.
 
 ---
 
-## Decision Tracking
+## Decision tracking
 
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
-| 001 | Standalone Components | Implemented (plugin NgModule kept) | 2026-05-28 |
-| 002 | HTTP Error Interceptor | **Not enabled** | 2026-05-28 |
-| 003 | Structured Logging | Implemented (partially) | 2026-05-28 |
-| 004 | Pydantic Validation | Planned | 2026-05-28 |
-| 005 | Health Checks | Partial (static `/health`) | 2026-05-28 |
-| 006 | TypeScript Strict Mode | Partial (app build not strict) | 2026-05-28 |
-| 007 | Testing Strategy | Implemented (unit, in CI); E2E open | 2026-05-28 |
+| 001 | Standalone components | Implemented (plugin NgModule kept) | 2026-05-28 |
+| 002 | HTTP error interceptor | **Not enabled** | 2026-05-28 |
+| 003 | Structured logging | Implemented (partially) | 2026-05-28 |
+| 004 | Pydantic validation | Planned | 2026-05-28 |
+| 005 | Health checks | Partial (static `/health`) | 2026-05-28 |
+| 006 | TypeScript strict mode | Partial (app build not strict) | 2026-05-28 |
+| 007 | Testing strategy | Implemented (unit, in CI); E2E open | 2026-05-28 |
 
 For more information on ADRs, see: https://adr.github.io/

@@ -20,7 +20,9 @@ describe('BlockGridComponent', () => {
         { provide: AlertService, useValue: jasmine.createSpyObj('AlertService', ['danger']) }
       ]
     });
-    TestBed.overrideComponent(BlockGridComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(BlockGridComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     component = TestBed.createComponent(BlockGridComponent).componentInstance;
   });
 
@@ -57,7 +59,13 @@ describe('BlockGridComponent', () => {
   });
 
   it('defines the columns in display order with renderers for category and custom flag', () => {
-    expect(component.columnsBlocks.map(c => c.name)).toEqual(['name', 'category', 'description', 'extension', 'custom']);
+    expect(component.columnsBlocks.map(c => c.name)).toEqual([
+      'name',
+      'category',
+      'description',
+      'extension',
+      'custom'
+    ]);
     expect(component.columnsBlocks[1].cellRendererComponent).toBeDefined();
     expect(component.columnsBlocks[4].cellRendererComponent).toBeDefined();
   });

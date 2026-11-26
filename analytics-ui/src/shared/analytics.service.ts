@@ -1,9 +1,5 @@
 import { EventEmitter, Injectable } from '@angular/core';
-import {
-  IManagedObject,
-  IManagedObjectBinary,
-  IResult,
-} from '@c8y/client';
+import { IManagedObject, IManagedObjectBinary, IResult } from '@c8y/client';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { pairwise } from 'rxjs/operators';
 import {
@@ -11,7 +7,7 @@ import {
   CepExtension,
   CepExtensionsMetadata,
   CepStatusObject,
-  UploadMode,
+  UploadMode
 } from './analytics.model';
 import { CepRestartService } from './cep-restart.service';
 import { CepStatusService } from './cep-status.service';
@@ -65,13 +61,15 @@ export class AnalyticsService {
     // delete once it has restarted. Caches filled before that (the delete itself
     // clears them while the old state is still served) would keep reporting
     // removed blocks as installed, so drop them when the restart completes.
-    this.restarting$
-      .pipe(pairwise())
-      .subscribe(([was, now]) => {
-        if (was && !now) {
-          this.clearAllCaches();
-        }
-      });
+    // Views that loaded in the meantime (the engine status flips to "up" just
+    // before the restart is considered complete) are showing the pre-restart
+    // state, e.g. a new extension as "not loaded", so ask them to reload too.
+    this.restarting$.pipe(pairwise()).subscribe(([was, now]) => {
+      if (was && !now) {
+        this.clearAllCaches();
+        this.triggerCacheReload(false);
+      }
+    });
   }
 
   // ============================================================================
@@ -126,7 +124,10 @@ export class AnalyticsService {
     extension: IManagedObject,
     showSuccessMessage: boolean = true
   ): Promise<IResult<null>> {
-    const result = await this.extensionInventoryService.deleteExtension(extension, showSuccessMessage);
+    const result = await this.extensionInventoryService.deleteExtension(
+      extension,
+      showSuccessMessage
+    );
     this.extensionEnrichmentService.invalidateCache();
     return result;
   }
@@ -197,16 +198,6 @@ export class AnalyticsService {
   /** Re-probes whether the backend is deployed, bypassing the session cache. */
   async recheckBackendServiceDeployed(): Promise<boolean> {
     return this.cepStatusService.recheckBackendServiceDeployed();
-  }
-
-  /** The user's "use backend service when deployed" preference. */
-  async isBackendServiceEnabled(): Promise<boolean> {
-    return this.cepStatusService.isBackendServiceEnabled();
-  }
-
-  /** Persists the "use backend service" preference. */
-  async setBackendServiceEnabled(enabled: boolean): Promise<void> {
-    return this.cepStatusService.setBackendServiceEnabled(enabled);
   }
 
   // ============================================================================

@@ -12,12 +12,15 @@ describe('analytics.constants', () => {
     expect(PAGE_LABELS).toEqual({
       extensions: 'Extensions',
       installedBlocks: 'Installed blocks',
-      repositories: 'Repositories',
-      monitoring: 'Monitoring'
+      blockLibrary: 'Block library'
     });
   });
 
   it('has a message for every upload error type', () => {
-    Object.values(ErrorType).forEach(type => expect((ERROR_MESSAGES as Record<string, string>)[type]).withContext(type).toBeTruthy());
+    Object.values(ErrorType).forEach(type =>
+      expect((ERROR_MESSAGES as Record<string, string>)[type])
+        .withContext(type)
+        .toBeTruthy()
+    );
   });
 });

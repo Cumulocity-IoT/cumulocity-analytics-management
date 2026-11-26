@@ -12,142 +12,149 @@ import eplTokenProvider from './epl-token.provider';
 import type * as monaco from 'monaco-editor';
 @Injectable()
 export class EplConfigService {
+  constructor() {}
 
-	constructor() { }
+  /**
+   * Get Language Name
+   */
+  public getLanguageName(): string {
+    return 'epl';
+  }
 
-	/**
-	 * Get Language Name
-	 */
-	public getLanguageName(): string {
-		return 'epl';
-	}
+  /**
+   * Get Monaco editor theme defined for epl language
+   */
+  public getThemeName(): string {
+    return 'eplTheme';
+  }
 
-	/**
-	 * Get Monaco editor theme defined for epl language
-	 */
-	public getThemeName(): string {
-		return 'eplTheme';
-	}
+  /**
+   * Default Editor configuration options
+   */
+  public defaultEditorConfigs(): monaco.editor.IStandaloneEditorConstructionOptions {
+    return {
+      autoIndent: 'advanced',
+      autoClosingBrackets: 'languageDefined',
+      autoSurround: 'languageDefined',
+      matchBrackets: 'always',
+      tabCompletion: 'on',
+      codeLens: false,
+      automaticLayout: true,
+      contextmenu: true,
+      copyWithSyntaxHighlighting: true,
+      formatOnPaste: true,
+      formatOnType: true,
+      scrollBeyondLastLine: false,
+      hover: {
+        above: false
+      },
+      minimap: {
+        enabled: true,
+        maxColumn: 160,
+        renderCharacters: true,
+        showSlider: 'mouseover',
+        side: 'right'
+      }, // configures the minimap which appears on right side of the editor
+      readOnly: false, // Makes editor read-only,
+      showUnused: true,
+      wordWrap: 'on',
+      wrappingIndent: 'same',
+      mouseWheelZoom: true,
+      theme: this.getThemeName()
+    };
+  }
 
-	/**
-	 * Default Editor configuration options
-	 */
-	public defaultEditorConfigs(): monaco.editor.IStandaloneEditorConstructionOptions {
-		return {
-			autoIndent: 'advanced',
-			autoClosingBrackets: 'languageDefined',
-			autoSurround: 'languageDefined',
-			matchBrackets: 'always',
-			tabCompletion: 'on',
-			codeLens: false,
-			automaticLayout: true,
-			contextmenu: true,
-			copyWithSyntaxHighlighting: true,
-			formatOnPaste: true,
-			formatOnType: true,
-			scrollBeyondLastLine: false,
-			hover: {
-				above: false
-			},
-			minimap: {
-				enabled: true, maxColumn: 160,
-				renderCharacters: true, showSlider: 'mouseover', side: 'right'
-			},	// configures the minimap which appears on right side of the editor
-			readOnly: false,	// Makes editor read-only,
-			showUnused: true,
-			wordWrap: 'on',
-			wrappingIndent: 'same',
-			mouseWheelZoom: true,
-			theme: this.getThemeName()
-		};
-	}
+  /**
+   * Get editing configuration for EPL Language.
+   *
+   * As per monaco documentation :
+   * The language configuration interface defines the contract between extensions and various editor features,
+   * like automatic bracket insertion, automatic indentation etc.
+   */
+  public getEPLLanguageConfig(): monaco.languages.LanguageConfiguration {
+    return {
+      // the default separators except `@$`
+      wordPattern:
+        /(-?\d*\.\d\w*)|([^\`\~\!\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
+      comments: {
+        lineComment: '//',
+        blockComment: ['/*', '*/']
+      },
+      brackets: [
+        ['{', '}'],
+        ['[', ']'],
+        ['(', ')']
+      ],
+      autoClosingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '"', close: '"' },
+        { open: "'", close: "'" }
+      ],
+      surroundingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '"', close: '"' },
+        { open: "'", close: "'" },
+        { open: '<', close: '>' }
+      ],
+      folding: {
+        markers: {
+          start: new RegExp('^\\s*//\\s*(?:(?:#?region\\b)|(?:<editor-fold\\b))'),
+          end: new RegExp('^\\s*//\\s*(?:(?:#?endregion\\b)|(?:</editor-fold>))')
+        }
+      }
+    };
+  }
 
-	/**
-	 * Get editing configuration for EPL Language.
-	 *
-	 * As per monaco documentation :
-	 * The language configuration interface defines the contract between extensions and various editor features,
-	 * like automatic bracket insertion, automatic indentation etc.
-	 */
-	public getEPLLanguageConfig(): monaco.languages.LanguageConfiguration {
-		return {
-			// the default separators except `@$`
-			wordPattern: /(-?\d*\.\d\w*)|([^\`\~\!\#\%\^\&\*\(\)\-\=\+\[\{\]\}\\\|\;\:\'\"\,\.\<\>\/\?\s]+)/g,
-			comments: {
-				lineComment: '//',
-				blockComment: ['/*', '*/'],
-			},
-			brackets: [
-				['{', '}'],
-				['[', ']'],
-				['(', ')'],
-			],
-			autoClosingPairs: [
-				{ open: '{', close: '}' },
-				{ open: '[', close: ']' },
-				{ open: '(', close: ')' },
-				{ open: '"', close: '"' },
-				{ open: '\'', close: '\'' },
-			],
-			surroundingPairs: [
-				{ open: '{', close: '}' },
-				{ open: '[', close: ']' },
-				{ open: '(', close: ')' },
-				{ open: '"', close: '"' },
-				{ open: '\'', close: '\'' },
-				{ open: '<', close: '>' },
-			],
-			folding: {
-				markers: {
-					start: new RegExp('^\\s*//\\s*(?:(?:#?region\\b)|(?:<editor-fold\\b))'),
-					end: new RegExp('^\\s*//\\s*(?:(?:#?endregion\\b)|(?:</editor-fold>))')
-				}
-			}
-		};
-	}
+  /**
+   * Get monaco.languages.ILanguageExtensionPoint object for 'epl' Language
+   */
+  public getCustomLangExtensionPoint(): monaco.languages.ILanguageExtensionPoint {
+    const newLanguage: monaco.languages.ILanguageExtensionPoint = {
+      id: 'epl',
+      aliases: ['EPL', 'epl', 'Epl'],
+      extensions: ['.mon', '.MON']
+    };
+    return newLanguage;
+  }
 
-	/**
-	 * Get monaco.languages.ILanguageExtensionPoint object for 'epl' Language
-	 */
-	public getCustomLangExtensionPoint(): monaco.languages.ILanguageExtensionPoint {
-		const newLanguage: monaco.languages.ILanguageExtensionPoint = {
-			id: 'epl',
-			aliases: ['EPL', 'epl', 'Epl'],
-			extensions: ['.mon', '.MON']
-		};
-		return newLanguage;
-	}
+  /**
+   * Get IMonarchTokenProvider object for 'epl' Language
+   * This object defines the rules for syntax highlighting.
+   */
 
-	/**
-	 * Get IMonarchTokenProvider object for 'epl' Language
-	 * This object defines the rules for syntax highlighting.
-	 */
+  public getCustomLangTokenProviders(): Record<string, unknown> {
+    return eplTokenProvider as unknown as Record<string, unknown>;
+  }
 
-	public getCustomLangTokenProviders(): Record<string, unknown> {
-		return eplTokenProvider as unknown as Record<string, unknown>;
-	}
-
-	/**
-	 * Creates and return custom Editor theme for EPL Language
-	 */
-	public getCustomLangTheme(): monaco.editor.IStandaloneThemeData {
-		return {
-			base: 'vs',
-			inherit: false,
-			rules: [
-				{ token: 'keyword', foreground: '7F0055' },
-				{ token: 'constant', foreground: '7F0055' },
-				{ token: 'type', foreground: 'cd3a3a' },
-				{ token: 'operator', foreground: '000000' },
-				{ token: '@brackets', foreground: '000000' },
-				{ token: 'comment', foreground: '3F7F5F' },
-				{ token: 'comment.doc', foreground: '2A00FF' },
-				{ token: 'string', foreground: '2A00FF' },
-				{ token: 'number', foreground: '2A00FF' },
-				{ token: 'number.hex', foreground: '2A00FF' },
-				{ token: 'annotation', foreground: '7F7F7F' },
-			],
-			colors: {}
-		};
-	}
+  /**
+   * Creates and return custom Editor theme for EPL Language
+   */
+  public getCustomLangTheme(): monaco.editor.IStandaloneThemeData {
+    return {
+      base: 'vs',
+      inherit: false,
+      rules: [
+        { token: 'keyword', foreground: '7F0055' },
+        { token: 'constant', foreground: '7F0055' },
+        { token: 'type', foreground: 'cd3a3a' },
+        { token: 'operator', foreground: '000000' },
+        { token: 'delimiter.bracket', foreground: '000000' },
+        { token: 'comment', foreground: '3F7F5F' },
+        { token: 'comment.doc', foreground: '2A00FF' },
+        { token: 'string', foreground: '2A00FF' },
+        // Invalid input stands out instead of inheriting the color of valid text.
+        { token: 'string.invalid', foreground: 'CD3131', fontStyle: 'underline' },
+        { token: 'string.escape.invalid', foreground: 'CD3131', fontStyle: 'underline' },
+        { token: 'comment.doc.invalid', foreground: 'CD3131', fontStyle: 'underline' },
+        { token: 'number', foreground: '2A00FF' },
+        { token: 'number.hex', foreground: '2A00FF' },
+        { token: 'annotation', foreground: '7F7F7F' }
+      ],
+      colors: {}
+    };
+  }
 }

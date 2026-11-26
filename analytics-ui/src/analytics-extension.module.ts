@@ -17,7 +17,6 @@ import { FORMLY_CONFIG, FormlyModule } from '@ngx-formly/core';
 
 // Import standalone components
 import { BlockGridComponent } from './block/block-grid.component';
-import { EngineMonitoringComponent } from './monitoring/engine-monitoring.component';
 import { ExtensionGridComponent } from './manage/extension-grid.component';
 import { ExtensionCardComponent } from './manage/extension-card.component';
 import { ExtensionDetailsComponent } from './manage/extension-details.component';
@@ -26,9 +25,8 @@ import { ExtensionListComponent } from './repository/list/extension-list.compone
 import { CustomSwitchFieldComponent } from './shared/component/custom-switch-field.component';
 import { ConfirmationModalComponent } from './shared/component/confirmation-modal.component';
 import { EditorModalComponent } from './repository/editor/editor-modal.component';
-import { ExtensionCreateModalComponent } from './repository/create-extension/extension-create-modal.component';
 import { RepositoriesDrawerComponent } from './repository/drawer/repositories-drawer.component';
-import { ReleaseDeployWizardComponent } from './repository/release-deploy/release-deploy-wizard.component';
+import { ExtensionWizardComponent } from './repository/wizard/extension-wizard.component';
 import { ReleaseListComponent } from './repository/release-list/release-list.component';
 
 import { ROUTES } from './shared/analytics.constants';
@@ -47,7 +45,6 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
     DynamicFormsModule,
     // Import standalone components
     BlockGridComponent,
-    EngineMonitoringComponent,
     ExtensionGridComponent,
     ExtensionCardComponent,
     ExtensionDetailsComponent,
@@ -58,9 +55,8 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
     // Modal components
     ConfirmationModalComponent,
     EditorModalComponent,
-    ExtensionCreateModalComponent,
+    ExtensionWizardComponent,
     RepositoriesDrawerComponent,
-    ReleaseDeployWizardComponent,
     ReleaseListComponent
   ],
   providers: [
@@ -92,10 +88,6 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
       component: BlockGridComponent
     }),
     hookRoute({
-      path: ROUTES.monitoring,
-      component: EngineMonitoringComponent
-    }),
-    hookRoute({
       path: ROUTES.repository,
       component: RepositoryBlockGridComponent
     }),
@@ -122,8 +114,7 @@ import { extensionResolver, backendResolver } from './manage/resolvers';
           }
         }
       ]
-    }),
-
+    })
   ]
 })
 export class AnalyticsExtensionModule {

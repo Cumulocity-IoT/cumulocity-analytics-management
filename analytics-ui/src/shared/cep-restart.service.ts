@@ -132,10 +132,7 @@ export class CepRestartService implements OnDestroy {
 
   restartSucceeded(): void {
     this.endRestart();
-    this.setCepStatusAlert(
-      gettext('Streaming Analytics restarted successfully.'),
-      'success'
-    );
+    this.setCepStatusAlert(gettext('Streaming Analytics restarted.'), 'success');
   }
 
   showCepUnavailableWarning(): void {
@@ -158,7 +155,9 @@ export class CepRestartService implements OnDestroy {
       return;
     }
     this.setCepStatusAlert(
-      gettext('The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.'),
+      gettext(
+        'The supporting microservice for Analytics Management is not deployed. Some features may be unavailable.'
+      ),
       'warning',
       this.ERROR_TIMEOUT
     );

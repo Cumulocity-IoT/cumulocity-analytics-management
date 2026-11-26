@@ -11,27 +11,49 @@ describe('AnalyticsService (facade)', () => {
   let service: AnalyticsService;
   let restart: jasmine.SpyObj<CepRestartService> & { restarting$: BehaviorSubject<boolean> };
   let status: jasmine.SpyObj<CepStatusService>;
-  let inventory: jasmine.SpyObj<ExtensionInventoryService> & { extensionChanged$: any; uploadProgress$: BehaviorSubject<number | null> };
+  let inventory: jasmine.SpyObj<ExtensionInventoryService> & {
+    extensionChanged$: any;
+    uploadProgress$: BehaviorSubject<number | null>;
+  };
   let enrichment: jasmine.SpyObj<ExtensionEnrichmentService>;
   const ext = { id: '1', name: 'E' } as unknown as IManagedObject;
 
   beforeEach(() => {
     restart = Object.assign(
-      jasmine.createSpyObj('CepRestartService', ['isRestarting', 'isRestartWindow', 'isExpectedTransientError']),
+      jasmine.createSpyObj('CepRestartService', [
+        'isRestarting',
+        'isRestartWindow',
+        'isExpectedTransientError'
+      ]),
       { restarting$: new BehaviorSubject<boolean>(false) }
     );
     status = jasmine.createSpyObj('CepStatusService', [
-      'clearCache', 'reinitializeMonitoring', 'getCepStatus', 'getCepOperationObjectStream$', 'restartCepEngine',
-      'isBackendServiceAvailable', 'isBackendServiceDeployed', 'isBackendServiceEnabled', 'setBackendServiceEnabled', 'getCepOperationObjectId'
+      'clearCache',
+      'reinitializeMonitoring',
+      'getCepStatus',
+      'getCepOperationObjectStream$',
+      'restartCepEngine',
+      'isBackendServiceAvailable',
+      'isBackendServiceDeployed',
+      'getCepOperationObjectId'
     ]);
     inventory = Object.assign(
       jasmine.createSpyObj('ExtensionInventoryService', [
-        'getExtensionsFromInventory', 'uploadExtension', 'deleteExtension', 'downloadExtension', 'cancelExtensionCreation', 'updateUploadProgress'
+        'getExtensionsFromInventory',
+        'uploadExtension',
+        'deleteExtension',
+        'downloadExtension',
+        'cancelExtensionCreation',
+        'updateUploadProgress'
       ]),
       { extensionChanged$: {}, uploadProgress$: new BehaviorSubject<number | null>(null) }
     );
     enrichment = jasmine.createSpyObj('ExtensionEnrichmentService', [
-      'invalidateCache', 'getEnrichedExtensions', 'getDeployedBlocks', 'getExtensionNamesFromCep', 'getDeployedExtensionDetails'
+      'invalidateCache',
+      'getEnrichedExtensions',
+      'getDeployedBlocks',
+      'getExtensionNamesFromCep',
+      'getDeployedExtensionDetails'
     ]);
     TestBed.configureTestingModule({
       providers: [
@@ -57,6 +79,18 @@ describe('AnalyticsService (facade)', () => {
       service.triggerCacheReload(true);
       service.triggerCacheReload(false);
       expect(received).toEqual([true, false]);
+    });
+
+    it('clears the caches and asks views to reload when a restart completes', () => {
+      const received: boolean[] = [];
+      service.getCacheReloadRequests$().subscribe(v => received.push(v));
+
+      restart.restarting$.next(true);
+      expect(received).toEqual([]);
+      restart.restarting$.next(false);
+
+      expect(enrichment.invalidateCache).toHaveBeenCalled();
+      expect(received).toEqual([false]);
     });
 
     it('clearAllCaches clears both the status and the enrichment caches', () => {
@@ -99,7 +133,6 @@ describe('AnalyticsService (facade)', () => {
       status.getCepOperationObjectId.and.resolveTo('7');
       status.isBackendServiceAvailable.and.resolveTo(true);
       status.isBackendServiceDeployed.and.resolveTo(true);
-      status.isBackendServiceEnabled.and.resolveTo(false);
       enrichment.getDeployedBlocks.and.resolveTo([]);
       enrichment.getDeployedExtensionDetails.and.resolveTo(null);
       inventory.getExtensionsFromInventory.and.resolveTo([ext]);
@@ -114,7 +147,6 @@ describe('AnalyticsService (facade)', () => {
       expect(await service.getCepOperationObjectId()).toBe('7');
       expect(await service.isBackendServiceAvailable()).toBeTrue();
       expect(await service.isBackendServiceDeployed()).toBeTrue();
-      expect(await service.isBackendServiceEnabled()).toBeFalse();
       expect(await service.getDeployedBlocks()).toEqual([]);
       expect(await service.getDeployedExtensionDetails('E')).toBeNull();
       expect(enrichment.getDeployedExtensionDetails).toHaveBeenCalledWith('E');
@@ -127,7 +159,6 @@ describe('AnalyticsService (facade)', () => {
 
       await service.restartCepEngine();
       await service.reinitializeMonitoring();
-      await service.setBackendServiceEnabled(true);
       await service.getEnrichedExtensions();
       await service.getExtensionNamesFromCep();
       service.cancelExtensionCreation(ext);
@@ -136,7 +167,6 @@ describe('AnalyticsService (facade)', () => {
 
       expect(status.restartCepEngine).toHaveBeenCalled();
       expect(status.reinitializeMonitoring).toHaveBeenCalled();
-      expect(status.setBackendServiceEnabled).toHaveBeenCalledWith(true);
       expect(enrichment.getEnrichedExtensions).toHaveBeenCalled();
       expect(enrichment.getExtensionNamesFromCep).toHaveBeenCalled();
       expect(inventory.cancelExtensionCreation).toHaveBeenCalledWith(ext);

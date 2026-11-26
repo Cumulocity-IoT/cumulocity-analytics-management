@@ -7,12 +7,22 @@ describe('route resolvers', () => {
   let analytics: jasmine.SpyObj<AnalyticsService>;
 
   beforeEach(() => {
-    analytics = jasmine.createSpyObj('AnalyticsService', ['getDeployedExtensionDetails', 'isBackendServiceAvailable']);
-    TestBed.configureTestingModule({ providers: [{ provide: AnalyticsService, useValue: analytics }] });
+    analytics = jasmine.createSpyObj('AnalyticsService', [
+      'getDeployedExtensionDetails',
+      'isBackendServiceAvailable'
+    ]);
+    TestBed.configureTestingModule({
+      providers: [{ provide: AnalyticsService, useValue: analytics }]
+    });
   });
 
-  const run = <T>(fn: (r: ActivatedRouteSnapshot, s: RouterStateSnapshot) => unknown, params: Record<string, string> = {}) =>
-    TestBed.runInInjectionContext(() => fn({ params } as unknown as ActivatedRouteSnapshot, {} as RouterStateSnapshot)) as Promise<T>;
+  const run = <T>(
+    fn: (r: ActivatedRouteSnapshot, s: RouterStateSnapshot) => unknown,
+    params: Record<string, string> = {}
+  ) =>
+    TestBed.runInInjectionContext(() =>
+      fn({ params } as unknown as ActivatedRouteSnapshot, {} as RouterStateSnapshot)
+    ) as Promise<T>;
 
   it('extensionResolver loads the details of the extension named in the route', async () => {
     analytics.getDeployedExtensionDetails.and.resolveTo({ name: 'E' } as never);

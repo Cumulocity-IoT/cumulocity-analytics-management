@@ -59,9 +59,13 @@ class TestParseRepositoryValue:
         self.agent = C8YAgent()
 
     def test_masks_token_by_default(self):
-        value = json.dumps({"name": "n", "url": "u", "accessToken": "secret", "enabled": True})
+        value = json.dumps({"name": "n", "url": "u", "accessToken": "secret"})
         result = self.agent._parse_repository_value(value, "id1")
-        assert result == {"id": "id1", "name": "n", "url": "u", "accessToken": DUMMY, "enabled": True}
+        assert result == {"id": "id1", "name": "n", "url": "u", "accessToken": DUMMY}
+
+    def test_ignores_a_stored_enabled_flag_from_older_versions(self):
+        value = json.dumps({"name": "n", "url": "u", "enabled": True})
+        assert "enabled" not in self.agent._parse_repository_value(value, "id1")
 
     def test_returns_real_token_when_requested(self):
         value = json.dumps({"accessToken": "secret"})
@@ -73,7 +77,7 @@ class TestParseRepositoryValue:
     def test_non_json_value_falls_back_to_defaults(self):
         result = self.agent._parse_repository_value("legacy-value", "i")
         assert result["name"] == "legacy-value"
-        assert result["enabled"] is False
+        assert "enabled" not in result
 
     def test_none_value(self):
         assert self.agent._parse_repository_value(None, "i")["id"] == "i"
@@ -162,7 +166,7 @@ class TestSaveRepository:
         await self._save(C8YAgent(), tenant, {"id": "r", "name": "n", "url": "u", "enabled": 1})
         assert created[0]["category"] == C8YAgent.CATEGORY
         assert created[0]["key"] == "r"
-        assert json.loads(created[0]["value"]) == {"name": "n", "url": "u", "enabled": True}
+        assert json.loads(created[0]["value"]) == {"name": "n", "url": "u"}
 
     @pytest.mark.asyncio
     async def test_missing_id_raises(self, tenant):
@@ -279,11 +283,44 @@ class TestDeleteExtension:
         tenant.binaries.delete.side_effect = [None, RuntimeError("x"), None]
         assert agent.delete_extension(REQ, extension_name="E") == 2
 
+    def test_by_name_deletes_only_the_given_ids(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.delete_extension(REQ, extension_name="E", only_ids=["1"]) == 1
+        tenant.binaries.delete.assert_awaited_once_with("1")
+
     def test_unexpected_failure_is_wrapped(self, tenant, monkeypatch):
         agent = C8YAgent()
         monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("net")))
         with pytest.raises(C8YAgentError, match="Failed to delete"):
             agent.delete_extension(REQ, extension_name="E")
+
+
+class TestFindExtensionIds:
+    def test_returns_the_ids_with_the_name(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.find_extension_ids(REQ, "E") == ["1", "2"]
+
+    def test_rejects_quotes_in_the_name(self, agent):
+        with pytest.raises(ValueError):
+            agent.find_extension_ids(REQ, "E'")
+
+
+class TestCountExtensions:
+    def test_counts_extensions_with_the_name(self, agent, tenant):
+        tenant.inventory.select = MagicMock(return_value=AsyncIter([mo("1"), mo("2")]))
+        assert agent.count_extensions(REQ, "E") == 2
+        assert tenant.inventory.select.call_args.kwargs["query"] == "name eq 'E' and has(pas_extension)"
+
+    def test_rejects_query_injection_in_name(self, agent, tenant):
+        with pytest.raises(ValueError):
+            agent.count_extensions(REQ, "x' or 1 eq 1 or name eq 'y")
+        tenant.inventory.select.assert_not_called()
+
+    def test_wraps_errors(self, monkeypatch):
+        agent = C8YAgent()
+        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("net")))
+        with pytest.raises(C8YAgentError, match="look up"):
+            agent.count_extensions(REQ, "E")
 
 
 class TestUploadExtension:
@@ -380,3 +417,64 @@ class TestCepErrorLogging:
         with caplog.at_level("WARNING"):
             agent.get_cep_ctrl_status(REQ)
         assert caplog.records[-1].levelname == "ERROR"
+
+
+class TestGetCallerRoles:
+    @staticmethod
+    def _install(monkeypatch, user_get=None, instance_error=None):
+        class FakeUser:
+            async def get(self, path):
+                assert path == "/user/currentUser"
+                if isinstance(user_get, Exception):
+                    raise user_get
+                return user_get
+
+        class FakeApp:
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *a):
+                return False
+
+            async def get_user_instance(self, **kw):
+                if instance_error:
+                    raise instance_error
+                return FakeUser()
+
+            async def get_tenant_instance(self, **kw):
+                raise AssertionError("roles must be read with the caller's credentials")
+
+        monkeypatch.setattr(c8y_agent, "MultiTenantCumulocityApp", FakeApp)
+        return MagicMock(headers={}, cookies={})
+
+    def test_returns_effective_role_ids(self, monkeypatch):
+        request = self._install(monkeypatch, user_get={
+            "userName": "u",
+            "effectiveRoles": [{"id": "ROLE_ANALYTICS_MANAGEMENT_READ"}, {"id": "ROLE_X", "self": "..."}, {}, "junk"],
+        })
+        assert C8YAgent().get_caller_roles(request) == {"ROLE_ANALYTICS_MANAGEMENT_READ", "ROLE_X"}
+
+    def test_no_roles(self, monkeypatch):
+        request = self._install(monkeypatch, user_get={"userName": "u"})
+        assert C8YAgent().get_caller_roles(request) == set()
+
+    @pytest.mark.parametrize("status", [401, 403])
+    def test_rejected_credentials(self, monkeypatch, status):
+        request = self._install(
+            monkeypatch, user_get=ValueError(f"Invalid GET request. Status: {status}, Response: x")
+        )
+        with pytest.raises(c8y_agent.C8YAuthenticationError):
+            C8YAgent().get_caller_roles(request)
+
+    def test_missing_credentials(self, monkeypatch):
+        request = self._install(monkeypatch, instance_error=RuntimeError("no Authorization header"))
+        with pytest.raises(c8y_agent.C8YAuthenticationError):
+            C8YAgent().get_caller_roles(request)
+
+    def test_other_failures_are_not_authentication_errors(self, monkeypatch):
+        request = self._install(
+            monkeypatch, user_get=ValueError("Invalid GET request. Status: 500, Response: boom")
+        )
+        with pytest.raises(C8YAgentError) as exc:
+            C8YAgent().get_caller_roles(request)
+        assert not isinstance(exc.value, c8y_agent.C8YAuthenticationError)

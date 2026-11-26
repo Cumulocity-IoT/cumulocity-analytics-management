@@ -1,10 +1,4 @@
-import {
-  Component,
-  Input,
-  Output,
-  ViewChild,
-  ViewEncapsulation
-} from '@angular/core';
+import { Component, Input, Output, ViewChild, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CoreModule, ModalLabels } from '@c8y/ngx-components';
@@ -19,15 +13,13 @@ let initializedMonaco = false;
   styleUrls: ['./editor-modal.component.css'],
   templateUrl: './editor-modal.component.html',
   encapsulation: ViewEncapsulation.None,
-  standalone: true,
   imports: [CommonModule, FormsModule, CoreModule, EditorComponent],
   providers: [EplConfigService]
 })
 export class EditorModalComponent {
-
   @Input() source$!: Observable<string>;
   @Input() monitorName!: string;
-  @Output() closeSubject: Subject<any> = new Subject();
+  @Output() closeSubject: Subject<unknown> = new Subject();
 
   @ViewChild(EditorComponent) editorComponent!: EditorComponent;
 
@@ -44,19 +36,28 @@ export class EditorModalComponent {
     };
   }
 
-  onClose(_event: any) {
+  onClose(_event: unknown) {
     this.closeSubject.next(true);
   }
 
   assignSchema() {
     if (!this.editorComponent.monaco || !this.editorComponent.editor) return;
-    const {monaco} = this.editorComponent;
+    const { monaco } = this.editorComponent;
     try {
       if (!initializedMonaco) {
         monaco.languages.register(this.configService.getCustomLangExtensionPoint());
-        monaco.languages.setMonarchTokensProvider(this.configService.getLanguageName(), this.configService.getCustomLangTokenProviders() as any);
-        monaco.languages.setLanguageConfiguration(this.configService.getLanguageName(), this.configService.getEPLLanguageConfig());
-        monaco.editor.defineTheme(this.configService.getThemeName(), this.configService.getCustomLangTheme());
+        monaco.languages.setMonarchTokensProvider(
+          this.configService.getLanguageName(),
+          this.configService.getCustomLangTokenProviders() as any
+        );
+        monaco.languages.setLanguageConfiguration(
+          this.configService.getLanguageName(),
+          this.configService.getEPLLanguageConfig()
+        );
+        monaco.editor.defineTheme(
+          this.configService.getThemeName(),
+          this.configService.getCustomLangTheme()
+        );
         initializedMonaco = true;
       }
 

@@ -1,18 +1,29 @@
 import { TestBed } from '@angular/core/testing';
-import { ApplicationService, FetchClient, IManagedObject, InventoryService, Realtime } from '@c8y/client';
+import {
+  ApplicationService,
+  FetchClient,
+  IManagedObject,
+  InventoryService,
+  Realtime
+} from '@c8y/client';
 import { firstValueFrom } from 'rxjs';
 import { CepError } from './cep-error';
 import { CepRestartService } from './cep-restart.service';
 import { CepStatusService } from './cep-status.service';
-import { RepositoryConfigService } from './repository-config.service';
 
 const STATUS_URL = 'service/cep/diagnostics/apamaCtrlStatus';
 const BACKEND_STATUS_URL = 'service/analytics-ext-service/cep/status';
 const BACKEND_ID_URL = 'service/analytics-ext-service/cep/id';
 
 const ok = (body: unknown = {}, status = 200) =>
-  ({ ok: status >= 200 && status < 300, status, statusText: String(status), json: async () => body }) as unknown as Response;
-const mo = (id: string, status?: string) => ({ id, c8y_Status: status ? { status } : undefined }) as unknown as IManagedObject;
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: String(status),
+    json: async () => body
+  }) as unknown as Response;
+const mo = (id: string, status?: string) =>
+  ({ id, c8y_Status: status ? { status } : undefined }) as unknown as IManagedObject;
 const tick = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('CepStatusService', () => {
@@ -20,7 +31,6 @@ describe('CepStatusService', () => {
   let inventory: jasmine.SpyObj<InventoryService>;
   let applications: jasmine.SpyObj<ApplicationService>;
   let restart: jasmine.SpyObj<CepRestartService>;
-  let config: jasmine.SpyObj<RepositoryConfigService>;
   let routes: Record<string, () => Response | Promise<Response>>;
   let realtimeCallback: ((payload: unknown) => void) | undefined;
   let realtimeSubscribe: jasmine.Spy;
@@ -40,7 +50,8 @@ describe('CepStatusService', () => {
     services = [];
     realtimeCallback = undefined;
     routes = {
-      [STATUS_URL]: () => ok({ microservice_name: 'apama', microservice_application_id: '7', status: 'Up' }),
+      [STATUS_URL]: () =>
+        ok({ microservice_name: 'apama', microservice_application_id: '7', status: 'Up' }),
       '/service/cep/restart': () => ok({}),
       [BACKEND_STATUS_URL]: () => ok({}),
       [BACKEND_ID_URL]: () => ok({ id: 'backend-id' })
@@ -57,19 +68,25 @@ describe('CepStatusService', () => {
     applications = jasmine.createSpyObj('ApplicationService', ['isAvailable']);
     applications.isAvailable.and.resolveTo({ data: false } as never); // backend not subscribed by default
     restart = jasmine.createSpyObj('CepRestartService', [
-      'beginRestart', 'restartFailed', 'restartSucceeded', 'recordEngineDown', 'hasSeenEngineDown',
-      'isRestarting', 'isExpectedTransientError', 'showCepUnavailableWarning', 'showBackendNotDeployedWarning'
+      'beginRestart',
+      'restartFailed',
+      'restartSucceeded',
+      'recordEngineDown',
+      'hasSeenEngineDown',
+      'isRestarting',
+      'isExpectedTransientError',
+      'showCepUnavailableWarning',
+      'showBackendNotDeployedWarning'
     ]);
     restart.isRestarting.and.returnValue(false);
     restart.isExpectedTransientError.and.returnValue(false);
-    config = jasmine.createSpyObj('RepositoryConfigService', ['getUseBackendServiceEnabled', 'setUseBackendServiceEnabled']);
-    config.getUseBackendServiceEnabled.and.resolveTo(true);
-    config.setUseBackendServiceEnabled.and.resolveTo();
 
-    realtimeSubscribe = spyOn(Realtime.prototype, 'subscribe').and.callFake((_channel: string, cb: any) => {
-      realtimeCallback = cb;
-      return {} as never;
-    });
+    realtimeSubscribe = spyOn(Realtime.prototype, 'subscribe').and.callFake(
+      (_channel: string, cb: any) => {
+        realtimeCallback = cb;
+        return {} as never;
+      }
+    );
     spyOn(console, 'error');
     spyOn(console, 'warn');
 
@@ -78,8 +95,7 @@ describe('CepStatusService', () => {
         { provide: FetchClient, useValue: fetchClient },
         { provide: InventoryService, useValue: inventory },
         { provide: ApplicationService, useValue: applications },
-        { provide: CepRestartService, useValue: restart },
-        { provide: RepositoryConfigService, useValue: config }
+        { provide: CepRestartService, useValue: restart }
       ]
     });
   });
@@ -90,9 +106,15 @@ describe('CepStatusService', () => {
     it('resolves the operation object via the CEP status endpoint, publishes it and subscribes to updates', async () => {
       const service = await create();
 
-      expect(inventory.listQuery).toHaveBeenCalledWith({ name: 'apama', applicationId: '7' }, jasmine.anything());
+      expect(inventory.listQuery).toHaveBeenCalledWith(
+        { name: 'apama', applicationId: '7' },
+        jasmine.anything()
+      );
       expect(inventory.detail).toHaveBeenCalledWith('ctrl-1');
-      expect(realtimeSubscribe).toHaveBeenCalledWith('/managedobjects/ctrl-1', jasmine.any(Function));
+      expect(realtimeSubscribe).toHaveBeenCalledWith(
+        '/managedobjects/ctrl-1',
+        jasmine.any(Function)
+      );
       expect((await firstValueFrom(service.getCepOperationObjectStream$())).id).toBe('ctrl-1');
     });
 
@@ -138,7 +160,10 @@ describe('CepStatusService', () => {
     it('is not deployed when the probe fails, and retries next time instead of caching the failure', async () => {
       applications.isAvailable.and.resolveTo({ data: true } as never);
       let failing = true;
-      routes[BACKEND_STATUS_URL] = () => { if (failing) throw new Error('boom'); return ok({}); };
+      routes[BACKEND_STATUS_URL] = () => {
+        if (failing) throw new Error('boom');
+        return ok({});
+      };
       const service = await create();
       expect(await service.isBackendServiceDeployed()).toBeFalse();
       failing = false;
@@ -151,13 +176,11 @@ describe('CepStatusService', () => {
       expect(await service.isBackendServiceDeployed()).toBeFalse();
     });
 
-    it('is available only when deployed AND enabled by the user', async () => {
+    it('is available exactly when the backend is deployed', async () => {
       applications.isAvailable.and.resolveTo({ data: true } as never);
       const service = await create();
       expect(await service.isBackendServiceAvailable()).toBeTrue();
-      await service.setBackendServiceEnabled(false);
-      expect(await service.isBackendServiceAvailable()).toBeFalse();
-      expect(await service.isBackendServiceDeployed()).toBeTrue(); // deployment state is independent of the preference
+      expect(await service.isBackendServiceDeployed()).toBeTrue();
     });
 
     it('recheckBackendServiceDeployed bypasses the cached deployment probe', async () => {
@@ -167,28 +190,6 @@ describe('CepStatusService', () => {
       applications.isAvailable.and.resolveTo({ data: true } as never);
       expect(await service.isBackendServiceDeployed()).toBeFalse(); // still cached
       expect(await service.recheckBackendServiceDeployed()).toBeTrue();
-    });
-
-    it('caches the preference read until it is changed', async () => {
-      const service = await create();
-      await service.isBackendServiceEnabled();
-      await service.isBackendServiceEnabled();
-      expect(config.getUseBackendServiceEnabled).toHaveBeenCalledTimes(1);
-    });
-
-    it('setBackendServiceEnabled persists the preference and clears the mode-dependent caches', async () => {
-      const service = await create();
-      await service.getCepStatus();
-      const statusCalls = () => fetchedUrls().filter(u => u === STATUS_URL).length;
-      const before = statusCalls();
-      await service.getCepStatus();
-      expect(statusCalls()).toBe(before); // cached
-
-      await service.setBackendServiceEnabled(false);
-      await service.getCepStatus();
-
-      expect(config.setUseBackendServiceEnabled).toHaveBeenCalledWith(false);
-      expect(statusCalls()).toBe(before + 1);
     });
   });
 

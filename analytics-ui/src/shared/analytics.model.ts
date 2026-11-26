@@ -41,6 +41,7 @@ export interface CepExtension {
   version: string;
   loaded: true;
   extensionType?: ExtensionType;
+  build_information?: ExtensionBuildInformation;
 }
 
 export interface CepBlock {
@@ -85,7 +86,6 @@ export interface RawCepBlock {
   category?: Category;
 }
 
-
 export interface RepositoryItem {
   id: string;
   name: string;
@@ -98,6 +98,8 @@ export interface RepositoryItem {
   repositoryId: string;
   installed?: boolean;
   extensionsYamlItem?: RepositoryItem;
+  /** Base names of the `.mon` files an extensions.yaml section lists. */
+  sectionFiles?: string[];
   /**
    * All fully-qualified block names this item's file defines (see
    * `extractBlockFqns`). A `.mon` file can define more than one block, so
@@ -112,7 +114,6 @@ export interface Repository {
   name: string;
   url: string;
   accessToken: string;
-  enabled: boolean;
 }
 
 export interface RepositoryTestResult {
@@ -183,7 +184,6 @@ export const DUMMY_ACCESS_TOKEN = '_DUMMY_ACCESS_CODE_';
  * user's tenant rather than one browser/device.
  */
 export const SETTINGS_OPTION_CATEGORY = 'analytics-management.settings';
-export const EXPERT_MODE_OPTION_KEY = 'expertMode';
 /**
  * User preference for whether the `analytics-service` backend microservice
  * should be used when it's deployed — lets a user force browser-only mode
@@ -191,7 +191,6 @@ export const EXPERT_MODE_OPTION_KEY = 'expertMode';
  * backend isn't deployed at all (there's nothing to opt into). Defaults to
  * `true` (use it when available) when never explicitly set.
  */
-export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
 
 /**
  * Fallback Personal Access Token used for any repository that doesn't have
@@ -201,7 +200,6 @@ export const USE_BACKEND_SERVICE_OPTION_KEY = 'useBackendService';
  * `RepositoryConfigService.resolveAccessToken`).
  */
 export const GLOBAL_ACCESS_TOKEN_OPTION_KEY = 'globalAccessToken';
-
 
 export const CEP_METADATA_JSON_SUFFIX = '.json';
 export const CEP_DIAGNOSTICS_ZIP_SUFFIX = '.zip';
@@ -227,48 +225,41 @@ export function createDefaultRepository(): Repository {
     id: createShortId(),
     name: 'Community Blocks (analytics-builder-blocks-contrib)',
     url: DEFAULT_REPOSITORY_URL,
-    accessToken: '',
-    enabled: true
+    accessToken: ''
   };
 }
 export const REPO_SAMPLES = [
   {
     id: createShortId(),
     name: 'Block SDK Quick Start Samples',
-    url: REPO_ANALYTICS_MANAGEMENT,
-    enabled: true
+    url: REPO_ANALYTICS_MANAGEMENT
   },
   {
     id: createShortId(),
     name: 'Block SDK Samples',
-    url: REPO_BLOCKSDK,
-    enabled: true
+    url: REPO_BLOCKSDK
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Block',
-    url: REPO_CONTRIB_BLOCK,
-    enabled: false
+    url: REPO_CONTRIB_BLOCK
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Simulation-Block',
-    url: REPO_CONTRIB_SIMULATION,
-    enabled: false
+    url: REPO_CONTRIB_SIMULATION
   },
   {
     id: createShortId(),
     name: 'Contrib Samples Cumulocity-Block',
-    url: REPO_CONTRIB_CUMULOCITY,
-    enabled: false
+    url: REPO_CONTRIB_CUMULOCITY
   }
 ] as Repository[];
 
-
 export const DESCRIPTOR_YAML = 'extensions.yaml';
 
-
-export type CepEngineStatus = 'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
+export type CepEngineStatus =
+  'loading' | 'loaded' | 'empty' | 'loadingError' | 'started' | 'down' | 'up' | 'unknown';
 
 export type ExtensionType = 'block' | 'zip';
 
@@ -291,3 +282,15 @@ export interface CepStatusObject {
 }
 
 export type UploadMode = 'add' | 'update';
+/** Build information stored on an extension managed object (`build_information`). */
+export interface ExtensionBuildInformation {
+  build_type: 'repository' | 'list' | 'yaml' | 'release';
+  /** The version of an uploaded or deployed extension; it is not part of the extension name. */
+  version?: string;
+  repository: Repository;
+  monitors?: RepositoryItem[];
+  yaml?: RepositoryItem;
+  sections?: string[];
+  section_name?: string;
+  files?: { file?: string }[];
+}

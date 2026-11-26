@@ -1,9 +1,20 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { IManagedObject } from '@c8y/client';
-import { AlertService, CoreModule, WizardConfig, WizardModalService } from '@c8y/ngx-components';
+import { AlertService, CoreModule } from '@c8y/ngx-components';
+import { ExtensionWizardService } from '../repository/wizard/extension-wizard.service';
 import { gettext } from '@c8y/ngx-components/gettext';
-import { BehaviorSubject, combineLatest, defer, from, merge, Observable, of, Subject, timer } from 'rxjs';
+import {
+  BehaviorSubject,
+  combineLatest,
+  defer,
+  from,
+  merge,
+  Observable,
+  of,
+  Subject,
+  timer
+} from 'rxjs';
 import {
   catchError,
   debounceTime,
@@ -13,7 +24,6 @@ import {
   shareReplay,
   startWith,
   switchMap,
-  take,
   takeUntil,
   tap
 } from 'rxjs/operators';
@@ -25,7 +35,6 @@ import { ExtensionCardComponent } from './extension-card.component';
   selector: 'a17t-extension-grid',
   templateUrl: './extension-grid.component.html',
   styleUrls: ['./extension-grid.component.css'],
-  standalone: true,
   imports: [CommonModule, CoreModule, ExtensionCardComponent]
 })
 export class ExtensionGridComponent implements OnInit, OnDestroy {
@@ -42,7 +51,6 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   isSafeMode$!: Observable<boolean>;
 
   // Template bindings
-  listClass = 'card-group';
   isBackendServiceAvailable = false;
 
   // Private subjects
@@ -61,8 +69,8 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private readonly analyticsService: AnalyticsService,
     private readonly alertService: AlertService,
-    private readonly wizardModalService: WizardModalService
-  ) { }
+    private readonly extensionWizard: ExtensionWizardService
+  ) {}
 
   async ngOnInit(): Promise<void> {
     this.isBackendServiceAvailable = await this.route.snapshot.data['isBackendServiceAvailable'];
@@ -91,20 +99,11 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   }
 
   addExtension(): void {
-    const initialState = {
-      wizardConfig: { headerIcon: 'plus' } as WizardConfig,
-      id: 'uploadAnalyticsExtension',
-      componentInitialState: {
-        mode: 'add' as const,
-        headerText: 'Add extension',
-        uploadExtensionHandler: this.analyticsService.uploadExtension.bind(this.analyticsService)
+    this.extensionWizard.open().subscribe(added => {
+      if (added) {
+        this.reload();
       }
-    };
-
-    this.wizardModalService
-      .show({ initialState })
-      .content?.onClose.pipe(take(1))
-      .subscribe(() => this.reload());
+    });
   }
 
   getCepMicroserviceUrl(): string {
@@ -117,10 +116,9 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
   private initializeStreams(): void {
     // Cep operation object stream
-    const cepObject$ = this.analyticsService.getCepOperationObjectStream$().pipe(
-      takeUntil(this.destroy$),
-      shareReplay(1)
-    );
+    const cepObject$ = this.analyticsService
+      .getCepOperationObjectStream$()
+      .pipe(takeUntil(this.destroy$), shareReplay(1));
 
     // Extract status
     this.cepStatus$ = cepObject$.pipe(
@@ -131,7 +129,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
 
     // Extract safe mode
     // The operation object does not always carry the flag; the engine status
-    // endpoint (the one the Monitoring tab shows) is the reliable source.
+    // endpoint is the reliable source.
     // Realtime updates re-emit the object often; only re-query when the engine
     // status or the flag actually changes.
     this.isSafeMode$ = cepObject$.pipe(
@@ -143,7 +141,9 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
       switchMap(({ flag }) =>
         flag
           ? of(true)
-          : from(this.analyticsService.getCepStatus().then(status => status?.is_safe_mode === true)).pipe(
+          : from(
+              this.analyticsService.getCepStatus().then(status => status?.is_safe_mode === true)
+            ).pipe(
               catchError(() => of(false)),
               startWith(false)
             )
@@ -153,10 +153,7 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     );
 
     // Combined reload trigger
-    const reload$ = merge(
-      this.reload$,
-      this.analyticsService.getCacheReloadRequests$()
-    ).pipe(
+    const reload$ = merge(this.reload$, this.analyticsService.getCacheReloadRequests$()).pipe(
       debounceTime(100),
       tap(clearCache => {
         // console.log('Reload triggered, clearCache:', clearCache);
@@ -170,7 +167,9 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
     this.extensions$ = combineLatest([reload$, this.cepStatus$, this.isSafeMode$]).pipe(
       switchMap(([_, status, safeMode]) =>
         status === 'up'
-          ? this.loadExtensions$().pipe(map(extensions => (safeMode ? this.markAsNotLoaded(extensions) : extensions)))
+          ? this.loadExtensions$().pipe(
+              map(extensions => (safeMode ? this.markAsNotLoaded(extensions) : extensions))
+            )
           : of(null)
       ),
       shareReplay(1)
@@ -184,7 +183,8 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
   // loop, so it is flagged as the suspected cause.
   private markAsNotLoaded(extensions: IManagedObject[] | null): IManagedObject[] | null {
     if (!extensions) return extensions;
-    const lastUpdated = (e: IManagedObject) => Date.parse(e['lastUpdated'] ?? e['creationTime'] ?? '') || 0;
+    const lastUpdated = (e: IManagedObject) =>
+      Date.parse(e['lastUpdated'] ?? e['creationTime'] ?? '') || 0;
     const suspect = extensions.reduce<IManagedObject | null>(
       (latest, e) => (!latest || lastUpdated(e) > lastUpdated(latest) ? e : latest),
       null
@@ -222,7 +222,10 @@ export class ExtensionGridComponent implements OnInit, OnDestroy {
         // Still failing after the retries are exhausted (or a non-transient
         // error): keep transient cases quiet, alert only on genuine failures.
         if (this.analyticsService.isExpectedTransientError(error)) {
-          console.warn('Failed to load extensions after retries (engine still unavailable):', error);
+          console.warn(
+            'Failed to load extensions after retries (engine still unavailable):',
+            error
+          );
         } else {
           console.error('Failed to load extensions:', error);
           this.alertService.add({

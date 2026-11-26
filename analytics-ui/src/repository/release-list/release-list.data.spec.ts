@@ -1,4 +1,10 @@
-import { RELEASE_ASSETS, RELEASE_BLOCKS, RELEASE_BUNDLES, RELEASE_PUBLISHED_AT, RELEASE_TAG_URL } from './release-list.data';
+import {
+  RELEASE_ASSETS,
+  RELEASE_BLOCKS,
+  RELEASE_BUNDLES,
+  RELEASE_PUBLISHED_AT,
+  RELEASE_TAG_URL
+} from './release-list.data';
 
 describe('release list data', () => {
   it('combines bundles and blocks', () => {
@@ -17,7 +23,9 @@ describe('release list data', () => {
 
   it('builds download urls from the release tag', () => {
     RELEASE_ASSETS.forEach(a => {
-      expect(a.downloadUrl).toBe(`https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/download/1.0.1/${a.name}-${a.version}.zip`);
+      expect(a.downloadUrl).toBe(
+        `https://github.com/Cumulocity-IoT/analytics-builder-blocks-contrib/releases/download/1.0.1/${a.name}-${a.version}.zip`
+      );
     });
     expect(RELEASE_TAG_URL.endsWith(`/tag/${RELEASE_ASSETS[0].version}`)).toBeTrue();
   });

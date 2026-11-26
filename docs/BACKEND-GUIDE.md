@@ -1,6 +1,6 @@
 # Analytics Service Backend Development Guide
 
-> Last aligned with the code: 2026-10-14. Items marked **Planned** are *not* implemented (see [Planned work](#planned-work)).
+> Last aligned with the code: 2026-10-29. Items marked **Planned** are *not* implemented (see [Planned work](#planned-work)).
 
 ## Overview
 
@@ -9,7 +9,7 @@ builds Apama Analytics Builder extensions from GitHub sources and uploads them t
 It also manages the GitHub repository configuration (stored as tenant options) and exposes the
 status of the Streaming Analytics (CEP/Apama) engine.
 
-Endpoint details live in the route docstrings in `app.py` and in [API.md](../analytics-service/API.md).
+Endpoint details live in the route docstrings in `app.py` and in [API.md](../analytics-service/docs/API.md).
 
 ---
 
@@ -17,31 +17,34 @@ Endpoint details live in the route docstrings in `app.py` and in [API.md](../ana
 
 ```
 analytics-service/
-├── app.py               # Flask app: all routes + build/download helpers
-├── c8y_agent.py         # Cumulocity access (pyc8y): extensions, tenant options, CEP
-├── solution_utils.py    # GitHub URL helpers, handle_errors decorator, small utils
-├── logging_config.py    # Logging setup (text or JSON)
-├── health_check.py      # NOT used: not imported by app.py, not copied into the image
-├── cumulocity.json      # Microservice manifest (roles, resources, contextPath)
-├── Dockerfile           # Apama builder base image + SDK clone + gunicorn
-├── build.sh             # Renders manifest/Dockerfile into build/ and zips to dist/
-├── local_deploy.sh      # Local deployment helper
-├── requirements.txt     # Unpinned dependencies (runtime + test)
+├── src/                 # Python sources
+│   ├── app.py           # Flask app: all routes + build/download helpers
+│   ├── c8y_agent.py # Cumulocity access (pyc8y): extensions, tenant options, CEP
+│   ├── solution_utils.py # GitHub URL helpers, handle_errors decorator, small utils
+│   ├── logging_config.py # Logging setup (text or JSON)
+│   ├── health_check.py # NOT used: not imported by app.py, not copied into the image
+├── cumulocity.json      # Microservice manifest (required roles, application roles, resources, contextPath)
+├── Dockerfile           # Apama builder base image (pinned) + SDK at a pinned commit + gunicorn, runs as user apama
+├── build.sh             # Renders manifest/Dockerfile into build/ and zips to dist/; --push uploads to the active c8y session
+├── scripts/local_deploy.sh  # Local deployment helper
+├── docs/API.md          # Endpoint reference
+├── requirements.txt     # Pinned runtime dependencies
+├── requirements-dev.txt # Test dependencies (includes requirements.txt)
 ├── pytest.ini
-└── tests/               # conftest.py, test_app.py, test_c8y_agent.py, test_solution_utils.py
+└── tests/               # conftest.py, test_app.py, test_authorization.py, test_c8y_agent.py, test_solution_utils.py
 ```
 
 ### Technology stack
 
-- Python 3.11+ (developed on 3.12), Flask, gunicorn (2 workers x 4 threads, 120 s timeout)
+- Python 3.11+ (developed on 3.12), Flask, gunicorn (2 workers x 4 threads, 120 s timeout, port 80)
 - `pyc8y` 4.1.0 (asyncio-only; `C8YAgent._execute` runs one event loop per request)
 - `requests`, `pyyaml`, `python-dotenv`
 - Base image `public.ecr.aws/apama/apama-builder` with the Analytics Builder block SDK cloned to
   `/apama_work/apama-analytics-builder-block-sdk` (the build step shells out to `analytics_builder`)
 - Tests: pytest, pytest-cov, pytest-mock, pytest-asyncio
 
-`pydantic` and `psutil` are listed in `requirements.txt` but are not used by the service code
-(`psutil` only by the unused `health_check.py`).
+`pydantic` and `psutil` are listed only in `requirements-dev.txt`, not in the runtime image. The service code
+does not use them (`psutil` only by the unused `health_check.py`).
 
 ---
 
@@ -56,10 +59,20 @@ Flask routes (app.py)
 ```
 
 - **Authentication/tenant:** the service is multi-tenant. Every request is forwarded with the
-  caller's headers/cookies; `MultiTenantCumulocityApp.get_tenant_instance` resolves the tenant
-  session. A failure raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
+  caller's headers/cookies. `C8YAgent.get_caller_roles` reads the caller's roles with the caller's own
+  credentials (`get_user_instance`, `/user/currentUser`), and a `before_request` hook in `app.py`
+  checks them against the role each route declares with `@requires_role`. Routes without a role are
+  denied (403), and only `@public` routes (`/health`) skip the check. Rejected credentials return 401,
+  a missing role returns 403, and a failure to read the roles returns 503. Platform calls then run as the
+  service user (`get_tenant_instance`), so they are only safe behind that hook. See
+  [MIGRATION-SECURITY-2026-10.md](MIGRATION-SECURITY-2026-10.md). A failure to open the service-user
+  session raises `C8YAgentError("Failed to authenticate with Cumulocity")`.
+- **Application roles:** `cumulocity.json` declares `ROLE_ANALYTICS_MANAGEMENT_READ`,
+  `ROLE_ANALYTICS_MANAGEMENT_CREATE`, and `ROLE_ANALYTICS_MANAGEMENT_ADMIN`. A higher role includes the
+  lower ones. Build requests also check the flags in the body: `upload=true` needs CREATE, and
+  `rebuild=true` or `deploy=true` needs ADMIN (`_build_role_error`).
 - **Repositories:** stored as tenant options in category `analytics-management.repository`,
-  one option per repository id, JSON value `{name, url, enabled, accessToken?}`.
+  one option per repository id, JSON value `{name, url, accessToken?}`. An `enabled` flag written by older versions is ignored.
   Tokens are masked as `_DUMMY_ACCESS_CODE_` in API responses; sending the sentinel (or omitting
   the field) keeps the stored token, sending `""` clears it, changing the URL without a new token
   clears it.
@@ -73,7 +86,11 @@ Flask routes (app.py)
 
 - `_safe_join` rejects path traversal for every file written from remote content.
 - `/repository/content` only fetches `https` URLs on `github.com`, `api.github.com` and
-  `raw.githubusercontent.com`, so the stored/supplied PAT is never sent elsewhere.
+  `raw.githubusercontent.com`, so the stored/supplied PAT is never sent elsewhere. With a `repository_id`,
+  the URL must also lie inside that repository, otherwise the request returns 400 and the stored token is not sent.
+- Repository ids must match `^[A-Za-z0-9_-]{1,64}$`, extension ids in `DELETE /extension/{id}` must be
+  numeric, and GitHub URLs must not contain `.` or `..` path segments.
+- The `build_information` of an uploaded extension stores only `id`, `name`, and `url` of the repository, never the token.
 - PATs can be supplied per request via the `X-Repository-Access-Token` header (used by
   "Test connection") to keep them out of URLs and access logs.
 - Extension names are validated (`^[a-zA-Z0-9_-]+$`); delete-by-name rejects `'` and `\`
@@ -83,30 +100,31 @@ Flask routes (app.py)
 
 ## API overview
 
-Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (locally `http://localhost:80/` via `python app.py`).
+Base URL: `https://{tenant}.cumulocity.com/service/analytics-ext-service/` (locally `http://localhost:80/` via `python src/app.py`).
 
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/health` | Liveness: always `{"status": "UP"}` (200), no auth, no dependency checks |
-| GET | `/cep/id` | Managed object id of the CEP microservice (404 if unknown) |
-| GET | `/cep/status` | Raw CEP diagnostics status (404 if unavailable) |
-| GET | `/repository/configuration` | List repositories (tokens masked) |
-| POST | `/repository/configuration` | Replace the repository list (missing ids are deleted); body must be an array of objects with `id`, `name`, `url` |
-| GET | `/repository/contentList?url=&repository_id=` | GitHub directory listing for a web URL |
-| GET | `/repository/content?url=&repository_id=[&extract_fqn_cep_block=true&cep_block_name=]` | File content or the fully qualified block name |
-| POST | `/extension/repository` | Build from a whole repository path |
-| POST | `/extension/list` | Build from one or more files or directories (`monitors`) |
-| POST | `/extension/yaml` | Build one extension per section of a YAML spec |
-| DELETE | `/extension/{id}` | Delete by managed object id |
-| DELETE | `/extension?name=` | Delete all extensions with that name |
+| Method | Path | Role | Purpose |
+|--------|------|------|---------|
+| GET | `/health` | none | Liveness: always `{"status": "UP"}` (200), no auth, no dependency checks |
+| GET | `/cep/id` | READ | Managed object id of the CEP microservice (404 if unknown) |
+| GET | `/cep/status` | READ | Raw CEP diagnostics status (404 if unavailable) |
+| GET | `/repository/configuration` | READ | List repositories (tokens masked) |
+| POST | `/repository/configuration` | ADMIN | Replace the repository list (missing ids are deleted); body must be an array of objects with `id`, `name`, `url` |
+| GET | `/repository/contentList?url=&repository_id=` | READ | GitHub directory listing for a web URL |
+| GET | `/repository/content?url=&repository_id=[&extract_fqn_cep_block=true&cep_block_name=]` | READ | File content or the fully qualified block name |
+| POST | `/extension/repository` | READ, CREATE, or ADMIN | Build from a whole repository path |
+| POST | `/extension/list` | READ, CREATE, or ADMIN | Build from one or more files or directories (`monitors`) |
+| POST | `/extension/yaml` | READ, CREATE, or ADMIN | Build one extension per section of a YAML spec |
+| DELETE | `/extension/{id}` | ADMIN | Delete by managed object id |
+| DELETE | `/extension?name=` | ADMIN | Delete all extensions with that name |
 
-The three build endpoints share `extension_name`, `repository.id`, `upload`, `deploy`, `rebuild`.
-`rebuild=true` deletes the existing extension(s) **before** building and returns 404 if none exist.
+The three build endpoints share `extension_name`, `repository.id`, `upload`, `deploy`, `rebuild`. A plain build
+(download) needs READ, `upload=true` needs CREATE, and `rebuild=true` or `deploy=true` needs ADMIN.
+`rebuild=true` returns 404 if no extension of that name exists. Otherwise it builds and uploads first and deletes the old extension(s) afterwards, so a failed build keeps the current one.
 
 ### Responses and errors
 
 There is **no common response envelope**. Success bodies are endpoint specific
-(e.g. `{"id": "...", "message": "Extension uploaded"}`, a zip, a JSON array, plain text).
+(for example `{"id": "...", "message": "Extension uploaded"}`, a zip, a JSON array, plain text).
 Errors are always `{"error": "<message>"}` produced by `create_error_response`.
 
 | Status | Used for |
@@ -114,9 +132,14 @@ Errors are always `{"error": "<message>"}` produced by `create_error_response`.
 | 200 | Success / zip download |
 | 201 | Extension(s) uploaded |
 | 207 | `/extension/yaml`: some sections uploaded, some failed (`failed_sections` lists them) |
-| 400 | Invalid body/parameters, GitHub URL, download failure, all YAML sections failed, `ValueError` |
-| 401/403/404/429 | Passed through from GitHub (rate limit and SSO get explicit messages) or 404 for unknown repository/extension |
+| 400 | Invalid body/parameters, GitHub URL, repository or extension id, download failure, all YAML sections failed, `ValueError` |
+| 401 | No valid login (before the route runs) |
+| 403 | The caller lacks the required role (`Missing required role <role>`) |
+| 404/429 | Passed through from GitHub (rate limit and SSO get explicit messages) or 404 for unknown repository/extension |
 | 500 | Build failure, upload failure, unexpected errors |
+| 503 | The roles of the caller could not be read |
+
+A GitHub 401/403 is also passed through by `handle_errors`, so those two codes have two sources.
 
 `handle_errors` wraps each route: `HTTPError` -> its status, `ValueError` -> 400, anything else -> 500.
 Known quirks: delete-by-id maps every `C8YAgentError` (including auth) to 404; delete-by-name maps it to 500.
@@ -151,16 +174,18 @@ handled by `pyc8y`'s `MultiTenantCumulocityApp`); `.env` is loaded via `python-d
 `GITHUB_TOKEN`, `FLASK_ENV`, `PORT` and `WORKERS` are **not** read. The GitHub token is a
 per-repository (or global, UI-managed) setting.
 
-Required microservice roles (`cumulocity.json`): option management read/admin, inventory read/create/admin,
-application management read, CEP management admin.
+Required microservice roles (`cumulocity.json`, used by the service user): option management read/admin,
+inventory read/create/admin, application management read, CEP management admin. Callers need only the
+application roles `ROLE_ANALYTICS_MANAGEMENT_READ`, `_CREATE`, or `_ADMIN`.
 
 ```bash
 # build the microservice zip (version, optional arch/image name)
 cd analytics-service && ./build.sh 1.0.0   # -> dist/analytics-ext-service.zip, upload in Administration > Ecosystem
+./build.sh --push 1.0.0                     # build, then create or update the microservice with the active c8y session
 
 # run locally (needs Cumulocity env/.env; the Apama SDK path is only present in the Docker image)
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python app.py
+.venv/bin/python src/app.py
 ```
 
 CI (`.github/workflows/build-release.yml`) builds the UI and the microservice on `v*` tags;
@@ -181,12 +206,13 @@ cd analytics-service
 | File | Covers |
 |------|--------|
 | `tests/test_solution_utils.py` | URL conversion, parsing helpers, `handle_errors` |
+| `tests/test_authorization.py` | every route declares a role, the role table, role inclusion, 401/403/503 handling, role checks for `upload`, `deploy`, and `rebuild` |
 | `tests/test_app.py` | every endpoint, GitHub error mapping, download helpers, path traversal, build pipeline (SDK and GitHub stubbed) |
 | `tests/test_c8y_agent.py` | repository token semantics, delete/upload/CEP, auth failure (fake async tenant) |
 
 Conventions: Cumulocity is replaced via the `agent_mock` fixture (routes) or `run_agent_work`
 (agent); GitHub via `monkeypatch` on `app.requests.get`; the SDK build via `_build_extension`.
-No test needs network access or credentials. Coverage is about 91% (`health_check.py` is unused and uncovered).
+No test needs network access or credentials. The suite has 316 tests and about 94% line coverage (`health_check.py` is unused and uncovered).
 
 ---
 
@@ -197,6 +223,5 @@ None of the following exists today. Track decisions in [ARCHITECTURE.md](./ARCHI
 1. **Request validation with Pydantic** (ADR-004) - replace the hand-written checks in the routes.
 2. **Rich `/health`** (ADR-005) - wire up `health_check.py` (and copy it in the Dockerfile) or delete it.
    Keep external calls out of any liveness probe.
-3. **Pinned dependencies** and separate runtime/dev requirement files.
-4. **Safer rebuild** - delete the old extension only after a successful build.
-5. **Request correlation ids and log redaction.**
+3. **Request correlation ids and log redaction.**
+4. **Size and count limits** for downloads and YAML sections.

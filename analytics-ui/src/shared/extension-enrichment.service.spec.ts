@@ -3,11 +3,17 @@ import { FetchClient, IManagedObject } from '@c8y/client';
 import { AlertService } from '@c8y/ngx-components';
 import { Category } from './analytics.model';
 import { CepError } from './cep-error';
+import { CepRestartService } from './cep-restart.service';
 import { ExtensionEnrichmentService } from './extension-enrichment.service';
 import { ExtensionInventoryService } from './extension-inventory.service';
 
 const ok = (body: unknown, status = 200) =>
-  ({ ok: status >= 200 && status < 300, status, statusText: String(status), json: async () => body }) as unknown as Response;
+  ({
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: String(status),
+    json: async () => body
+  }) as unknown as Response;
 const ext = (name: string) => ({ id: name, name }) as unknown as IManagedObject;
 
 const METADATA_URL = '/service/cep/apamacorrelator/en/block-metadata.json';
@@ -19,6 +25,7 @@ describe('ExtensionEnrichmentService', () => {
   let fetchClient: jasmine.SpyObj<FetchClient>;
   let inventory: jasmine.SpyObj<ExtensionInventoryService>;
   let alerts: jasmine.SpyObj<AlertService>;
+  let restart: jasmine.SpyObj<CepRestartService>;
   let routes: Record<string, () => Response>;
 
   const count = (url: string) => fetchClient.fetch.calls.allArgs().filter(a => a[0] === url).length;
@@ -37,11 +44,14 @@ describe('ExtensionEnrichmentService', () => {
     inventory = jasmine.createSpyObj('ExtensionInventoryService', ['getExtensionsFromInventory']);
     inventory.getExtensionsFromInventory.and.resolveTo([]);
     alerts = jasmine.createSpyObj('AlertService', ['danger']);
+    restart = jasmine.createSpyObj('CepRestartService', ['isExpectedTransientError']);
+    restart.isExpectedTransientError.and.returnValue(false);
     TestBed.configureTestingModule({
       providers: [
         { provide: FetchClient, useValue: fetchClient },
         { provide: ExtensionInventoryService, useValue: inventory },
-        { provide: AlertService, useValue: alerts }
+        { provide: AlertService, useValue: alerts },
+        { provide: CepRestartService, useValue: restart }
       ]
     });
     service = TestBed.inject(ExtensionEnrichmentService);
@@ -53,7 +63,13 @@ describe('ExtensionEnrichmentService', () => {
     it('marks extensions deployed via block metadata as loaded and counts their blocks', async () => {
       inventory.getExtensionsFromInventory.and.resolveTo([ext('Alpha'), ext('Beta')]);
       routes[METADATA_URL] = () => ok({ metadatas: ['Alpha.json'], messages: [] });
-      routes[detailUrl('Alpha')] = () => ok({ analytics: [{ id: 'a.A1', name: 'A1' }, { id: 'a.A2', name: 'A2' }] });
+      routes[detailUrl('Alpha')] = () =>
+        ok({
+          analytics: [
+            { id: 'a.A1', name: 'A1' },
+            { id: 'a.A2', name: 'A2' }
+          ]
+        });
 
       const [alpha, beta] = await service.getEnrichedExtensions();
 
@@ -82,7 +98,10 @@ describe('ExtensionEnrichmentService', () => {
       routes[detailUrl('Delta')] = () => ok({ analytics: [] });
 
       const result = await service.getEnrichedExtensions();
-      expect(result.map(e => [e['name'], e['loaded']])).toEqual([['Gamma', true], ['Delta', true]]);
+      expect(result.map(e => [e['name'], e['loaded']])).toEqual([
+        ['Gamma', true],
+        ['Delta', true]
+      ]);
     });
 
     it('caches the result until invalidated', async () => {
@@ -93,6 +112,47 @@ describe('ExtensionEnrichmentService', () => {
       service.invalidateCache();
       await service.getEnrichedExtensions();
       expect(inventory.getExtensionsFromInventory).toHaveBeenCalledTimes(2);
+    });
+
+    it('keeps the dots of a versioned extension name, so it matches what the engine loaded', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs-1.0.1')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['name']).toBe('Abs-1.0.1');
+      expect(abs['loaded']).toBeTrue();
+    });
+
+    it('finds an extension stored without its version under the versioned name the engine registered', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      routes[detailUrl('Abs-1.0.1')] = () => ok({ analytics: [{ id: 'a.Abs' }] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['name']).toBe('Abs');
+      expect(abs['loaded']).toBeTrue();
+      expect(abs['blocksCount']).toBe(1);
+    });
+
+    it('does not mix up extensions that merely start with the same name', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['AbsoluteValue-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['loaded']).toBeFalse();
+    });
+
+    it('does not guess when several versions are registered', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Abs')]);
+      routes[METADATA_URL] = () =>
+        ok({ metadatas: ['Abs-1.0.0.json', 'Abs-1.0.1.json'], messages: [] });
+      const [abs] = await service.getEnrichedExtensions();
+      expect(abs['loaded']).toBeFalse();
+    });
+
+    it('still ignores a ".zip" suffix on the inventory name', async () => {
+      inventory.getExtensionsFromInventory.and.resolveTo([ext('Alpha.zip')]);
+      routes[METADATA_URL] = () => ok({ metadatas: ['Alpha.json'], messages: [] });
+      const [alpha] = await service.getEnrichedExtensions();
+      expect(alpha['name']).toBe('Alpha');
+      expect(alpha['loaded']).toBeTrue();
     });
 
     it('rejects with a CepError without alerting, and does not cache the failure', async () => {
@@ -117,9 +177,12 @@ describe('ExtensionEnrichmentService', () => {
     });
 
     it('flattens blocks of all extensions, collapsing .json/.zip duplicates, with custom flag and extension name', async () => {
-      routes[METADATA_URL] = () => ok({ metadatas: ['Ext1.json', 'Ext1.zip', 'Ext2.json'], messages: [] });
-      routes[detailUrl('Ext1')] = () => ok({ analytics: [{ id: 'com.acme.Foo', name: 'Foo', description: 'does things' }] });
-      routes[detailUrl('Ext2')] = () => ok({ analytics: [{ id: 'apama.analyticsbuilder.blocks.Add', name: 'Add' }] });
+      routes[METADATA_URL] = () =>
+        ok({ metadatas: ['Ext1.json', 'Ext1.zip', 'Ext2.json'], messages: [] });
+      routes[detailUrl('Ext1')] = () =>
+        ok({ analytics: [{ id: 'com.acme.Foo', name: 'Foo', description: 'does things' }] });
+      routes[detailUrl('Ext2')] = () =>
+        ok({ analytics: [{ id: 'apama.analyticsbuilder.blocks.Add', name: 'Add' }] });
 
       const blocks = await service.getDeployedBlocks();
 
@@ -132,7 +195,15 @@ describe('ExtensionEnrichmentService', () => {
 
     it('drops malformed blocks instead of failing the load', async () => {
       routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
-      routes[detailUrl('E')] = () => ok({ analytics: [{ id: 'a.Good', name: 'Good' }, { id: '', name: 'NoId' }, { id: 'a.NoName' }, null] });
+      routes[detailUrl('E')] = () =>
+        ok({
+          analytics: [
+            { id: 'a.Good', name: 'Good' },
+            { id: '', name: 'NoId' },
+            { id: 'a.NoName' },
+            null
+          ]
+        });
       expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['a.Good']);
     });
 
@@ -147,7 +218,25 @@ describe('ExtensionEnrichmentService', () => {
       routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
       routes[detailUrl('E')] = () => ok({ analytics: [{ id: 'a.B', name: 'B' }] });
       const [block] = await service.getDeployedBlocks();
-      expect(block).toEqual(jasmine.objectContaining({ file: '', type: '', url: '', downloadUrl: '', custom: true }));
+      expect(block).toEqual(
+        jasmine.objectContaining({ file: '', type: '', url: '', downloadUrl: '', custom: true })
+      );
+    });
+
+    it('does not show a "could not load" error while the engine restarts', async () => {
+      restart.isExpectedTransientError.and.returnValue(true);
+      routes[METADATA_URL] = () => ok({}, 503);
+      await expectAsync(service.getDeployedBlocks()).toBeRejectedWith(jasmine.any(CepError));
+      expect(alerts.danger).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    it('loads again after the restart, because the failure is not cached', async () => {
+      restart.isExpectedTransientError.and.returnValue(true);
+      routes[METADATA_URL] = () => ok({}, 503);
+      await expectAsync(service.getDeployedBlocks()).toBeRejected();
+      routes[METADATA_URL] = () => ok({ metadatas: [], messages: [] });
+      expect(await service.getDeployedBlocks()).toEqual([]);
     });
 
     it('alerts the user and does not cache when the metadata cannot be loaded', async () => {
@@ -159,13 +248,31 @@ describe('ExtensionEnrichmentService', () => {
       expect(await service.getDeployedBlocks()).toEqual([]);
     });
 
+    it('does not memoize a block list that is missing an unreadable extension', async () => {
+      routes[METADATA_URL] = () => ok({ metadatas: ['A.json', 'B.json'], messages: [] });
+      routes[detailUrl('A')] = () => ok({ analytics: [{ id: 'x.A', name: 'A' }] });
+      routes[detailUrl('B')] = () => ok({}, 500);
+      expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['x.A']);
+
+      routes[detailUrl('B')] = () => ok({ analytics: [{ id: 'x.B', name: 'B' }] });
+      expect((await service.getDeployedBlocks()).map(b => b.id)).toEqual(['x.A', 'x.B']);
+    });
+
     describe('block categorisation', () => {
       const categoryOf = async (name: string, description = '', category?: Category) => {
         service.invalidateCache();
         routes[METADATA_URL] = () => ok({ metadatas: ['E.json'], messages: [] });
-        routes[detailUrl('E')] = () => ok({ analytics: [{ id: `x.${name}`, name, description, category }] });
+        routes[detailUrl('E')] = () =>
+          ok({ analytics: [{ id: `x.${name}`, name, description, category }] });
         return (await service.getDeployedBlocks())[0].category;
       };
+
+      it('matches whole words only', async () => {
+        expect(await categoryOf('Notification Helper')).toBe(Category.UTILITY); // "if" inside a word
+        expect(await categoryOf('Prevent Duplicates')).toBe(Category.UTILITY); // "event" inside a word
+        expect(await categoryOf('GroupStatistics')).toBe(Category.AGGREGATE); // camelCase and a keyword ending in s
+        expect(await categoryOf('Alarm Events')).toBe(Category.INPUT); // plural of a keyword
+      });
 
       it('keeps an explicit category', async () => {
         expect(await categoryOf('Whatever', '', Category.LOGIC)).toBe(Category.LOGIC);
@@ -195,6 +302,13 @@ describe('ExtensionEnrichmentService', () => {
       expect(first).toEqual(jasmine.objectContaining({ name: 'E', version: '1' }));
       await service.getDeployedExtensionDetails('E');
       expect(count(detailUrl('E'))).toBe(1);
+    });
+
+    it('reads the metadata of an extension stored without its version', async () => {
+      routes[METADATA_URL] = () => ok({ metadatas: ['Abs-1.0.1.json'], messages: [] });
+      routes[detailUrl('Abs-1.0.1')] = () => ok({ analytics: [], version: '27.x.y' });
+      const details = await service.getDeployedExtensionDetails('Abs');
+      expect(details).toEqual(jasmine.objectContaining({ name: 'Abs', version: '27.x.y' }));
     });
 
     it('returns null for failures and retries on the next call', async () => {

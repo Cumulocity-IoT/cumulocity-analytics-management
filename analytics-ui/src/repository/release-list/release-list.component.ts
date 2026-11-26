@@ -39,7 +39,6 @@ import {
   selector: 'a17t-release-list',
   templateUrl: './release-list.component.html',
   styleUrls: ['./release-list.component.css'],
-  standalone: true,
   imports: [CommonModule, FormsModule, CoreModule]
 })
 export class ReleaseListComponent {
@@ -50,7 +49,6 @@ export class ReleaseListComponent {
   blocks: ReleaseAsset[] = RELEASE_BLOCKS;
 
   filterTerm = '';
-  listClass = 'card-group';
 
   get filteredBundles(): ReleaseAsset[] {
     return this.filter(this.bundles);
@@ -75,8 +73,7 @@ export class ReleaseListComponent {
     }
     return assets.filter(
       asset =>
-        asset.name.toLowerCase().includes(term) ||
-        asset.description.toLowerCase().includes(term)
+        asset.name.toLowerCase().includes(term) || asset.description.toLowerCase().includes(term)
     );
   }
 }

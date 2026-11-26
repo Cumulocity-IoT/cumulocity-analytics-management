@@ -12,9 +12,16 @@ import { RepositoryItemsService } from './repository-items.service';
 import { RepositoryModeService } from './repository-mode.service';
 import { RepositoryService } from './repository.service';
 
-const repo = (id: string, enabled = false, over: Partial<Repository> = {}): Repository =>
-  ({ id, name: `Repo ${id}`, url: `https://github.com/o/${id}`, accessToken: '', enabled, ...over }) as Repository;
-const item = (name: string) => ({ id: name, name, file: `${name}.mon`, type: 'file' }) as RepositoryItem;
+const repo = (id: string, over: Partial<Repository> = {}): Repository =>
+  ({
+    id,
+    name: `Repo ${id}`,
+    url: `https://github.com/o/${id}`,
+    accessToken: '',
+    ...over
+  }) as Repository;
+const item = (name: string) =>
+  ({ id: name, name, file: `${name}.mon`, type: 'file' }) as RepositoryItem;
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('RepositoryService', () => {
@@ -30,7 +37,7 @@ describe('RepositoryService', () => {
   let service: RepositoryService;
 
   const current = () => firstValueFrom(service.getRepositories());
-  const create = async (initial: Repository[] = [repo('a', true), repo('b')]) => {
+  const create = async (initial: Repository[] = [repo('a'), repo('b')]) => {
     config.fetchRepositories.and.resolveTo(initial);
     service = TestBed.inject(RepositoryService);
     await service.whenReady();
@@ -46,17 +53,28 @@ describe('RepositoryService', () => {
     mode = jasmine.createSpyObj('RepositoryModeService', ['isBackendMode']);
     mode.isBackendMode.and.resolveTo(false);
     config = jasmine.createSpyObj('RepositoryConfigService', [
-      'fetchRepositories', 'saveRepositories', 'getRepositoryAccessToken', 'getExpertMode', 'setExpertMode',
-      'getGlobalAccessTokenMasked', 'setGlobalAccessToken'
+      'fetchRepositories',
+      'saveRepositories',
+      'getRepositoryAccessToken',
+      'getGlobalAccessTokenMasked',
+      'setGlobalAccessToken'
     ]);
     config.saveRepositories.and.resolveTo();
     items = jasmine.createSpyObj('RepositoryItemsService', [
-      'invalidateCache', 'getItemsForRepositories', 'filterRepositoryItems', 'analyzeRepositoryItems', 'getItemContent'
+      'invalidateCache',
+      'getItemsForRepositories',
+      'filterRepositoryItems',
+      'analyzeRepositoryItems',
+      'getItemContent'
     ]);
     items.getItemsForRepositories.and.returnValue(of([]));
     github = jasmine.createSpyObj('GitHubContentService', ['testRepository']);
     backend = jasmine.createSpyObj('RepositoryBackendService', ['testRepository']);
-    builder = jasmine.createSpyObj('ExtensionBuilderService', ['createExtensionFromList', 'createExtensionFromYaml', 'createExtensionFromRepository']);
+    builder = jasmine.createSpyObj('ExtensionBuilderService', [
+      'createExtensionFromList',
+      'createExtensionFromYaml',
+      'createExtensionFromRepository'
+    ]);
     TestBed.configureTestingModule({
       providers: [
         { provide: AnalyticsService, useValue: analytics },
@@ -84,7 +102,6 @@ describe('RepositoryService', () => {
       await create([]);
       const repos = await current();
       expect(repos.length).toBe(1);
-      expect(repos[0].enabled).toBeTrue();
       expect(config.saveRepositories).toHaveBeenCalledOnceWith(repos);
     });
 
@@ -108,36 +125,43 @@ describe('RepositoryService', () => {
     it('addRepository persists the live list including the new repository', async () => {
       await service.addRepository(repo('c'));
 
-      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.id)).toEqual(['a', 'b', 'c']);
+      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.id)).toEqual([
+        'a',
+        'b',
+        'c'
+      ]);
       expect((await current()).map(r => r.id)).toEqual(['a', 'b', 'c']);
       expect(alerts.success).toHaveBeenCalledTimes(1);
       expect(items.invalidateCache).toHaveBeenCalled();
-      expect(service.hasUnsavedChanges()).toBeFalse();
     });
 
     it('addRepository keeps state unchanged and alerts when persisting fails', async () => {
       config.saveRepositories.and.rejectWith(new Error('denied'));
-      await expectAsync(service.addRepository(repo('c'))).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.addRepository(repo('c'))).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
       expect((await current()).map(r => r.id)).toEqual(['a', 'b']);
       expect(alerts.danger).toHaveBeenCalledTimes(1);
       expect(alerts.success).not.toHaveBeenCalled();
     });
 
     it('updateRepository replaces the repository in place', async () => {
-      await service.updateRepository(repo('b', false, { name: 'Renamed' }));
+      await service.updateRepository(repo('b', { name: 'Renamed' }));
       const repos = await current();
       expect(repos.map(r => r.name)).toEqual(['Repo a', 'Renamed']);
       expect(config.saveRepositories).toHaveBeenCalled();
     });
 
     it('updateRepository rejects an unknown repository without persisting', async () => {
-      await expectAsync(service.updateRepository(repo('zzz'))).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.updateRepository(repo('zzz'))).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
       expect(config.saveRepositories).not.toHaveBeenCalled();
     });
 
     it('updateRepository alerts when persisting fails', async () => {
       config.saveRepositories.and.rejectWith(new Error('x'));
-      await expectAsync(service.updateRepository(repo('b', false, { name: 'N' }))).toBeRejected();
+      await expectAsync(service.updateRepository(repo('b', { name: 'N' }))).toBeRejected();
       expect(alerts.danger).toHaveBeenCalled();
       expect((await current())[1].name).toBe('Repo b');
     });
@@ -157,7 +181,10 @@ describe('RepositoryService', () => {
 
     it('serializes concurrent mutations so none is lost', async () => {
       let release!: () => void;
-      config.saveRepositories.and.returnValues(new Promise<void>(r => (release = r)), Promise.resolve());
+      config.saveRepositories.and.returnValues(
+        new Promise<void>(r => (release = r)),
+        Promise.resolve()
+      );
 
       const first = service.addRepository(repo('c'));
       const second = service.addRepository(repo('d'));
@@ -168,7 +195,12 @@ describe('RepositoryService', () => {
       await Promise.all([first, second]);
 
       expect((await current()).map(r => r.id)).toEqual(['a', 'b', 'c', 'd']);
-      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.id)).toEqual(['a', 'b', 'c', 'd']);
+      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.id)).toEqual([
+        'a',
+        'b',
+        'c',
+        'd'
+      ]);
     });
 
     it('a failed mutation does not block the following ones', async () => {
@@ -176,72 +208,6 @@ describe('RepositoryService', () => {
       await expectAsync(service.addRepository(repo('c'))).toBeRejected();
       await expectAsync(service.addRepository(repo('d'))).toBeResolved();
       expect((await current()).map(r => r.id)).toEqual(['a', 'b', 'd']);
-    });
-  });
-
-  describe('enabling repositories and unsaved changes', () => {
-    beforeEach(async () => create());
-
-    it('enables only one repository at a time', async () => {
-      service.toggleRepositoryEnabled('b');
-      await flush();
-      expect((await current()).map(r => r.enabled)).toEqual([false, true]);
-    });
-
-    it('can disable the active repository', async () => {
-      service.toggleRepositoryEnabled('a');
-      await flush();
-      expect((await current()).map(r => r.enabled)).toEqual([false, false]);
-    });
-
-    it('tracks the toggle as an unsaved change (also via hasUnsavedChanges$)', async () => {
-      const flags: boolean[] = [];
-      service.hasUnsavedChanges$.subscribe(f => flags.push(f));
-      service.toggleRepositoryEnabled('b');
-      await flush();
-      expect(service.hasUnsavedChanges()).toBeTrue();
-      expect(flags).toEqual([false, true]);
-    });
-
-    it('ignores toggles of unknown repositories', async () => {
-      service.toggleRepositoryEnabled('zzz');
-      await flush();
-      expect((await current()).map(r => r.enabled)).toEqual([true, false]);
-    });
-
-    it('cancelChanges restores the last saved state', async () => {
-      service.toggleRepositoryEnabled('b');
-      service.cancelChanges();
-      await flush();
-      expect((await current()).map(r => r.enabled)).toEqual([true, false]);
-      expect(service.hasUnsavedChanges()).toBeFalse();
-    });
-
-    it('saveAllRepositories persists the pending state and clears the unsaved flag', async () => {
-      service.toggleRepositoryEnabled('b');
-      await flush();
-      await service.saveAllRepositories();
-
-      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.enabled)).toEqual([false, true]);
-      expect(service.hasUnsavedChanges()).toBeFalse();
-      expect(alerts.success).toHaveBeenCalled();
-    });
-
-    it('saveAllRepositories keeps the unsaved flag and alerts on failure', async () => {
-      service.toggleRepositoryEnabled('b');
-      await flush();
-      config.saveRepositories.and.rejectWith(new Error('x'));
-      await expectAsync(service.saveAllRepositories()).toBeRejectedWith(jasmine.any(RepositoryError));
-      expect(service.hasUnsavedChanges()).toBeTrue();
-      expect(alerts.danger).toHaveBeenCalled();
-    });
-
-    it('add/update/delete commit pending toggles of other repositories too', async () => {
-      service.toggleRepositoryEnabled('b');
-      await flush();
-      await service.addRepository(repo('c'));
-      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.enabled)).toEqual([false, true, false]);
-      expect(service.hasUnsavedChanges()).toBeFalse();
     });
   });
 
@@ -266,7 +232,7 @@ describe('RepositoryService', () => {
     beforeEach(async () => create());
 
     it('refreshRepositories reloads from the tenant options and announces success', async () => {
-      config.fetchRepositories.and.resolveTo([repo('x', true)]);
+      config.fetchRepositories.and.resolveTo([repo('x')]);
       await service.refreshRepositories();
       expect((await current()).map(r => r.id)).toEqual(['x']);
       expect(alerts.success).toHaveBeenCalledTimes(1);
@@ -275,7 +241,9 @@ describe('RepositoryService', () => {
 
     it('refreshRepositories alerts once, does not claim success and rejects when the reload fails', async () => {
       config.fetchRepositories.and.rejectWith(new Error('403'));
-      await expectAsync(service.refreshRepositories()).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.refreshRepositories()).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
       expect(alerts.danger).toHaveBeenCalledTimes(1);
       expect(alerts.success).not.toHaveBeenCalled();
       expect((await current()).map(r => r.id)).toEqual(['a', 'b']); // state untouched
@@ -342,7 +310,26 @@ describe('RepositoryService', () => {
     it('analyzes the items', async () => {
       items.getItemsForRepositories.and.returnValue(of([item('A')]));
       items.analyzeRepositoryItems.and.returnValue(of([item('Section')]));
-      expect((await firstValueFrom(service.getRepositoryItemsAnalyzed())).map(i => i.name)).toEqual(['Section']);
+      expect((await firstValueFrom(service.getRepositoryItemsAnalyzed())).map(i => i.name)).toEqual(
+        ['Section']
+      );
+    });
+
+    it('analyzes one repository on its own, even when it is disabled', async () => {
+      items.getItemsForRepositories.and.returnValue(of([item('A')]));
+      items.analyzeRepositoryItems.and.returnValue(of([item('Section')]));
+
+      const result = await firstValueFrom(service.getRepositoryItemsAnalyzedFor('b'));
+
+      expect(result.map(i => i.name)).toEqual(['Section']);
+      const [repos, , hide] = items.getItemsForRepositories.calls.mostRecent().args;
+      expect(repos.map(r => r.id)).toEqual(['b']);
+      expect(hide).toBeFalse();
+    });
+
+    it('yields no items for an unknown repository', async () => {
+      items.analyzeRepositoryItems.and.callFake(list => of(list));
+      expect(await firstValueFrom(service.getRepositoryItemsAnalyzedFor('nope'))).toEqual([]);
     });
 
     it('alerts and yields an empty list when analysis fails', async () => {
@@ -354,7 +341,9 @@ describe('RepositoryService', () => {
 
     it('delegates item content retrieval', async () => {
       items.getItemContent.and.returnValue(of('content'));
-      expect(await firstValueFrom(service.getRepositoryItemContent(item('A'), true))).toBe('content');
+      expect(await firstValueFrom(service.getRepositoryItemContent(item('A'), true))).toBe(
+        'content'
+      );
       expect(items.getItemContent).toHaveBeenCalledWith(jasmine.anything(), true);
     });
   });
@@ -362,17 +351,12 @@ describe('RepositoryService', () => {
   describe('settings and tokens', () => {
     beforeEach(async () => create());
 
-    it('delegates token and expert-mode access to the config service', async () => {
+    it('delegates token access to the config service', async () => {
       config.getRepositoryAccessToken.and.resolveTo('tok');
-      config.getExpertMode.and.resolveTo(true);
       config.getGlobalAccessTokenMasked.and.resolveTo('masked');
-      config.setExpertMode.and.resolveTo();
 
       expect(await service.getRepositoryAccessToken('a')).toBe('tok');
-      expect(await service.getExpertMode()).toBeTrue();
       expect(await service.getGlobalAccessTokenMasked()).toBe('masked');
-      await service.setExpertMode(false);
-      expect(config.setExpertMode).toHaveBeenCalledWith(false);
     });
 
     it('setGlobalAccessToken persists the token and invalidates the item cache (private repos may become readable)', async () => {
@@ -406,9 +390,30 @@ describe('RepositoryService', () => {
       await service.createExtensionFromYaml('E', yaml, ['S'], r);
       await service.createExtensionFromRepository('E', r, false, true);
 
-      expect(builder.createExtensionFromList).toHaveBeenCalledWith('E', monitors, r, true, true, true);
-      expect(builder.createExtensionFromYaml).toHaveBeenCalledWith('E', yaml, ['S'], r, false, false, false);
-      expect(builder.createExtensionFromRepository).toHaveBeenCalledWith('E', r, false, true, false);
+      expect(builder.createExtensionFromList).toHaveBeenCalledWith(
+        'E',
+        monitors,
+        r,
+        true,
+        true,
+        true
+      );
+      expect(builder.createExtensionFromYaml).toHaveBeenCalledWith(
+        'E',
+        yaml,
+        ['S'],
+        r,
+        false,
+        false,
+        false
+      );
+      expect(builder.createExtensionFromRepository).toHaveBeenCalledWith(
+        'E',
+        r,
+        false,
+        true,
+        false
+      );
     });
   });
 

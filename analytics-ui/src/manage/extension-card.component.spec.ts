@@ -8,7 +8,8 @@ import { AnalyticsService, RepositoryService } from '../shared';
 import { ExtensionCardComponent } from './extension-card.component';
 
 const repo = { id: 'r1', name: 'Repo' };
-const ext = (over: Record<string, unknown> = {}) => ({ id: '1', name: 'MyExt', ...over }) as unknown as IManagedObject;
+const ext = (over: Record<string, unknown> = {}) =>
+  ({ id: '1', name: 'MyExt', ...over }) as unknown as IManagedObject;
 const flush = () => new Promise<void>(resolve => setTimeout(resolve));
 
 describe('ExtensionCardComponent', () => {
@@ -24,8 +25,10 @@ describe('ExtensionCardComponent', () => {
   let changed: number;
 
   const create = (extension: IManagedObject) => {
-    component = TestBed.createComponent(ExtensionCardComponent).componentInstance;
-    component.extension = extension;
+    const fixture = TestBed.createComponent(ExtensionCardComponent);
+    component = fixture.componentInstance;
+    fixture.componentRef.setInput('extension', extension);
+    fixture.componentRef.setInput('isBackendServiceAvailable', true);
     changed = 0;
     component.extensionChanged.subscribe(() => changed++);
     return component;
@@ -33,11 +36,21 @@ describe('ExtensionCardComponent', () => {
 
   beforeEach(() => {
     analytics = jasmine.createSpyObj('AnalyticsService', ['deleteExtension', 'downloadExtension']);
-    repositories = jasmine.createSpyObj('RepositoryService', ['createExtensionFromRepository', 'createExtensionFromList', 'createExtensionFromYaml']);
+    repositories = jasmine.createSpyObj('RepositoryService', [
+      'createExtensionFromRepository',
+      'createExtensionFromList',
+      'createExtensionFromYaml'
+    ]);
     repositories.createExtensionFromRepository.and.resolveTo({} as never);
     repositories.createExtensionFromList.and.resolveTo({} as never);
     repositories.createExtensionFromYaml.and.resolveTo({} as never);
-    alerts = jasmine.createSpyObj('AlertService', ['addServerFailure', 'warning', 'info', 'success', 'danger']);
+    alerts = jasmine.createSpyObj('AlertService', [
+      'addServerFailure',
+      'warning',
+      'info',
+      'success',
+      'danger'
+    ]);
     router = jasmine.createSpyObj('Router', ['navigate']);
     confirm$ = new Subject<boolean>();
     hide = jasmine.createSpy('hide');
@@ -56,19 +69,25 @@ describe('ExtensionCardComponent', () => {
         { provide: WizardModalService, useValue: wizard }
       ]
     });
-    TestBed.overrideComponent(ExtensionCardComponent, { set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] } });
+    TestBed.overrideComponent(ExtensionCardComponent, {
+      set: { template: '', templateUrl: undefined, styleUrls: [], imports: [] }
+    });
     spyOn(console, 'error');
   });
 
   describe('build information helpers', () => {
     it('recognizes extensions built by the service (repository, list, yaml)', () => {
       for (const type of ['repository', 'list', 'yaml']) {
-        expect(create(ext({ build_information: { build_type: type } })).isBuildInternally()).toBeTrue();
+        expect(
+          create(ext({ build_information: { build_type: type } })).isBuildInternally()
+        ).toBeTrue();
       }
     });
 
     it('does not treat externally built extensions or those without information as internal', () => {
-      expect(create(ext({ build_information: { build_type: 'external' } })).isBuildInternally()).toBeFalse();
+      expect(
+        create(ext({ build_information: { build_type: 'external' } })).isBuildInternally()
+      ).toBeFalse();
       expect(create(ext()).isBuildInternally()).toBeFalsy();
     });
 
@@ -92,7 +111,10 @@ describe('ExtensionCardComponent', () => {
   describe('delete', () => {
     it('asks for confirmation naming the extension', async () => {
       await create(ext()).delete();
-      const [, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { message: string } }];
+      const [, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { message: string } }
+      ];
       expect(options.initialState.message).toContain('"MyExt"');
     });
 
@@ -157,9 +179,13 @@ describe('ExtensionCardComponent', () => {
       const extension = ext();
       await create(extension).update();
 
-      const [options] = wizard.show.calls.mostRecent().args as [{ initialState: Record<string, any> }];
+      const [options] = wizard.show.calls.mostRecent().args as [
+        { initialState: Record<string, any> }
+      ];
       expect(options.initialState['id']).toBe('uploadAnalyticsExtension');
-      expect(options.initialState['componentInitialState']).toEqual(jasmine.objectContaining({ mode: 'update', extensionToReplace: extension }));
+      expect(options.initialState['componentInitialState']).toEqual(
+        jasmine.objectContaining({ mode: 'update', extensionToReplace: extension })
+      );
       expect(changed).toBe(0);
       onClose.next();
       expect(changed).toBe(1);
@@ -172,7 +198,8 @@ describe('ExtensionCardComponent', () => {
   });
 
   describe('rebuild', () => {
-    const rebuildable = (buildInformation: Record<string, unknown>) => create(ext({ build_information: { repository: repo, ...buildInformation } }));
+    const rebuildable = (buildInformation: Record<string, unknown>) =>
+      create(ext({ build_information: { repository: repo, ...buildInformation } }));
     const confirmRebuild = async (component: ExtensionCardComponent, answer = true) => {
       await component.rebuild();
       confirm$.next(answer);
@@ -187,14 +214,19 @@ describe('ExtensionCardComponent', () => {
 
     it('warns and does nothing when the repository is unknown', async () => {
       await create(ext({ build_information: { build_type: 'repository' } })).rebuild();
-      expect(alerts.warning).toHaveBeenCalledWith(jasmine.stringContaining('Repository information'));
+      expect(alerts.warning).toHaveBeenCalledWith(
+        jasmine.stringContaining('Repository information')
+      );
       expect(modals.show).not.toHaveBeenCalled();
     });
 
     it('asks for confirmation naming extension and repository, and does nothing when declined', async () => {
       const component = rebuildable({ build_type: 'repository' });
       await confirmRebuild(component, false);
-      const [, options] = modals.show.calls.mostRecent().args as [unknown, { initialState: { message: string } }];
+      const [, options] = modals.show.calls.mostRecent().args as [
+        unknown,
+        { initialState: { message: string } }
+      ];
       expect(options.initialState.message).toContain('"MyExt"');
       expect(options.initialState.message).toContain('"Repo"');
       expect(repositories.createExtensionFromRepository).not.toHaveBeenCalled();
@@ -203,15 +235,28 @@ describe('ExtensionCardComponent', () => {
     it('rebuilds a repository build with upload, deploy and rebuild flags', async () => {
       const component = rebuildable({ build_type: 'repository' });
       await confirmRebuild(component);
-      expect(repositories.createExtensionFromRepository).toHaveBeenCalledWith('MyExt', repo as never, true, true, true);
-      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('rebuilt successfully'));
+      expect(repositories.createExtensionFromRepository).toHaveBeenCalledWith(
+        'MyExt',
+        repo as never,
+        true,
+        true,
+        true
+      );
+      expect(alerts.success).toHaveBeenCalledWith(jasmine.stringContaining('rebuilt.'));
       expect(changed).toBe(1);
     });
 
     it('rebuilds a list build from the stored monitors', async () => {
       const monitors = [{ name: 'A' }];
       await confirmRebuild(rebuildable({ build_type: 'list', monitors }));
-      expect(repositories.createExtensionFromList).toHaveBeenCalledWith('MyExt', monitors as never, repo as never, true, true, true);
+      expect(repositories.createExtensionFromList).toHaveBeenCalledWith(
+        'MyExt',
+        monitors as never,
+        repo as never,
+        true,
+        true,
+        true
+      );
     });
 
     it('rejects a list build without stored monitors', async () => {
@@ -224,7 +269,15 @@ describe('ExtensionCardComponent', () => {
     it('rebuilds a yaml build for just its section', async () => {
       const yaml = { url: 'u' };
       await confirmRebuild(rebuildable({ build_type: 'yaml', yaml, section_name: 'Python' }));
-      expect(repositories.createExtensionFromYaml).toHaveBeenCalledWith('MyExt', yaml as never, ['Python'], repo as never, true, true, true);
+      expect(repositories.createExtensionFromYaml).toHaveBeenCalledWith(
+        'MyExt',
+        yaml as never,
+        ['Python'],
+        repo as never,
+        true,
+        true,
+        true
+      );
     });
 
     it('rebuilds all sections when the section name is unknown', async () => {
@@ -246,12 +299,16 @@ describe('ExtensionCardComponent', () => {
     it('explains that the extension no longer exists when the backend answers 404', async () => {
       repositories.createExtensionFromRepository.and.rejectWith({ status: 404 });
       await confirmRebuild(rebuildable({ build_type: 'repository' }));
-      expect(alerts.danger).toHaveBeenCalledWith(jasmine.stringContaining('was not found in Cumulocity'));
+      expect(alerts.danger).toHaveBeenCalledWith(
+        jasmine.stringContaining('was not found in Cumulocity')
+      );
       expect(alerts.addServerFailure).not.toHaveBeenCalled();
     });
 
     it('recognizes the backend\'s "no existing extension" message as not found', async () => {
-      repositories.createExtensionFromRepository.and.rejectWith({ message: 'Rebuild requested but no existing extension named X' });
+      repositories.createExtensionFromRepository.and.rejectWith({
+        message: 'Rebuild requested but no existing extension named X'
+      });
       await confirmRebuild(rebuildable({ build_type: 'repository' }));
       expect(alerts.danger).toHaveBeenCalledWith(jasmine.stringContaining('was not found'));
     });

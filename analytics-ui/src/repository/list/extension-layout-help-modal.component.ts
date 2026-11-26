@@ -6,7 +6,6 @@ import { Subject } from 'rxjs';
 @Component({
   selector: 'a17t-extension-layout-help-modal',
   templateUrl: './extension-layout-help-modal.component.html',
-  standalone: true,
   imports: [CoreModule],
   encapsulation: ViewEncapsulation.None
 })

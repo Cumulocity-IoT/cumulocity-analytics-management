@@ -12,8 +12,13 @@ describe('ExtensionListComponent', () => {
   };
 
   it('lists the extension names numbered from 1', () => {
-    const rows = Array.from(render({ extensionNames: ['Alpha', 'Beta'] }).querySelectorAll('.extension-row'));
-    expect(rows.map(r => r.textContent!.replace(/\s+/g, ' ').trim())).toEqual(['1 Alpha', '2 Beta']);
+    const rows = Array.from(
+      render({ extensionNames: ['Alpha', 'Beta'] }).querySelectorAll('.extension-row')
+    );
+    expect(rows.map(r => r.textContent!.replace(/\s+/g, ' ').trim())).toEqual([
+      '1 Alpha',
+      '2 Beta'
+    ]);
   });
 
   it('shows a hint when the package contains no extensions', () => {
@@ -26,6 +31,8 @@ describe('ExtensionListComponent', () => {
   });
 
   it('renders nothing when hidden', () => {
-    expect(render({ hidden: true, extensionNames: ['A'] }).querySelector('.extension-list-container')).toBeNull();
+    expect(
+      render({ hidden: true, extensionNames: ['A'] }).querySelector('.extension-list-container')
+    ).toBeNull();
   });
 });

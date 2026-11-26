@@ -32,7 +32,7 @@
     [icon]="'flow-chart'"
     [label]="labels.installedBlocks | translate"
     [path]="routes.installedBlocks"
-    >
+  >
   </c8y-breadcrumb-item>
 </c8y-breadcrumb>
 <c8y-action-bar-item [placement]="'right'">
@@ -40,9 +40,9 @@
     class="btn btn-link"
     title="{{ 'Refresh' | translate }}"
     (click)="loadBlocks()"
-    >
+  >
     <i c8yIcon="refresh"></i>
-    {{ "Refresh" | translate }}
+    {{ 'Refresh' | translate }}
   </button>
 </c8y-action-bar-item>
 
@@ -55,7 +55,7 @@
       [rows]="blocks"
       [pagination]="pagination"
       [actionControls]="actionControls"
-      >
+    >
       <c8y-ui-empty-state
         [icon]="'plugin'"
         [title]="'No blocks loaded.' | translate"
@@ -69,7 +69,10 @@
     <div class="p-t-48">
       <div class="col-lg-8 col-lg-offset-2 text-center m-b-48">
         <p class="lead text-muted">
-          {{ 'Please stand by until the blocks metadata is loaded successfully. This may take a short while...' | translate }}
+          {{
+            'Please stand by until the blocks metadata is loaded successfully. This may take a short while...'
+              | translate
+          }}
         </p>
       </div>
       <c8y-loading></c8y-loading>

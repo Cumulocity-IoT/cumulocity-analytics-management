@@ -3,12 +3,10 @@ import { FetchClient, ITenantOption, TenantOptionsService } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import {
   DUMMY_ACCESS_TOKEN,
-  EXPERT_MODE_OPTION_KEY,
   GLOBAL_ACCESS_TOKEN_OPTION_KEY,
   Repository,
   REPOSITORY_OPTION_CATEGORY,
-  SETTINGS_OPTION_CATEGORY,
-  USE_BACKEND_SERVICE_OPTION_KEY
+  SETTINGS_OPTION_CATEGORY
 } from './analytics.model';
 import { RepositoryError } from './repository-error';
 
@@ -108,7 +106,10 @@ export class RepositoryConfigService {
     try {
       parsed = JSON.parse(option.value || '{}');
     } catch (error) {
-      console.warn(`[RepositoryConfigService] Could not parse access token for "${repositoryId}":`, error);
+      console.warn(
+        `[RepositoryConfigService] Could not parse access token for "${repositoryId}":`,
+        error
+      );
       return '';
     }
     return parsed.accessToken || '';
@@ -127,7 +128,11 @@ export class RepositoryConfigService {
     if (repository.accessToken && repository.accessToken !== DUMMY_ACCESS_TOKEN) {
       return repository.accessToken;
     }
-    if (repository.accessToken === DUMMY_ACCESS_TOKEN && repository.id && !repository.id.startsWith('temp-')) {
+    if (
+      repository.accessToken === DUMMY_ACCESS_TOKEN &&
+      repository.id &&
+      !repository.id.startsWith('temp-')
+    ) {
       const repositoryToken = await this.getRepositoryAccessToken(repository.id);
       if (repositoryToken) {
         return repositoryToken;
@@ -184,85 +189,11 @@ export class RepositoryConfigService {
         }
         return;
       }
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: GLOBAL_ACCESS_TOKEN_OPTION_KEY,
-        value: token
-      });
+      await this.saveOption(SETTINGS_OPTION_CATEGORY, GLOBAL_ACCESS_TOKEN_OPTION_KEY, token);
     } catch (error) {
       throw new RepositoryError(
         'Failed to save global access token',
         gettext('Failed to save the global access token. Please try again.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Reads the "Expert mode" preference, defaulting to `false` — both when
-   * never set (a fresh tenant option category has nothing to `detail()`,
-   * i.e. a 404) and on any other read failure, so a transient error can
-   * never silently leave the UI stuck in expert mode.
-   */
-  async getExpertMode(): Promise<boolean> {
-    try {
-      const { data } = await this.tenantOptionsService.detail({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY
-      });
-      return data.value === 'true';
-    } catch {
-      return false;
-    }
-  }
-
-  /** Persists the "Expert mode" preference as a tenant option (same storage as repository config/PAT, not `localStorage`). */
-  async setExpertMode(expertMode: boolean): Promise<void> {
-    try {
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: EXPERT_MODE_OPTION_KEY,
-        value: String(expertMode)
-      });
-    } catch (error) {
-      throw new RepositoryError(
-        'Failed to save expert mode setting',
-        gettext('Failed to save the Expert mode setting. Please try again.'),
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Reads the "use backend service" preference, defaulting to `true` — both
-   * when never set and on any read failure, so a transient error doesn't
-   * silently strand the app in browser-only mode on an otherwise-working
-   * backend.
-   */
-  async getUseBackendServiceEnabled(): Promise<boolean> {
-    try {
-      const { data } = await this.tenantOptionsService.detail({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: USE_BACKEND_SERVICE_OPTION_KEY
-      });
-      return data.value !== 'false';
-    } catch {
-      return true;
-    }
-  }
-
-  /** Persists the "use backend service" preference as a tenant option. */
-  async setUseBackendServiceEnabled(enabled: boolean): Promise<void> {
-    try {
-      await this.tenantOptionsService.create({
-        category: SETTINGS_OPTION_CATEGORY,
-        key: USE_BACKEND_SERVICE_OPTION_KEY,
-        value: String(enabled)
-      });
-    } catch (error) {
-      throw new RepositoryError(
-        'Failed to save backend service setting',
-        gettext('Failed to save the backend service setting. Please try again.'),
         error instanceof Error ? error : undefined
       );
     }
@@ -338,12 +269,17 @@ export class RepositoryConfigService {
     try {
       parsed = JSON.parse(option.value || '{}');
     } catch (error) {
-      console.warn(`[RepositoryConfigService] Skipping option "${option.key}" — not valid JSON:`, error);
+      console.warn(
+        `[RepositoryConfigService] Skipping option "${option.key}" — not valid JSON:`,
+        error
+      );
       return null;
     }
 
     if (!parsed.url) {
-      console.warn(`[RepositoryConfigService] Skipping option "${option.key}" — not a repository entry (no "url").`);
+      console.warn(
+        `[RepositoryConfigService] Skipping option "${option.key}" — not a repository entry (no "url").`
+      );
       return null;
     }
 
@@ -351,8 +287,7 @@ export class RepositoryConfigService {
       id: option.key,
       name: parsed.name || '',
       url: parsed.url,
-      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : '',
-      enabled: !!parsed.enabled
+      accessToken: parsed.accessToken ? DUMMY_ACCESS_TOKEN : ''
     };
   }
 
@@ -372,7 +307,10 @@ export class RepositoryConfigService {
       try {
         existingData = JSON.parse(existingOption.value || '{}');
       } catch (error) {
-        console.warn(`[RepositoryConfigService] Could not parse existing option "${existingOption.key}":`, error);
+        console.warn(
+          `[RepositoryConfigService] Could not parse existing option "${existingOption.key}":`,
+          error
+        );
       }
     }
 
@@ -388,17 +326,26 @@ export class RepositoryConfigService {
 
     const value: Record<string, unknown> = {
       name: repo.name,
-      url: repo.url,
-      enabled: !!repo.enabled
+      url: repo.url
     };
     if (accessToken) {
       value['accessToken'] = accessToken;
     }
 
-    await this.tenantOptionsService.create({
-      category: REPOSITORY_OPTION_CATEGORY,
-      key: repo.id,
-      value: JSON.stringify(value)
-    });
+    await this.saveOption(REPOSITORY_OPTION_CATEGORY, repo.id, JSON.stringify(value));
+  }
+
+  /**
+   * Writes a tenant option whether or not it exists yet. A plain `create` is a
+   * POST, which the platform rejects for an existing category/key, so a value
+   * could be stored once and never changed again.
+   */
+  private async saveOption(category: string, key: string, value: string): Promise<void> {
+    try {
+      await this.tenantOptionsService.update({ category, key, value });
+    } catch {
+      // Not there yet: create it.
+      await this.tenantOptionsService.create({ category, key, value });
+    }
   }
 }

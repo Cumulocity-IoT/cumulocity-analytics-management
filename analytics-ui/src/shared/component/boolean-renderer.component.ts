@@ -20,13 +20,17 @@
 
 import { Component } from '@angular/core';
 import { CellRendererContext } from '@c8y/ngx-components';
-import { CoreModule } from '@c8y/ngx-components';
 
 @Component({
   selector: 'a17t-boolean-renderer',
-  template: ' <i [c8yIcon]="context.value ? \'check\' : \'\'"></i> ',
-  standalone: true,
-  imports: [CoreModule]
+  template: `
+    <label class="c8y-checkbox d-inline-block disabled">
+      <input type="checkbox" [checked]="!!context.value" disabled />
+      <span></span>
+      <span class="sr-only">{{ context.value ? 'Yes' : 'No' }}</span>
+    </label>
+  `,
+  imports: []
 })
 export class BooleanRendererComponent {
   constructor(public context: CellRendererContext) {

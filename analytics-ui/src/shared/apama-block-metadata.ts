@@ -61,7 +61,8 @@ export interface ParsedBlockMetadata {
   parameters: ParsedBlockParameter[];
 }
 
-const FIELD_TYPE_PATTERN = '(?:any|float|integer|decimal|boolean|string|dictionary<[^>]*>|sequence<[^>]*>)';
+const FIELD_TYPE_PATTERN =
+  '(?:any|float|integer|decimal|boolean|string|dictionary<[^>]*>|sequence<[^>]*>)';
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -186,7 +187,9 @@ function stripActionBlocks(body: string): string {
   return result;
 }
 
-function parseFields(body: string): Array<{ doc: ParsedDocComment | null; type: string; name: string }> {
+function parseFields(
+  body: string
+): Array<{ doc: ParsedDocComment | null; type: string; name: string }> {
   const fieldsOnly = stripActionBlocks(body);
   const pattern = new RegExp(`(${FIELD_TYPE_PATTERN})\\s+(\\w+)\\s*;`, 'g');
   const fields: Array<{ doc: ParsedDocComment | null; type: string; name: string }> = [];
@@ -216,7 +219,10 @@ function parseParameters(content: string, blockName: string): ParsedBlockParamet
     name: field.doc?.name || field.name,
     description: field.doc?.description || '',
     type: field.type,
-    semanticType: typeof field.doc?.tags['semanticType'] === 'string' ? field.doc.tags['semanticType'] : undefined
+    semanticType:
+      typeof field.doc?.tags['semanticType'] === 'string'
+        ? field.doc.tags['semanticType']
+        : undefined
   }));
 }
 
@@ -252,7 +258,9 @@ function splitParameterList(paramList: string): string[] {
  * maps to `"any"` rather than being passed through verbatim.
  */
 function normalizeInputType(rawType: string, id: string, blockBody: string): string {
-  const explicit = new RegExp(`constant\\s+string\\s+\\$INPUT_TYPE_${escapeRegExp(id)}\\s*:=\\s*"([^"]*)"`).exec(blockBody)?.[1];
+  const explicit = new RegExp(
+    `constant\\s+string\\s+\\$INPUT_TYPE_${escapeRegExp(id)}\\s*:=\\s*"([^"]*)"`
+  ).exec(blockBody)?.[1];
   if (explicit) return explicit;
   if (rawType === 'Value' || rawType === 'optional<Value>') return 'any';
   return rawType;
@@ -293,7 +301,9 @@ function parseInputs(blockBody: string): ParsedBlockInput[] {
 function parseOutputs(blockBody: string): ParsedBlockOutput[] {
   const outputPattern = /action<[^>]*>\s*\$setOutput_(\w+)\s*;/g;
   const typeFor = (id: string) =>
-    new RegExp(`constant\\s+string\\s+\\$OUTPUT_TYPE_${escapeRegExp(id)}\\s*:=\\s*"([^"]*)"`).exec(blockBody)?.[1] || 'pulse';
+    new RegExp(`constant\\s+string\\s+\\$OUTPUT_TYPE_${escapeRegExp(id)}\\s*:=\\s*"([^"]*)"`).exec(
+      blockBody
+    )?.[1] || 'pulse';
 
   const outputs: ParsedBlockOutput[] = [];
   let match: RegExpExecArray | null;
@@ -316,7 +326,10 @@ function parseOutputs(blockBody: string): ParsedBlockOutput[] {
  * companion-event convention, matching `extractBlockFqns` in utils.ts) into
  * the same shape the correlator's `BlockMetadata` event expects.
  */
-export function parseApamaBlockMetadata(content: string, packageName: string): ParsedBlockMetadata[] {
+export function parseApamaBlockMetadata(
+  content: string,
+  packageName: string
+): ParsedBlockMetadata[] {
   const blockNames = findApamaBlockNames(content);
   if (blockNames.length === 0) return [];
 
@@ -331,11 +344,13 @@ export function parseApamaBlockMetadata(content: string, packageName: string): P
     const body = declMatch ? extractBraceBody(content, declMatch.index) : null;
 
     return {
-      id: `${packageName}.${blockName}`,
+      id: packageName ? `${packageName}.${blockName}` : blockName,
       name: doc?.name || blockName,
       description: doc?.description || '',
       extendedDescription: doc?.extendedDescription || undefined,
-      category: (typeof doc?.tags['blockCategory'] === 'string' && doc.tags['blockCategory']) || 'Utilities',
+      category:
+        (typeof doc?.tags['blockCategory'] === 'string' && doc.tags['blockCategory']) ||
+        'Utilities',
       blockType: typeof doc?.tags['blockType'] === 'string' ? doc.tags['blockType'] : undefined,
       consumesInput: doc?.tags['consumesInput'] === true ? true : undefined,
       producesOutput: doc?.tags['producesOutput'] === true ? true : undefined,
@@ -377,22 +392,88 @@ export function buildBlockMessagesEvt(name: string, blocks: ParsedBlockMetadata[
   for (const block of blocks) {
     if (block.name) messages[`block_${block.id}_name`] = block.name;
     if (block.description) messages[`block_${block.id}_description`] = block.description;
-    if (block.extendedDescription) messages[`block_${block.id}_extendedDescription`] = block.extendedDescription;
+    if (block.extendedDescription)
+      messages[`block_${block.id}_extendedDescription`] = block.extendedDescription;
 
     for (const input of block.inputs) {
       if (input.name) messages[`block_${block.id}_inputs_${input.id}_name`] = input.name;
-      if (input.description) messages[`block_${block.id}_inputs_${input.id}_description`] = input.description;
+      if (input.description)
+        messages[`block_${block.id}_inputs_${input.id}_description`] = input.description;
     }
     for (const output of block.outputs) {
       if (output.name) messages[`block_${block.id}_outputs_${output.id}_name`] = output.name;
-      if (output.description) messages[`block_${block.id}_outputs_${output.id}_description`] = output.description;
+      if (output.description)
+        messages[`block_${block.id}_outputs_${output.id}_description`] = output.description;
     }
     for (const param of block.parameters) {
       if (param.name) messages[`block_${block.id}_parameters_${param.id}_name`] = param.name;
-      if (param.description) messages[`block_${block.id}_parameters_${param.id}_description`] = param.description;
+      if (param.description)
+        messages[`block_${block.id}_parameters_${param.id}_description`] = param.description;
     }
   }
 
   const escaped = escapeForMonitorScriptString(JSON.stringify(messages));
   return `\n"analyticsbuilder.metadata.requests",apama.analyticsbuilder.BlockMessages("${name}", "EN", "${escaped}")\n`;
+}
+
+/**
+ * Reads a MonitorScript string literal starting at the opening quote at
+ * `start`. Handles the `\\` and `\"` escapes the SDK and
+ * {@link buildBlockMetadataEvt} write; any other escape is kept verbatim so the
+ * JSON inside stays intact. Returns the decoded text and the index after the
+ * closing quote, or `null` when the literal is not terminated.
+ */
+function readStringLiteral(content: string, start: number): { value: string; end: number } | null {
+  let value = '';
+  for (let i = start + 1; i < content.length; i++) {
+    const char = content[i];
+    if (char === '\\' && i + 1 < content.length) {
+      const next = content[i + 1];
+      value += next === '\\' || next === '"' ? next : char + next;
+      i++;
+    } else if (char === '"') {
+      return { value, end: i + 1 };
+    } else {
+      value += char;
+    }
+  }
+  return null;
+}
+
+/**
+ * Parses the blocks out of a `<name>_metadata.evt` file, i.e. the reverse of
+ * {@link buildBlockMetadataEvt}. Unlike a single regular expression it copes
+ * with escaped quotes and backslashes in descriptions, with several
+ * `BlockMetadata` events in one file, and it returns every block, not only the
+ * first. A block id is returned once; the first occurrence wins.
+ */
+export function parseBlockMetadataEvt(content: string): ParsedBlockMetadata[] {
+  const blocks = new Map<string, ParsedBlockMetadata>();
+  const marker = /BlockMetadata\s*\(/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = marker.exec(content))) {
+    // Arguments: ("<extension name>", "<language>", "<json>")
+    let position = match.index + match[0].length;
+    const literals: string[] = [];
+    for (let argument = 0; argument < 3; argument++) {
+      position = content.indexOf('"', position);
+      if (position === -1) break;
+      const literal = readStringLiteral(content, position);
+      if (!literal) break;
+      literals.push(literal.value);
+      position = literal.end;
+    }
+    if (literals.length < 3) continue;
+
+    try {
+      const parsed = JSON.parse(literals[2]) as { analytics?: ParsedBlockMetadata[] };
+      for (const block of parsed.analytics ?? []) {
+        if (block?.id && !blocks.has(block.id)) blocks.set(block.id, block);
+      }
+    } catch (error) {
+      console.warn('Failed to parse block metadata event:', error);
+    }
+  }
+  return [...blocks.values()];
 }

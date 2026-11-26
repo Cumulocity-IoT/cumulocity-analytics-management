@@ -5,9 +5,20 @@ import { RepositoryConfigService } from './repository-config.service';
 import { RepositoryError } from './repository-error';
 
 const res = (over: Record<string, unknown> = {}) =>
-  ({ ok: true, status: 200, json: async () => ({}), text: async () => '', ...over }) as unknown as Response;
+  ({
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+    text: async () => '',
+    ...over
+  }) as unknown as Response;
 
-const repository = { id: 'r1', name: 'Repo', url: 'https://github.com/o/r/tree/dev/blocks', accessToken: '', enabled: true } as Repository;
+const repository = {
+  id: 'r1',
+  name: 'Repo',
+  url: 'https://github.com/o/r/tree/dev/blocks',
+  accessToken: ''
+} as Repository;
 
 describe('GitHubContentService', () => {
   let service: GitHubContentService;
@@ -15,9 +26,13 @@ describe('GitHubContentService', () => {
   let fetchSpy: jasmine.Spy;
 
   beforeEach(() => {
-    config = jasmine.createSpyObj<RepositoryConfigService>('RepositoryConfigService', ['resolveAccessToken']);
+    config = jasmine.createSpyObj<RepositoryConfigService>('RepositoryConfigService', [
+      'resolveAccessToken'
+    ]);
     config.resolveAccessToken.and.resolveTo('');
-    TestBed.configureTestingModule({ providers: [{ provide: RepositoryConfigService, useValue: config }] });
+    TestBed.configureTestingModule({
+      providers: [{ provide: RepositoryConfigService, useValue: config }]
+    });
     service = TestBed.inject(GitHubContentService);
     fetchSpy = spyOn(window, 'fetch');
   });
@@ -54,15 +69,24 @@ describe('GitHubContentService', () => {
       expect(fetchSpy.calls.mostRecent().args[1].headers.authorization).toBeUndefined();
     });
 
-    it('prefers GitHub\'s own error message', async () => {
-      fetchSpy.and.resolveTo(res({ ok: false, status: 401, json: async () => ({ message: 'Bad credentials' }) }));
-      expect(await service.testRepository(repository)).toEqual({ success: false, status: 401, message: 'Bad credentials' });
+    it("prefers GitHub's own error message", async () => {
+      fetchSpy.and.resolveTo(
+        res({ ok: false, status: 401, json: async () => ({ message: 'Bad credentials' }) })
+      );
+      expect(await service.testRepository(repository)).toEqual({
+        success: false,
+        status: 401,
+        message: 'Bad credentials'
+      });
     });
 
     it('reports a connection failure for network errors and invalid urls', async () => {
       fetchSpy.and.rejectWith(new TypeError('offline'));
       expect((await service.testRepository(repository)).success).toBeFalse();
-      const invalid = await service.testRepository({ ...repository, url: 'https://example.com/x/y' });
+      const invalid = await service.testRepository({
+        ...repository,
+        url: 'https://example.com/x/y'
+      });
       expect(invalid.success).toBeFalse();
     });
   });
@@ -74,7 +98,9 @@ describe('GitHubContentService', () => {
     });
 
     it('raises a RepositoryError with the status for HTTP failures', async () => {
-      fetchSpy.and.resolveTo(res({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) }));
+      fetchSpy.and.resolveTo(
+        res({ ok: false, status: 404, json: async () => ({ message: 'Not Found' }) })
+      );
       const error = await service.getContent(repository).catch(e => e);
       expect(error).toBeInstanceOf(RepositoryError);
       expect(error.status).toBe(404);
@@ -83,12 +109,17 @@ describe('GitHubContentService', () => {
 
     it('wraps network failures', async () => {
       fetchSpy.and.rejectWith(new TypeError('offline'));
-      await expectAsync(service.getContent(repository)).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.getContent(repository)).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
     });
   });
 
   describe('getItemContent', () => {
-    const block = { name: 'Foo', downloadUrl: 'https://raw.githubusercontent.com/o/r/dev/Foo.mon' } as RepositoryItem;
+    const block = {
+      name: 'Foo',
+      downloadUrl: 'https://raw.githubusercontent.com/o/r/dev/Foo.mon'
+    } as RepositoryItem;
 
     it('fetches the raw file without custom headers (avoids a CORS preflight)', async () => {
       fetchSpy.and.resolveTo(res({ text: async () => 'content' }));
@@ -103,14 +134,20 @@ describe('GitHubContentService', () => {
 
     it('fails when FQN extraction is requested but no package exists', async () => {
       fetchSpy.and.resolveTo(res({ text: async () => 'event Foo {}' }));
-      await expectAsync(service.getItemContent(block, true)).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.getItemContent(block, true)).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
     });
 
     it('fails for non-OK responses and network errors', async () => {
       fetchSpy.and.resolveTo(res({ ok: false, status: 404 }));
-      await expectAsync(service.getItemContent(block, false)).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.getItemContent(block, false)).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
       fetchSpy.and.rejectWith(new TypeError('offline'));
-      await expectAsync(service.getItemContent(block, false)).toBeRejectedWith(jasmine.any(RepositoryError));
+      await expectAsync(service.getItemContent(block, false)).toBeRejectedWith(
+        jasmine.any(RepositoryError)
+      );
     });
   });
 

@@ -6,7 +6,8 @@ describe('AnalyticsNavigationFactory', () => {
   let appState: { options: { contextPath?: string } };
   let factory: AnalyticsNavigationFactory;
 
-  const grant = (...roles: string[]) => permissions.hasRole.and.callFake((role: string) => roles.includes(role));
+  const grant = (...roles: string[]) =>
+    permissions.hasRole.and.callFake((role: string) => roles.includes(role));
 
   beforeEach(() => {
     permissions = jasmine.createSpyObj('Permissions', ['hasRole']);

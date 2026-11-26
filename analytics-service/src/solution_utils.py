@@ -4,9 +4,10 @@ Utility functions for solution management, GitHub integration, and error handlin
 
 import json
 import logging
+import re
 from functools import wraps
 from typing import Any, Dict
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, unquote, urlparse
 
 from flask import Response
 from requests.exceptions import HTTPError
@@ -14,6 +15,43 @@ from requests.exceptions import HTTPError
 logger = logging.getLogger(__name__)
 
 DEFAULT_BRANCH = "main"
+
+_GITHUB_WEB_HOSTS = {"github.com", "www.github.com"}
+_NAME_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_NUMERIC_ID_RE = re.compile(r"^[0-9]{1,32}$")
+
+
+def is_valid_identifier(value: Any) -> bool:
+    """True for a repository id: 1-64 letters, digits, hyphens or underscores."""
+    return isinstance(value, str) and bool(_IDENTIFIER_RE.match(value))
+
+
+def is_valid_numeric_id(value: Any) -> bool:
+    """True for a Cumulocity managed object id (digits only)."""
+    return isinstance(value, str) and bool(_NUMERIC_ID_RE.match(value))
+
+
+def has_unsafe_path_segment(path: str) -> bool:
+    """True if any segment of a URL path could change the request target.
+
+    Dot segments (also percent-encoded) are normalized away by the HTTP client,
+    so a path such as ``/contents/../../../user`` would address a different
+    GitHub API endpoint than the one the URL was validated for.
+    """
+    for segment in path.split("/"):
+        decoded = unquote(segment)
+        if decoded in (".", "..") or any(c in decoded for c in "/\\?#"):
+            return True
+    return False
+
+
+def _validate_repo_parts(owner: str, repo: str, branch: str, path_in_repo: str) -> None:
+    for label, value in (("owner", owner), ("repository", repo), ("branch", branch)):
+        if not _NAME_RE.match(value) or value in (".", ".."):
+            raise ValueError(f"Invalid GitHub URL: bad {label} '{value}'")
+    if has_unsafe_path_segment(path_in_repo):
+        raise ValueError("Invalid GitHub URL: path contains unsafe segments")
 
 
 def handle_errors(f):
@@ -78,7 +116,7 @@ def parse_github_web_url(github_web_url: str) -> Dict[str, str]:
     try:
         parsed_url = urlparse(github_web_url)
 
-        if "github.com" not in parsed_url.netloc:
+        if parsed_url.hostname not in _GITHUB_WEB_HOSTS:
             raise ValueError("Not a GitHub URL")
 
         path_parts = [part for part in parsed_url.path.split("/") if part]
@@ -96,6 +134,7 @@ def parse_github_web_url(github_web_url: str) -> Dict[str, str]:
         elif len(path_parts) > 2:
             path_in_repo = "/".join(path_parts[2:])
 
+        _validate_repo_parts(owner, repo, branch, path_in_repo)
         return {"owner": owner, "repo": repo, "branch": branch, "path": path_in_repo}
 
     except Exception as e:
@@ -141,7 +180,7 @@ def content_api_to_github_web_url(content_api_url: str) -> str:
     try:
         parsed_url = urlparse(content_api_url)
 
-        if "api.github.com" not in parsed_url.netloc:
+        if parsed_url.hostname != "api.github.com":
             raise ValueError("Not a GitHub API URL")
 
         path_parts = [part for part in parsed_url.path.split("/") if part]
@@ -157,6 +196,8 @@ def content_api_to_github_web_url(content_api_url: str) -> str:
         query_params = parse_qs(parsed_url.query)
         branch = query_params.get("ref", [DEFAULT_BRANCH])[0]
         path_in_repo = "/".join(path_parts[4:]) if len(path_parts) > 4 else ""
+
+        _validate_repo_parts(user, repo, branch, path_in_repo)
 
         github_web_url = f"https://github.com/{user}/{repo}"
         if path_in_repo:

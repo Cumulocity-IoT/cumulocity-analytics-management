@@ -1,5 +1,5 @@
 /* Hide reload button */
-button[title="Reload"] {
+button[title='Reload'] {
   display: none;
 }
 
@@ -12,4 +12,23 @@ button[title="Reload"] {
 .popover.your-custom-class {
   max-width: 37.5rem;
   width: 37.5rem;
+}
+.repository-select {
+  min-width: 220px;
+  max-width: 360px;
+}
+
+/* The repository name is a badge after the grid title, on the same line as the item count. */
+.repository-grid .table-data-grid-header .h4::after {
+  content: var(--repository-badge, none);
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 12px;
+  border-radius: 4px;
+  background: var(--c8y-brand-primary, #1776bf);
+  color: var(--c8y-brand-primary-contrast, #fff);
+  font-size: 0.8em;
+  font-weight: 600;
+  line-height: 1.3;
+  vertical-align: baseline;
 }

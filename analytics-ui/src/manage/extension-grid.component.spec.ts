@@ -1,12 +1,14 @@
 import { fakeAsync, flush, TestBed, tick } from '@angular/core/testing';
 import { ActivatedRoute } from '@angular/router';
 import { IManagedObject } from '@c8y/client';
-import { AlertService, WizardModalService } from '@c8y/ngx-components';
+import { AlertService } from '@c8y/ngx-components';
+import { ExtensionWizardService } from '../repository/wizard/extension-wizard.service';
 import { BehaviorSubject, Subject } from 'rxjs';
 import { AnalyticsService } from '../shared';
 import { ExtensionGridComponent } from './extension-grid.component';
 
-const mo = (id: string, extra: Record<string, unknown> = {}) => ({ id, ...extra }) as unknown as IManagedObject;
+const mo = (id: string, extra: Record<string, unknown> = {}) =>
+  ({ id, ...extra }) as unknown as IManagedObject;
 const cepObject = (status: string, safeMode = false) =>
   mo('cep', { c8y_Status: { status, is_safe_mode: safeMode } });
 
@@ -14,7 +16,7 @@ describe('ExtensionGridComponent', () => {
   let component: ExtensionGridComponent;
   let analytics: jasmine.SpyObj<AnalyticsService>;
   let alerts: jasmine.SpyObj<AlertService>;
-  let wizard: jasmine.SpyObj<WizardModalService>;
+  let wizard: jasmine.SpyObj<ExtensionWizardService>;
   let cep$: BehaviorSubject<IManagedObject>;
   let cacheReload$: Subject<boolean>;
 
@@ -24,7 +26,7 @@ describe('ExtensionGridComponent', () => {
       providers: [
         { provide: AnalyticsService, useValue: analytics },
         { provide: AlertService, useValue: alerts },
-        { provide: WizardModalService, useValue: wizard },
+        { provide: ExtensionWizardService, useValue: wizard },
         { provide: ActivatedRoute, useValue: { snapshot: { data: routeData } } }
       ]
     });
@@ -62,7 +64,7 @@ describe('ExtensionGridComponent', () => {
     analytics.getCepStatus.and.resolveTo({} as never);
     analytics.isExpectedTransientError.and.returnValue(false);
     alerts = jasmine.createSpyObj<AlertService>('AlertService', ['add']);
-    wizard = jasmine.createSpyObj<WizardModalService>('WizardModalService', ['show']);
+    wizard = jasmine.createSpyObj<ExtensionWizardService>('ExtensionWizardService', ['open']);
     spyOn(console, 'error');
     spyOn(console, 'warn');
   });
@@ -119,7 +121,10 @@ describe('ExtensionGridComponent', () => {
     it('does not blame an extension that was last updated long ago', fakeAsync(async () => {
       cep$.next(cepObject('UP', true));
       analytics.getEnrichedExtensions.and.resolveTo([
-        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject
+        {
+          ...mo('1'),
+          lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString()
+        } as IManagedObject
       ]);
       await create();
       const values = collect();
@@ -156,7 +161,10 @@ describe('ExtensionGridComponent', () => {
     it('flags the most recently updated extension as the suspected cause in safe mode', fakeAsync(async () => {
       cep$.next(cepObject('UP', true));
       analytics.getEnrichedExtensions.and.resolveTo([
-        { ...mo('1'), lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString() } as IManagedObject,
+        {
+          ...mo('1'),
+          lastUpdated: new Date(Date.now() - 30 * 86400000).toISOString()
+        } as IManagedObject,
         { ...mo('2'), lastUpdated: new Date(Date.now() - 3600000).toISOString() } as IManagedObject
       ]);
       await create();
@@ -294,25 +302,16 @@ describe('ExtensionGridComponent', () => {
       expect(console.error).toHaveBeenCalled();
     });
 
-    it('addExtension() opens the wizard in add mode and reloads when it closes', () => {
-      const onClose = new Subject<void>();
-      wizard.show.and.returnValue({ content: { onClose } } as never);
+    it('addExtension() opens the wizard and reloads only when an extension was added', () => {
+      const closed = new Subject<boolean>();
+      wizard.open.and.returnValue(closed);
       const reload = spyOn(component, 'reload');
 
       component.addExtension();
-
-      const { initialState } = wizard.show.calls.mostRecent().args[0] as { initialState: Record<string, any> };
-      expect(initialState['id']).toBe('uploadAnalyticsExtension');
-      expect(initialState['componentInitialState'].mode).toBe('add');
+      closed.next(false);
       expect(reload).not.toHaveBeenCalled();
-      onClose.next();
-      onClose.next(); // take(1): second close is ignored
+      closed.next(true);
       expect(reload).toHaveBeenCalledTimes(1);
-    });
-
-    it('addExtension() tolerates a wizard without content', () => {
-      wizard.show.and.returnValue({} as never);
-      expect(() => component.addExtension()).not.toThrow();
     });
 
     it('trackByExtension() uses the managed object id', () => {

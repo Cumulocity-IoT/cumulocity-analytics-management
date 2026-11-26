@@ -15,16 +15,10 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
           <div class="extension-list">
             <table class="extension-table">
               <tbody>
-                @for (
-                  extension of to.extensionNames;
-                  track extension;
-                  let i = $index
-                ) {
+                @for (extension of to.extensionNames; track extension; let i = $index) {
                   <tr class="extension-row">
                     <td class="number-cell">{{ i + 1 }}</td>
-                    <td class="extension-cell">
-                      <i class="fa fa-cube mr-2"></i> {{ extension }}
-                    </td>
+                    <td class="extension-cell"><i class="fa fa-cube mr-2"></i> {{ extension }}</td>
                   </tr>
                 }
               </tbody>
@@ -46,7 +40,7 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
       }
       .extension-list-description {
         margin-bottom: 0.5rem;
-        color: #666;
+        color: var(--c8y-text-muted, #666);
       }
       .extension-table {
         width: 100%;
@@ -54,12 +48,12 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
         border-spacing: 0 6px;
       }
       .extension-row {
-        background-color: #f8f9fa;
+        background-color: var(--c8y-component-background-default, #f8f9fa);
       }
       .number-cell {
         width: 40px;
         text-align: center;
-        background-color: #e9ecef;
+        background-color: var(--c8y-component-background-hover, #e9ecef);
         font-weight: bold;
         padding: 4px;
         //border-top-left-radius: 4px;
@@ -72,11 +66,10 @@ import { FieldType, FormlyModule } from '@ngx-formly/core';
       }
       .no-extensions {
         padding: 0.75rem;
-        color: #6c757d;
+        color: var(--c8y-text-muted, #6c757d);
       }
     `
   ],
-  standalone: true,
   imports: [FormlyModule]
 })
 export class ExtensionListComponent extends FieldType {
