@@ -76,7 +76,14 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "503":
-          $ref: "#/components/responses/RolesUnavailable"
+          description: |
+            The roles of the caller could not be read, or the Streaming Analytics
+            engine (apama-ctrl) is unreachable or answers a gateway error (502, 503, 504)
+            while it restarts. This is not a "backend not deployed" signal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "200":
           description: Success
           content:
@@ -107,7 +114,14 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
         "503":
-          $ref: "#/components/responses/RolesUnavailable"
+          description: |
+            The roles of the caller could not be read, or the Streaming Analytics
+            engine (apama-ctrl) is unreachable or answers a gateway error (502, 503, 504)
+            while it restarts. This is not a "backend not deployed" signal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "200":
           description: Success
           content:
@@ -382,7 +396,8 @@ paths:
       summary: Build one or more Apama extensions from a YAML specification file
       description: |
         The YAML file defines named "sections", each listing the files that make up
-        one extension. `sections: []` (or omitted) builds every section found in
+        one extension. A section is either a mapping with a `files` list or a plain
+        list of files. `sections: []` (or omitted) builds every section found in
         the YAML; otherwise only the named sections are built. When `upload: true`,
         each section is built and uploaded independently, and the response may
         report a partial success (`207`).

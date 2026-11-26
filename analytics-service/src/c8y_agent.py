@@ -27,6 +27,12 @@ class C8YAuthenticationError(C8YAgentError):
     pass
 
 
+class C8YEngineUnavailableError(C8YAgentError):
+    """The Streaming Analytics engine (apama-ctrl) is unreachable or answers a gateway error."""
+
+    pass
+
+
 class C8YAgent:
     """Agent for interacting with Cumulocity IoT platform.
 
@@ -331,9 +337,13 @@ class C8YAgent:
 
         try:
             return self._execute(request, _work)
+        except C8YAuthenticationError:
+            raise
         except Exception as e:
             self._log_cep_error("Failed to get CEP operation object ID", e)
-            return None
+            raise C8YEngineUnavailableError(
+                "Streaming Analytics engine is not reachable"
+            ) from e
 
     def get_cep_ctrl_status(self, request) -> Optional[Dict]:
         """Get CEP control status."""
@@ -343,9 +353,13 @@ class C8YAgent:
 
         try:
             return self._execute(request, _work)
+        except C8YAuthenticationError:
+            raise
         except Exception as e:
             self._log_cep_error("Failed to get CEP status", e)
-            return None
+            raise C8YEngineUnavailableError(
+                "Streaming Analytics engine is not reachable"
+            ) from e
 
     # ============================================================================
     # Repository Management
