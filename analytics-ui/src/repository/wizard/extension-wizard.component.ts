@@ -17,6 +17,7 @@ import {
   RepositoryService,
   UploadMode,
   canPickFromDownloads,
+  compareVersions,
   pickZipFromDownloads,
   removeZipSuffix,
   splitExtensionVersion,
@@ -27,7 +28,9 @@ import {
   ContentState,
   evaluateContent,
   findSelectionConflicts,
+  SectionOutcome,
   isSection,
+  parseSectionOutcome,
   toBuildInput
 } from './extension-wizard.logic';
 
@@ -42,20 +45,23 @@ type StepId =
   | 'review'
   | 'result'
   | 'upload';
-type ResultState = 'running' | 'done' | 'failed';
+type ResultState = 'running' | 'done' | 'partial' | 'failed';
 
 /**
  * With the backend service a release is deployed server-side (the browser cannot read GitHub
  * release assets). Without it the user downloads the file and uploads it in two separate steps.
  */
-const steps = (source: WizardSource, backendAvailable: boolean): StepId[] => {
+const steps = (source: WizardSource, backendAvailable: boolean, hasSections: boolean): StepId[] => {
   switch (source) {
     case 'release':
       return backendAvailable
         ? ['source', 'repository', 'release', 'review', 'result']
         : ['source', 'repository', 'release', 'download', 'upload'];
     case 'build':
-      return ['source', 'repository', 'content', 'details', 'review', 'result'];
+      // Each section becomes its own extension, named after the section: nothing to name.
+      return hasSections
+        ? ['source', 'repository', 'content', 'review', 'result']
+        : ['source', 'repository', 'content', 'details', 'review', 'result'];
     default:
       return ['source', 'upload'];
   }
@@ -149,6 +155,10 @@ export class ExtensionWizardComponent implements OnInit {
   readonly reposWithoutReleases = signal<ReadonlySet<string>>(new Set());
 
   readonly result = signal<ResultState>('running');
+  /** Sections created and failed, set when the backend answers 207 (partial success). */
+  readonly sectionOutcome = signal<SectionOutcome | null>(null);
+  /** The user accepts replacing an installed extension with an older or equal version. */
+  readonly replaceAnyway = signal(false);
   readonly uploaded = signal(false);
   readonly restartState = signal<'idle' | 'running' | 'done' | 'failed'>('idle');
   readonly stepTitles: Record<StepId, string> = STEP_TITLES;
@@ -156,9 +166,11 @@ export class ExtensionWizardComponent implements OnInit {
   readonly steps = computed<StepId[]>(() => {
     const source = this.source();
     return source
-      ? steps(source, this.backendAvailable())
+      ? steps(source, this.backendAvailable(), this.hasSections())
       : ['source', 'repository', 'content', 'details', 'review', 'result'];
   });
+  /** The selection contains `extensions.yaml` sections, each of which becomes its own extension. */
+  readonly hasSections = computed(() => this.selectedItems().some(isSection));
   readonly step = computed(() => this.steps()[this.stepIndex()]);
 
   readonly repository = computed(
@@ -213,6 +225,8 @@ export class ExtensionWizardComponent implements OnInit {
         return this.selectedIds().size > 0 && !this.itemsLoading() && !this.hasSelectionConflict();
       case 'details':
         return this.name().trim().length > 0;
+      case 'review':
+        return !this.versionWarning() || this.replaceAnyway();
       default:
         return true;
     }
@@ -246,6 +260,8 @@ export class ExtensionWizardComponent implements OnInit {
           : gettext('Select at least one item to continue.');
       case 'details':
         return gettext('Enter a name to continue.');
+      case 'review':
+        return gettext('Tick "Replace anyway" to continue.');
       default:
         return '';
     }
@@ -301,7 +317,8 @@ export class ExtensionWizardComponent implements OnInit {
     this.selectedIds.set(chosen);
     if (chosen.size > 0 && chosen.size === wanted.size) {
       this.suggestName();
-      this.stepIndex.set(this.steps().indexOf('details'));
+      const details = this.steps().indexOf('details');
+      this.stepIndex.set(details >= 0 ? details : this.steps().indexOf('review'));
     }
   }
 
@@ -335,6 +352,7 @@ export class ExtensionWizardComponent implements OnInit {
     this.assetId.set(null);
     this.downloaded.set(false);
     this.loadError.set(null);
+    this.replaceAnyway.set(false);
   }
 
   next(): void {
@@ -492,12 +510,14 @@ export class ExtensionWizardComponent implements OnInit {
       return;
     }
     this.result.set('running');
+    this.sectionOutcome.set(null);
     if (this.source() === 'release') {
       await this.deployRelease(repository);
       return;
     }
-    const name = this.name().trim();
     const { sections, monitors } = toBuildInput(this.items(), this.selectedIds());
+    // The backend names each section's extension after the section; it still expects a name.
+    const name = sections.length ? sections[0] : this.name().trim();
     try {
       const response = sections.length
         ? await this.repositoryService.createExtensionFromYaml(
@@ -515,6 +535,10 @@ export class ExtensionWizardComponent implements OnInit {
             true,
             false
           );
+      if (response.status === 207) {
+        await this.showPartialResult(response);
+        return;
+      }
       if (response.status < 400) {
         this.alertService.success(
           this.messages.format(gettext('The extension "{{fileName}}" has been uploaded.'), {
@@ -531,6 +555,42 @@ export class ExtensionWizardComponent implements OnInit {
       this.result.set('failed');
     }
   }
+
+  /** 207: some sections were uploaded and some failed. The result step lists both. */
+  private async showPartialResult(response: { json(): Promise<unknown> }): Promise<void> {
+    let outcome: SectionOutcome = { created: [], failed: [] };
+    try {
+      outcome = parseSectionOutcome(await response.json());
+    } catch (error) {
+      console.error('[ExtensionWizardComponent] Could not read the partial result:', error);
+    }
+    this.sectionOutcome.set(outcome);
+    // Nothing created is an error; the backend normally answers 400 then.
+    this.result.set(outcome.created.length > 0 ? 'partial' : 'failed');
+    if (outcome.created.length > 0) {
+      this.alertService.warning(gettext('Some sections could not be created.'));
+    }
+  }
+
+  /** The release asset is not newer than the installed extension; unknown versions do not warn. */
+  readonly versionWarning = computed(() => {
+    const installed = this.installedExtension();
+    if (this.source() !== 'release' || !installed) {
+      return '';
+    }
+    const installedVersion: string | undefined = installed['build_information']?.version;
+    const assetVersion = this.assetExtension().version;
+    const order = compareVersions(assetVersion, installedVersion);
+    if (order === undefined || order > 0) {
+      return '';
+    }
+    return this.messages.format(
+      gettext(
+        'Version {{assetVersion}} is not newer than the installed version {{installedVersion}}.'
+      ),
+      { assetVersion: assetVersion ?? '', installedVersion: installedVersion ?? '' }
+    );
+  });
 
   /** Tells what a release deployment replaces; empty when it installs something new. */
   readonly replaceNote = computed(() => {
@@ -557,6 +617,7 @@ export class ExtensionWizardComponent implements OnInit {
 
   private async loadInstalledExtension(): Promise<void> {
     this.installedExtension.set(null);
+    this.replaceAnyway.set(false);
     try {
       const name = this.assetExtensionName();
       const installed = await this.analyticsService.getExtensionsFromInventory();
@@ -632,7 +693,7 @@ export class ExtensionWizardComponent implements OnInit {
   /** An extension was added, whichever path: the restart is offered next, and is optional. */
   readonly completed = computed(
     () =>
-      (this.step() === 'result' && this.result() === 'done') ||
+      (this.step() === 'result' && (this.result() === 'done' || this.result() === 'partial')) ||
       (this.step() === 'upload' && this.uploaded())
   );
 

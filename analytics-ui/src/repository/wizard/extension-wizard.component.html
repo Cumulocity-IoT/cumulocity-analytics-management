@@ -373,10 +373,12 @@
                   </div>
                 }
               } @else {
-                <div class="wizard-review-row">
-                  <span class="text-muted">{{ 'Extension' | translate }}</span>
-                  <strong>{{ name().trim() }}.zip</strong>
-                </div>
+                @if (!hasSections()) {
+                  <div class="wizard-review-row">
+                    <span class="text-muted">{{ 'Extension' | translate }}</span>
+                    <strong>{{ name().trim() }}.zip</strong>
+                  </div>
+                }
                 <div class="wizard-review-row">
                   <span class="text-muted"
                     >{{ 'Content' | translate }} ({{ selectedItems().length }})</span
@@ -390,10 +392,31 @@
               }
             </div>
           </div>
+          @if (hasSections()) {
+            <c8y-messages>
+              <c8y-message type="info">{{
+                'Each section becomes its own extension, named after the section.' | translate
+              }}</c8y-message>
+            </c8y-messages>
+          }
           @if (replaceNote()) {
             <c8y-messages>
               <c8y-message type="warning">{{ replaceNote() }}</c8y-message>
             </c8y-messages>
+          }
+          @if (versionWarning()) {
+            <c8y-messages>
+              <c8y-message type="warning">{{ versionWarning() }}</c8y-message>
+            </c8y-messages>
+            <label class="c8y-checkbox">
+              <input
+                type="checkbox"
+                [ngModel]="replaceAnyway()"
+                (ngModelChange)="replaceAnyway.set($event)"
+              />
+              <span></span>
+              <span>{{ 'Replace anyway' | translate }}</span>
+            </label>
           }
           <div class="bg-level-1 p-16 rounded">
             <h5 class="m-t-0">{{ 'What happens next' | translate }}</h5>
@@ -432,6 +455,37 @@
                   [vertical]="true"
                   [size]="84"
                 ></c8y-operation-result>
+                <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
+              </div>
+            }
+            @case ('partial') {
+              <div class="d-col gap-16">
+                <c8y-messages>
+                  <c8y-message type="warning">{{
+                    'Some sections could not be created.' | translate
+                  }}</c8y-message>
+                </c8y-messages>
+                @if (sectionOutcome(); as outcome) {
+                  <div>
+                    <h5>{{ 'Created' | translate }}</h5>
+                    <ul>
+                      @for (name of outcome.created; track name) {
+                        <li>{{ name }}</li>
+                      }
+                    </ul>
+                    <h5>{{ 'Failed' | translate }}</h5>
+                    <ul>
+                      @for (failure of outcome.failed; track failure.section) {
+                        <li>
+                          {{ failure.section }}
+                          @if (failure.error) {
+                            <span class="text-muted">: {{ failure.error }}</span>
+                          }
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
                 <ng-container *ngTemplateOutlet="restartPanel"></ng-container>
               </div>
             }

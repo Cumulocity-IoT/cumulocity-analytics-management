@@ -34,8 +34,7 @@ import {
   AlertService,
   Column,
   ColumnDataType,
-  CoreModule,
-  Pagination
+  CoreModule
 } from '@c8y/ngx-components';
 import {
   AnalyticsService,
@@ -116,11 +115,6 @@ export class BlockGridComponent implements OnInit {
       cellRendererComponent: BooleanRendererComponent
     }
   ];
-
-  pagination: Pagination = {
-    pageSize: 3,
-    currentPage: 1
-  };
 
   // The shell may run Angular without zone.js, where a plain field changed after an
   // `await` is not rendered by itself. `markForCheck` asks for a render in either mode.

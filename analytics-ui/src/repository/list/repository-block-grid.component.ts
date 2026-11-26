@@ -38,8 +38,7 @@ import {
   Column,
   ColumnDataType,
   CoreModule,
-  DataGridComponent,
-  Pagination
+  DataGridComponent
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
@@ -69,6 +68,12 @@ import { EditorModalComponent } from '../editor/editor-modal.component';
 import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal.component';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { gettext } from '@c8y/ngx-components/gettext';
+
+/** Keeps the items whose name contains `text` (case-insensitive); empty text keeps all. */
+export function filterByName(items: RepositoryItem[], text: string): RepositoryItem[] {
+  const needle = (text ?? '').trim().toLowerCase();
+  return needle ? items.filter(item => (item.name ?? '').toLowerCase().includes(needle)) : items;
+}
 
 @Component({
   selector: 'a17t-repository-block-grid',
@@ -155,11 +160,6 @@ export class RepositoryBlockGridComponent implements OnInit {
     }
   ];
 
-  pagination: Pagination = {
-    pageSize: 3,
-    currentPage: 1
-  };
-
   private destroyRef = inject(DestroyRef);
   // The shell may run Angular without zone.js, where a plain field changed after an
   // `await` or inside a subscription is not rendered by itself.
@@ -170,6 +170,9 @@ export class RepositoryBlockGridComponent implements OnInit {
   selectedRepositoryId: string | null = null;
   private readonly selectedRepositoryId$ = new BehaviorSubject<string | null>(null);
   private readonly hideInstalled$ = new BehaviorSubject<boolean>(false);
+  private readonly searchText$ = new BehaviorSubject<string>('');
+  /** Free-text search over item names (case-insensitive, matches anywhere in the name). */
+  searchText = '';
 
   constructor(
     public repositoryService: RepositoryService,
@@ -178,7 +181,7 @@ export class RepositoryBlockGridComponent implements OnInit {
     private bsModalService: BsModalService,
     private extensionWizard: ExtensionWizardService
   ) {
-    this.repositoryItems$ = combineLatest([
+    const loaded$ = combineLatest([
       this.selectedRepositoryId$.pipe(distinctUntilChanged()),
       this.hideInstalled$
     ]).pipe(
@@ -207,6 +210,16 @@ export class RepositoryBlockGridComponent implements OnInit {
         );
       })
     );
+    // The search narrows the rows only; the title and the repository column above
+    // follow the loaded items, so they stay put while the user types.
+    this.repositoryItems$ = combineLatest([loaded$, this.searchText$]).pipe(
+      map(([items, text]) => filterByName(items, text))
+    );
+  }
+
+  onSearch(text: string): void {
+    this.searchText = text;
+    this.searchText$.next(text);
   }
 
   ngOnInit() {

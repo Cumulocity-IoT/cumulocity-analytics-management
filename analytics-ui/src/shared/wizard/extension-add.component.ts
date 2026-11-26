@@ -10,7 +10,7 @@ import { ERROR_MESSAGES } from '../analytics.constants';
 import { AnalyticsService } from '../analytics.service';
 import { UploadMode } from '../analytics.model';
 import { ParsedBlockMetadata, parseBlockMetadataEvt } from '../apama-block-metadata';
-import { extractBlockFqns, splitExtensionVersion } from '../utils';
+import { compareVersions, extractBlockFqns, splitExtensionVersion } from '../utils';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { BsModalRef, BsModalService } from 'ngx-bootstrap/modal';
 import JSZip from 'jszip';
@@ -71,6 +71,8 @@ export class ExtensionAddComponent implements OnDestroy {
     mode: UploadMode
   ) => Promise<any>;
   @Input() mode!: UploadMode;
+  /** The extension a card update replaces. A package that resolves to another name needs a confirmation. */
+  @Input() extensionToReplace?: Partial<IManagedObject>;
   /** Inside another wizard: that wizard owns the header and footer, this one only shows the upload. */
   @Input() embedded = false;
   readonly cancelled = output<void>();
@@ -152,6 +154,8 @@ export class ExtensionAddComponent implements OnDestroy {
       );
       const existingExtension = await this.findExistingExtension(extensionName);
 
+      const warnings = this.versionWarnings(extensionName, version, existingExtension);
+
       // Analyze ZIP content
       const buildInformation = {
         ...(await this.analyzeZipContent(file)),
@@ -172,7 +176,15 @@ export class ExtensionAddComponent implements OnDestroy {
       this.state.requiresUpdate = !!existingExtension;
 
       if (this.state.requiresUpdate && this.mode === 'add') {
-        this.handleUpdateRequired();
+        this.handleUpdateRequired(warnings);
+      } else if (
+        warnings.length > 0 &&
+        !(await this.confirm(gettext('Update extension'), warnings.join(' '), gettext('Upload')))
+      ) {
+        // Declined: nothing was uploaded and nothing may be rolled back.
+        this.state.extension = null;
+        this.state.file = null;
+        this.dropAreaComponent?.onDelete();
       } else {
         await this.performUpload(this.mode);
       }
@@ -394,9 +406,59 @@ export class ExtensionAddComponent implements OnDestroy {
     return extensions.find(ext => ext['name'] === name) || null;
   }
 
-  private handleUpdateRequired(): void {
+  /**
+   * Reasons to ask before uploading, never to refuse: the installed version is the same or
+   * newer (unknown versions say nothing), or a card update got a package of another extension.
+   */
+  private versionWarnings(
+    name: string,
+    version: string | undefined,
+    existing: IManagedObject | null
+  ): string[] {
+    const warnings: string[] = [];
+    const replaced = this.extensionToReplace?.['name'];
+    if (this.mode === 'update' && replaced && replaced !== name) {
+      warnings.push(
+        this.messages.format(
+          gettext(
+            'The package contains the extension "{{name}}", not "{{replaced}}". Upload it anyway?'
+          ),
+          { name, replaced }
+        )
+      );
+    }
+    const installed = existing?.['build_information']?.version as string | undefined;
+    const diff = compareVersions(version, installed);
+    if (diff !== undefined && diff <= 0) {
+      warnings.push(
+        this.messages.format(
+          diff === 0
+            ? gettext('Version {{installed}} of "{{name}}" is already installed.')
+            : gettext(
+                'Version {{installed}} of "{{name}}" is installed and newer than version {{version}}.'
+              ),
+          { name, installed, version }
+        )
+      );
+    }
+    return warnings;
+  }
+
+  private confirm(title: string, message: string, ok: string): Promise<boolean> {
+    const ref = this.bsModalService.show(ConfirmationModalComponent, {
+      initialState: { title, message, labels: { ok, cancel: 'Cancel' } }
+    });
+    return new Promise(resolve =>
+      ref.content!.closeSubject.pipe(take(1)).subscribe((confirmed: boolean) => {
+        ref.hide();
+        resolve(!!confirmed);
+      })
+    );
+  }
+
+  private handleUpdateRequired(warnings: string[]): void {
     this.done();
-    this.showUpdateConfirmation();
+    this.showUpdateConfirmation(warnings);
   }
 
   private async performUpload(mode: UploadMode): Promise<void> {
@@ -443,10 +505,10 @@ export class ExtensionAddComponent implements OnDestroy {
     this.setLoading(false);
   }
 
-  private showUpdateConfirmation(): void {
+  private showUpdateConfirmation(warnings: string[] = []): void {
     const initialState = {
       title: 'Update extension',
-      message: `Extension "${this.state.extension!['name']}" already exists. Do you want to update it?`,
+      message: `Extension "${this.state.extension!['name']}" already exists. ${[...warnings, 'Do you want to update it?'].join(' ')}`,
       labels: {
         ok: 'Update',
         cancel: 'Cancel'

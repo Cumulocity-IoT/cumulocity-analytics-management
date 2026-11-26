@@ -15,6 +15,7 @@ import { ExtensionAddComponent } from './extension-add.component';
     [successText]="successText"
     [uploadExtensionHandler]="uploadExtensionHandler"
     [mode]="mode"
+    [extensionToReplace]="extensionToReplace"
     (cancelled)="onCancelled()"
     (completed)="onCompleted()"
   ></a17t-extension-add>`,

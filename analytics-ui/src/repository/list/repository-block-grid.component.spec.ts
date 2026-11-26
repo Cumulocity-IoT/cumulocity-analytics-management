@@ -142,6 +142,23 @@ describe('RepositoryBlockGridComponent', () => {
       expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
     });
 
+    it('narrows the rows by a case-insensitive name search and restores them when cleared', async () => {
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item({ id: '1', name: 'Alpha Block' }), item({ id: '2', name: 'Beta' })])
+      );
+      await create();
+      component.onSearch('  ALPHA ');
+      await flush();
+      expect(component.repositoryItems.map(i => i.id)).toEqual(['1']);
+      component.onSearch('zzz');
+      await flush();
+      expect(component.repositoryItems).toEqual([]);
+      expect(component.titleRepository).toBe('R');
+      component.onSearch('');
+      await flush();
+      expect(component.repositoryItems.length).toBe(2);
+    });
+
     it('draws the repository name as a badge, escaping quotes and backslashes', async () => {
       repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
         of([item({ repositoryName: 'My "repo" \\ x' })])

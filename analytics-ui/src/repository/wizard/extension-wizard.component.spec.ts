@@ -277,6 +277,61 @@ describe('ExtensionWizardComponent', () => {
       );
     });
 
+    it('skips the Name step for sections and says each becomes its own extension', async () => {
+      const yaml = item('extensions', { file: 'extensions.yaml' });
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item('Python', { extensionsYamlItem: yaml, sectionFiles: ['Python.mon'] })])
+      );
+      await toContent();
+      component.toggleItem(component.items()[0], true);
+      expect(component.steps()).not.toContain('details');
+      component.next();
+      expect(component.step()).toBe('review');
+      expect(component.hasSections()).toBeTrue();
+    });
+
+    it('lists created and failed sections of a 207 response', async () => {
+      const yaml = item('extensions', { file: 'extensions.yaml' });
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item('Python', { extensionsYamlItem: yaml, sectionFiles: ['Python.mon'] })])
+      );
+      repositories.createExtensionFromYaml.and.resolveTo({
+        status: 207,
+        json: async () => ({
+          uploaded_extensions: [{ name: 'Python', id: '1' }],
+          failed_sections: [{ section: 'Java', error: 'boom' }]
+        })
+      } as never);
+      await toContent();
+      component.toggleItem(component.items()[0], true);
+      component.next();
+      component.next();
+      await flush();
+      expect(component.result()).toBe('partial');
+      expect(component.sectionOutcome()).toEqual({
+        created: ['Python'],
+        failed: [{ section: 'Java', error: 'boom' }]
+      });
+      expect(component.completed()).toBeTrue();
+    });
+
+    it('treats a 207 without any created section as failed', async () => {
+      const yaml = item('extensions', { file: 'extensions.yaml' });
+      repositories.getRepositoryItemsAnalyzedFor.and.returnValue(
+        of([item('Python', { extensionsYamlItem: yaml })])
+      );
+      repositories.createExtensionFromYaml.and.resolveTo({
+        status: 207,
+        json: async () => ({ failed_sections: [{ section: 'Python', error: 'x' }] })
+      } as never);
+      await toContent();
+      component.toggleItem(component.items()[0], true);
+      component.next();
+      component.next();
+      await flush();
+      expect(component.result()).toBe('failed');
+    });
+
     it('does not offer sections without the backend service', async () => {
       analytics.isBackendServiceAvailable.and.resolveTo(false);
       const yaml = item('extensions', { file: 'extensions.yaml' });
@@ -413,6 +468,37 @@ describe('ExtensionWizardComponent', () => {
       component.next();
       await flush();
       expect(repositories.deployReleaseAsset.calls.mostRecent().args[4]).toBeTrue();
+    });
+
+    it('requires "Replace anyway" when the asset is not newer than the installed version', async () => {
+      github.listReleases.and.resolveTo([release(3, ['Abs-1.0.0.zip'])]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { name: 'Abs', build_information: { version: '1.0.0' } } as never
+      ]);
+      await toRelease();
+      component.next();
+      await flush();
+      expect(component.versionWarning()).toContain('not newer');
+      expect(component.canContinue()).toBeFalse();
+      component.replaceAnyway.set(true);
+      expect(component.canContinue()).toBeTrue();
+    });
+
+    it('does not warn for a newer or unknown version', async () => {
+      github.listReleases.and.resolveTo([release(3, ['Abs-1.0.1.zip'])]);
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { name: 'Abs', build_information: { version: '1.0.0' } } as never
+      ]);
+      await toRelease();
+      component.next();
+      await flush();
+      expect(component.versionWarning()).toBe('');
+      expect(component.canContinue()).toBeTrue();
+      analytics.getExtensionsFromInventory.and.resolveTo([{ name: 'Abs' } as never]);
+      component.back();
+      component.next();
+      await flush();
+      expect(component.versionWarning()).toBe('');
     });
 
     it('does not replace anything when the extension is new', async () => {

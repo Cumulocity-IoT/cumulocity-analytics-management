@@ -360,8 +360,12 @@ export class RepositoryService implements OnDestroy {
     return this.repositoryItemsService.getItemContent(block, extractFQN);
   }
 
+  /**
+   * Token for listing a repository's releases: its own token, else the global PAT (the
+   * same order the service uses when it downloads), else `''`.
+   */
   async getRepositoryAccessToken(repositoryId: string): Promise<string> {
-    return this.repositoryConfigService.getRepositoryAccessToken(repositoryId);
+    return this.repositoryConfigService.getRepositoryAccessTokenOrGlobal(repositoryId);
   }
 
   /** Masked global PAT for display in "Manage repositories" — see `RepositoryConfigService.getGlobalAccessTokenMasked`. */
