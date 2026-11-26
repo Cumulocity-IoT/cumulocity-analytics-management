@@ -30,6 +30,21 @@ describe('utils', () => {
       });
     });
 
+    it('supports hyphenated prerelease identifiers and build metadata', () => {
+      expect(splitExtensionVersion('Abs-1.0.0-rc-1')).toEqual({
+        name: 'Abs',
+        version: '1.0.0-rc-1'
+      });
+      expect(splitExtensionVersion('Abs-1.0.0-rc.1+build.2')).toEqual({
+        name: 'Abs',
+        version: '1.0.0-rc.1+build.2'
+      });
+      expect(splitExtensionVersion('Abs-1.0.0+build-5')).toEqual({
+        name: 'Abs',
+        version: '1.0.0+build-5'
+      });
+    });
+
     it('keeps a name without a version whole', () => {
       for (const name of ['HttpOutputBlock', 'pkg.v2', 'My.Ext', '1.0.1', 'Foo-bar', 'Foo-']) {
         expect(splitExtensionVersion(name)).toEqual({ name });

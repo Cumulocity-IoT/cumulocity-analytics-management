@@ -1087,6 +1087,8 @@ class TestDeployFromRelease:
             ("Foo-1.0.0-rc.1.zip", "Foo", "1.0.0-rc.1"),
             ("HttpOutputBlock.zip", "HttpOutputBlock", None),
             ("Block-2.zip", "Block", "2"),
+            ("Abs-1.0.0-rc-1.zip", "Abs", "1.0.0-rc-1"),
+            ("Abs-1.0.0-rc.1+build.2.zip", "Abs", "1.0.0-rc.1+build.2"),
         ],
     )
     def test_the_version_is_metadata_not_part_of_the_name(

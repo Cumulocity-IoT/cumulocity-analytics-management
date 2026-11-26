@@ -23,7 +23,13 @@ import {
   triggerBrowserDownload
 } from '../../shared';
 import { MessageService } from '../../shared/message.service';
-import { ContentState, evaluateContent, isSection, toBuildInput } from './extension-wizard.logic';
+import {
+  ContentState,
+  evaluateContent,
+  findSelectionConflicts,
+  isSection,
+  toBuildInput
+} from './extension-wizard.logic';
 
 export type WizardSource = 'release' | 'build' | 'upload';
 type StepId =
@@ -204,13 +210,21 @@ export class ExtensionWizardComponent implements OnInit {
       case 'download':
         return this.downloaded();
       case 'content':
-        return this.selectedIds().size > 0 && !this.itemsLoading();
+        return this.selectedIds().size > 0 && !this.itemsLoading() && !this.hasSelectionConflict();
       case 'details':
         return this.name().trim().length > 0;
       default:
         return true;
     }
   });
+
+  /** An upload started in the embedded uploader is running. */
+  readonly uploading = signal(false);
+
+  /** Two ticked rows define the same block; the engine would refuse the extension. */
+  readonly hasSelectionConflict = computed(
+    () => findSelectionConflicts(this.items(), this.selectedIds()).size > 0
+  );
 
   /** Why the next button is disabled, shown next to it. Empty when nothing blocks. */
   readonly blockedReason = computed(() => {
@@ -227,7 +241,9 @@ export class ExtensionWizardComponent implements OnInit {
       case 'download':
         return gettext('Download the file to continue.');
       case 'content':
-        return gettext('Select at least one item to continue.');
+        return this.hasSelectionConflict()
+          ? gettext('Untick the items that define the same block.')
+          : gettext('Select at least one item to continue.');
       case 'details':
         return gettext('Enter a name to continue.');
       default:
@@ -353,15 +369,19 @@ export class ExtensionWizardComponent implements OnInit {
   }
 
   toggleAll(checked: boolean): void {
-    this.selectedIds.set(
-      checked
-        ? new Set(
-            this.items()
-              .filter(i => !this.states().get(i.id)?.disabled)
-              .map(i => i.id)
-          )
-        : new Set()
-    );
+    if (!checked) {
+      this.selectedIds.set(new Set());
+      return;
+    }
+    // One row at a time, so a row that clashes with an earlier pick is left out.
+    const chosen = new Set<string>();
+    const backend = this.backendAvailable();
+    for (const item of this.items()) {
+      if (!evaluateContent(this.items(), chosen, backend).get(item.id)?.disabled) {
+        chosen.add(item.id);
+      }
+    }
+    this.selectedIds.set(chosen);
   }
 
   reason(item: RepositoryItem): string {

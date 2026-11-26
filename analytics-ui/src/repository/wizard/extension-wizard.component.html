@@ -526,6 +526,7 @@
           [uploadExtensionHandler]="uploadExtensionHandler"
           [mode]="'add'"
           (uploaded)="onUploaded()"
+          (loadingChange)="uploading.set($event)"
         ></a17t-extension-add>
         @if (uploaded()) {
           <div class="p-l-16 p-r-16">
@@ -609,6 +610,7 @@
     <button
       type="button"
       class="btn btn-default"
+      [disabled]="uploading()"
       (click)="finish(false)"
     >
       {{ 'Cancel' | translate }}
@@ -617,6 +619,7 @@
       <button
         type="button"
         class="btn btn-default"
+        [disabled]="uploading()"
         (click)="back()"
       >
         {{ 'Back' | translate }}

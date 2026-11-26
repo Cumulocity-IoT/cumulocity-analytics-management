@@ -77,6 +77,8 @@ export class ExtensionAddComponent implements OnDestroy {
   readonly completed = output<void>();
   /** Emits as soon as the upload succeeded, before the user presses Done. */
   readonly uploaded = output<void>();
+  /** Emits while an upload is running, so a containing wizard can block navigation. */
+  readonly loadingChange = output<boolean>();
 
   @ViewChild(DropAreaComponent) dropAreaComponent!: DropAreaComponent;
 
@@ -108,6 +110,11 @@ export class ExtensionAddComponent implements OnDestroy {
     return this.analyticsService.uploadProgress$;
   }
 
+  private setLoading(value: boolean): void {
+    this.state.isLoading = value;
+    this.loadingChange.emit(value);
+  }
+
   get isLoading(): boolean {
     return this.state.isLoading;
   }
@@ -134,7 +141,7 @@ export class ExtensionAddComponent implements OnDestroy {
   async onFile(file: File): Promise<void> {
     this.resetState();
     this.state.file = file;
-    this.state.isLoading = true;
+    this.setLoading(true);
     this.progress.next(0);
 
     try {
@@ -433,7 +440,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private finalizeUpload(): void {
     this.progress.next(100);
-    this.state.isLoading = false;
+    this.setLoading(false);
   }
 
   private showUpdateConfirmation(): void {
@@ -461,7 +468,7 @@ export class ExtensionAddComponent implements OnDestroy {
 
   private async handleUpdateConfirmed(): Promise<void> {
     try {
-      this.state.isLoading = true;
+      this.setLoading(true);
       await this.performUpload('update');
       this.analyticsService.triggerCacheReload(true);
     } catch (error) {
@@ -470,7 +477,7 @@ export class ExtensionAddComponent implements OnDestroy {
         this.alertService.addServerFailure(error);
       }
     } finally {
-      this.state.isLoading = false;
+      this.setLoading(false);
     }
   }
 

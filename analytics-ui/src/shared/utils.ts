@@ -28,7 +28,10 @@ export function removeZipSuffix(name: string): string {
  * the installed one instead of installing next to it. A name without a version is kept whole.
  */
 export function splitExtensionVersion(baseName: string): { name: string; version?: string } {
-  const match = /^(.+?)[-_]v?(\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.]+)?)$/.exec(baseName);
+  const match =
+    /^(.+?)[-_]v?(\d+(?:\.\d+)*(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$/.exec(
+      baseName
+    );
   return match ? { name: match[1], version: match[2] } : { name: baseName };
 }
 

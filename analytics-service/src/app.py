@@ -818,8 +818,8 @@ def create_extension_from_yaml():
 
 # Largest release asset the service downloads and uploads (extension zips are a few MB at most).
 RELEASE_ASSET_MAX_BYTES = 100 * 1024 * 1024
-_VALID_RELEASE_ASSET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*\.zip$", re.IGNORECASE)
-_EXTENSION_VERSION_RE = re.compile(r"^(.+?)[-_]v?(\d+(?:\.\d+)*(?:[-+][0-9A-Za-z.]+)?)$")
+_VALID_RELEASE_ASSET_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.+-]*\.zip$", re.IGNORECASE)
+_EXTENSION_VERSION_RE = re.compile(r"^(.+?)[-_]v?(\d+(?:\.\d+)*(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$")
 
 
 def split_extension_version(base_name: str):

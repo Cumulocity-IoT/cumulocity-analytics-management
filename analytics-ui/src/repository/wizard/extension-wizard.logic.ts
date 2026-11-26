@@ -56,6 +56,10 @@ function stateFor(
       return { disabled: true, reason: gettext('Cannot be combined with individual files') };
     }
   } else {
+    if (item.type === 'dir' && !backendAvailable) {
+      // The browser-side build skips directories, so their content would be lost.
+      return { disabled: true, reason: gettext('Needs the backend service') };
+    }
     if (item.type === 'file' && !item.file.endsWith('.mon') && item.file !== DESCRIPTOR_YAML) {
       return { disabled: true, reason: gettext('Not a monitor file') };
     }
@@ -82,6 +86,30 @@ function stateFor(
     }
   }
   return { disabled: false };
+}
+
+/**
+ * Names of selected items that define a block another selected item defines too. The engine
+ * refuses such an extension, so the wizard blocks the build until the rows are unticked.
+ */
+export function findSelectionConflicts(
+  items: readonly RepositoryItem[],
+  selectedIds: ReadonlySet<string>
+): Set<string> {
+  const selected = items.filter(item => selectedIds.has(item.id));
+  const owners = new Map<string, string[]>();
+  for (const item of selected) {
+    for (const id of item.blockIds ?? item.sectionFiles ?? []) {
+      owners.set(id, [...(owners.get(id) ?? []), item.id]);
+    }
+  }
+  const conflicting = new Set<string>();
+  for (const ids of owners.values()) {
+    if (ids.length > 1) {
+      ids.forEach(id => conflicting.add(id));
+    }
+  }
+  return conflicting;
 }
 
 /** The `createExtensionFrom*` input for the chosen items (sections or plain files). */

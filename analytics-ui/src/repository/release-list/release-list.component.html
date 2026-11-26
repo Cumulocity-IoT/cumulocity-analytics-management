@@ -68,10 +68,7 @@
   [placement]="'left'"
   itemClass="navbar-form hidden-xs"
 >
-  <c8y-list-display-switch
-    (onListClassChange)="listClass = $event"
-    [listLength]="filteredBundles.length + filteredBlocks.length"
-  >
+  <c8y-list-display-switch [listLength]="filteredBundles.length + filteredBlocks.length">
   </c8y-list-display-switch>
 </c8y-action-bar-item>
 

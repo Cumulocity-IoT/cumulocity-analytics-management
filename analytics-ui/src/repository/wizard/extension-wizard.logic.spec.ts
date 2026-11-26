@@ -1,5 +1,10 @@
 import { RepositoryItem } from '../../shared';
-import { evaluateContent, isSection, toBuildInput } from './extension-wizard.logic';
+import {
+  evaluateContent,
+  findSelectionConflicts,
+  isSection,
+  toBuildInput
+} from './extension-wizard.logic';
 
 const item = (over: Partial<RepositoryItem>): RepositoryItem =>
   ({
@@ -33,6 +38,24 @@ describe('extension wizard content rules', () => {
     expect(state.get('A')).toEqual({ disabled: true, reason: 'Already installed' });
     expect(state.get('B')?.reason).toBe('Not a monitor file');
     expect(state.get('C')?.disabled).toBeFalse();
+  });
+
+  it('disables directories without the backend, as the browser build skips them', () => {
+    const dir = item({ name: 'D', type: 'dir', file: 'D' });
+    expect(evaluateContent([dir], none, false).get('D')).toEqual({
+      disabled: true,
+      reason: 'Needs the backend service'
+    });
+  });
+
+  it('reports selected items that define the same block', () => {
+    const a = item({ name: 'A', blockIds: ['pkg.Block'] });
+    const b = item({ name: 'B', blockIds: ['pkg.Block'] });
+    const c = item({ name: 'C', blockIds: ['pkg.Other'] });
+    expect(findSelectionConflicts([a, b, c], new Set(['A', 'B', 'C']))).toEqual(
+      new Set(['A', 'B'])
+    );
+    expect(findSelectionConflicts([a, b, c], new Set(['A', 'C'])).size).toBe(0);
   });
 
   it('keeps directories selectable', () => {

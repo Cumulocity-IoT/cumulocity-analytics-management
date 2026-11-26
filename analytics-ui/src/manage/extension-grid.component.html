@@ -87,10 +87,7 @@
   [placement]="'left'"
   itemClass="navbar-form hidden-xs"
 >
-  <c8y-list-display-switch
-    (onListClassChange)="listClass = $event"
-    [listLength]="(extensions$ | async)?.length || 0"
-  />
+  <c8y-list-display-switch [listLength]="(extensions$ | async)?.length || 0" />
 </c8y-action-bar-item>
 
 <!-- Content -->
