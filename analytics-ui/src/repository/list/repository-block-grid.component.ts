@@ -38,7 +38,8 @@ import {
   Column,
   ColumnDataType,
   CoreModule,
-  DataGridComponent
+  DataGridComponent,
+  Pagination
 } from '@c8y/ngx-components';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import {
@@ -93,6 +94,9 @@ export class RepositoryBlockGridComponent implements OnInit {
   // blocks lookup) is comparatively expensive, so it's opt-in: off by
   // default, and persisted as a tenant option (see updateMode()) — not
   // localStorage — the same way repository config/PAT is stored.
+  /** The data grid has no default pagination and fails to render rows without one. */
+  pagination: Pagination = { pageSize: 25, currentPage: 1 };
+
   loading: boolean = false;
   showDataGrid: boolean = true;
   showMonitorEditor: boolean = false;

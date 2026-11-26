@@ -192,6 +192,10 @@ describe('RepositoryBlockGridComponent', () => {
     });
   });
 
+  it('gives the data grid a pagination, which it cannot render rows without', () => {
+    expect(component.pagination).toEqual({ pageSize: 25, currentPage: 1 });
+  });
+
   it('offers a "View Source" action for files only', async () => {
     await create();
     const [view] = component.actionControls;

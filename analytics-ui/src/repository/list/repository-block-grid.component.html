@@ -182,6 +182,7 @@
         [title]="gridTitle | translate"
         [columns]="columnsSamples"
         [rows]="(repositoryItems$ | async) ?? []"
+        [pagination]="pagination"
         [selectable]="true"
         (itemsSelect)="onItemsSelect($event)"
         [actionControls]="actionControls"
