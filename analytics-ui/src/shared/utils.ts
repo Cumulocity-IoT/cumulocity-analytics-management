@@ -68,7 +68,28 @@ export function compareVersions(a?: string, b?: string): number | undefined {
   if (!y.pre) {
     return -1;
   }
-  return x.pre < y.pre ? -1 : 1;
+  return comparePrerelease(x.pre, y.pre);
+}
+
+/** Dot-separated identifiers: numbers compare numerically and rank below text; a prefix is older. */
+function comparePrerelease(a: string, b: string): number {
+  const x = a.split(/[.-]/);
+  const y = b.split(/[.-]/);
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const xNum = /^\d+$/.test(x[i]);
+    const yNum = /^\d+$/.test(y[i]);
+    if (xNum && yNum) {
+      const diff = Number(x[i]) - Number(y[i]);
+      if (diff !== 0) {
+        return diff;
+      }
+    } else if (xNum !== yNum) {
+      return xNum ? -1 : 1;
+    } else if (x[i] !== y[i]) {
+      return x[i] < y[i] ? -1 : 1;
+    }
+  }
+  return x.length - y.length;
 }
 
 export function getFileExtension(name: string): string {

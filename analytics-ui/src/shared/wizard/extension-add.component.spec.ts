@@ -476,6 +476,19 @@ describe('ExtensionAddComponent', () => {
       expect(analytics.cancelExtensionCreation).not.toHaveBeenCalled();
     });
 
+    it('dismisses the confirmation when the uploader is destroyed, and never uploads afterwards', async () => {
+      installed('2.0.0');
+      const pending = dropFile('update', 'E-1.0.0.zip');
+      await flush();
+      await message();
+      component.ngOnDestroy();
+      await pending;
+      expect(modalHide).toHaveBeenCalled();
+      confirm$.next(true);
+      await flush();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
     it('does not ask for a newer version or when a version is unknown', async () => {
       installed('1.0.0');
       await dropFile('update', 'E-1.1.0.zip');

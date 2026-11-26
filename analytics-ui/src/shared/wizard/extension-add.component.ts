@@ -102,7 +102,12 @@ export class ExtensionAddComponent implements OnDestroy {
     private bsModalService: BsModalService
   ) {}
 
+  /** The confirmation awaited by `onFile`, so a closing uploader can dismiss it. */
+  private pendingConfirmation?: { hide: () => void; settle: (confirmed: boolean) => void };
+
   ngOnDestroy(): void {
+    // Dismiss an open confirmation as declined, so accepting it cannot resume an upload.
+    this.pendingConfirmation?.settle(false);
     this.destroy$.next();
     this.destroy$.complete();
     this.cleanup();
@@ -185,7 +190,7 @@ export class ExtensionAddComponent implements OnDestroy {
         this.state.extension = null;
         this.state.file = null;
         this.dropAreaComponent?.onDelete();
-      } else {
+      } else if (!this.destroy$.closed) {
         await this.performUpload(this.mode);
       }
     } catch (error) {
@@ -448,12 +453,24 @@ export class ExtensionAddComponent implements OnDestroy {
     const ref = this.bsModalService.show(ConfirmationModalComponent, {
       initialState: { title, message, labels: { ok, cancel: 'Cancel' } }
     });
-    return new Promise(resolve =>
-      ref.content!.closeSubject.pipe(take(1)).subscribe((confirmed: boolean) => {
+    return new Promise<boolean>(resolve => {
+      let settled = false;
+      const settle = (confirmed: boolean) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        this.pendingConfirmation = undefined;
         ref.hide();
-        resolve(!!confirmed);
-      })
-    );
+        resolve(confirmed);
+      };
+      this.pendingConfirmation = { hide: () => ref.hide(), settle };
+      ref
+        .content!.closeSubject.pipe(take(1))
+        .subscribe((confirmed: boolean) => settle(!!confirmed));
+      // Backdrop or Escape may hide the modal without a button; that counts as declined.
+      ref.onHidden?.pipe(take(1)).subscribe(() => settle(false));
+    });
   }
 
   private handleUpdateRequired(warnings: string[]): void {

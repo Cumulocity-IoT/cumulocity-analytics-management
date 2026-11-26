@@ -62,6 +62,14 @@ describe('utils', () => {
       expect(compareVersions('1.0.0+b1', '1.0.0')).toBe(0);
       expect(compareVersions(undefined, '1.0.0')).toBeUndefined();
     });
+
+    it('compares prerelease identifiers one by one', () => {
+      expect(compareVersions('1.0.0-rc.2', '1.0.0-rc.10')! < 0).toBeTrue();
+      expect(compareVersions('1.0.0-rc.10', '1.0.0-rc.2')! > 0).toBeTrue();
+      expect(compareVersions('1.0.0-rc', '1.0.0-rc.1')! < 0).toBeTrue();
+      expect(compareVersions('1.0.0-1', '1.0.0-alpha')! < 0).toBeTrue();
+      expect(compareVersions('1.0.0-alpha', '1.0.0-beta')! < 0).toBeTrue();
+    });
   });
 
   describe('removeZipSuffix', () => {
