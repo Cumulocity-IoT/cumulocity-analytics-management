@@ -102,6 +102,16 @@ describe('RepositoryConfigService', () => {
       );
     });
 
+    it('returns repositories sorted by their stored order, unordered ones last', async () => {
+      stored({
+        c: { name: 'C', url: 'https://github.com/o/c' },
+        b: { name: 'B', url: 'https://github.com/o/b', order: 1 },
+        a: { name: 'A', url: 'https://github.com/o/a', order: 0 }
+      });
+      const repos = await service.fetchRepositories();
+      expect(repos.map(r => r.id)).toEqual(['a', 'b', 'c']);
+    });
+
     it('wraps network failures in a RepositoryError', async () => {
       fetchClient.fetch.and.rejectWith(new TypeError('offline'));
       const error = await service.fetchRepositories().catch(e => e);
@@ -121,8 +131,21 @@ describe('RepositoryConfigService', () => {
       expect(createdValue()).toEqual({
         name: 'Repo',
         url: 'https://github.com/o/r',
+        order: 0,
         accessToken: 'new'
       });
+    });
+
+    it('stores the list position of each repository as its order', async () => {
+      stored({});
+      await service.saveRepositories([repo({ id: 'a' }), repo({ id: 'b' })]);
+      const orders = options.create.calls
+        .allArgs()
+        .map(([o]: any) => [o.key, JSON.parse(o.value).order]);
+      expect(orders).toEqual([
+        ['a', 0],
+        ['b', 1]
+      ]);
     });
 
     it('keeps the stored token when the masked placeholder is sent', async () => {

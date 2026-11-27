@@ -13,6 +13,7 @@ import {
   output
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import {
   ReactiveFormsModule,
   AbstractControl,
@@ -24,6 +25,7 @@ import {
 import {
   AlertService,
   CoreModule,
+  ListGroupModule,
   SplitViewComponent,
   SplitViewDetailsComponent,
   SplitViewFooterComponent,
@@ -44,8 +46,10 @@ import { PopoverModule } from 'ngx-bootstrap/popover';
   encapsulation: ViewEncapsulation.None,
   imports: [
     CommonModule,
+    DragDropModule,
     ReactiveFormsModule,
     CoreModule,
+    ListGroupModule,
     PopoverModule,
     ConfirmationModalComponent,
     SplitViewComponent,
@@ -202,6 +206,39 @@ export class RepositoriesDrawerComponent implements OnInit, OnDestroy, DoCheck {
       this.setIndex(0);
     } else {
       this.createCustomRepository();
+    }
+  }
+
+  /** Dragging is only meaningful on the complete, unfiltered list. */
+  get isReorderEnabled(): boolean {
+    return !this.searchTerm?.trim() && !this.isAddingNew && !this.isSaving;
+  }
+
+  async onRepositoryDrop(event: CdkDragDrop<Repository[]>): Promise<void> {
+    if (!this.isReorderEnabled || event.previousIndex === event.currentIndex) {
+      return;
+    }
+    const selectedId = this.displayList[this.selectedRepositoryIndex]?.id;
+    const previous = this.repositoriesList;
+    const reordered = [...this.repositoriesList];
+    moveItemInArray(reordered, event.previousIndex, event.currentIndex);
+
+    // Show the new order right away; the service state replaces it once saved.
+    this.repositoriesList = reordered;
+    this.updateDisplayList();
+    this.selectedRepositoryIndex = this.displayList.findIndex(r => r.id === selectedId);
+
+    this.isSaving = true;
+    try {
+      await this.repositoryService.reorderRepositories(reordered.map(r => r.id));
+    } catch (error) {
+      console.error('Failed to reorder repositories:', error);
+      // Nothing was saved: show the order that is actually stored.
+      this.repositoriesList = previous;
+      this.updateDisplayList();
+      this.selectedRepositoryIndex = this.displayList.findIndex(r => r.id === selectedId);
+    } finally {
+      this.isSaving = false;
     }
   }
 

@@ -246,6 +246,34 @@ export class RepositoryService implements OnDestroy {
     });
   }
 
+  /** Persists a new repository order; `orderedIds` must contain every existing repository id. */
+  reorderRepositories(orderedIds: string[]): Promise<void> {
+    return this.enqueueMutation(async () => {
+      const state = this.state$.value;
+      const byId = new Map(state.repositories.map(r => [r.id, r]));
+      const reordered = orderedIds
+        .map(id => byId.get(id))
+        .filter((r): r is Repository => r !== undefined);
+      if (reordered.length !== state.repositories.length) {
+        throw new RepositoryError('Repository not found', gettext('Repository not found.'));
+      }
+
+      try {
+        await this.repositoryConfigService.saveRepositories(reordered);
+        this.updateState({ repositories: reordered });
+        this.invalidateCache();
+        this.alertService.success(gettext('Repository order saved'));
+      } catch (error) {
+        throw this.handleError(
+          error,
+          'Failed to reorder repositories',
+          true,
+          gettext('Failed to reorder repositories. Please try again.')
+        );
+      }
+    });
+  }
+
   /**
    * Tests a repository. Also allows testing a draft (unsaved) repository
    * before persisting it. Dispatches to the backend or a direct GitHub call

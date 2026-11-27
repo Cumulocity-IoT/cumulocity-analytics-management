@@ -148,22 +148,35 @@
             }
 
             @if (filteredDisplayList.length) {
-              <div class="c8y-nav-stacked">
-                @for (repository of filteredDisplayList; track repository; let i = $index) {
-                  <button
-                    class="c8y-stacked-item"
-                    [class.active]="displayList.indexOf(repository) === selectedRepositoryIndex"
+              <c8y-list-group
+                role="list"
+                cdkDropList
+                [cdkDropListDisabled]="!isReorderEnabled"
+                (cdkDropListDropped)="onRepositoryDrop($event)"
+              >
+                @for (repository of filteredDisplayList; track repository.id) {
+                  <c8y-li
+                    role="listitem"
+                    class="a17t-repo-item"
+                    cdkDrag
+                    [cdkDragDisabled]="!isReorderEnabled"
+                    [highlighted]="displayList.indexOf(repository) === selectedRepositoryIndex"
                     [class.is-temporary]="
                       isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
                     "
-                    (click)="onEditRepository(repository)"
                     [title]="repository.name"
+                    (click)="onEditRepository(repository)"
                   >
-                    <i
-                      c8yIcon="plugin"
-                      class="m-r-4"
-                    ></i>
-                    <span class="m-r-8 text-truncate">{{ repository.name }}</span>
+                    @if (isReorderEnabled) {
+                      <c8y-li-drag-handle
+                        [title]="'Drag to reorder' | translate"
+                        cdkDragHandle
+                      >
+                        <i c8yIcon="drag-reorder"></i>
+                      </c8y-li-drag-handle>
+                    }
+                    <c8y-li-icon icon="plugin"></c8y-li-icon>
+                    <span class="text-truncate">{{ repository.name }}</span>
                     @if (
                       isAddingNew && tempNewRepository && repository.id === tempNewRepository.id
                     ) {
@@ -171,9 +184,9 @@
                         {{ 'Not saved' | translate }}
                       </span>
                     }
-                  </button>
+                  </c8y-li>
                 }
-              </div>
+              </c8y-list-group>
             }
           </div>
         </c8y-sv-list>

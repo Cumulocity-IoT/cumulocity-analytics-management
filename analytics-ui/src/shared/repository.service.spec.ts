@@ -179,6 +179,20 @@ describe('RepositoryService', () => {
       expect(alerts.danger).toHaveBeenCalled();
     });
 
+    it('reorderRepositories persists the new order and confirms it', async () => {
+      await service.reorderRepositories(['b', 'a']);
+      expect((await current()).map(r => r.id)).toEqual(['b', 'a']);
+      expect(config.saveRepositories.calls.mostRecent().args[0].map(r => r.id)).toEqual(['b', 'a']);
+      expect(alerts.success).toHaveBeenCalled();
+    });
+
+    it('reorderRepositories alerts and keeps the old order when persisting fails', async () => {
+      config.saveRepositories.and.rejectWith(new Error('x'));
+      await expectAsync(service.reorderRepositories(['b', 'a'])).toBeRejected();
+      expect((await current()).map(r => r.id)).toEqual(['a', 'b']);
+      expect(alerts.danger).toHaveBeenCalled();
+    });
+
     it('serializes concurrent mutations so none is lost', async () => {
       let release!: () => void;
       config.saveRepositories.and.returnValues(

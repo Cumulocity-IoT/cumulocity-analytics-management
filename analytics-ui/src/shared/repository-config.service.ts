@@ -38,9 +38,13 @@ export class RepositoryConfigService {
   async fetchRepositories(): Promise<Repository[]> {
     try {
       const options = await this.listRepositoryOptions();
-      return options
-        .map(option => this.parseRepositoryOption(option))
-        .filter((repo): repo is Repository => repo !== null);
+      const parsed = options
+        .map(option => ({ repo: this.parseRepositoryOption(option), order: this.readOrder(option) }))
+        .filter((entry): entry is { repo: Repository; order: number } => entry.repo !== null);
+      // The options endpoint returns an unordered map, so the user-defined order is stored in each
+      // option. Entries without one (saved before reordering existed) go last; sort is stable.
+      parsed.sort((a, b) => a.order - b.order);
+      return parsed.map(entry => entry.repo);
     } catch (error) {
       if (error instanceof RepositoryError) {
         throw error;
@@ -65,8 +69,8 @@ export class RepositoryConfigService {
       const existingOptions = await this.listRepositoryOptions();
       const existingById = new Map(existingOptions.map(option => [option.key, option]));
 
-      for (const repo of repositories) {
-        await this.saveRepositoryOption(repo, existingById.get(repo.id));
+      for (const [index, repo] of repositories.entries()) {
+        await this.saveRepositoryOption(repo, existingById.get(repo.id), index);
         existingById.delete(repo.id);
       }
 
@@ -263,6 +267,16 @@ export class RepositoryConfigService {
     }
   }
 
+  /** The stored position of a repository option; options without one sort last. */
+  private readOrder(option: ITenantOption): number {
+    try {
+      const order = JSON.parse(option.value || '{}').order;
+      return typeof order === 'number' ? order : Number.MAX_SAFE_INTEGER;
+    } catch {
+      return Number.MAX_SAFE_INTEGER;
+    }
+  }
+
   /**
    * Parses a raw tenant option into a `Repository`, masking a non-empty
    * access token behind `DUMMY_ACCESS_TOKEN` — mirrors the microservice's
@@ -310,7 +324,8 @@ export class RepositoryConfigService {
    */
   private async saveRepositoryOption(
     repo: Repository,
-    existingOption?: ITenantOption
+    existingOption: ITenantOption | undefined,
+    order: number
   ): Promise<void> {
     let existingData: Partial<Repository> = {};
     if (existingOption) {
@@ -336,7 +351,8 @@ export class RepositoryConfigService {
 
     const value: Record<string, unknown> = {
       name: repo.name,
-      url: repo.url
+      url: repo.url,
+      order
     };
     if (accessToken) {
       value['accessToken'] = accessToken;
