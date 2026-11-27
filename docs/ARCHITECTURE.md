@@ -55,16 +55,17 @@ Migrate all components to standalone Angular 20 components and remove the NgModu
 
 ## ADR-002: Error handling with retry logic via HTTP interceptors
 
-**Status:** ACCEPTED - NOT ENABLED  
+**Status:** SUPERSEDED - code removed  
 **Date:** 2026-05-28  
 **Authors:** Development Team
 
-> **Implementation status (2026-10-14): not enabled.** `ErrorInterceptor`, `ErrorHandlerService` and `HttpModule`
-> exist in `src/shared/http/` and are unit tested, but nothing imports `HttpModule`, so no request goes through them.
+> **Implementation status (2026-11-25): removed.** The interceptor code was deleted (commit `b6f0618`), so the
+> decision below was never put into effect. Earlier note (2026-10-14), kept for the reasoning: **not enabled.** `ErrorInterceptor`, `ErrorHandlerService` and `HttpModule`
+> existed in `src/shared/http/` and were unit tested, but nothing imports `HttpModule`, so no request goes through them.
 > Application code uses the c8y `FetchClient` and native `fetch()`, not Angular `HttpClient`, so registering the
 > interceptor would affect almost no calls. Retrying every method would also be unsafe for non-idempotent
 > `POST /extension/*` calls (build + upload). The listed "Features Implemented" exist in the code only.
-> Open decision: enable with GET-only retries (and an opt-out for alerts), or remove the code. Error handling in
+> The open decision (enable with GET-only retries, or remove the code) was settled by removal. Error handling in
 > practice is per area (`CepError`, `GitHubReleaseError`, `RepositoryError`, grid-level transient retry).
 
 ### Context
@@ -79,7 +80,7 @@ Implement a centralized HTTP interceptor with automatic retry logic and standard
 - **User-friendly:** Standardized error messages instead of technical responses
 - **Observable:** Request tracing with unique IDs for debugging
 
-### Features implemented in the code (not enabled)
+### Features that existed in the removed code
 - Automatic retry with exponential backoff
 - User-friendly error messages
 - Request/response logging
@@ -320,7 +321,7 @@ Implement multi-layered testing approach with unit, integration, and E2E tests.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | 001 | Standalone components | Implemented (plugin NgModule kept) | 2026-05-28 |
-| 002 | HTTP error interceptor | **Not enabled** | 2026-05-28 |
+| 002 | HTTP error interceptor | **Superseded (code removed)** | 2026-05-28 |
 | 003 | Structured logging | Implemented (partially) | 2026-05-28 |
 | 004 | Pydantic validation | Planned | 2026-05-28 |
 | 005 | Health checks | Partial (static `/health`) | 2026-05-28 |

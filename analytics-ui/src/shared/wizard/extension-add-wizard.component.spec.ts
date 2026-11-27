@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { IManagedObject } from '@c8y/client';
 import { WizardComponent } from '@c8y/ngx-components';
-import { AnalyticsService } from '../analytics.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ExtensionAddWizardComponent } from './extension-add-wizard.component';
 
 describe('ExtensionAddWizardComponent', () => {

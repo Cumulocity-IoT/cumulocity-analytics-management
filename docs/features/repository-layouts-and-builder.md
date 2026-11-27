@@ -50,7 +50,7 @@ The wizard disables the rows that are not available and says why.
 
 ### Detecting the layout
 
-[repository-items.service.ts](../../analytics-ui/src/shared/repository-items.service.ts) does it in two steps, after the content list of the repository path was fetched:
+[repository-items.service.ts](../../analytics-ui/src/shared/repository/repository-items.service.ts) does it in two steps, after the content list of the repository path was fetched:
 
 - `filterRepositoryItems` and `analyzeRepositoryItems` check whether a non-directory item named `extensions.yaml` exists. If so, only that item is kept and expanded into one row per section; otherwise the `.mon` files and the non-hidden directories are kept.
 - `getSectionsFromExtensionYAML` reads the file, `parseYamlSections` parses it with `js-yaml`. It accepts a section as a plain list or as a mapping with a `files` list. A parse error shows "Failed to parse extensions.yaml. Invalid format." A read error results in no sections.
@@ -61,7 +61,7 @@ The wizard disables the rows that are not available and says why.
 
 ### Choosing the builder
 
-[extension-builder.service.ts](../../analytics-ui/src/shared/extension-builder.service.ts) is the single entry point. It asks `RepositoryModeService.isBackendMode()`, which is `AnalyticsService.isBackendServiceAvailable()` (deployed and answering a liveness probe, cached per session).
+[extension-builder.service.ts](../../analytics-ui/src/shared/extension/extension-builder.service.ts) is the single entry point. It asks `RepositoryModeService.isBackendMode()`, which is `AnalyticsService.isBackendServiceAvailable()` (deployed and answering a liveness probe, cached per session).
 
 | Method | Backend mode | Browser mode |
 |---|---|---|
@@ -77,7 +77,7 @@ The wizard only uses the first two, and always with `upload = true`, `deploy = f
 
 1. Every chosen item that is not a directory is read from GitHub (raw content, with the resolved token) and put at `files/<file name>`. Directories are skipped, which is why the wizard disables them without the backend.
 2. Excluded: file names ending in `.log`, `.classpath`, `.dependencies`, `.project`, `.deploy`, `.launch`, `.out`, `.o`, and anything under `.git/` or `.github/`. This follows the documented exclude list of the block SDK.
-3. For each `.mon` file, `parseApamaBlockMetadata` ([apama-block-metadata.ts](../../analytics-ui/src/shared/apama-block-metadata.ts)) reads the `package` line and the doc comments and annotations (`@$blockCategory`, `@$inputName`, `@param $input_<id>`, and so on) and produces one metadata entry per block. A block without a doc comment still gets a minimal entry (name = block name, category Utilities, empty description). A file without a package uses the bare name as the block id.
+3. For each `.mon` file, `parseApamaBlockMetadata` ([apama-block-metadata.ts](../../analytics-ui/src/shared/model/apama-block-metadata.ts)) reads the `package` line and the doc comments and annotations (`@$blockCategory`, `@$inputName`, `@param $input_<id>`, and so on) and produces one metadata entry per block. A block without a doc comment still gets a minimal entry (name = block name, category Utilities, empty description). A file without a package uses the bare name as the block id.
 4. Duplicate block ids across files are reduced to one (the engine rejects a duplicate id).
 5. If any block was found, two files are added: `files/events/<name>_metadata.evt` (a `BlockMetadata` event with all blocks) and `files/events/<name>_messages.evt` (the `BlockMessages` localization strings).
 6. The managed object gets `pas_extension` and `name` set to the extension name and a minimal `build_information` with `build_type: 'external'`, the monitors and an empty file list.

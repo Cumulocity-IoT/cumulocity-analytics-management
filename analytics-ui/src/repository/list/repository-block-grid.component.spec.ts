@@ -175,7 +175,8 @@ describe('RepositoryBlockGridComponent', () => {
     });
   });
 
-  it('gives the data grid a pagination, which it cannot render rows without', () => {
+  it('gives the data grid a pagination, which it cannot render rows without', async () => {
+    await create();
     expect(component.pagination).toEqual({ pageSize: 25, currentPage: 1 });
   });
 

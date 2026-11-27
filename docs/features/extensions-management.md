@@ -42,15 +42,15 @@ An extension is a zip file stored in the Cumulocity inventory. It becomes active
 | `ExtensionCardComponent` | [extension-card.component.ts](../../analytics-ui/src/manage/extension-card.component.ts) | One card and its actions: details, rebuild, download, delete, update |
 | `ExtensionDetailsComponent` | [extension-details.component.ts](../../analytics-ui/src/manage/extension-details.component.ts) | Split view with the sections `blocks`, `files`, `build` |
 | Resolvers | [resolvers.ts](../../analytics-ui/src/manage/resolvers.ts) | `backendResolver` (is the backend usable), `extensionResolver` (engine's view of one extension) |
-| Routes and labels | [analytics.constants.ts](../../analytics-ui/src/shared/analytics.constants.ts), [analytics-tab.factory.ts](../../analytics-ui/src/shared/analytics-tab.factory.ts) | `ROUTES.manage`, `PAGE_LABELS`, tab priorities 960 / 940 / 920 |
+| Routes and labels | [analytics.constants.ts](../../analytics-ui/src/shared/util/analytics.constants.ts), [analytics-tab.factory.ts](../../analytics-ui/src/shared/analytics/analytics-tab.factory.ts) | `ROUTES.manage`, `PAGE_LABELS`, tab priorities 960 / 940 / 920 |
 
 The grid is the route `manage`, the details page is `manage/details/:name`. The card navigates with the extension in the router state, and the details page falls back to the browser history state when the state is gone (reload of the page).
 
 ### Loading the list
 
-`getEnrichedExtensions()` in [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension-enrichment.service.ts) combines three sources in parallel:
+`getEnrichedExtensions()` in [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension/extension-enrichment.service.ts) combines three sources in parallel:
 
-1. the inventory list (`pas_extension` fragment, pages of 100, until a short page), from [extension-inventory.service.ts](../../analytics-ui/src/shared/extension-inventory.service.ts);
+1. the inventory list (`pas_extension` fragment, pages of 100, until a short page), from [extension-inventory.service.ts](../../analytics-ui/src/shared/extension/extension-inventory.service.ts);
 2. the engine's `block-metadata.json` (the registered extensions);
 3. the engine's diagnostics `extensionNames` (zip extensions with their contents).
 
@@ -81,7 +81,7 @@ The engine still lists extensions deployed before the loop in safe mode, so enri
 
 ### Tests
 
-[extension-grid.component.spec.ts](../../analytics-ui/src/manage/extension-grid.component.spec.ts), [extension-card.component.spec.ts](../../analytics-ui/src/manage/extension-card.component.spec.ts), [extension-details.component.spec.ts](../../analytics-ui/src/manage/extension-details.component.spec.ts), [extension-enrichment.service.spec.ts](../../analytics-ui/src/shared/extension-enrichment.service.spec.ts).
+[extension-grid.component.spec.ts](../../analytics-ui/src/manage/extension-grid.component.spec.ts), [extension-card.component.spec.ts](../../analytics-ui/src/manage/extension-card.component.spec.ts), [extension-details.component.spec.ts](../../analytics-ui/src/manage/extension-details.component.spec.ts), [extension-enrichment.service.spec.ts](../../analytics-ui/src/shared/extension/extension-enrichment.service.spec.ts).
 
 ### Limitations and open questions
 

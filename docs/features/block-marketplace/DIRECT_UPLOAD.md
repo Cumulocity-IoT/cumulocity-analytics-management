@@ -6,7 +6,7 @@ What exists in the repository:
 
 - `repository/epl/FetchExtensionListener.mon`, an EPL App. It looks up or creates the proxy managed object, listens for `c8y_FetchExtension` events, emits `c8y_FetchExtensionStatus` events (`RECEIVED`, `DOWNLOADING`, `UPLOADING`, `SUCCEEDED`, `FAILED`), fetches the asset, and uploads it with `FormRequest` and `CumulocityRequestInterface`.
 - `repository/connectivity-bundle/`, an Analytics Builder extension. It no longer defines a connectivity chain (`FetchExtension.yaml` is empty). The fetch runs in the Python EPL plug-in `plugins/GitHubFetchPlugin.py`, because the `stringCodec` of the earlier `GitHubFetchChain` cut a binary response at the first null byte, which every ZIP file contains. The plug-in is marked as a temporary diagnostic version.
-- `analytics-ui/src/shared/fetch-extension.service.ts` and the "Send via event (experimental)" button in the release wizard.
+- `analytics-ui/src/shared/extension/fetch-extension.service.ts` and the "Send via event (experimental)" button in the release wizard.
 
 What the records show: the proxy bootstrap, the event, and the `RECEIVED` status were verified against a live `apama-ctrl`. The earlier chain-based fetch and the `FormRequest` upload each ran against a live tenant. The current Python plug-in version has no recorded end-to-end run. The comment in `fetch-extension.service.ts` that says the listener only logs events is outdated.
 
@@ -213,7 +213,7 @@ assumed (Q2) — both explained below. `source` is no longer an open question �
     received event for now — see "Spike scope" below and R1/R2, still open for the actual
     fetch/upload.
   - **`analytics-ui` side** (implemented and verified — see "Verified in practice" below):
-    `analytics-ui/src/shared/fetch-extension.service.ts`'s `FetchExtensionService` resolves the
+    `analytics-ui/src/shared/extension/fetch-extension.service.ts`'s `FetchExtensionService` resolves the
     same managed object via `IdentityService.detail({type: 'c8y_Serial', externalId:
     'c8y_FetchUploadProxy'})` and uses its `managedObject.id` as the event's `source`; on a 404
     (the EPL app hasn't run yet) it fails with a clear message rather than creating the managed

@@ -61,10 +61,10 @@ In [c8y_agent.py](../../analytics-service/src/c8y_agent.py) both methods raise `
 
 | Class | Responsibility |
 |---|---|
-| [cep-status.service.ts](../../analytics-ui/src/shared/cep-status.service.ts) | Caches the operation object id and the status, owns the realtime subscription, runs the restart, answers whether the backend is available |
-| [cep-restart.service.ts](../../analytics-ui/src/shared/cep-restart.service.ts) | The restart lifecycle state, the single toast, the restart window |
-| [cep-error.ts](../../analytics-ui/src/shared/cep-error.ts) | `CepError` with the HTTP status, `isTransientGatewayError`, `fetchCepJSON` |
-| [analytics.service.ts](../../analytics-ui/src/shared/analytics.service.ts) | Facade. On a restart ending, clears all caches and asks views to reload |
+| [cep-status.service.ts](../../analytics-ui/src/shared/cep/cep-status.service.ts) | Caches the operation object id and the status, owns the realtime subscription, runs the restart, answers whether the backend is available |
+| [cep-restart.service.ts](../../analytics-ui/src/shared/cep/cep-restart.service.ts) | The restart lifecycle state, the single toast, the restart window |
+| [cep-error.ts](../../analytics-ui/src/shared/cep/cep-error.ts) | `CepError` with the HTTP status, `isTransientGatewayError`, `fetchCepJSON` |
+| [analytics.service.ts](../../analytics-ui/src/shared/analytics/analytics.service.ts) | Facade. On a restart ending, clears all caches and asks views to reload |
 | [extension-grid.component.ts](../../analytics-ui/src/manage/extension-grid.component.ts) | Derives `cepStatus$` and `isSafeMode$`, lists extensions only when the status is `up` |
 
 **Where the data comes from.**

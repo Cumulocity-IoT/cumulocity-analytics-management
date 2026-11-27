@@ -60,9 +60,9 @@ See also: [repository-configuration.md](repository-configuration.md), [add-exten
 
 | Piece | Does |
 |---|---|
-| [repository-mode.service.ts](../../analytics-ui/src/shared/repository-mode.service.ts) | `isBackendMode()`. Delegates to the analytics service. The repository config, GitHub content, backend, items and builder services call it and branch. None of them probes. |
-| [cep-status.service.ts](../../analytics-ui/src/shared/cep-status.service.ts) | `isBackendServiceAvailable()` returns `isBackendServiceDeployed()`. Caches the probe as a promise. `recheckBackendServiceDeployed()` drops the cache and the status caches. |
-| [analytics.service.ts](../../analytics-ui/src/shared/analytics.service.ts) | Facade for the two methods above |
+| [repository-mode.service.ts](../../analytics-ui/src/shared/repository/repository-mode.service.ts) | `isBackendMode()`. Delegates to the analytics service. The repository config, GitHub content, backend, items and builder services call it and branch. None of them probes. |
+| [cep-status.service.ts](../../analytics-ui/src/shared/cep/cep-status.service.ts) | `isBackendServiceAvailable()` returns `isBackendServiceDeployed()`. Caches the probe as a promise. `recheckBackendServiceDeployed()` drops the cache and the status caches. |
+| [analytics.service.ts](../../analytics-ui/src/shared/analytics/analytics.service.ts) | Facade for the two methods above |
 
 **The probe** (`checkBackendServiceAvailable`):
 
@@ -76,8 +76,8 @@ Consumers of the decision:
 
 | Where | Effect |
 |---|---|
-| [repository.service.ts](../../analytics-ui/src/shared/repository.service.ts), [repository-items.service.ts](../../analytics-ui/src/shared/repository-items.service.ts) | Test repository, list content and read file content go to [repository-backend.service.ts](../../analytics-ui/src/shared/repository-backend.service.ts) or [github-content.service.ts](../../analytics-ui/src/shared/github-content.service.ts) |
-| [extension-builder.service.ts](../../analytics-ui/src/shared/extension-builder.service.ts) | List builds go to the service or to `createExtensionFromListDirect`. Sections and path builds answer 501 in the browser. |
+| [repository.service.ts](../../analytics-ui/src/shared/repository/repository.service.ts), [repository-items.service.ts](../../analytics-ui/src/shared/repository/repository-items.service.ts) | Test repository, list content and read file content go to [repository-backend.service.ts](../../analytics-ui/src/shared/repository/repository-backend.service.ts) or [github-content.service.ts](../../analytics-ui/src/shared/repository/github-content.service.ts) |
+| [extension-builder.service.ts](../../analytics-ui/src/shared/extension/extension-builder.service.ts) | List builds go to the service or to `createExtensionFromListDirect`. Sections and path builds answer 501 in the browser. |
 | [extension-wizard.logic.ts](../../analytics-ui/src/repository/wizard/extension-wizard.logic.ts) | Disables section and folder rows with "Needs the backend service" |
 | [extension-wizard.component.ts](../../analytics-ui/src/repository/wizard/extension-wizard.component.ts) | Chooses the release step list |
 | [extension-grid.component.ts](../../analytics-ui/src/manage/extension-grid.component.ts) via `backendResolver` | Passes the flag to extension cards, which disable "Rebuild" without it |
@@ -88,7 +88,7 @@ Consumers of the decision:
 - **Content.** The Contents API is called from the page with the resolved token. File bodies are fetched from `raw.githubusercontent.com` without custom headers, because any non-safelisted header forces a preflight request that the static CDN does not answer.
 - **Build.** `createExtensionFromListDirect` fetches each selected file, zips it under `files/` with the SDK exclude list, adds generated metadata files, and uploads through the normal upload path. The stored build information has `build_type: "external"` and only `.mon` files as monitors. Such an extension cannot be rebuilt, because rebuild is only enabled for the repository, list and yaml build types.
 - **Releases.** Listing releases is CORS-open. Downloading asset bytes is not, so the wizard starts a plain browser navigation instead. See [release-deployment.md](release-deployment.md).
-- **Tenant options.** [repository-config.service.ts](../../analytics-ui/src/shared/repository-config.service.ts) lists `GET tenant/options/analytics-management.repository` (the category-scoped call, because the general listing ignores a category filter and would return every option of the tenant), and saves one option per repository. The global token is stored in `analytics-management.settings`, key `globalAccessToken`. Saving needs `ROLE_OPTION_MANAGEMENT_ADMIN`. This path is used in both modes, so the service's own repository endpoints are not used by the UI for configuration.
+- **Tenant options.** [repository-config.service.ts](../../analytics-ui/src/shared/repository/repository-config.service.ts) lists `GET tenant/options/analytics-management.repository` (the category-scoped call, because the general listing ignores a category filter and would return every option of the tenant), and saves one option per repository. The global token is stored in `analytics-management.settings`, key `globalAccessToken`. Saving needs `ROLE_OPTION_MANAGEMENT_ADMIN`. This path is used in both modes, so the service's own repository endpoints are not used by the UI for configuration.
 - **Token placeholder.** Loaded repositories carry `_DUMMY_ACCESS_CODE_` instead of the token. The real token is read separately when a GitHub call needs it. A saved placeholder keeps the stored token.
 
 ### Traps

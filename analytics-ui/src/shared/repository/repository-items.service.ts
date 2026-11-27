@@ -1,0 +1,407 @@
+import { MessageService } from '../analytics/message.service';
+import { Injectable, inject } from '@angular/core';
+import { AlertService } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
+import * as jsyaml from 'js-yaml';
+import { Observable, forkJoin, from, of } from 'rxjs';
+import { catchError, map, shareReplay, switchMap } from 'rxjs/operators';
+import { CepBlock, DESCRIPTOR_YAML, Repository, RepositoryItem } from '../model/analytics.model';
+import { GitHubContentService } from './github-content.service';
+import { RepositoryBackendService } from './repository-backend.service';
+import { RepositoryError } from './repository-error';
+import { RepositoryModeService } from './repository-mode.service';
+import { extractBlockFqns, getFileExtension, removeFileExtension, createShortId } from '../util/utils';
+
+/**
+ * Fetches, enriches, and caches a repository's items (`.mon` files,
+ * directories, `extensions.yaml` sections) — dispatching each content
+ * operation to the backend or direct-to-GitHub per `RepositoryModeService`.
+ */
+@Injectable({
+  providedIn: 'root'
+})
+export class RepositoryItemsService {
+  private readonly messages = inject(MessageService);
+  private readonly blockCache = new Map<string, Observable<RepositoryItem[]>>();
+  private readonly fqnCache = new Map<string, Observable<string[]>>();
+
+  constructor(
+    private readonly repositoryModeService: RepositoryModeService,
+    private readonly gitHubContentService: GitHubContentService,
+    private readonly repositoryBackendService: RepositoryBackendService,
+    private readonly alertService: AlertService
+  ) {}
+
+  invalidateCache(): void {
+    this.blockCache.clear();
+    this.fqnCache.clear();
+  }
+
+  /**
+   * Items for every given repository, combined and given "installed"
+   * status against the currently deployed blocks.
+   */
+  getItemsForRepositories(
+    repos: Repository[],
+    deployedBlocks: CepBlock[],
+    hideInstalled: boolean,
+    deployedFiles: ReadonlySet<string> = new Set()
+  ): Observable<RepositoryItem[]> {
+    // `analyzeRepositoryItems` builds the extensions.yaml sections after this
+    // listing and needs the same deployment state to mark them installed.
+    this.deployedFiles = deployedFiles;
+    this.hideInstalled = hideInstalled;
+
+    if (!repos.length) {
+      return of([]);
+    }
+
+    return forkJoin(repos.map(repo => this.getCachedRepositoryItems(repo))).pipe(
+      map(blocks =>
+        this.addInstallationStatus(blocks.flat(), deployedBlocks, hideInstalled, deployedFiles)
+      ),
+      catchError(error => {
+        this.handleError(
+          error,
+          'Failed to process repository items',
+          gettext('Failed to load repository items. Please try again.')
+        );
+        return of([]);
+      })
+    );
+  }
+
+  private deployedFiles: ReadonlySet<string> = new Set();
+  private hideInstalled = false;
+
+  filterRepositoryItems(blocks: RepositoryItem[]): RepositoryItem[] {
+    const hasExtensionsYaml = blocks.some(
+      block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
+    );
+
+    if (hasExtensionsYaml) {
+      return blocks.filter(
+        block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
+      );
+    }
+
+    return blocks.filter(
+      block =>
+        (block.type === 'dir' && !block.file.startsWith('.')) ||
+        block.file?.toLowerCase().endsWith('.mon')
+    );
+  }
+
+  analyzeRepositoryItems(items: RepositoryItem[]): Observable<RepositoryItem[]> {
+    const yamlItems = items.filter(
+      block => block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML
+    );
+
+    if (yamlItems.length > 0) {
+      const [yamlItem] = yamlItems;
+      return this.getSectionsFromExtensionYAML(yamlItem).pipe(
+        map(sections => this.createYamlSectionItems(sections, yamlItem))
+      );
+    }
+
+    return of(
+      items.filter(
+        item =>
+          (item.type === 'dir' && !item.file.startsWith('.')) ||
+          item.file?.toLowerCase().endsWith('.mon')
+      )
+    );
+  }
+
+  /**
+   * Callers decide whether a failure here is user-facing: this never shows
+   * an alert itself (only logs), since it's used both for explicit actions
+   * (e.g. "View Source", where the caller should surface a failure) and for
+   * automatic background enrichment during listing (FQN extraction for
+   * every `.mon` file), where one flaky/rate-limited item among many is
+   * expected and already handled gracefully by the caller's own fallback —
+   * see `enrichRepositoryItem`.
+   */
+  getItemContent(block: RepositoryItem, extractFQN: boolean = false): Observable<string> {
+    const content$ = from(this.repositoryModeService.isBackendMode()).pipe(
+      switchMap(backendMode =>
+        backendMode
+          ? from(this.repositoryBackendService.getItemContent(block, extractFQN))
+          : from(this.gitHubContentService.getItemContent(block, extractFQN))
+      )
+    );
+
+    return content$.pipe(
+      catchError(error => {
+        const errorMsg = extractFQN
+          ? gettext('Failed to extract block information')
+          : gettext('Failed to load content');
+
+        throw this.handleError(error, `Failed to get content for ${block.name}`, errorMsg, false);
+      })
+    );
+  }
+
+  /** Dispatches to the backend or a direct GitHub call per `RepositoryModeService`. */
+  private async getContent(repository: Repository): Promise<any[]> {
+    return (await this.repositoryModeService.isBackendMode())
+      ? this.repositoryBackendService.getContent(repository)
+      : this.gitHubContentService.getContent(repository);
+  }
+
+  private getCachedRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
+    if (!this.blockCache.has(repository.id)) {
+      const items$ = this.fetchRepositoryItems(repository).pipe(
+        shareReplay({ bufferSize: 1, refCount: true })
+      );
+      this.blockCache.set(repository.id, items$);
+    }
+    return this.blockCache.get(repository.id)!;
+  }
+
+  private fetchRepositoryItems(repository: Repository): Observable<RepositoryItem[]> {
+    return from(this.getContent(repository)).pipe(
+      switchMap(data => this.processGitHubContent(data, repository)),
+      catchError(error => {
+        // Surface GitHub's specific reason (rate limit / bad token / bad
+        // path) instead of a generic message, so the cause is diagnosable.
+        // A 404 here is a real "not found" (from GitHub or the backend),
+        // not a missing microservice — it should be shown, not swallowed.
+        const detail = error instanceof RepositoryError ? error.userMessage : '';
+        this.handleError(
+          error,
+          `Failed to fetch items from repository: ${repository.name}`,
+          detail
+            ? this.messages.format(
+                gettext('Failed to load items from "{{repositoryName}}": {{detail}}'),
+                { repositoryName: repository.name, detail }
+              )
+            : this.messages.format(
+                gettext('Failed to load items from repository "{{repositoryName}}".'),
+                { repositoryName: repository.name }
+              )
+        );
+        return of([]);
+      })
+    );
+  }
+
+  private processGitHubContent(
+    data: unknown,
+    repository: Repository
+  ): Observable<RepositoryItem[]> {
+    try {
+      const items: RepositoryItem[] = [];
+
+      if (data && typeof data === 'object') {
+        const dataObj = data as Record<string, unknown>;
+        for (const item of Object.values(dataObj)) {
+          if (!item || typeof item !== 'object') continue;
+          const name = (item as Record<string, unknown>)['name'] as string | undefined;
+          if (name && getFileExtension(name) !== '.json') {
+            items.push(this.createRepositoryItem(item, repository));
+          }
+        }
+      }
+
+      if (items.length === 0) return of([]);
+      return forkJoin(items.map(item => this.enrichRepositoryItem(item)));
+    } catch (error) {
+      throw this.handleError(error, 'Failed to process GitHub content', undefined, false);
+    }
+  }
+
+  /**
+   * Extracts the block FQN(s) a `.mon` file defines. Always fetches raw
+   * content (not the backend's own `extract_fqn_cep_block` computation) and
+   * parses it client-side with `extractBlockFqns`, so a file that defines
+   * more than one block (e.g. a Send/Receive pair whose names don't match
+   * the file name) is matched correctly against deployed blocks regardless
+   * of whether the backend or direct-GitHub mode is active.
+   */
+  private enrichRepositoryItem(item: RepositoryItem): Observable<RepositoryItem> {
+    if (item.type !== 'file' || !item.file.endsWith('.mon')) {
+      return of({ ...item, id: this.rowId(item) });
+    }
+
+    const cacheKey = `${item.repositoryId}::${item.url}`;
+    let fqns$ = this.fqnCache.get(cacheKey);
+    if (!fqns$) {
+      fqns$ = this.getItemContent(item, false).pipe(
+        map(content => extractBlockFqns(content, item.name)),
+        catchError(error => {
+          console.warn(`Failed to enrich item ${item.name}:`, error);
+          this.fqnCache.delete(cacheKey); // allow retry
+          return of([item.file]);
+        }),
+        shareReplay({ bufferSize: 1, refCount: false })
+      );
+      this.fqnCache.set(cacheKey, fqns$);
+    }
+
+    return fqns$.pipe(map(fqns => ({ ...item, id: this.rowId(item), blockIds: fqns })));
+  }
+
+  /**
+   * Selection ID of a row. It is specific to the repository and the file, so
+   * the same block in two repositories stays two selectable rows. The block
+   * identities are kept apart in `blockIds`.
+   */
+  private rowId(item: RepositoryItem): string {
+    return `${item.repositoryId}::${item.url}`;
+  }
+
+  private createRepositoryItem(item: unknown, repository: Repository): RepositoryItem {
+    if (!item || typeof item !== 'object') {
+      throw new RepositoryError(
+        'Invalid GitHub item structure',
+        gettext('Invalid repository item data received.')
+      );
+    }
+
+    const itemObj = item as Record<string, unknown>;
+    const name = itemObj['name'] as string | undefined;
+    const url = itemObj['url'] as string | undefined;
+
+    if (!name || !url) {
+      throw new RepositoryError(
+        'Invalid GitHub item structure',
+        gettext('Invalid repository item data received.')
+      );
+    }
+
+    return {
+      id: '',
+      repositoryName: repository.name,
+      repositoryId: repository.id,
+      name: removeFileExtension(name),
+      file: name,
+      type: (itemObj['type'] as string) || 'file',
+      custom: true,
+      downloadUrl: (itemObj['download_url'] as string) || url,
+      url: url
+    } as RepositoryItem;
+  }
+
+  private getSectionsFromExtensionYAML(item: RepositoryItem): Observable<Record<string, string[]>> {
+    return this.getItemContent(item, false).pipe(
+      map(content => this.parseYamlSections(content)),
+      catchError(error => {
+        console.warn(`Error processing ${DESCRIPTOR_YAML}:`, error);
+        return of({} as Record<string, string[]>);
+      })
+    );
+  }
+
+  /**
+   * A section lists the files of one extension. Its `.mon` files are what the
+   * engine loads, so the section counts as installed when every one of them is
+   * part of a deployed extension. A section without a `.mon` file never does.
+   */
+  private createYamlSectionItems(
+    sections: Record<string, string[]>,
+    yamlItem: RepositoryItem
+  ): RepositoryItem[] {
+    const items = Object.entries(sections).map(([name, files]) => {
+      // Repository-relative paths identify the files; the deployed-file lookup
+      // only knows basenames.
+      const sectionFiles = files.filter(file => file.toLowerCase().endsWith('.mon'));
+      const basename = (file: string) => file.substring(file.lastIndexOf('/') + 1);
+      return {
+        ...yamlItem,
+        id: createShortId(),
+        name,
+        isYamlSection: true,
+        extensionsYamlItem: yamlItem,
+        sectionFiles,
+        installed:
+          sectionFiles.length > 0 &&
+          sectionFiles.every(file => this.deployedFiles.has(basename(file)))
+      } as RepositoryItem;
+    });
+    return this.hideInstalled ? items.filter(item => !item.installed) : items;
+  }
+
+  private addInstallationStatus(
+    blocks: RepositoryItem[],
+    loaded: CepBlock[],
+    hideInstalled: boolean,
+    deployedFiles: ReadonlySet<string>
+  ): RepositoryItem[] {
+    const loadedIds = new Set(loaded.map(block => block.id));
+    // A file can define more than one block (see `enrichRepositoryItem`), so
+    // it counts as installed if any of them is deployed, not just `id`.
+    // A file that defines no block (e.g. a helper event definition such as
+    // EventsWindowContents.mon) never shows up in the deployed blocks, so it
+    // also counts as installed when a deployed extension contains that file.
+    const isInstalled = (block: RepositoryItem) =>
+      (block.blockIds ?? [block.id]).some(id => loadedIds.has(id)) || deployedFiles.has(block.file);
+
+    // The descriptor is expanded into sections later (`analyzeRepositoryItems`),
+    // which apply the installation filter themselves. Dropping it here would
+    // hide the undeployed sections too.
+    const isDescriptor = (block: RepositoryItem) =>
+      block.type !== 'dir' && block.file?.toLowerCase() === DESCRIPTOR_YAML;
+
+    if (hideInstalled) {
+      return blocks.filter(block => isDescriptor(block) || !isInstalled(block));
+    }
+
+    return blocks.map(block => ({
+      ...block,
+      installed: isDescriptor(block) ? false : isInstalled(block)
+    }));
+  }
+
+  private parseYamlSections(content: string): Record<string, string[]> {
+    try {
+      const yamlContent = jsyaml.load(content);
+
+      if (yamlContent && typeof yamlContent === 'object') {
+        const sections: Record<string, string[]> = {};
+        for (const [name, files] of Object.entries(yamlContent as Record<string, unknown>)) {
+          // Either a plain list or a mapping with a `files` list.
+          const list = Array.isArray(files) ? files : (files as { files?: unknown } | null)?.files;
+          sections[name] = Array.isArray(list)
+            ? list.filter((file): file is string => typeof file === 'string')
+            : [];
+        }
+        return sections;
+      }
+
+      console.warn(`Invalid YAML content structure in ${DESCRIPTOR_YAML}`);
+      return {};
+    } catch (error) {
+      throw new RepositoryError(
+        `Error parsing ${DESCRIPTOR_YAML}`,
+        this.messages.format(gettext('Failed to parse {{file}}. Invalid format.'), {
+          file: DESCRIPTOR_YAML
+        }),
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
+  private handleError(
+    error: unknown,
+    logMessage: string,
+    userMessage?: string,
+    showAlert: boolean = true
+  ): Error {
+    console.error(`[RepositoryItemsService] ${logMessage}:`, error);
+
+    if (showAlert && userMessage) {
+      this.alertService.danger(userMessage);
+    }
+
+    if (error instanceof RepositoryError) {
+      return error;
+    }
+
+    return new RepositoryError(
+      logMessage,
+      userMessage || gettext('An unexpected error occurred. Please try again.'),
+      error instanceof Error ? error : undefined
+    );
+  }
+}

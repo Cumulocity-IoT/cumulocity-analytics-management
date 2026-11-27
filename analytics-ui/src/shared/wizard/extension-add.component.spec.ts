@@ -4,8 +4,8 @@ import { AlertService } from '@c8y/ngx-components';
 import JSZip from 'jszip';
 import { BsModalService } from 'ngx-bootstrap/modal';
 import { BehaviorSubject, Subject } from 'rxjs';
-import { buildBlockMetadataEvt, parseApamaBlockMetadata } from '../apama-block-metadata';
-import { AnalyticsService } from '../analytics.service';
+import { buildBlockMetadataEvt, parseApamaBlockMetadata } from '../model/apama-block-metadata';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { ConfirmationModalComponent } from '../component/confirmation-modal.component';
 import { ExtensionAddComponent } from './extension-add.component';
 

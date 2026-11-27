@@ -26,13 +26,13 @@ The rule is implemented twice, in the browser and in the backend service, and bo
 
 ### The split
 
-`splitExtensionVersion(baseName)` in [utils.ts](../../analytics-ui/src/shared/utils.ts) and `split_extension_version(base_name)` in [app.py](../../analytics-service/src/app.py) use the same regular expression:
+`splitExtensionVersion(baseName)` in [utils.ts](../../analytics-ui/src/shared/util/utils.ts) and `split_extension_version(base_name)` in [app.py](../../analytics-service/src/app.py) use the same regular expression:
 
 ```
 ^(.+?)[-_]v?(\d+(?:\.\d+)*(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?(?:\+[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?)$
 ```
 
-The name part is lazy, so it ends at the first separator from which the rest is a version. No match returns the whole input as name and no version. Both take the name without `.zip`. Test cases live in [utils.spec.ts](../../analytics-ui/src/shared/utils.spec.ts), [extension-add.component.spec.ts](../../analytics-ui/src/shared/wizard/extension-add.component.spec.ts) and `test_the_version_is_metadata_not_part_of_the_name` in [test_app.py](../../analytics-service/tests/test_app.py).
+The name part is lazy, so it ends at the first separator from which the rest is a version. No match returns the whole input as name and no version. Both take the name without `.zip`. Test cases live in [utils.spec.ts](../../analytics-ui/src/shared/util/utils.spec.ts), [extension-add.component.spec.ts](../../analytics-ui/src/shared/wizard/extension-add.component.spec.ts) and `test_the_version_is_metadata_not_part_of_the_name` in [test_app.py](../../analytics-service/tests/test_app.py).
 
 Two companion helpers matter:
 
@@ -41,7 +41,7 @@ Two companion helpers matter:
 
 ### Where the version is stored
 
-`build_information.version` on the extension's managed object (`ExtensionBuildInformation.version` in [analytics.model.ts](../../analytics-ui/src/shared/analytics.model.ts)).
+`build_information.version` on the extension's managed object (`ExtensionBuildInformation.version` in [analytics.model.ts](../../analytics-ui/src/shared/model/analytics.model.ts)).
 
 | Path | Who splits | Stored |
 |---|---|---|
@@ -57,7 +57,7 @@ Two companion helpers matter:
 
 ### Loaded detection with versioned engine names
 
-The engine's `block-metadata.json` lists `Abs-1.0.1`, while the inventory has `Abs`. In [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension-enrichment.service.ts):
+The engine's `block-metadata.json` lists `Abs-1.0.1`, while the inventory has `Abs`. In [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension/extension-enrichment.service.ts):
 
 - `resolveMetadataName(name, metadata)` returns `name` when the engine lists it exactly. Otherwise it returns the one registered entry whose version-less name equals `name`. When zero or several entries match, it returns null (not deployed). A name shared by several versions is therefore never guessed.
 - `addDeploymentStatus` uses it for `loaded` and for the block count, and `getDeployedExtensionDetails` fetches `<resolved>.json` and forces `name` back to the stored name. So the deployed block list reports `extension: "Abs"`.

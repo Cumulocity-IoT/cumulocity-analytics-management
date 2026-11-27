@@ -20,7 +20,7 @@ is the plugin's NgModule. It is **required** by the c8y plugin mechanism and sta
 it imports the (standalone) components and registers the c8y hooks (`hookRoute`, `hookTab`,
 `hookNavigator`, `hookWizard`, Formly types). All feature components are standalone (see ADR-001).
 
-Routes (all under `c8y-pkg-analytics-extension/`, defined once in `ROUTES` in `shared/analytics.constants.ts`):
+Routes (all under `c8y-pkg-analytics-extension/`, defined once in `ROUTES` in `shared/util/analytics.constants.ts`):
 `manage` (+ `manage/details/:name`), `installed-blocks`, `repository`, `release`. `manage` uses resolvers
 (`backendResolver`, `extensionResolver` in `manage/resolvers.ts`). Page names (tab, page title, breadcrumb) come from
 `PAGE_LABELS` in the same file: Extensions, Block library, Installed blocks (the tab order). Use these constants, never literals.
@@ -43,14 +43,14 @@ src/
 │   ├── release-list/               # release list page
 │   └── drawer/                     # RepositoriesDrawerComponent (manage repos, PATs)
 └── shared/
-    ├── analytics.service.ts        # facade used by components
-    ├── cep-*.service.ts, cep-error.ts      # engine status, restart, errors
-    ├── extension-*.service.ts      # inventory, enrichment, builder
-    ├── repository-*.service.ts     # config, backend, items, mode
-    ├── github-*.service.ts         # content and release access (native fetch)
+    ├── analytics/                  # AnalyticsService facade used by components, MessageService, navigation and tab factories
+    ├── cep/                        # engine status, restart, errors
+    ├── extension/                  # inventory, enrichment, builder, fetch-extension event flow
+    ├── repository/                 # repository state, config, backend, items, mode, errors; github-* content and release access
+    ├── model/                      # analytics.model, apama-block-metadata
+    ├── util/                       # utils, analytics.constants (routes, labels)
     ├── component/                  # reusable components, cell renderers, Formly fields
-    ├── wizard/ http/               # add-extension wizard; dormant interceptor (ADR-002)
-    └── analytics.model.ts, analytics.constants.ts, utils.ts
+    └── wizard/                     # add-extension wizard
 ```
 
 ---
@@ -152,22 +152,18 @@ file with the same name in another repository is also shown as installed.
 
 ## HTTP error handling
 
-**Status: not enabled.** See ADR-002 in [ARCHITECTURE.md](./ARCHITECTURE.md).
+**Status: not used.** See ADR-002 in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-`src/shared/http/` contains an `HttpClient` interceptor (`ErrorInterceptor`) with retry/backoff, a
-user-friendly message mapping and an `ErrorHandlerService`, plus `HttpModule` that would register
-them. Nothing imports `HttpModule`, and since application code does not use `HttpClient`, wiring it
-in would currently affect almost nothing. The code is kept and unit tested but is dormant.
+There is no `HttpClient` interceptor. The interceptor, its error handler service and `HttpModule` that
+were once under `src/shared/http/` were removed (2026-11-25), because application code uses the c8y
+`FetchClient` and native `fetch()`, which an `HttpClient` interceptor never sees.
 
-What is active instead:
+Error handling instead:
 
 - per-area error classes and messages (above),
 - the extension grid retries *transient* 502/503/504 load errors with a backoff and stays quiet,
   alerting only on genuine failures,
 - c8y `AlertService` for user feedback.
-
-Before enabling the interceptor: retry only idempotent methods (GET), decide how to avoid duplicate
-alerts, and move the FetchClient/fetch call sites onto `HttpClient` if they should benefit.
 
 ---
 
@@ -202,18 +198,17 @@ npm run test:ci          # what CI runs: ChromeHeadlessCI (no sandbox) + coverag
 
 | Spec (all under `src/`) | Covers |
 |------|--------|
-| `shared/utils.spec.ts`, `analytics.model.spec.ts` | file helpers, Apama block-name/FQN extraction, GitHub URL conversion, default repositories, error messages |
-| `shared/apama-block-metadata.spec.ts` | doc-comment/annotation parsing and `.evt` generation |
-| `shared/cep-error.spec.ts`, `repository-error.spec.ts` | error classes, `fetchCepJSON`, `extractErrorMessage` |
-| `shared/cep-restart.service.spec.ts` | restart lifecycle, grace period, safety timer, warnings |
-| `shared/cep-status.service.spec.ts` | realtime stream, backend availability probe/caching, status/id lookup with fallbacks, restart trigger |
-| `shared/extension-inventory|enrichment|builder.service.spec.ts` | inventory CRUD/paging, deployment status + block categorisation, client-side zip build |
-| `shared/analytics.service.spec.ts` | facade delegation and cache invalidation |
-| `shared/repository-config|backend|items.service.spec.ts`, `github-content|github-release.service.spec.ts`, `repository-mode.service.spec.ts` | tenant-option storage and token semantics, backend/GitHub content access, item listing/FQN/installed status (including files without blocks) |
-| `shared/repository.service.spec.ts` | state, serialized mutations, unsaved changes, items stream, delegation |
-| `shared/fetch-extension.service.spec.ts` | `c8y_FetchExtension` event flow |
-| `shared/analytics-navigation|tab.factory.spec.ts` | permission-gated navigation, tab set |
-| `shared/http/*.spec.ts` | dormant interceptor (retry/backoff) and error handler service |
+| `shared/util/utils.spec.ts`, `shared/model/analytics.model.spec.ts` | file helpers, Apama block-name/FQN extraction, GitHub URL conversion, default repositories, error messages |
+| `shared/model/apama-block-metadata.spec.ts` | doc-comment/annotation parsing and `.evt` generation |
+| `shared/cep/cep-error.spec.ts`, `shared/repository/repository-error.spec.ts` | error classes, `fetchCepJSON`, `extractErrorMessage` |
+| `shared/cep/cep-restart.service.spec.ts` | restart lifecycle, grace period, safety timer, warnings |
+| `shared/cep/cep-status.service.spec.ts` | realtime stream, backend availability probe/caching, status/id lookup with fallbacks, restart trigger |
+| `shared/extension/extension-inventory|enrichment|builder.service.spec.ts` | inventory CRUD/paging, deployment status + block categorisation, client-side zip build |
+| `shared/analytics/analytics.service.spec.ts` | facade delegation and cache invalidation |
+| `shared/repository/repository-config|backend|items.service.spec.ts`, `github-content|github-release.service.spec.ts`, `repository-mode.service.spec.ts` | tenant-option storage and token semantics, backend/GitHub content access, item listing/FQN/installed status (including files without blocks) |
+| `shared/repository/repository.service.spec.ts` | state, serialized mutations, unsaved changes, items stream, delegation |
+| `shared/extension/fetch-extension.service.spec.ts` | `c8y_FetchExtension` event flow |
+| `shared/analytics/analytics-navigation|tab.factory.spec.ts` | permission-gated navigation, tab set |
 | `repository/editor/epl-config.service.spec.ts` | EPL editor/language configuration and token provider |
 | `manage/extension-grid.component.spec.ts` | engine status streams, load/retry/alert behaviour, reload, actions |
 | `repository/drawer/repositories-drawer.component.spec.ts` | form, change detection, save/cancel/delete flows, global token |
@@ -281,9 +276,8 @@ Karma 6 / Jasmine 5 for tests. `npm start` and `npm run build` first run `script
 
 ## Planned work
 
-1. Decide on the HTTP interceptor (enable GET-only retries, or remove it) - ADR-002.
-2. Enable strict mode for the application build and remove `any` - ADR-006.
-3. Unit tests for the remaining components (see Testing).
-4. State management (NgRx) - only if the current service-based state becomes a problem.
-5. E2E tests (for example Cypress), accessibility pass, lazy loading and virtual scrolling for large lists.
-6. Component-level documentation.
+1. Enable strict mode for the application build and remove `any` - ADR-006.
+2. Unit tests for the remaining components (see Testing).
+3. State management (NgRx) - only if the current service-based state becomes a problem.
+4. E2E tests (for example Cypress), accessibility pass, lazy loading and virtual scrolling for large lists.
+5. Component-level documentation.

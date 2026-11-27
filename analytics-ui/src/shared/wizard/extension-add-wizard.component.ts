@@ -3,8 +3,8 @@ import { Component, Input, output } from '@angular/core';
 import { IManagedObject, IManagedObjectBinary } from '@c8y/client';
 import { gettext } from '@c8y/ngx-components/gettext';
 import { WizardComponent } from '@c8y/ngx-components';
-import { AnalyticsService } from '../analytics.service';
-import { UploadMode } from '../analytics.model';
+import { AnalyticsService } from '../analytics/analytics.service';
+import { UploadMode } from '../model/analytics.model';
 import { ExtensionAddComponent } from './extension-add.component';
 
 @Component({

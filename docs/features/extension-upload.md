@@ -33,8 +33,8 @@ See [extension-naming-versioning.md](extension-naming-versioning.md) for the nam
 |---|---|
 | `ExtensionAddComponent` (drop area, analysis, naming, confirm dialog) | [extension-add.component.ts](../../analytics-ui/src/shared/wizard/extension-add.component.ts), [.html](../../analytics-ui/src/shared/wizard/extension-add.component.html) |
 | `ExtensionAddWizardComponent` (modal wrapper registered as wizard `uploadAnalyticsExtension`) | [extension-add-wizard.component.ts](../../analytics-ui/src/shared/wizard/extension-add-wizard.component.ts) |
-| `ExtensionInventoryService.uploadExtension` (binary create, replace) | [extension-inventory.service.ts](../../analytics-ui/src/shared/extension-inventory.service.ts) |
-| Zip metadata parser | [apama-block-metadata.ts](../../analytics-ui/src/shared/apama-block-metadata.ts), `extractBlockFqns` in [utils.ts](../../analytics-ui/src/shared/utils.ts) |
+| `ExtensionInventoryService.uploadExtension` (binary create, replace) | [extension-inventory.service.ts](../../analytics-ui/src/shared/extension/extension-inventory.service.ts) |
+| Zip metadata parser | [apama-block-metadata.ts](../../analytics-ui/src/shared/model/apama-block-metadata.ts), `extractBlockFqns` in [utils.ts](../../analytics-ui/src/shared/util/utils.ts) |
 
 The component has an `embedded` input. Embedded in the add wizard it shows only the drop area (the wizard owns header and footer) and reports through the outputs `uploaded` and `loadingChange`, so the wizard can block navigation during an upload. Standalone it renders its own wizard header and footer with Cancel and Done.
 
@@ -80,7 +80,7 @@ Error codes (`ErrorType`) map to friendly texts through `ERROR_MESSAGES`. Other 
 
 ### Tests
 
-[extension-add.component.spec.ts](../../analytics-ui/src/shared/wizard/extension-add.component.spec.ts) covers naming (brackets, metadata correction, bundles, versions), analysis, the confirm flow, rollback and errors. [extension-inventory.service.spec.ts](../../analytics-ui/src/shared/extension-inventory.service.spec.ts) covers replace order.
+[extension-add.component.spec.ts](../../analytics-ui/src/shared/wizard/extension-add.component.spec.ts) covers naming (brackets, metadata correction, bundles, versions), analysis, the confirm flow, rollback and errors. [extension-inventory.service.spec.ts](../../analytics-ui/src/shared/extension/extension-inventory.service.spec.ts) covers replace order.
 
 ### Limitations and open questions
 

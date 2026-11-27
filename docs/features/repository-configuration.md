@@ -57,7 +57,7 @@ Related pages: [block-library.md](block-library.md), [add-extension-wizard.md](a
 
 ### Storage
 
-[repository-config.service.ts](../../analytics-ui/src/shared/repository-config.service.ts) reads and writes the Cumulocity tenant options directly from the browser with `FetchClient` and `TenantOptionsService`. There is no second implementation through the backend: the backend's own configuration endpoints (`GET` and `POST /repository/configuration`) store the same options in the same format, so entries written by either side interoperate.
+[repository-config.service.ts](../../analytics-ui/src/shared/repository/repository-config.service.ts) reads and writes the Cumulocity tenant options directly from the browser with `FetchClient` and `TenantOptionsService`. There is no second implementation through the backend: the backend's own configuration endpoints (`GET` and `POST /repository/configuration`) store the same options in the same format, so entries written by either side interoperate.
 
 | Item | Where |
 |---|---|

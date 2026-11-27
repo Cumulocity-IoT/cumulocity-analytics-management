@@ -104,7 +104,7 @@ All in [app.py](../../analytics-service/src/app.py), section Authorization.
 | Hosts allowed: `github.com`, `api.github.com`, `raw.githubusercontent.com`, https only | `_is_github_url` |
 | Build information holds id, name and url only | `_build_and_process_extension` and the release route |
 
-The log writes that a PAT is used, never its value. The UI keeps the same placeholder logic in [repository-config.service.ts](../../analytics-ui/src/shared/repository-config.service.ts).
+The log writes that a PAT is used, never its value. The UI keeps the same placeholder logic in [repository-config.service.ts](../../analytics-ui/src/shared/repository/repository-config.service.ts).
 
 ### Validation helpers
 
@@ -118,7 +118,7 @@ In [solution_utils.py](../../analytics-service/src/solution_utils.py): `is_valid
 
 ### What the UI checks
 
-[analytics-navigation.factory.ts](../../analytics-ui/src/shared/analytics-navigation.factory.ts) shows the Extensions node only when `Permissions.hasRole` is true for both `ROLE_CEP_MANAGEMENT_READ` and `ROLE_CEP_MANAGEMENT_ADMIN`. The Community blocks release node is kept in code but not returned.
+[analytics-navigation.factory.ts](../../analytics-ui/src/shared/analytics/analytics-navigation.factory.ts) shows the Extensions node only when `Permissions.hasRole` is true for both `ROLE_CEP_MANAGEMENT_READ` and `ROLE_CEP_MANAGEMENT_ADMIN`. The Community blocks release node is kept in code but not returned.
 
 ### Limitations
 

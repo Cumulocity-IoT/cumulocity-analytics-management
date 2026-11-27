@@ -10,8 +10,8 @@ import {
 } from '@c8y/ngx-components';
 import { BinaryFileDownloadModule } from '@c8y/ngx-components/binary-file-download';
 import { ExtensionAddWizardComponent } from './shared/wizard/extension-add-wizard.component';
-import { AnalyticsNavigationFactory } from './shared/analytics-navigation.factory';
-import { AnalyticsTabFactory } from './shared/analytics-tab.factory';
+import { AnalyticsNavigationFactory } from './shared/analytics/analytics-navigation.factory';
+import { AnalyticsTabFactory } from './shared/analytics/analytics-tab.factory';
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { FORMLY_CONFIG, FormlyModule } from '@ngx-formly/core';
 
@@ -29,7 +29,7 @@ import { RepositoriesDrawerComponent } from './repository/drawer/repositories-dr
 import { ExtensionWizardComponent } from './repository/wizard/extension-wizard.component';
 import { ReleaseListComponent } from './repository/release-list/release-list.component';
 
-import { ROUTES } from './shared/analytics.constants';
+import { ROUTES } from './shared/util/analytics.constants';
 
 // Import resolvers
 import { extensionResolver, backendResolver } from './manage/resolvers';

@@ -103,10 +103,10 @@ Order of work inside the route:
 
 | Piece | Role |
 |---|---|
-| [github-release.service.ts](../../analytics-ui/src/shared/github-release.service.ts) | `parseOwnerRepo` (accepts `api.github.com/repos/...` and `github.com/...` URLs), `listReleases`, status to message mapping (401, 403 and 429, 404, other). Returns metadata only. |
+| [github-release.service.ts](../../analytics-ui/src/shared/repository/github-release.service.ts) | `parseOwnerRepo` (accepts `api.github.com/repos/...` and `github.com/...` URLs), `listReleases`, status to message mapping (401, 403 and 429, 404, other). Returns metadata only. |
 | [extension-wizard.component.ts](../../analytics-ui/src/repository/wizard/extension-wizard.component.ts) | Step lists per source and backend availability, release and asset selection, review note, `deployRelease`, the restart panel. |
-| [repository-backend.service.ts](../../analytics-ui/src/shared/repository-backend.service.ts) | `deployReleaseAsset` posts to the service. On failure it shows the service's `error` text if present and throws, so the wizard only marks the result failed. |
-| [utils.ts](../../analytics-ui/src/shared/utils.ts) | `triggerBrowserDownload`: an anchor click in a new tab with `rel=noopener`. |
+| [repository-backend.service.ts](../../analytics-ui/src/shared/repository/repository-backend.service.ts) | `deployReleaseAsset` posts to the service. On failure it shows the service's `error` text if present and throws, so the wizard only marks the result failed. |
+| [utils.ts](../../analytics-ui/src/shared/util/utils.ts) | `triggerBrowserDownload`: an anchor click in a new tab with `rel=noopener`. |
 | [release-list](../../analytics-ui/src/repository/release-list/release-list.component.ts) | Static mockup, kept out of the navigation. |
 
 The wizard picks the step list when the source is chosen and the backend probe has finished. The probe result is cached, see [backend-and-browser-mode.md](backend-and-browser-mode.md).

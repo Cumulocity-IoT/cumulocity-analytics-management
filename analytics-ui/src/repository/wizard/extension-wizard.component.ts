@@ -23,7 +23,7 @@ import {
   splitExtensionVersion,
   triggerBrowserDownload
 } from '../../shared';
-import { MessageService } from '../../shared/message.service';
+import { MessageService } from '../../shared/analytics/message.service';
 import {
   ContentState,
   evaluateContent,

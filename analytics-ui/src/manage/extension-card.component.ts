@@ -1,6 +1,6 @@
 import { take } from 'rxjs/operators';
 import { gettext } from '@c8y/ngx-components/gettext';
-import { MessageService } from '../shared/message.service';
+import { MessageService } from '../shared/analytics/message.service';
 import { Component, inject, input, output } from '@angular/core';
 
 import { ActivatedRoute, Router } from '@angular/router';

@@ -1,5 +1,5 @@
 import { take } from 'rxjs/operators';
-import { MessageService } from '../../shared/message.service';
+import { MessageService } from '../../shared/analytics/message.service';
 /*
  * Copyright (c) 2025 Cumulocity GmbH
  *

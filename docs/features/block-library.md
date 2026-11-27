@@ -55,7 +55,7 @@ hideInstalled$         ┴─ combineLatest ─ switchMap ─> RepositoryService
                                                       └─ filter(!installed) when hideInstalled
 ```
 
-`getRepositoryItemsAnalyzedFor(id)` ([repository.service.ts](../../analytics-ui/src/shared/repository.service.ts)) re-runs on every cache invalidation and combines three inputs: the configured repositories, the deployed blocks (`getDeployedBlocks`, errors become an empty list), and the base names of all files in deployed extensions (`getDeployedFileNames`, from the engine's extension metadata). [repository-items.service.ts](../../analytics-ui/src/shared/repository-items.service.ts) then does the work:
+`getRepositoryItemsAnalyzedFor(id)` ([repository.service.ts](../../analytics-ui/src/shared/repository/repository.service.ts)) re-runs on every cache invalidation and combines three inputs: the configured repositories, the deployed blocks (`getDeployedBlocks`, errors become an empty list), and the base names of all files in deployed extensions (`getDeployedFileNames`, from the engine's extension metadata). [repository-items.service.ts](../../analytics-ui/src/shared/repository/repository-items.service.ts) then does the work:
 
 1. Fetch the top-level content list of the repository, from the backend (`/repository/contentList`) or directly from the GitHub Contents API, depending on the mode. Entries with a `.json` extension are ignored.
 2. For each `.mon` file, fetch the raw content and extract all block names it defines (`extractBlockFqns`). The result is cached per repository and URL. A file that cannot be read falls back to its file name, so one flaky file does not break the list.

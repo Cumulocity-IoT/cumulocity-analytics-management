@@ -1,0 +1,223 @@
+import { MessageService } from '../analytics/message.service';
+import { EventEmitter, Injectable, inject } from '@angular/core';
+import {
+  IManagedObject,
+  IManagedObjectBinary,
+  InventoryBinaryService,
+  InventoryService,
+  IResult
+} from '@c8y/client';
+import { AlertService } from '@c8y/ngx-components';
+import { gettext } from '@c8y/ngx-components/gettext';
+import { BehaviorSubject } from 'rxjs';
+import { UploadMode } from '../model/analytics.model';
+import { CepError } from '../cep/cep-error';
+
+/**
+ * CRUD for extension binaries against the inventory: list, upload, delete,
+ * download. Deployment/enrichment status (is it loaded into the CEP engine,
+ * how many blocks does it contain) is a separate concern — see
+ * `ExtensionEnrichmentService`.
+ */
+@Injectable({ providedIn: 'root' })
+export class ExtensionInventoryService {
+  private readonly messages = inject(MessageService);
+  readonly extensionChanged$ = new EventEmitter<IManagedObject>();
+  readonly uploadProgress$ = new BehaviorSubject<number | null>(null);
+
+  private readonly DEFAULT_PAGE_SIZE = 100;
+
+  constructor(
+    private readonly alertService: AlertService,
+    private readonly inventoryService: InventoryService,
+    private readonly inventoryBinaryService: InventoryBinaryService
+  ) {}
+
+  async getExtensionsFromInventory(): Promise<IManagedObject[]> {
+    try {
+      const all: IManagedObject[] = [];
+      let currentPage = 1;
+
+      for (;;) {
+        const { data, paging } = await this.inventoryService.list({
+          pageSize: this.DEFAULT_PAGE_SIZE,
+          withTotalPages: true,
+          fragmentType: 'pas_extension',
+          currentPage
+        });
+
+        all.push(...data);
+
+        // Stop when the server indicates no further page, or when a short page comes back
+        if (!paging?.nextPage || data.length < this.DEFAULT_PAGE_SIZE) break;
+        currentPage++;
+      }
+
+      return all;
+    } catch (error) {
+      throw this.handleError(
+        error,
+        'Failed to fetch extensions from inventory',
+        true,
+        gettext('Could not load extensions. Please try again.')
+      );
+    }
+  }
+
+  async uploadExtension(
+    file: File,
+    extension: IManagedObject,
+    mode: UploadMode
+  ): Promise<IManagedObjectBinary> {
+    try {
+      // An update uploads the new binary FIRST and removes the old one afterwards:
+      // a failed upload must not cost the user the extension that works.
+      const extensionToCreate =
+        mode === 'update' ? this.prepareExtensionForUpdate(extension) : extension;
+
+      const result = await this.inventoryBinaryService.create(file, extensionToCreate);
+
+      if (!result.res.ok) {
+        throw new CepError(
+          `Upload failed with status ${result.res.status}`,
+          this.messages.format(
+            gettext('Could not upload extension "{{extensionName}}". Please try again.'),
+            { extensionName: extension['name'] }
+          )
+        );
+      }
+
+      if (mode === 'update') {
+        await this.removeReplacedExtension(extension, result.data as IManagedObject);
+      }
+
+      this.extensionChanged$.emit(result.data as IManagedObject);
+
+      return result.data;
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to upload extension ${extension['name']}`,
+        true,
+        error instanceof CepError
+          ? error.userMessage
+          : this.messages.format(
+              gettext('Error uploading extension "{{extensionName}}". Please try again.'),
+              { extensionName: extension['name'] }
+            )
+      );
+    }
+  }
+
+  async deleteExtension(
+    extension: IManagedObject,
+    showSuccessMessage: boolean = true
+  ): Promise<IResult<null>> {
+    try {
+      const result = await this.inventoryBinaryService.delete(extension.id);
+
+      if (showSuccessMessage) {
+        this.alertService.success(gettext('Extension deleted.'));
+      }
+
+      this.extensionChanged$.emit(extension);
+      return result;
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to delete extension ${extension['name']}`,
+        true,
+        gettext('Failed to delete extension. Please try again.')
+      );
+    }
+  }
+
+  async downloadExtension(extension: IManagedObject): Promise<ArrayBuffer> {
+    try {
+      const response = await this.inventoryBinaryService.download(extension);
+      return await response.arrayBuffer();
+    } catch (error) {
+      throw this.handleError(
+        error,
+        `Failed to download extension ${extension['name']}`,
+        true,
+        this.messages.format(
+          gettext('Failed to download extension "{{extensionName}}". Please try again.'),
+          { extensionName: extension['name'] }
+        )
+      );
+    }
+  }
+
+  cancelExtensionCreation(extension: Partial<IManagedObject>): void {
+    if (extension?.id) {
+      this.inventoryBinaryService.delete(extension).catch(error => {
+        console.warn('Failed to cleanup extension:', error);
+      });
+    }
+  }
+
+  updateUploadProgress(event: ProgressEvent): void {
+    if (!event.lengthComputable || event.total === 0) return;
+    // Cap at 95% so the final 5% can be reserved for server-side processing
+    const progress = Math.min(95, (event.loaded / event.total) * 95);
+    this.uploadProgress$.next(progress);
+  }
+
+  /**
+   * Fields of the managed object to create for an update. `build_information`
+   * is kept: the caller already replaced it with the analysis of the NEW file,
+   * and dropping it would leave the extension without its file and block list.
+   */
+  private prepareExtensionForUpdate(extension: IManagedObject): Partial<IManagedObject> {
+    return {
+      name: extension['name'],
+      pas_extension: extension['name'],
+      ...(extension['build_information']
+        ? { build_information: extension['build_information'] }
+        : {})
+    };
+  }
+
+  /** Deletes the replaced binary once its replacement exists. Never fails the update. */
+  private async removeReplacedExtension(
+    replaced: IManagedObject,
+    replacement: IManagedObject
+  ): Promise<void> {
+    if (!replaced?.id || replaced.id === replacement?.id) {
+      return;
+    }
+    try {
+      await this.deleteExtension(replaced, false);
+    } catch {
+      // deleteExtension already showed an error alert; the new version is uploaded.
+      this.alertService.warning(
+        this.messages.format(
+          gettext(
+            'The new version of "{{extensionName}}" was uploaded, but the previous version could not be deleted. Delete it manually.'
+          ),
+          { extensionName: replaced['name'] }
+        )
+      );
+    }
+  }
+
+  private handleError(
+    error: unknown,
+    logMessage: string,
+    showAlert: boolean,
+    userMessage: string
+  ): Error {
+    console.error(`[ExtensionInventoryService] ${logMessage}:`, error);
+
+    if (showAlert) {
+      this.alertService.danger(userMessage);
+    }
+
+    if (error instanceof CepError) {
+      return error;
+    }
+
+    return new CepError(logMessage, userMessage, error instanceof Error ? error : undefined);
+  }
+}

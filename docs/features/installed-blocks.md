@@ -33,8 +33,8 @@ See [extensions-management.md](extensions-management.md) for the extensions them
 | Part | Where |
 |---|---|
 | `BlockGridComponent` | [block-grid.component.ts](../../analytics-ui/src/block/block-grid.component.ts), [.html](../../analytics-ui/src/block/block-grid.component.html) |
-| Deployed block loading, categories | `getDeployedBlocks`, `loadDeployedBlocks`, `addBlockMetadata`, `determineBlockCategory` in [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension-enrichment.service.ts) |
-| Custom flag | `isCustomCepBlock` in [utils.ts](../../analytics-ui/src/shared/utils.ts) |
+| Deployed block loading, categories | `getDeployedBlocks`, `loadDeployedBlocks`, `addBlockMetadata`, `determineBlockCategory` in [extension-enrichment.service.ts](../../analytics-ui/src/shared/extension/extension-enrichment.service.ts) |
+| Custom flag | `isCustomCepBlock` in [utils.ts](../../analytics-ui/src/shared/util/utils.ts) |
 | Cell renderers | `LabelRendererComponent` (category label), `BooleanRendererComponent` (custom) in [shared/component](../../analytics-ui/src/shared/component) |
 | Route | `ROUTES.installedBlocks`, label `PAGE_LABELS.installedBlocks`, tab priority 920 |
 
@@ -79,7 +79,7 @@ Whole-word matching is deliberate: a substring test would classify "Notification
 
 ### Tests
 
-[block-grid.component.spec.ts](../../analytics-ui/src/block/block-grid.component.spec.ts) (title, loading, fresh caches, refresh, column order) and [extension-enrichment.service.spec.ts](../../analytics-ui/src/shared/extension-enrichment.service.spec.ts) (collapsing, skipped blocks, categories, partial results).
+[block-grid.component.spec.ts](../../analytics-ui/src/block/block-grid.component.spec.ts) (title, loading, fresh caches, refresh, column order) and [extension-enrichment.service.spec.ts](../../analytics-ui/src/shared/extension/extension-enrichment.service.spec.ts) (collapsing, skipped blocks, categories, partial results).
 
 ### Limitations and open questions
 
