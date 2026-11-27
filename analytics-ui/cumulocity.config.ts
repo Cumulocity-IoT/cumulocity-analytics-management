@@ -87,8 +87,8 @@ export default {
         to: 'resources/images/repository-view-code-modal.png',
       },
       {
-        from: '../resources/images-optimized/extension-create-modal.png',
-        to: 'resources/images/extension-create-modal.png',
+        from: '../resources/images-optimized/extension-create-wizard.png',
+        to: 'resources/images/extension-create-wizard.png',
       },
       {
         from: '../resources/images-optimized/plugin-installation.png',
