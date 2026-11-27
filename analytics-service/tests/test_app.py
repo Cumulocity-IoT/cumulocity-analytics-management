@@ -8,7 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 
 import app as app_module
-from c8y_agent import C8YAgentError
+from c8y_agent import C8YAgentError, C8YEngineUnavailableError
 
 REPO = {
     "id": "repo-1",
@@ -19,6 +19,14 @@ REPO = {
 
 
 # ---------------------------------------------------------------- health / cep
+
+
+@pytest.mark.parametrize("path, method", [("/cep/status", "get_cep_ctrl_status"), ("/cep/id", "get_cep_operationobject_id")])
+def test_cep_engine_unreachable_is_503(client, agent_mock, path, method):
+    getattr(agent_mock, method).side_effect = C8YEngineUnavailableError("down")
+    resp = client.get(path)
+    assert resp.status_code == 503
+    assert resp.get_json() == {"error": "down"}
 
 
 def test_health(client):
@@ -680,6 +688,13 @@ class TestExtensionFromYaml:
         resp = self._post(client)
         assert resp.status_code == 200
         assert "Alpha.zip" in resp.headers["Content-Disposition"]
+
+    def test_plain_list_section_is_accepted(self, client):
+        self.yaml_text = "Alpha:\n  - a.mon\nBeta:\n  files:\n    - b.mon\n"
+        resp = self._post(client, upload=True)
+        assert resp.status_code == 201
+        names = [e["name"] for e in resp.get_json()["uploaded_extensions"]]
+        assert names == ["Alpha", "Beta"]
 
     def test_download_mode_skips_leading_empty_section(self, client):
         self.yaml_text = "Empty:\n  files: []\nBeta:\n  files: [b.mon]\n"

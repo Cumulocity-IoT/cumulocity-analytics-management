@@ -90,10 +90,16 @@ export class CepRestartService implements OnDestroy {
     }
     this.restartSafetyTimer = setTimeout(() => {
       this.endRestart();
-      if (this.cepStatusAlert) {
-        this.alertService.remove(this.cepStatusAlert);
-        this.cepStatusAlert = null;
-      }
+      // The timer is cleared when the restart completes, so reaching here means no
+      // down-then-up was observed: say so instead of dropping the toast silently.
+      // setCepStatusAlert replaces the "restarting" toast.
+      this.setCepStatusAlert(
+        gettext(
+          'Could not confirm the restart of the Streaming Analytics engine. Check its status.'
+        ),
+        'warning',
+        this.ERROR_TIMEOUT
+      );
     }, this.RESTART_MAX_DURATION);
   }
 

@@ -59,6 +59,25 @@ describe('CepRestartService', () => {
       expect(service.isRestarting()).toBeFalse();
       expect(alerts.remove).toHaveBeenCalledWith(toast);
     }));
+
+    it('tells the user the restart could not be confirmed after 90s', fakeAsync(() => {
+      service.beginRestart();
+      tick(89999);
+      expect(lastAlert().type).toBe('info');
+      tick(1);
+      expect(lastAlert().type).toBe('warning');
+      expect(lastAlert().text).toBe(
+        'Could not confirm the restart of the Streaming Analytics engine. Check its status.'
+      );
+    }));
+
+    it('does not show the unconfirmed message when the restart completes in time', fakeAsync(() => {
+      service.beginRestart();
+      tick(1000);
+      service.restartSucceeded();
+      tick(90000);
+      expect(lastAlert().type).toBe('success');
+    }));
   });
 
   describe('completion', () => {

@@ -58,10 +58,10 @@ There is no rate limiting in the service itself.
 `200 {"status": "UP"}`. Static liveness, no dependency checks.
 
 ### `GET /cep/id`
-`200 {"id": "<managed object id>"}` of the CEP microservice; `404` if it cannot be determined.
+`200 {"id": "<managed object id>"}` of the CEP microservice; `404` if the engine answered but the object cannot be determined; `503 {"error": ...}` if the engine is unreachable or answers a gateway error (502, 503, 504).
 
 ### `GET /cep/status`
-`200` raw diagnostics of the Apama control process (`status`, `is_safe_mode`, `microservice_application_id`, ...); `404` if unavailable.
+`200` raw diagnostics of the Apama control process (`status`, `is_safe_mode`, `microservice_application_id`, ...); `503 {"error": ...}` if the engine (apama-ctrl) is unreachable or answers a gateway error (502, 503, 504), for example while it restarts; `404` only if no status is available otherwise. A 404 is therefore not an engine problem.
 
 ---
 
@@ -114,7 +114,7 @@ Contents API URL and `type` is `file` or `dir`. The monitors are stored in the e
 
 ### `POST /extension/yaml`
 Body: `yaml: {url}` (raw URL of the YAML file), optional `sections` (names; empty = all), plus the common fields.
-Each section (`<name>: {files: [...]}`) becomes one extension named after the section. Sections without files
+Each section (`<name>: {files: [...]}` or the plain list `<name>: [...]`) becomes one extension named after the section. Sections without files
 are skipped; invalid names are reported as failed.
 
 - Download mode returns the zip of the first processed section.

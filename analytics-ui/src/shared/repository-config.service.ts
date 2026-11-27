@@ -116,6 +116,16 @@ export class RepositoryConfigService {
   }
 
   /**
+   * The token to send when listing a repository's releases: the repository's own token,
+   * else the global PAT, else `''`. Same order as `resolveAccessToken`, which downloads use.
+   */
+  async getRepositoryAccessTokenOrGlobal(repositoryId: string): Promise<string> {
+    return (
+      (await this.getRepositoryAccessToken(repositoryId)) || (await this.getGlobalAccessToken())
+    );
+  }
+
+  /**
    * `Repository.accessToken` is always masked behind `DUMMY_ACCESS_TOKEN`
    * once a repository is persisted, so a freshly-loaded repository's token
    * isn't directly usable against GitHub. Resolve the real token: use it

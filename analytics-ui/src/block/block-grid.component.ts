@@ -117,10 +117,11 @@ export class BlockGridComponent implements OnInit {
     }
   ];
 
-  pagination: Pagination = {
-    pageSize: 3,
-    currentPage: 1
-  };
+  /**
+   * The data grid has no default pagination and fails to render rows without one. 25 is the
+   * smallest page size it offers.
+   */
+  pagination: Pagination = { pageSize: 25, currentPage: 1 };
 
   // The shell may run Angular without zone.js, where a plain field changed after an
   // `await` is not rendered by itself. `markForCheck` asks for a render in either mode.

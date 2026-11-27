@@ -35,6 +35,63 @@ export function splitExtensionVersion(baseName: string): { name: string; version
   return match ? { name: match[1], version: match[2] } : { name: baseName };
 }
 
+/**
+ * Compares two extension versions: negative when `a` is older than `b`, zero when equal,
+ * positive when newer. The numeric core is compared part by part; a version with a
+ * prerelease tag (`1.0.0-rc.1`) is older than the same core without one. Build metadata
+ * (`+build.2`) is ignored. A missing version counts as unknown, and the result is `undefined`.
+ */
+export function compareVersions(a?: string, b?: string): number | undefined {
+  if (!a || !b) {
+    return undefined;
+  }
+  const parse = (version: string) => {
+    const [withoutBuild] = version.split('+');
+    const dash = withoutBuild.indexOf('-');
+    const core = (dash === -1 ? withoutBuild : withoutBuild.slice(0, dash)).split('.').map(Number);
+    return { core, pre: dash === -1 ? '' : withoutBuild.slice(dash + 1) };
+  };
+  const x = parse(a);
+  const y = parse(b);
+  for (let i = 0; i < Math.max(x.core.length, y.core.length); i++) {
+    const diff = (x.core[i] ?? 0) - (y.core[i] ?? 0);
+    if (diff !== 0) {
+      return diff;
+    }
+  }
+  if (x.pre === y.pre) {
+    return 0;
+  }
+  if (!x.pre) {
+    return 1;
+  }
+  if (!y.pre) {
+    return -1;
+  }
+  return comparePrerelease(x.pre, y.pre);
+}
+
+/** Dot-separated identifiers: numbers compare numerically and rank below text; a prefix is older. */
+function comparePrerelease(a: string, b: string): number {
+  const x = a.split(/[.-]/);
+  const y = b.split(/[.-]/);
+  for (let i = 0; i < Math.min(x.length, y.length); i++) {
+    const xNum = /^\d+$/.test(x[i]);
+    const yNum = /^\d+$/.test(y[i]);
+    if (xNum && yNum) {
+      const diff = Number(x[i]) - Number(y[i]);
+      if (diff !== 0) {
+        return diff;
+      }
+    } else if (xNum !== yNum) {
+      return xNum ? -1 : 1;
+    } else if (x[i] !== y[i]) {
+      return x[i] < y[i] ? -1 : 1;
+    }
+  }
+  return x.length - y.length;
+}
+
 export function getFileExtension(name: string): string {
   const pattern = /\.([0-9a-z]+)(?:[?#]|$)/i;
   const result = name.match(pattern);

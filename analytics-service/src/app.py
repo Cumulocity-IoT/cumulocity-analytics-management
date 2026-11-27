@@ -30,7 +30,12 @@ import requests
 import yaml
 from flask import Flask, g, jsonify, make_response, request, send_file
 
-from c8y_agent import C8YAgent, C8YAgentError, C8YAuthenticationError
+from c8y_agent import (
+    C8YAgent,
+    C8YAgentError,
+    C8YAuthenticationError,
+    C8YEngineUnavailableError,
+)
 from logging_config import setup_logging
 from solution_utils import (
     content_api_to_github_web_url,
@@ -195,6 +200,7 @@ def get_cep_operationobject_id():
     Returns:
         200: Success with operation object ID
         404: CEP operation object not found
+        503: Engine unreachable or answering a gateway error
         
     Response Body:
         {
@@ -204,7 +210,10 @@ def get_cep_operationobject_id():
     Example:
         GET /cep/id
     """
-    result = agent.get_cep_operationobject_id(request)
+    try:
+        result = agent.get_cep_operationobject_id(request)
+    except C8YEngineUnavailableError as e:
+        return create_error_response(str(e), 503)
     if result is None:
         return create_error_response("CEP operation object not found", 404)
     return jsonify(result), 200
@@ -226,6 +235,7 @@ def get_cep_ctrl_status():
     Returns:
         200: Success with status information
         404: CEP control status not available
+        503: Engine unreachable or answering a gateway error
         
     Response Body:
         {
@@ -239,7 +249,10 @@ def get_cep_ctrl_status():
     Example:
         GET /cep/status
     """
-    result = agent.get_cep_ctrl_status(request)
+    try:
+        result = agent.get_cep_ctrl_status(request)
+    except C8YEngineUnavailableError as e:
+        return create_error_response(str(e), 503)
     if result is None:
         return create_error_response("CEP control status not found", 404)
     return jsonify(result), 200
@@ -1598,7 +1611,13 @@ def _process_yaml_sections(
             continue
 
         section_data = yaml_structure[section_name]
-        files = section_data.get("files", []) if isinstance(section_data, dict) else []
+        # Accept both a plain list and a mapping with a `files` key.
+        if isinstance(section_data, list):
+            files = section_data
+        elif isinstance(section_data, dict):
+            files = section_data.get("files", [])
+        else:
+            files = []
         if not isinstance(files, list) or not all(
             isinstance(f, str) and f and not f.startswith("/") for f in files
         ):

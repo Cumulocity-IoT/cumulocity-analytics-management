@@ -6,7 +6,12 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 import c8y_agent
-from c8y_agent import C8YAgent, C8YAgentError
+from c8y_agent import (
+    C8YAgent,
+    C8YAgentError,
+    C8YAuthenticationError,
+    C8YEngineUnavailableError,
+)
 
 DUMMY = C8YAgent.DUMMY_ACCESS_TOKEN
 
@@ -356,10 +361,23 @@ class TestCep:
         agent.restart_cep(REQ)
         tenant.put.assert_awaited_once_with(C8YAgent.PATHS["CEP_RESTART"], json={})
 
-    def test_status_returns_none_on_error(self, tenant, monkeypatch):
+    def test_status_raises_unavailable_on_error(self, tenant, monkeypatch):
         agent = C8YAgent()
-        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("x")))
-        assert agent.get_cep_ctrl_status(REQ) is None
+        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("Status: 503")))
+        with pytest.raises(C8YEngineUnavailableError):
+            agent.get_cep_ctrl_status(REQ)
+
+    def test_operation_object_id_raises_unavailable_on_error(self, tenant, monkeypatch):
+        agent = C8YAgent()
+        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=RuntimeError("Status: 502")))
+        with pytest.raises(C8YEngineUnavailableError):
+            agent.get_cep_operationobject_id(REQ)
+
+    def test_status_lets_auth_error_through(self, tenant, monkeypatch):
+        agent = C8YAgent()
+        monkeypatch.setattr(agent, "_execute", MagicMock(side_effect=C8YAuthenticationError("no")))
+        with pytest.raises(C8YAuthenticationError):
+            agent.get_cep_ctrl_status(REQ)
 
     def test_status(self, agent, tenant):
         tenant.get.return_value = {"status": "Up"}
@@ -406,7 +424,8 @@ class TestCepErrorLogging:
     def test_gateway_error_is_a_short_warning(self, agent, tenant, caplog):
         tenant.get.side_effect = ValueError('Invalid GET request. Status: 502, Response:\n {"error":"x"}')
         with caplog.at_level("WARNING"):
-            assert agent.get_cep_ctrl_status(REQ) is None
+            with pytest.raises(C8YEngineUnavailableError):
+                agent.get_cep_ctrl_status(REQ)
         record = caplog.records[-1]
         assert record.levelname == "WARNING"
         assert "HTTP 502" in record.getMessage()
@@ -415,7 +434,8 @@ class TestCepErrorLogging:
     def test_other_errors_stay_errors(self, agent, tenant, caplog):
         tenant.get.side_effect = ValueError("Invalid GET request. Status: 500, Response: boom")
         with caplog.at_level("WARNING"):
-            agent.get_cep_ctrl_status(REQ)
+            with pytest.raises(C8YEngineUnavailableError):
+                agent.get_cep_ctrl_status(REQ)
         assert caplog.records[-1].levelname == "ERROR"
 
 

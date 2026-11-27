@@ -23,7 +23,7 @@ it imports the (standalone) components and registers the c8y hooks (`hookRoute`,
 Routes (all under `c8y-pkg-analytics-extension/`, defined once in `ROUTES` in `shared/analytics.constants.ts`):
 `manage` (+ `manage/details/:name`), `installed-blocks`, `repository`, `release`. `manage` uses resolvers
 (`backendResolver`, `extensionResolver` in `manage/resolvers.ts`). Page names (tab, page title, breadcrumb) come from
-`PAGE_LABELS` in the same file: Extensions, Installed blocks, Block library. Use these constants, never literals.
+`PAGE_LABELS` in the same file: Extensions, Block library, Installed blocks (the tab order). Use these constants, never literals.
 The tab bar (`AnalyticsTabFactory`) shows these three tabs. The `release` route has no tab.
 Label style: sentence case, product names capitalised (Streaming Analytics, Analytics Builder); every label goes through
 `gettext()` (TS) or the `translate` pipe/directive (templates).

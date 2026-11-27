@@ -55,7 +55,7 @@ describe('RepositoryService', () => {
     config = jasmine.createSpyObj('RepositoryConfigService', [
       'fetchRepositories',
       'saveRepositories',
-      'getRepositoryAccessToken',
+      'getRepositoryAccessTokenOrGlobal',
       'getGlobalAccessTokenMasked',
       'setGlobalAccessToken'
     ]);
@@ -352,7 +352,7 @@ describe('RepositoryService', () => {
     beforeEach(async () => create());
 
     it('delegates token access to the config service', async () => {
-      config.getRepositoryAccessToken.and.resolveTo('tok');
+      config.getRepositoryAccessTokenOrGlobal.and.resolveTo('tok');
       config.getGlobalAccessTokenMasked.and.resolveTo('masked');
 
       expect(await service.getRepositoryAccessToken('a')).toBe('tok');

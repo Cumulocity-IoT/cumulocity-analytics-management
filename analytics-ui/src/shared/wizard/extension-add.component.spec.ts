@@ -430,6 +430,94 @@ describe('ExtensionAddComponent', () => {
     });
   });
 
+  describe('version and name rules', () => {
+    const installed = (version?: string) =>
+      analytics.getExtensionsFromInventory.and.resolveTo([
+        { id: '9', name: 'E', build_information: version ? { version } : {} }
+      ] as unknown as IManagedObject[]);
+    const dropFile = async (mode: 'add' | 'update', fileName: string) => {
+      create(mode);
+      component.extensionToReplace = { id: '9', name: 'E' };
+      const pending = component.onFile(await zipFile(fileName, { 'files/Foo.mon': MON }));
+      for (let i = 0; i < 20 && !modals.show.calls.any() && !handler.calls.any(); i++) {
+        await flush();
+      }
+      return pending;
+    };
+    const message = async () => {
+      for (let i = 0; i < 20 && !modals.show.calls.any(); i++) {
+        await flush();
+      }
+      return (modals.show.calls.mostRecent().args[1] as { initialState: { message: string } })
+        .initialState.message;
+    };
+
+    it('asks before uploading an older version and uploads on confirmation', async () => {
+      installed('2.0.0');
+      const pending = dropFile('update', 'E-1.0.0.zip');
+      await flush();
+      expect(await message()).toContain(
+        'Version 2.0.0 of "E" is installed and newer than version 1.0.0'
+      );
+      expect(handler).not.toHaveBeenCalled();
+      confirm$.next(true);
+      await pending;
+      expect(handler).toHaveBeenCalled();
+    });
+
+    it('asks for the same version, and does not upload when declined', async () => {
+      installed('1.0.0');
+      const pending = dropFile('update', 'E-1.0.0.zip');
+      await flush();
+      expect(await message()).toContain('already installed');
+      confirm$.next(false);
+      await pending;
+      expect(handler).not.toHaveBeenCalled();
+      expect(analytics.cancelExtensionCreation).not.toHaveBeenCalled();
+    });
+
+    it('dismisses the confirmation when the uploader is destroyed, and never uploads afterwards', async () => {
+      installed('2.0.0');
+      const pending = dropFile('update', 'E-1.0.0.zip');
+      await flush();
+      await message();
+      component.ngOnDestroy();
+      await pending;
+      expect(modalHide).toHaveBeenCalled();
+      confirm$.next(true);
+      await flush();
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('does not ask for a newer version or when a version is unknown', async () => {
+      installed('1.0.0');
+      await dropFile('update', 'E-1.1.0.zip');
+      installed();
+      await dropFile('update', 'E-0.1.0.zip');
+      await dropFile('update', 'E.zip');
+      expect(modals.show).not.toHaveBeenCalled();
+      expect(handler).toHaveBeenCalledTimes(3);
+    });
+
+    it('asks when a card update gets a package of another extension', async () => {
+      analytics.getExtensionsFromInventory.and.resolveTo([]);
+      const pending = dropFile('update', 'Other-1.0.0.zip');
+      await flush();
+      expect(await message()).toContain('"Other", not "E"');
+      confirm$.next(true);
+      await pending;
+      expect(handler).toHaveBeenCalled();
+    });
+
+    it('adds the version warning to the add-mode update confirmation', async () => {
+      installed('2.0.0');
+      create('add');
+      await component.onFile(await zipFile('E-1.0.0.zip', { 'files/Foo.mon': MON }));
+      expect(await message()).toContain('already exists');
+      expect(await message()).toContain('newer than version 1.0.0');
+    });
+  });
+
   describe('failures', () => {
     it('reports a falsy upload result', async () => {
       handler.and.resolveTo(undefined);

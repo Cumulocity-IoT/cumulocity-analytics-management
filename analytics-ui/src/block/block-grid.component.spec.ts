@@ -32,6 +32,10 @@ describe('BlockGridComponent', () => {
     expect(component.routes.installedBlocks).toBe('c8y-pkg-analytics-extension/installed-blocks');
   });
 
+  it('gives the data grid a pagination, which it cannot render rows without', () => {
+    expect(component.pagination).toEqual({ pageSize: 25, currentPage: 1 });
+  });
+
   it('starts in the loading state', () => {
     expect(component.loading).toBeTrue();
   });

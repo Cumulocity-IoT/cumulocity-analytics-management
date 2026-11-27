@@ -175,6 +175,20 @@ describe('RepositoryConfigService', () => {
       expect(await service.getRepositoryAccessToken('broken')).toBe('');
     });
 
+    it('getRepositoryAccessTokenOrGlobal prefers the repository token, then the global one', async () => {
+      stored({ r1: { url: 'u', accessToken: 'tok' }, r2: { url: 'u' } });
+      spyOn(service, 'getGlobalAccessToken').and.resolveTo('glob');
+      expect(await service.getRepositoryAccessTokenOrGlobal('r1')).toBe('tok');
+      expect(await service.getRepositoryAccessTokenOrGlobal('r2')).toBe('glob');
+      expect(await service.getRepositoryAccessTokenOrGlobal('missing')).toBe('glob');
+    });
+
+    it('getRepositoryAccessTokenOrGlobal is empty when neither token exists', async () => {
+      stored({ r2: { url: 'u' } });
+      spyOn(service, 'getGlobalAccessToken').and.resolveTo('');
+      expect(await service.getRepositoryAccessTokenOrGlobal('r2')).toBe('');
+    });
+
     it('resolveAccessToken uses a freshly typed token as-is', async () => {
       expect(await service.resolveAccessToken(repo({ accessToken: 'typed' }))).toBe('typed');
       expect(fetchClient.fetch).not.toHaveBeenCalled();

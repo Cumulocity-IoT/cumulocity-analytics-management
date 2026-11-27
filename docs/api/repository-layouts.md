@@ -37,7 +37,8 @@ explicitly.
   top-level items used by layout 1. Detection is **not** recursive: a file placed
   in a subdirectory is not found.
 - If present, it is read for the extension's metadata: a set of named top-level
-  sections, each listing the files to include under that section's `files` key.
+  sections, each listing the files to include, either under that section's `files` key or as
+  a plain list (`Name:` followed by `- a.mon` entries). The UI and `POST /extension/yaml` accept both forms.
   Multiple sections can be selected and built together in one
   `POST /extension/yaml` request (`sections: [...]`), and a section's files are not
   limited to `.mon` (for example `plugin.yaml`, `.py`, `venv/` entries).

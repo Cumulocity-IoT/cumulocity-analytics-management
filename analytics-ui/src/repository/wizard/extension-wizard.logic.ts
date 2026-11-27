@@ -132,3 +132,21 @@ export function toBuildInput(
   }
   return { sections, monitors };
 }
+
+/** What the backend reports for `POST /extension/yaml` when only some sections were uploaded (207). */
+export interface SectionOutcome {
+  created: string[];
+  failed: { section: string; error?: string }[];
+}
+
+/** Reads the 207 body (`uploaded_extensions`, `failed_sections`); tolerant of missing fields. */
+export function parseSectionOutcome(body: unknown): SectionOutcome {
+  const data = (body ?? {}) as {
+    uploaded_extensions?: { name?: string }[];
+    failed_sections?: { section?: string; error?: string }[];
+  };
+  return {
+    created: (data.uploaded_extensions ?? []).map(e => e?.name ?? '').filter(name => !!name),
+    failed: (data.failed_sections ?? []).map(f => ({ section: f?.section ?? '', error: f?.error }))
+  };
+}

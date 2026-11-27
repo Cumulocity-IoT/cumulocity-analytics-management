@@ -1,5 +1,7 @@
 [default.extend-words]
 Strack = "Strack"
+# Python package in THIRD-PARTY-LICENSES.md
+certifi = "certifi"
 
 [files]
 extend-exclude = ["**/mappings**.json", "**/*Mappings**.json"]
