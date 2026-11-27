@@ -69,20 +69,6 @@
 </c8y-action-bar-item>
 <c8y-action-bar-item
   [placement]="'left'"
-  [priority]="195"
->
-  <input
-    type="search"
-    class="form-control m-l-8 m-r-8"
-    data-cy="repo-search"
-    [attr.aria-label]="'Search by name' | translate"
-    [placeholder]="'Search by name' | translate"
-    [ngModel]="searchText"
-    (ngModelChange)="onSearch($event)"
-  />
-</c8y-action-bar-item>
-<c8y-action-bar-item
-  [placement]="'left'"
   [priority]="190"
 >
   <label

@@ -70,12 +70,6 @@ import { ExtensionLayoutHelpModalComponent } from './extension-layout-help-modal
 import { PopoverModule } from 'ngx-bootstrap/popover';
 import { gettext } from '@c8y/ngx-components/gettext';
 
-/** Keeps the items whose name contains `text` (case-insensitive); empty text keeps all. */
-export function filterByName(items: RepositoryItem[], text: string): RepositoryItem[] {
-  const needle = (text ?? '').trim().toLowerCase();
-  return needle ? items.filter(item => (item.name ?? '').toLowerCase().includes(needle)) : items;
-}
-
 @Component({
   selector: 'a17t-repository-block-grid',
   templateUrl: 'repository-block-grid.component.html',
@@ -174,9 +168,6 @@ export class RepositoryBlockGridComponent implements OnInit {
   selectedRepositoryId: string | null = null;
   private readonly selectedRepositoryId$ = new BehaviorSubject<string | null>(null);
   private readonly hideInstalled$ = new BehaviorSubject<boolean>(false);
-  private readonly searchText$ = new BehaviorSubject<string>('');
-  /** Free-text search over item names (case-insensitive, matches anywhere in the name). */
-  searchText = '';
 
   constructor(
     public repositoryService: RepositoryService,
@@ -185,7 +176,7 @@ export class RepositoryBlockGridComponent implements OnInit {
     private bsModalService: BsModalService,
     private extensionWizard: ExtensionWizardService
   ) {
-    const loaded$ = combineLatest([
+    this.repositoryItems$ = combineLatest([
       this.selectedRepositoryId$.pipe(distinctUntilChanged()),
       this.hideInstalled$
     ]).pipe(
@@ -214,16 +205,6 @@ export class RepositoryBlockGridComponent implements OnInit {
         );
       })
     );
-    // The search narrows the rows only; the title and the repository column above
-    // follow the loaded items, so they stay put while the user types.
-    this.repositoryItems$ = combineLatest([loaded$, this.searchText$]).pipe(
-      map(([items, text]) => filterByName(items, text))
-    );
-  }
-
-  onSearch(text: string): void {
-    this.searchText = text;
-    this.searchText$.next(text);
   }
 
   ngOnInit() {
